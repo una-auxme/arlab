@@ -1,0 +1,80 @@
+name: 🐞 Bug
+title: "[Bug] "
+description: A bug that requires attention.
+labels: ["bug"]
+body:
+  - type: textarea
+    id: current
+    attributes:
+      label: Current Behavior
+      description: A clear and concise description of current behavior.
+      placeholder: The robot does not detect seated humans.
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: A clear and concise description of anticipated behavior.
+      placeholder: The robot should detect seated humans.
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: Provide steps to reproduce the issue.
+      placeholder: |
+        - Start simulation of scenario X.
+        - In room 'living room' the human in the red chair shall be detected.
+
+  - type: textarea
+    id: definition_of_completion
+    attributes:
+      label: Definition of Completion
+      description: A clear and concise description of completion criteria.
+      placeholder: The robots detects seated humans in scenario X and similar scenarios.
+
+  - type: textarea
+    id: testability
+    attributes:
+      label: Testability
+      description:  A clear and concise description of testing scenarios, test cases, and success criteria.
+      placeholder: |
+        - Run simluation of scenario X.
+        - Complete repeated runs with at least 80% of humans detected.
+
+  - type: textarea
+    id: dependencies_code
+    attributes:
+      label: Code Dependencies
+      description: List any dependencies on other issues.
+      placeholder: Link dependencies here (e.g., \#456).
+
+  - type: markdown
+    attributes:
+      value: |
+
+        **Add Group Label**:
+        - safety: Feature or issue related to safety.
+        - interfaces: Feature or issue related to interfaces.
+        - perception: Feature or issue related to perception. Features all approaches directly linked to multimodal sensing of the context.
+        - manipulation: Feature or issue related to manipulation. Features abilities of the manipulator and gripper.
+        - navigation: Feature or issue related to navigation. Features abilities of the mobile base, also featuring perception for navigation (e.g., SLAM).
+        - decisionmaking: Feature or issue related to global decision making.
+        - hri: Feature or issue related to huma-robot interfaces.
+        - knowledgebase Feature or issue related to the knowledge base.
+        - driver: Feature or issue related to hardware driver.
+        - maintenance: Feature or issue related to project management, maintenance and housekeeping.
+
+        **Add Labels on the Project Board**:
+        **Priority:**
+        - `Urgent`: Critical bug causing system crash, needs immediate fix.
+        - `High`: Major feature request or significant bug affecting many users.
+        - `Medium`: Minor feature request or bug with a workaround.
+        - `Low`: Cosmetic changes or minor improvements.
+
+        **Size:**
+        - `Tiny`: Small typo fix or minor code refactor. Estimated time: 30 minutes.
+        - `Small`: Simple bug fix or small feature addition. Estimated time: 1-2 hours.
+        - `Medium`: Moderate feature addition or multiple bug fixes. Estimated time: 1-2 days.
+        - `Large`: Major feature implementation or significant refactor. Estimated time: 1-2 weeks.
+        - `X-Large`: Large-scale feature or complete module overhaul. Estimated time: 2-4 weeks.

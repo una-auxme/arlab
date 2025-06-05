@@ -1,0 +1,69 @@
+name: "General Issue"
+title: "[General] "
+description: Template for general issues.
+labels: ["general"]
+
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Detailed Description
+      description: A clear and concise description of the issue.
+      placeholder: |
+        - What is the problem? E.g., the robot is overheating.
+        - What is the expected outcome? E.g., the robot shall use ice cream to cool down itself.
+
+ - type: textarea
+    id: definition_of_completion
+    attributes:
+      label: Definition of Completion
+      description: A clear and concise description of completion criteria.
+      placeholder: |
+        - The robot detects and grabs ice cream in the room 'kitchen'
+        - The robot places ice cream on Nvidia Jetson Orin Nano 2
+
+  - type: textarea
+    id: testability
+    attributes:
+      label: Testability
+      description:  A clear and concise description of testing scenarios, test cases, and success criteria.
+      placeholder: |
+        - Let robot make an automated run through scenario X
+        - Place ice cream in the room 'kitchen'
+
+  - type: textarea
+    id: dependencies_code
+    attributes:
+      label: Code Dependencies
+      description: List any dependencies on other issues.
+      placeholder: Link dependencies here (e.g., \#456).
+
+  - type: markdown
+    attributes:
+      value: |
+
+        **Add Group Label**:
+        - safety: Feature or issue related to safety.
+        - interfaces: Feature or issue related to interfaces.
+        - perception: Feature or issue related to perception. Features all approaches directly linked to multimodal sensing of the context.
+        - manipulation: Feature or issue related to manipulation. Features abilities of the manipulator and gripper.
+        - navigation: Feature or issue related to navigation. Features abilities of the mobile base, also featuring perception for navigation (e.g., SLAM).
+        - decisionmaking: Feature or issue related to global decision making.
+        - hri: Feature or issue related to huma-robot interfaces.
+        - knowledgebase Feature or issue related to the knowledge base.
+        - driver: Feature or issue related to hardware driver.
+        - maintenance: Feature or issue related to project management, maintenance and housekeeping.
+
+        **Add Labels on the Project Board**:
+        **Priority:**
+        - `Urgent`: Critical bug causing system crash, needs immediate fix.
+        - `High`: Major feature request or significant bug affecting many users.
+        - `Medium`: Minor feature request or bug with a workaround.
+        - `Low`: Cosmetic changes or minor improvements.
+
+        **Size:**
+        - `Tiny`: Small typo fix or minor code refactor. Estimated time: 30 minutes.
+        - `Small`: Simple bug fix or small feature addition. Estimated time: 1-2 hours.
+        - `Medium`: Moderate feature addition or multiple bug fixes. Estimated time: 1-2 days.
+        - `Large`: Major feature implementation or significant refactor. Estimated time: 1-2 weeks.
+        - `X-Large`: Large-scale feature or complete module overhaul. Estimated time: 2-4 weeks.

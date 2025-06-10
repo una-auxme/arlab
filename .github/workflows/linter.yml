@@ -27,6 +27,3 @@ jobs:
           # Execute the python linter (runs even when the previous step failed)
           - name: Run Ruff linter
             uses: astral-sh/ruff-action@v3
-            with:
-              src: "./code"
-

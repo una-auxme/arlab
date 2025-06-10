@@ -43,3 +43,13 @@ jobs:
             python-version: "3.12"
         - name: flake8 Lint
           uses: py-actions/flake8@v2
+    ruff-lint:
+      runs-on: ubuntu-latest
+      name: Lint python files
+      steps:
+        - name: Check out source repository
+          uses: actions/checkout@v3
+        - name: Ruff
+          uses: astral-sh/ruff-action@v3
+          with:
+            src: "./code"

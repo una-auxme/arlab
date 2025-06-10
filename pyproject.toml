@@ -1,0 +1,4 @@
+[project]
+name = "arlab"
+requires-python = "~= 3.12"
+license = "MIT"

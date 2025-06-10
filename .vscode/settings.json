@@ -3,4 +3,9 @@
     "editor.defaultFormatter": "charliermarsh.ruff"
   },
   "editor.formatOnSave": true,
+  "ruff.configurationPreference": "filesystemFirst",
+  "cmake.ignoreCMakeListsMissing": true,
+  "cmake.configureOnEdit": false,
+  "cmake.configureOnOpen": false,
+  "flake8.enabled": false,
 }

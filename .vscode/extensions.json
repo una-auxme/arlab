@@ -12,7 +12,8 @@
     "editorconfig.editorconfig",
     "charliermarsh.ruff",
     "tamasfe.even-better-toml",
-    "esbenp.prettier-vscode"
+    "esbenp.prettier-vscode",
+    "ms-vscode.cmake-tools"
   ],
   "unwantedRecommendations": [
     "ms-python.flake8",

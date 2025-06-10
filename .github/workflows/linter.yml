@@ -3,10 +3,12 @@ name: Linter markdown and code
 on:
   pull_request:
     branches:
-      - "main"
+      - main
+      - dev
   push:
     branches:
       - main
+      - dev
 
 jobs:
     linter:
@@ -29,3 +31,15 @@ jobs:
               image: alpine/flake8
               options: -v ${{ github.workspace }}:/apps
               run: flake8 .
+    flake8-lint:
+      runs-on: ubuntu-latest
+      name: Lint python files
+      steps:
+        - name: Check out source repository
+          uses: actions/checkout@v3
+        - name: Set up Python environment
+          uses: actions/setup-python@v4
+          with:
+            python-version: "3.12"
+        - name: flake8 Lint
+          uses: py-actions/flake8@v2

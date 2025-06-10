@@ -2,6 +2,9 @@
   "[python]": {
     "editor.defaultFormatter": "charliermarsh.ruff"
   },
+  "[markdown]": {
+    "editor.defaultFormatter": "DavidAnson.vscode-markdownlint"
+  },
   "editor.formatOnSave": true,
   "ruff.configurationPreference": "filesystemFirst",
   "cmake.ignoreCMakeListsMissing": true,

@@ -1,16 +1,15 @@
 {
-	"recommendations": [
-		"ms-python.black-formatter",
-		"ms-python.flake8",
-		"ms-python.debugpy",
-		"ms-python.python",
-		"njpwerner.autodocstring",
-		"streetsidesoftware.code-spell-checker",
-		"phil294.git-log--graph",
-		"bierner.markdown-mermaid",
-		"davidanson.vscode-markdownlint",
-		"timonwong.shellcheck",
-		"ms-python.vscode-pylance",
-		"editorconfig.editorconfig"
-	]
+  "recommendations": [
+    "ms-python.debugpy",
+    "ms-python.python",
+    "njpwerner.autodocstring",
+    "streetsidesoftware.code-spell-checker",
+    "phil294.git-log--graph",
+    "bierner.markdown-mermaid",
+    "davidanson.vscode-markdownlint",
+    "timonwong.shellcheck",
+    "ms-python.vscode-pylance",
+    "editorconfig.editorconfig",
+    "charliermarsh.ruff"
+  ]
 }

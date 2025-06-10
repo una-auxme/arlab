@@ -11,12 +11,12 @@ on:
       - dev
 
 jobs:
-    linter:
-        name: Linter markdown and code
+    md-linter:
+        name: Lint markdown files
         runs-on: ubuntu-latest
         steps:
           - name: Check out the repo
-            uses: actions/checkout@v2
+            uses: actions/checkout@v3
           # Execute the markdown linter
           - name: Run the markdown linter
             uses: addnab/docker-run-action@v3
@@ -24,32 +24,9 @@ jobs:
               image: peterdavehello/markdownlint:0.32.2
               options: -v ${{ github.workspace }}:/md
               run: markdownlint .
-           # Execute the python linter (executes even if the previous step failed)
-          - name: Run the python linter
-            uses: addnab/docker-run-action@v3
+          # Execute the python linter (runs even when the previous step failed)
+          - name: Run Ruff linter
+            uses: astral-sh/ruff-action@v3
             with:
-              image: alpine/flake8
-              options: -v ${{ github.workspace }}:/apps
-              run: flake8 .
-    flake8-lint:
-      runs-on: ubuntu-latest
-      name: Lint python files
-      steps:
-        - name: Check out source repository
-          uses: actions/checkout@v3
-        - name: Set up Python environment
-          uses: actions/setup-python@v4
-          with:
-            python-version: "3.12"
-        - name: flake8 Lint
-          uses: py-actions/flake8@v2
-    ruff-lint:
-      runs-on: ubuntu-latest
-      name: Lint python files
-      steps:
-        - name: Check out source repository
-          uses: actions/checkout@v3
-        - name: Ruff
-          uses: astral-sh/ruff-action@v3
-          with:
-            src: "./code"
+              src: "./code"
+

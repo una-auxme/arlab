@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(arlab_template_interfaces)
+project(arlab_common_interfaces)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -21,15 +21,14 @@ if(BUILD_TESTING)
 endif()
 
 # Include any interface dependencies here:
-find_package(geometry_msgs REQUIRED)
+# find_package(<dependency> REQUIRED)
 
 find_package(rosidl_default_generators REQUIRED)
 
 # Add all your interface files here:
 rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/Sphere.msg"
-  "srv/AddThreeInts.srv"
-  DEPENDENCIES geometry_msgs # Add packages that above messages depend on, in this case geometry_msgs for Sphere.msg
+  "msg/DeleteMe.msg"
+  DEPENDENCIES # Add packages that above messages depend on
 )
 
 ament_package()

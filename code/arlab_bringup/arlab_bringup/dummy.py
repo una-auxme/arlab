@@ -1,6 +1,6 @@
 def main():
-    print('Hi from arlab_bringup.')
+    print("Hi from arlab_bringup.")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

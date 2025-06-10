@@ -10,6 +10,7 @@
 		"bierner.markdown-mermaid",
 		"davidanson.vscode-markdownlint",
 		"timonwong.shellcheck",
-		"ms-python.vscode-pylance"
+		"ms-python.vscode-pylance",
+		"editorconfig.editorconfig"
 	]
 }

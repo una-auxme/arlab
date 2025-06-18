@@ -13,7 +13,12 @@ class CentralSafetyNode(Node):
         self.module_safety_table = {}
 
         self.timer = self.create_timer(1.0, self.reset_module_safety_table)
-        self.create_subscription(Int32MultiArray, "/global_heartbeat", self.callback, 10)
+        self.create_subscription(
+            Int32MultiArray,
+            "/global_heartbeat",
+            self.callback,
+            10
+        )
 
     def callback(self, msg: Int32MultiArray):
         """Receives messages from the /global_heartbeat

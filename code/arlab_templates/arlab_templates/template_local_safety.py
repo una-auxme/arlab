@@ -1,7 +1,6 @@
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Int32
-from std_msgs.msg import String
 
 
 class LocalSafety(Node):
@@ -15,12 +14,23 @@ class LocalSafety(Node):
         self.module_node_table = {}
         self.timer = self.create_timer(1.0, self.reset_module_node_table)
         self.health_state = -1
-        self.pub_global_heartbeat = self.create_publisher(Int32, "/global_heartbeat", 10)
-        self.create_subscription(Int32, "/local_module_heartbeat", self.callback, 10)
+        self.pub_global_heartbeat = self.create_publisher(
+            Int32,
+            "/global_heartbeat",
+            10
+        )
+
+        self.create_subscription(
+            Int32,
+            "/local_module_heartbeat",
+            self.callback,
+            10
+        )
 
     def pub_module_heartbeat(self):
         """Publishes a global heartbeat to the Central Safety node
-            If heartbeat is not -1 or 0 the Central Safety Node will receive an error code
+            If heartbeat is not -1 or 0 the Central Safety Node
+            will receive an error code.
         Args:
             msg(Int32) = Encoded module health_state_error
         """

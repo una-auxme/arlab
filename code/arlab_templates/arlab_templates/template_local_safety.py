@@ -10,11 +10,12 @@ class LocalSafety(Node):
     def __init__(self):
         super().__init__(type(self).__name__)
 
-        # Static table of node ids
-        # {int:nodeID: bool:is_alive}
+        # Static table of node ids => {int:nodeID: bool:is_alive}
+        self.module_node_table = {}
+
         # module 1 = movement, module 2 = manipulation
         self.module_id = 1
-        self.module_node_table = {}
+
         self.timer = self.create_timer(1.0, self.reset_module_node_table)
         self.health_state = -1
         self.pub_global_heartbeat = self.create_publisher(
@@ -38,7 +39,6 @@ class LocalSafety(Node):
         """
         msg = Int32MultiArray()
         msg.data = [self.module_id, self.health_state]
-        print(f"Received message: debugHelper")
         self.pub_global_heartbeat.publish(msg)
         #reset node health_state
         self.health_state = 0
@@ -56,11 +56,13 @@ class LocalSafety(Node):
     def reset_module_node_table(self):
         """Resets the is_alive state of module nodes
         """
-        for key in self.module_node_table:
-            if self.module_node_table[key] is False:
-                self.health_state = key
+        for node_id, is_alive in self.module_node_table.items():
+            if is_alive is False:
+                # Error Encoding for Central Safety has to be done here!
+                self.health_state = node_id
             else:
-                self.module_node_table[key] = False
+                self.module_node_table[node_id] = False
+
         self.pub_module_heartbeat()
 
     def local_safety_checks(self):

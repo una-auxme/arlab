@@ -1,0 +1,9 @@
+repositories:
+  rosbot_xl_ros:
+    type: git
+    url: https://github.com/husarion/rosbot_xl_ros.git
+    version: jazzy # oder der entsprechende Branch
+  open_manipulator:
+    type: git
+    url: https://github.com/ROBOTIS-GIT/open_manipulator.git
+    version: jazzy # oder der entsprechende Branch

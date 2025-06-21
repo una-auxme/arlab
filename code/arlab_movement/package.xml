@@ -3,11 +3,31 @@
 <package format="3">
   <name>arlab_movement</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="root@todo.todo">root</maintainer>
+  <description>Package for AR Lab robot movement and navigation.</description>
+  <maintainer email="your_email@example.com">Your Name</maintainer>
   <license>MIT</license>
 
   <test_depend>python3-pytest</test_depend>
+
+  <depend>nav2_bringup</depend>
+  <depend>nav2_msgs</depend>
+  <depend>nav2_amcl</depend>
+  <depend>nav2_planner</depend>
+  <depend>nav2_controller</depend>
+  <depend>nav2_bt_navigator</depend>
+  <depend>nav2_map_server</depend>
+  <depend>nav2_costmap_2d</depend>
+  <depend>nav2_waypoint_follower</depend>
+  <depend>rclpy</depend> <depend>geometry_msgs</depend> <depend>tf2_ros</depend> <depend>slam_toolbox</depend>
+
+  <depend>turtlebot3_navigation2</depend>
+  <depend>turtlebot3_msgs</depend>
+  <depend>turtlebot3_description</depend>
+  <depend>turtlebot3_gazebo</depend>
+  <depend>xacro</depend>
+
+  <!--dependencie for rosbot_xl-->
+  <depend>laser_filters</depend>
 
   <export>
     <build_type>ament_python</build_type>

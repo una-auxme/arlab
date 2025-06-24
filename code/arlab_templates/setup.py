@@ -23,6 +23,7 @@ setup(
             "template_pubsub = arlab_templates.template_pubsub:main",
             "template_service_client = arlab_templates.template_service_client:main",
             "template_service = arlab_templates.template_service:main",
+            "template_local_safety.py = arlab_templates.template_local_safety:main",
         ],
     },
 )

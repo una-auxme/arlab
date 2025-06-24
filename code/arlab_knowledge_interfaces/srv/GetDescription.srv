@@ -1,0 +1,7 @@
+unique_identifier_msgs/UUID[] entity
+---
+# Description of the entity
+string data
+Result result
+# Time stamp when the entity was last updated
+builtin_interfaces/Time stamp

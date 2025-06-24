@@ -1,0 +1,7 @@
+EntityType entity_type
+---
+# Entities with the specified type
+unique_identifier_msgs/UUID[] entities
+Result result
+# Time stamp of the "freshest" entity
+builtin_interfaces/Time stamp

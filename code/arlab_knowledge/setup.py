@@ -18,6 +18,6 @@ setup(
     license="MIT",
     tests_require=["pytest"],
     entry_points={
-        "console_scripts": ["dummy = arlab_knowledge.dummy:main"],
+        "console_scripts": ["database_node = arlab_knowledge.database_node:main"],
     },
 )

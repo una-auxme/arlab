@@ -1,7 +1,7 @@
-int64 entity
+string shape
 ---
 # Description of the entity
-string description
+string shape #subject to change
 Result result
 # Time stamp when the entity was last updated
 builtin_interfaces/Time stamp

@@ -1,7 +1,7 @@
 int64 entity
 ---
 # Description of the door width
-double width
+float64 width
 Result result
 # Time stamp when the entity was last updated
 builtin_interfaces/Time stamp

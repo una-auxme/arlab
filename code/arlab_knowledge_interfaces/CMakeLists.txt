@@ -33,7 +33,6 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GetDescription.srv"
   "srv/GetEntities.srv"
   DEPENDENCIES # Add packages that above messages depend on
-  unique_identifier_msgs
 )
 
 ament_package()

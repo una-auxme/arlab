@@ -7,8 +7,6 @@
   <maintainer email="root@todo.todo">root</maintainer>
   <license>MIT</license>
 
-  <depend>unique_identifier_msgs</depend>
-
   <test_depend>python3-pytest</test_depend>
 
   <export>

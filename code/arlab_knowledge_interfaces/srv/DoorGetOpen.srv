@@ -1,6 +1,6 @@
 int64 entity
 ---
-# Description of the entity
+# Description of the door status
 string open
 Result result
 # Time stamp when the entity was last updated

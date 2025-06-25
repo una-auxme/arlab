@@ -1,7 +1,7 @@
 int64 entity
 ---
 # Description of the entity
-string description
+double width
 Result result
 # Time stamp when the entity was last updated
 builtin_interfaces/Time stamp

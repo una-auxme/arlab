@@ -1,7 +1,8 @@
 int64 entity
 ---
 # Description of the entity
-string description
+geometry_msgs/Pose pose
+string frame_id
 Result result
 # Time stamp when the entity was last updated
 builtin_interfaces/Time stamp

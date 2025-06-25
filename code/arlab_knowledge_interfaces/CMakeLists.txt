@@ -24,7 +24,7 @@ endif()
 # find_package(<dependency> REQUIRED)
 
 find_package(rosidl_default_generators REQUIRED)
-find_package(unique_identifier_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
 
 # Add all your interface files here:
 rosidl_generate_interfaces(${PROJECT_NAME}
@@ -32,7 +32,12 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Result.msg"
   "srv/GetDescription.srv"
   "srv/GetEntities.srv"
+  "srv/DoorGetOpen.srv"
+  "srv/DoorGetWidth.srv"
+  "srv/GetPoseAndReference.srv"
+  "srv/GetShape.srv"
   DEPENDENCIES # Add packages that above messages depend on
+  geometry_msgs
 )
 
 ament_package()

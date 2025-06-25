@@ -1,4 +1,4 @@
-unique_identifier_msgs/UUID[] entity
+int64 entity
 ---
 # Description of the entity
 string data

@@ -12,6 +12,8 @@ import rclpy
 from rclpy.node import Node
 from rclpy.callback_groups import ReentrantCallbackGroup
 
+from geometry_msgs.msg import Pose
+
 from arlab_knowledge_interfaces.srv import GetEntities
 from arlab_knowledge_interfaces.srv import GetPose
 from arlab_knowledge_interfaces.srv import GetShape
@@ -22,10 +24,10 @@ from arlab_knowledge_interfaces.srv import AddEntity
 from arlab_knowledge_interfaces.msg import EntityType
 from arlab_knowledge_interfaces.msg import Result
 
-from arlab_knowledge import Base
-from arlab_knowledge.entities.entity import Entity
-from arlab_knowledge.ros_adapters.pose import PoseData
-from arlab_knowledge.ros_adapters.time import TimeData
+from arlab_knowledge.db.base import Base
+from arlab_knowledge.db.entities.entity import Entity
+from arlab_knowledge.db.ros_adapters.pose import PoseData
+from arlab_knowledge.db.ros_adapters.time import TimeData
 
 prefix = "/arlab/knowledge"
 
@@ -70,57 +72,60 @@ class DatabaseNode(Node):
             self.db_engine, expire_on_commit=False
         )
 
-        async def init_db():
-            async with self.db_engine.begin() as conn:
-                await conn.run_sync(Base.metadata.create_all)
-
-        asyncio.run(init_db())
-
         self.reentrant_callback_group = ReentrantCallbackGroup()
 
-        self.srv = self.create_service(
+    @classmethod
+    async def create(cls) -> "DatabaseNode":
+        node = cls()
+        async with node.db_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        node.init_services()
+        return node
+
+    def init_services(self):
+        self.create_service(
             GetEntities,
             f"{prefix}/get_entities",
             self.get_entities_callback,
             callback_group=self.reentrant_callback_group,
         )
 
-        self.srv = self.create_service(
+        self.create_service(
             GetShape,
             f"{prefix}/get_shape",
             self.get_shape_callback,
             callback_group=self.reentrant_callback_group,
         )
 
-        self.srv = self.create_service(
+        self.create_service(
             DoorGetOpen,
             f"{prefix}/door_get_open",
             self.door_get_open_callback,
             callback_group=self.reentrant_callback_group,
         )
 
-        self.srv = self.create_service(
+        self.create_service(
             DoorGetWidth,
             f"{prefix}/door_get_width",
             self.door_get_width_callback,
             callback_group=self.reentrant_callback_group,
         )
 
-        self.srv = self.create_service(
+        self.create_service(
             GetPose,
             f"{prefix}/get_pose",
             self.get_pose_callback,
             callback_group=self.reentrant_callback_group,
         )
 
-        self.srv = self.create_service(
+        self.create_service(
             GetDescription,
             f"{prefix}/get_description",
             self.get_description_callback,
             callback_group=self.reentrant_callback_group,
         )
 
-        self.srv = self.create_service(
+        self.create_service(
             AddEntity,
             f"{prefix}/add_entity",
             self.add_entity_callback,
@@ -184,26 +189,42 @@ class DatabaseNode(Node):
                     stamp=TimeData(request.stamp),
                 )
                 session.add(entity)
+        return response
 
     def destroy_node(self):
         asyncio.run(self.db_engine.dispose())
         super().destroy_node()
 
 
-def main(args=None):
-    rclpy.init(args=args)
-
-    database_node = DatabaseNode()
+async def ros_loop():
+    database_node = await DatabaseNode.create()
+    # This works, but the service still crashes
+    # await database_node.add_entity_callback(
+    #     AddEntity.Request(
+    #         description="test",
+    #         pose=PoseData(Pose()),
+    #         frame_id="base_link",
+    #         stamp=TimeData(database_node.get_clock().now().to_msg()),
+    #     ),
+    #     AddEntity.Response(),
+    # )
     try:
         database_node.get_logger().info(
             "Beginning database_node, shut down with CTRL-C"
         )
-        rclpy.spin(database_node)
+        while rclpy.ok():
+            rclpy.spin_once(database_node, timeout_sec=0)
+            await asyncio.sleep(1e-4)
     except KeyboardInterrupt:
         database_node.get_logger().info(
             "Keyboard interrupt, shutting down database_node.\n"
         )
     database_node.destroy_node()
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    asyncio.run(ros_loop())
     rclpy.shutdown()
 
 

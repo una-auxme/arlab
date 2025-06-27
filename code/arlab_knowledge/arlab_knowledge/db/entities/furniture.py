@@ -1,4 +1,4 @@
-from . import Entity
+from .entity import Entity
 
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column

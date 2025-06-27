@@ -1,0 +1,9 @@
+string description
+geometry_msgs/Pose pose
+string pose_reference_frame 
+# Time stamp when the entity was last updated
+builtin_interfaces/Time stamp
+---
+#id of the newly added entity
+int64 entityid
+Result result

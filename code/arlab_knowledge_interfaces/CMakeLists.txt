@@ -36,6 +36,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/DoorGetWidth.srv"
   "srv/GetPoseAndReference.srv"
   "srv/GetShape.srv"
+  "srv/AddEntity.srv"
   DEPENDENCIES # Add packages that above messages depend on
   geometry_msgs
 )

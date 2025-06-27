@@ -37,6 +37,13 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GetPoseAndReference.srv"
   "srv/GetShape.srv"
   "srv/AddEntity.srv"
+  "srv/AddCupboard.srv"
+  "srv/AddDoor.srv"
+  "srv/AddFurniture.srv"
+  "srv/AddHuman.srv"
+  "srv/AddPickable.srv"
+  "srv/AddShelf.srv"
+  "srv/AddTable.srv"
   DEPENDENCIES # Add packages that above messages depend on
   geometry_msgs
 )

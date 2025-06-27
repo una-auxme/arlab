@@ -1,7 +1,8 @@
 int64 entityid
 ---
-# Description of the door width
-float64 width
+# Description of the entity
+string shape #subject to change
 Result result
+# Add further updates here
 # Time stamp when the entity was last updated
 builtin_interfaces/Time stamp

@@ -1,4 +1,4 @@
-string shape
+int64 entityid
 ---
 # Description of the entity
 string shape #subject to change

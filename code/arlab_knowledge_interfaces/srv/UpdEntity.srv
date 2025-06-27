@@ -1,7 +1,9 @@
 int64 entityid
----
-# Description of the entity
 string description
-Result result
+geometry_msgs/Pose pose
+string pose_reference_frame
+# Add further updates here
 # Time stamp when the entity was last updated
 builtin_interfaces/Time stamp
+---
+Result result

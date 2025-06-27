@@ -1,3 +1,4 @@
 sqlalchemy[asyncio]==2.0.41
-psycopg2==2.9.10
+asyncpg==0.30.0
+asyncio==3.4.3
 cython==3.1.2

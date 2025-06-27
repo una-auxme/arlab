@@ -1,7 +1,13 @@
 import os
+import asyncio
 
 import sqlalchemy
 from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import AsyncAttrs
+from sqlalchemy.ext.asyncio import async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import create_async_engine
+
 import rclpy
 from rclpy.node import Node
 from rclpy.callback_groups import ReentrantCallbackGroup
@@ -18,6 +24,8 @@ from arlab_knowledge_interfaces.msg import Result
 
 from arlab_knowledge import Base
 from arlab_knowledge.entities.entity import Entity
+from arlab_knowledge.ros_adapters.pose import PoseData
+from arlab_knowledge.ros_adapters.time import TimeData
 
 prefix = "/arlab/knowledge"
 
@@ -49,7 +57,7 @@ class DatabaseNode(Node):
             database_host.split(":") if ":" in database_host else (database_host, 5432)
         )
         self.db_url = sqlalchemy.engine.URL.create(
-            "postgresql+psycopg2",
+            "postgresql+asyncpg",
             username=database_user,
             password=database_password,
             host=host,
@@ -57,8 +65,16 @@ class DatabaseNode(Node):
             database=database_name,
         )
 
-        self.db_engine = create_engine(url=self.db_url, echo=True)
-        Base.metadata.create_all(self.db_engine)
+        self.db_engine = create_async_engine(self.db_url, echo=True)
+        self.db_sessionmaker = async_sessionmaker(
+            self.db_engine, expire_on_commit=False
+        )
+
+        async def init_db():
+            async with self.db_engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+
+        asyncio.run(init_db())
 
         self.reentrant_callback_group = ReentrantCallbackGroup()
 
@@ -159,7 +175,19 @@ class DatabaseNode(Node):
     async def add_entity_callback(
         self, request: AddEntity.Request, response: AddEntity.Response
     ):
-        pass
+        async with self.db_sessionmaker() as session:
+            async with session.begin():
+                entity = Entity(
+                    description=request.description,
+                    pose=PoseData(request.pose),
+                    frame_id=request.pose_reference_frame,
+                    stamp=TimeData(request.stamp),
+                )
+                session.add(entity)
+
+    def destroy_node(self):
+        asyncio.run(self.db_engine.dispose())
+        super().destroy_node()
 
 
 def main(args=None):

@@ -1,9 +1,9 @@
 from copy import deepcopy
 from typing import Tuple
 
-from geometry_msgs.msg import Pose as Pose
-from geometry_msgs.msg import Point as Point
-from geometry_msgs.msg import Quaternion as Quaternion
+from geometry_msgs.msg import Pose
+from geometry_msgs.msg import Point
+from geometry_msgs.msg import Quaternion
 
 
 class PoseData(Pose):

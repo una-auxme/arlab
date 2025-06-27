@@ -1,13 +1,13 @@
-from . import Entity
+from .entity import Entity
 
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
 
-class Human(Entity):
-    __tablename__ = "human"
+class Pickable(Entity):
+    __tablename__ = "pickable"
     id: Mapped[int] = mapped_column(ForeignKey("entity.id"), primary_key=True)
 
     __mapper_args__ = {
-        "polymorphic_identity": "human",
+        "polymorphic_identity": "pickable",
     }

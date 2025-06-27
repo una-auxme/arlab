@@ -1,4 +1,10 @@
+import os
+
+from sqlalchemy import create_engine
+import rclpy
+from rclpy.node import Node
 from rclpy.callback_groups import ReentrantCallbackGroup
+
 from arlab_knowledge_interfaces.srv import GetEntities
 from arlab_knowledge_interfaces.srv import GetPoseAndReference
 from arlab_knowledge_interfaces.srv import GetShape
@@ -9,11 +15,7 @@ from arlab_knowledge_interfaces.srv import AddEntity
 from arlab_knowledge_interfaces.msg import EntityType
 from arlab_knowledge_interfaces.msg import Result
 
-
-import rclpy
-from rclpy.node import Node
-
-prefix = "/arlab"
+prefix = "/arlab/knowledge"
 
 
 class DatabaseNode(Node):
@@ -25,53 +27,71 @@ class DatabaseNode(Node):
 
     def __init__(self):
         super().__init__(type(self).__name__)
+        database_host = os.getenv("KNOWLEDGE_BASE_POSTGRES_HOST")
+        database_name = os.getenv("KNOWLEDGE_BASE_POSTGRES_DB")
+        database_user = os.getenv("KNOWLEDGE_BASE_POSTGRES_USER")
+        database_password = os.getenv("KNOWLEDGE_BASE_POSTGRES_PASSWORD")
+        if (
+            database_host is None
+            or database_name is None
+            or database_user is None
+            or database_password is None
+        ):
+            msg = "Database environment variables not set"
+            self.get_logger().error(msg)
+            raise RuntimeError(msg)
+
+        self.db_engine = create_engine(
+            f"postgresql+psycopg2://{database_user}:{database_password}@${database_host}/{database_name}"
+        )
+
         self.reentrant_callback_group = ReentrantCallbackGroup()
 
         self.srv = self.create_service(
             GetEntities,
-            f"{prefix}/get_entities_callback",
+            f"{prefix}/get_entities",
             self.get_entities_callback,
             callback_group=self.reentrant_callback_group,
         )
 
         self.srv = self.create_service(
             GetShape,
-            "/get_shape_callback",
+            f"{prefix}/get_shape",
             self.get_shape_callback,
             callback_group=self.reentrant_callback_group,
         )
 
         self.srv = self.create_service(
             DoorGetOpen,
-            "/get_door_open_callback",
-            self.get_door_open_callback,
+            f"{prefix}/door_get_open",
+            self.door_get_open_callback,
             callback_group=self.reentrant_callback_group,
         )
 
         self.srv = self.create_service(
             DoorGetWidth,
-            "/get_door_width_callback",
-            self.get_door_width_callback,
+            f"{prefix}/door_get_width",
+            self.door_get_width_callback,
             callback_group=self.reentrant_callback_group,
         )
 
         self.srv = self.create_service(
             GetPoseAndReference,
-            "/get_pose_and_reference_callback",
-            self.get_pose_and_reference_callback,
+            f"{prefix}/get_pose",
+            self.get_pose_callback,
             callback_group=self.reentrant_callback_group,
         )
 
         self.srv = self.create_service(
             GetDescription,
-            "/get_description_callback",
+            f"{prefix}/get_description",
             self.get_description_callback,
             callback_group=self.reentrant_callback_group,
         )
 
         self.srv = self.create_service(
             AddEntity,
-            "/add_entity_callback ",
+            f"{prefix}/add_entity",
             self.add_entity_callback,
             callback_group=self.reentrant_callback_group,
         )
@@ -95,19 +115,19 @@ class DatabaseNode(Node):
         ### TODO implement the function once the database exists
         return response
 
-    async def get_door_open_callback(
+    async def door_get_open_callback(
         self, request: DoorGetOpen.Request, response: DoorGetOpen.Response
     ):
         ### TODO implement the function once the database exists
         return response
 
-    async def get_door_width_callback(
+    async def door_get_width_callback(
         self, request: DoorGetWidth.Request, response: DoorGetWidth.Response
     ):
         ### TODO implement the function once the database exists
         return response
 
-    async def get_pose_and_reference_callback(
+    async def get_pose_callback(
         self,
         request: GetPoseAndReference.Request,
         response: GetPoseAndReference.Response,

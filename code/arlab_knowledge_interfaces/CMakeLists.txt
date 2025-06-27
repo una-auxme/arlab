@@ -34,7 +34,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GetEntities.srv"
   "srv/DoorGetOpen.srv"
   "srv/DoorGetWidth.srv"
-  "srv/GetPoseAndReference.srv"
+  "srv/GetPose.srv"
   "srv/GetShape.srv"
   "srv/AddEntity.srv"
   "srv/AddCupboard.srv"

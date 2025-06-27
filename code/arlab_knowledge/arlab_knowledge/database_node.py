@@ -1,12 +1,13 @@
 import os
 
+import sqlalchemy
 from sqlalchemy import create_engine
 import rclpy
 from rclpy.node import Node
 from rclpy.callback_groups import ReentrantCallbackGroup
 
 from arlab_knowledge_interfaces.srv import GetEntities
-from arlab_knowledge_interfaces.srv import GetPoseAndReference
+from arlab_knowledge_interfaces.srv import GetPose
 from arlab_knowledge_interfaces.srv import GetShape
 from arlab_knowledge_interfaces.srv import DoorGetOpen
 from arlab_knowledge_interfaces.srv import DoorGetWidth
@@ -14,6 +15,9 @@ from arlab_knowledge_interfaces.srv import GetDescription
 from arlab_knowledge_interfaces.srv import AddEntity
 from arlab_knowledge_interfaces.msg import EntityType
 from arlab_knowledge_interfaces.msg import Result
+
+from arlab_knowledge import Base
+from arlab_knowledge.entities.entity import Entity
 
 prefix = "/arlab/knowledge"
 
@@ -41,9 +45,20 @@ class DatabaseNode(Node):
             self.get_logger().error(msg)
             raise RuntimeError(msg)
 
-        self.db_engine = create_engine(
-            f"postgresql+psycopg2://{database_user}:{database_password}@${database_host}/{database_name}"
+        host, port = (
+            database_host.split(":") if ":" in database_host else (database_host, 5432)
         )
+        self.db_url = sqlalchemy.engine.URL.create(
+            "postgresql+psycopg2",
+            username=database_user,
+            password=database_password,
+            host=host,
+            port=int(port),
+            database=database_name,
+        )
+
+        self.db_engine = create_engine(url=self.db_url, echo=True)
+        Base.metadata.create_all(self.db_engine)
 
         self.reentrant_callback_group = ReentrantCallbackGroup()
 
@@ -76,7 +91,7 @@ class DatabaseNode(Node):
         )
 
         self.srv = self.create_service(
-            GetPoseAndReference,
+            GetPose,
             f"{prefix}/get_pose",
             self.get_pose_callback,
             callback_group=self.reentrant_callback_group,
@@ -129,8 +144,8 @@ class DatabaseNode(Node):
 
     async def get_pose_callback(
         self,
-        request: GetPoseAndReference.Request,
-        response: GetPoseAndReference.Response,
+        request: GetPose.Request,
+        response: GetPose.Response,
     ):
         ### TODO implement the function once the database exists
         return response

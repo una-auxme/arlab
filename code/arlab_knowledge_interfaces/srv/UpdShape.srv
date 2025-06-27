@@ -1,0 +1,6 @@
+int64 entityid
+string shape
+# Time stamp when the entity was last updated
+builtin_interfaces/Time stamp
+---
+Result result

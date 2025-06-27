@@ -1,0 +1,10 @@
+int64 entityid
+string description
+geometry_msgs/Pose pose
+string pose_reference_frame
+float64 max_picking_force
+# Add further updates here
+# Time stamp when the entity was last updated
+builtin_interfaces/Time stamp
+---
+Result result

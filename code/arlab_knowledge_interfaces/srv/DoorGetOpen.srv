@@ -1,4 +1,4 @@
-int64 entity
+int64 entityid
 ---
 # Description of the door status
 string open

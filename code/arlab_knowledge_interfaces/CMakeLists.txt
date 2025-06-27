@@ -30,12 +30,14 @@ find_package(geometry_msgs REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/EntityType.msg"
   "msg/Result.msg"
+
   "srv/GetDescription.srv"
   "srv/GetEntities.srv"
   "srv/DoorGetOpen.srv"
   "srv/DoorGetWidth.srv"
   "srv/GetPose.srv"
   "srv/GetShape.srv"
+
   "srv/AddEntity.srv"
   "srv/AddCupboard.srv"
   "srv/AddDoor.srv"
@@ -44,6 +46,15 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/AddPickable.srv"
   "srv/AddShelf.srv"
   "srv/AddTable.srv"
+
+  "srv/UpdEntity.srv"
+  "srv/UpdCupboard.srv"
+  "srv/UpdDoor.srv"
+  "srv/UpdFurniture.srv"
+  "srv/UpdHuman.srv"
+  "srv/UpdPickable.srv"
+  "srv/UpdShelf.srv"
+  "srv/UpdTable.srv"
   DEPENDENCIES # Add packages that above messages depend on
   geometry_msgs
 )

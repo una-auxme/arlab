@@ -1,9 +1,9 @@
 import os
 import asyncio
+from contextlib import asynccontextmanager
 
 import sqlalchemy
-from sqlalchemy.ext.asyncio import async_sessionmaker
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine, AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 
 import rclpy
@@ -132,6 +132,17 @@ class DatabaseNode(Node):
             callback_group=self.reentrant_callback_group,
         )
 
+    @asynccontextmanager
+    async def Session(self, response):
+        response.result.is_busy = False
+        response.result.is_ok = True
+        try:
+            async with self.db_sessionmaker() as session:
+                yield session
+        except SQLAlchemyError as e:
+            response.result.is_ok = False
+            response.result.error = str(e)
+
     async def get_entities_callback(
         self, request: GetEntities.Request, response: GetEntities.Response
     ):
@@ -180,22 +191,16 @@ class DatabaseNode(Node):
     async def add_entity_callback(
         self, request: AddEntity.Request, response: AddEntity.Response
     ):
-        response.result.is_busy = False
-        try:
-            async with self.db_sessionmaker() as session:
-                entity = Entity(
-                    description=request.description,
-                    pose=PoseData(request.pose),
-                    frame_id=request.pose_reference_frame,
-                    stamp=TimeData(request.stamp),
-                )
-                async with session.begin():
-                    session.add(entity)
-                response.entityid = entity.id
-                response.result.is_ok = True
-        except SQLAlchemyError as e:
-            response.result.is_ok = False
-            response.result.error = str(e)
+        async with self.Session(response) as session:
+            entity = Entity(
+                description=request.description,
+                pose=PoseData(request.pose),
+                frame_id=request.pose_reference_frame,
+                stamp=TimeData(request.stamp),
+            )
+            async with session.begin():
+                session.add(entity)
+            response.entityid = entity.id
         return response
 
     def destroy_node(self):

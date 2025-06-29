@@ -2,11 +2,9 @@ import os
 import asyncio
 
 import sqlalchemy
-from sqlalchemy import create_engine
-from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.ext.asyncio import async_sessionmaker
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.exc import SQLAlchemyError
 
 import rclpy
 from rclpy.node import Node
@@ -28,6 +26,8 @@ from arlab_knowledge.db.base import Base
 from arlab_knowledge.db.entities.entity import Entity
 from arlab_knowledge.db.ros_adapters.pose import PoseData
 from arlab_knowledge.db.ros_adapters.time import TimeData
+
+from arlab_asyncio_executor.executors import AsyncIOExecutor
 
 prefix = "/arlab/knowledge"
 
@@ -180,15 +180,22 @@ class DatabaseNode(Node):
     async def add_entity_callback(
         self, request: AddEntity.Request, response: AddEntity.Response
     ):
-        async with self.db_sessionmaker() as session:
-            async with session.begin():
+        response.result.is_busy = False
+        try:
+            async with self.db_sessionmaker() as session:
                 entity = Entity(
                     description=request.description,
                     pose=PoseData(request.pose),
                     frame_id=request.pose_reference_frame,
                     stamp=TimeData(request.stamp),
                 )
-                session.add(entity)
+                async with session.begin():
+                    session.add(entity)
+                response.entityid = entity.id
+                response.result.is_ok = True
+        except SQLAlchemyError as e:
+            response.result.is_ok = False
+            response.result.error = str(e)
         return response
 
     def destroy_node(self):
@@ -197,24 +204,16 @@ class DatabaseNode(Node):
 
 
 async def ros_loop():
+    asyncio_loop = asyncio.get_running_loop()
+    executor = AsyncIOExecutor(asyncio_loop)
     database_node = await DatabaseNode.create()
-    # This works, but the service still crashes
-    # await database_node.add_entity_callback(
-    #     AddEntity.Request(
-    #         description="test",
-    #         pose=PoseData(Pose()),
-    #         frame_id="base_link",
-    #         stamp=TimeData(database_node.get_clock().now().to_msg()),
-    #     ),
-    #     AddEntity.Response(),
-    # )
+    executor.add_node(database_node)
+
     try:
         database_node.get_logger().info(
             "Beginning database_node, shut down with CTRL-C"
         )
-        while rclpy.ok():
-            rclpy.spin_once(database_node, timeout_sec=0)
-            await asyncio.sleep(1e-4)
+        await asyncio.to_thread(executor.spin)
     except KeyboardInterrupt:
         database_node.get_logger().info(
             "Keyboard interrupt, shutting down database_node.\n"

@@ -15,17 +15,10 @@ class LocalSafety(Node):
         self.timer = self.create_timer(1.0, self.reset_module_node_table)
         self.health_state = -1
         self.pub_global_heartbeat = self.create_publisher(
-            Int32,
-            "/global_heartbeat",
-            10
+            Int32, "/global_heartbeat", 10
         )
 
-        self.create_subscription(
-            Int32,
-            "/local_module_heartbeat",
-            self.callback,
-            10
-        )
+        self.create_subscription(Int32, "/local_module_heartbeat", self.callback, 10)
 
     def pub_module_heartbeat(self):
         """Publishes a global heartbeat to the Central Safety node
@@ -38,7 +31,7 @@ class LocalSafety(Node):
         msg.data = self.health_state
         # print(f"Received message: debugHelper")
         self.pub_global_heartbeat.publish(msg)
-        #reset node health_state
+        # reset node health_state
         self.health_state = 0
 
     def callback(self, msg: Int32):
@@ -52,8 +45,7 @@ class LocalSafety(Node):
         self.module_node_table[node_id] = True
 
     def reset_module_node_table(self):
-        """Resets the is_alive state of module nodes
-        """
+        """Resets the is_alive state of module nodes"""
         for key in self.module_node_table:
             if self.module_node_table[key] is False:
                 self.health_state = key
@@ -63,14 +55,14 @@ class LocalSafety(Node):
 
     def local_safety_checks(self):
         """Design your local safety checks here.
-            Implement heath_state_errors
+        Implement heath_state_errors
         """
 
 
 def main(args=None):
     """Main function
-        Publishes module health_state with initial value -1
-        to register node in Central Safety Node
+    Publishes module health_state with initial value -1
+    to register node in Central Safety Node
     """
     rclpy.init(args=args)
 

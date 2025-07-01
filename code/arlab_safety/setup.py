@@ -20,8 +20,7 @@ setup(
     entry_points={
         "console_scripts": [
             "dummy = arlab_safety.dummy:main",
-            "central_safety_node = arlab_safety.central_safety_node:main"
+            "central_safety_node = arlab_safety.central_safety_node:main",
         ],
-
     },
 )

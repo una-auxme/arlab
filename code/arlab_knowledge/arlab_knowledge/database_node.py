@@ -161,32 +161,38 @@ class DatabaseNode(Node):
         self, request: GetEntities.Request, response: GetEntities.Response
     ):
         async with self.Session(response) as session:
-            if request.entity_type == EntityType.ENTITY:
+            if request.entity_type.entity_type == EntityType.ENTITY:
                 entity_class = Entity
-            elif request.entity_type == EntityType.HUMAN:
+            elif request.entity_type.entity_type == EntityType.HUMAN:
                 entity_class = Human
-            elif request.entity_type == EntityType.CUPBOARD:
+            elif request.entity_type.entity_type == EntityType.CUPBOARD:
                 entity_class = Cupboard
-            elif request.entity_type == EntityType.PICKABLE:
+            elif request.entity_type.entity_type == EntityType.PICKABLE:
                 entity_class = Pickable
-            elif request.entity_type == EntityType.DOOR:
+            elif request.entity_type.entity_type == EntityType.DOOR:
                 entity_class = Door
-            elif request.entity_type == EntityType.FURNITURE:
+            elif request.entity_type.entity_type == EntityType.FURNITURE:
                 entity_class = Furniture
-            elif request.entity_type == EntityType.SHELF:
+            elif request.entity_type.entity_type == EntityType.SHELF:
                 entity_class = Shelf
-            elif request.entity_type == EntityType.TABLE:
+            elif request.entity_type.entity_type == EntityType.TABLE:
                 entity_class = Table
             else:
                 entity_class = None
 
             if entity_class is None:
-                response.result.result_type = Result.ERROR_ID_NOT_FOUND
+                response.result.result_type = Result.ERROR_INVALID_INPUT
+                response.result.error = "Unknown entity type"
             else:
-                stmt = select(entity_class.id)
+                stmt = select(entity_class.id).order_by(
+                    entity_class.stamp_sec, entity_class.stamp_nanosec
+                )
                 result = await session.execute(stmt)
                 entities = result.scalars().all()
                 response.entities = entities
+                if len(entities) > 0:
+                    latest = entities[len(entities) - 1]
+                    response.stamp = latest
         self.get_logger().info("Incoming request:")
         return response
 

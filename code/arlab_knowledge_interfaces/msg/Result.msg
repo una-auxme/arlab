@@ -6,7 +6,8 @@ string error
 int32 ERROR_ID_NOT_FOUND=1
 int32 ERROR_SQL=2
 int32 ERROR_DBAPI=3
-int32 ERROR_BUSY = 4
-int32 SUCCESS = 0
+int32 ERROR_BUSY=4
+int32 ERROR_INVALID_INPUT=5
+int32 SUCCESS=0
 # Enum-like type of a result. One of the constants defined above.
 int32 result_type

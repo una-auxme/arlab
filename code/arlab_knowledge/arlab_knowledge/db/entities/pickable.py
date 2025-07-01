@@ -14,7 +14,7 @@ class Pickable(Entity):
         ForeignKey("entity_furniture.id", ondelete="CASCADE")
     )
     located_on: Mapped[Optional["Furniture"]] = relationship(  # type: ignore # noqa: F821
-        back_populates="pickables"
+        back_populates="pickables", foreign_keys=located_on_id
     )
 
     max_picking_force: Mapped[float]

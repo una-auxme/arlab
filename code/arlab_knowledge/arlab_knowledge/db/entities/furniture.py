@@ -12,8 +12,8 @@ class Furniture(Entity):
 
     pickables: Mapped[List["Pickable"]] = relationship(  # type: ignore # noqa: F821
         back_populates="located_on",
-        cascade="all, delete",
-        passive_deletes=True,
+        foreign_keys="Pickable.located_on_id",
+        cascade="all, delete-orphan",
     )
 
     __mapper_args__ = {
@@ -50,8 +50,8 @@ class Cupboard(Furniture):
 
     shelves: Mapped[List["Shelf"]] = relationship(
         back_populates="cupboard",
-        cascade="all, delete",
-        passive_deletes=True,
+        foreign_keys="Shelf.cupboard_id",
+        cascade="all, delete-orphan",
     )
 
     width: Mapped[float]
@@ -63,17 +63,19 @@ class Cupboard(Furniture):
     }
 
 
-class Shelf(Entity):
-    __tablename__ = "entity_shelf"
-    id: Mapped[int] = mapped_column(ForeignKey("entity.id"), primary_key=True)
+class Shelf(Furniture):
+    __tablename__ = "entity_furniture_shelf"
+    id: Mapped[int] = mapped_column(ForeignKey("entity_furniture.id"), primary_key=True)
 
     cupboard_id: Mapped[int] = mapped_column(
         ForeignKey("entity_furniture_cupboard.id", ondelete="CASCADE")
     )
-    cupboard: Mapped["Cupboard"] = relationship(back_populates="shelves")
+    cupboard: Mapped["Cupboard"] = relationship(
+        back_populates="shelves", foreign_keys=cupboard_id
+    )
 
     height: Mapped[float]
 
     __mapper_args__ = {
-        "polymorphic_identity": "entity_shelf",
+        "polymorphic_identity": "entity_furniture_shelf",
     }

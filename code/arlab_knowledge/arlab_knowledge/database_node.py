@@ -152,10 +152,10 @@ class DatabaseNode(Node):
                 yield session
         except DBAPIError as e:
             response.result.error = str(e)
-            response.result_type = Result.ERROR_DBAPI
+            response.result.result_type = Result.ERROR_DBAPI
         except SQLAlchemyError as e:
             response.result.error = str(e)
-            response.result_type = Result.ERROR_SQL
+            response.result.result_type = Result.ERROR_SQL
 
     async def get_entities_callback(
         self, request: GetEntities.Request, response: GetEntities.Response

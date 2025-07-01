@@ -4,7 +4,9 @@ from contextlib import asynccontextmanager
 
 import sqlalchemy
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine, AsyncSession
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, DBAPIError
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 import rclpy
 from rclpy.node import Node
@@ -24,6 +26,16 @@ from arlab_knowledge_interfaces.msg import Result
 
 from arlab_knowledge.db.base import Base
 from arlab_knowledge.db.entities.entity import Entity
+from arlab_knowledge.db.entities.shape import Shape
+from arlab_knowledge.db.entities.human import Human
+from arlab_knowledge.db.entities.furniture import (
+    Furniture,
+    Cupboard,
+    Door,
+    Table,
+    Shelf,
+)
+from arlab_knowledge.db.entities.pickable import Pickable
 from arlab_knowledge.db.ros_adapters.pose import PoseData
 from arlab_knowledge.db.ros_adapters.time import TimeData
 
@@ -134,32 +146,61 @@ class DatabaseNode(Node):
 
     @asynccontextmanager
     async def Session(self, response):
-        response.result.is_busy = False
-        response.result.is_ok = True
+        response.result.result_type = Result.SUCCESS
         try:
             async with self.db_sessionmaker() as session:
                 yield session
-        except SQLAlchemyError as e:
-            response.result.is_ok = False
+        except DBAPIError as e:
             response.result.error = str(e)
+            response.result_type = Result.ERROR_DBAPI
+        except SQLAlchemyError as e:
+            response.result.error = str(e)
+            response.result_type = Result.ERROR_SQL
 
     async def get_entities_callback(
         self, request: GetEntities.Request, response: GetEntities.Response
     ):
-        ### TODO implement the function once the database exists
-        # request an datenbank weiterleiten
-        # answer = antwort von datenbank bestehen aus EntitiyType und Result
-        answer = 1
-        if answer:
-            # response.entities = answer.EntityType
-            response.entities = 0
+        async with self.Session(response) as session:
+            if request.entity_type == EntityType.ENTITY:
+                entity_class = Entity
+            elif request.entity_type == EntityType.HUMAN:
+                entity_class = Human
+            elif request.entity_type == EntityType.CUPBOARD:
+                entity_class = Cupboard
+            elif request.entity_type == EntityType.PICKABLE:
+                entity_class = Pickable
+            elif request.entity_type == EntityType.DOOR:
+                entity_class = Door
+            elif request.entity_type == EntityType.FURNITURE:
+                entity_class = Furniture
+            elif request.entity_type == EntityType.SHELF:
+                entity_class = Shelf
+            elif request.entity_type == EntityType.TABLE:
+                entity_class = Table
+            else:
+                entity_class = None
+
+            if entity_class is None:
+                response.result.result_type = Result.ERROR_ID_NOT_FOUND
+            else:
+                stmt = select(entity_class.id)
+                result = await session.execute(stmt)
+                entities = result.scalars().all()
+                response.entities = entities
         self.get_logger().info("Incoming request:")
         return response
 
     async def get_shape_callback(
         self, request: GetShape.Request, response: GetShape.Response
     ):
-        ### TODO implement the function once the database exists
+        async with self.Session(response) as session:
+            stmt = select(Shape).where(Shape.entity_id == request.entityid)
+            result = await session.execute(stmt)
+            shape = result.scalar_one_or_none()
+            if shape is None:
+                response.result.result_type = Result.ERROR_ID_NOT_FOUND
+            else:
+                response.shape = result
         return response
 
     async def door_get_open_callback(
@@ -179,13 +220,27 @@ class DatabaseNode(Node):
         request: GetPose.Request,
         response: GetPose.Response,
     ):
-        ### TODO implement the function once the database exists
+        async with self.Session(response) as session:
+            stmt = select(Pose).where(Entity.id == request.entityid)
+            result = await session.execute(stmt)
+            pose = result.scalar_one_or_none()
+            if pose is None:
+                response.result.result_type = Result.ERROR_ID_NOT_FOUND
+            else:
+                response.pose = result
         return response
 
     async def get_description_callback(
         self, request: GetDescription.Request, response: GetDescription.Response
     ):
-        ### TODO implement the function once the database exists
+        async with self.Session(response) as session:
+            stmt = select(Entity.description).where(Entity.id == request.entityid)
+            result = await session.execute(stmt)
+            description = result.scalar_one_or_none()
+            if description is None:
+                response.result.result_type = Result.ERROR_ID_NOT_FOUND
+            else:
+                response.description = result
         return response
 
     async def add_entity_callback(

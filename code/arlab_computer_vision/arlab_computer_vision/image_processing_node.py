@@ -13,12 +13,12 @@ class ImagePreProcessing(Node):
     def __init__(self):
         super().__init__(type(self).__name__)
 
-        self.depth_image_pub = self.create_publisher(PointCloud2, "/depth_image", 10)
+        self.depth_image_pub = self.create_publisher(PointCloud2, "/depth_data", 10)
         self.create_depth_camera_subscription(
             PointCloud2, "/depth_data_raw", self.process_data, 10
         )
 
-    def pre_process_data(self, data: PointCloud2):
+    def process_data(self, data: PointCloud2):
         """Receives messages from the /depth_camera_raw
 
         Args:

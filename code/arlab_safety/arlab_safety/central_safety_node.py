@@ -14,10 +14,7 @@ class CentralSafetyNode(Node):
 
         self.timer = self.create_timer(1.0, self.reset_module_safety_table)
         self.create_subscription(
-            Int32MultiArray,
-            "/global_heartbeat",
-            self.callback,
-            10
+            Int32MultiArray, "/global_heartbeat", self.callback, 10
         )
 
     def callback(self, msg: Int32MultiArray):
@@ -39,50 +36,46 @@ class CentralSafetyNode(Node):
             self.critical_error(module_id, module_state)
 
     def register_module(self, module_id):
-        """Adds module to its safety list.
-        """
+        """Adds module to its safety list."""
         if not self.module_safety_table.keys().__contains__(module_id):
             print(f"Registering module {module_id} now.")
             self.module_safety_table[module_id] = -1
         else:
-            print(f'Modul {module_id} does not share its health status!')
+            print(f"Modul {module_id} does not share its health status!")
             self.critical_error(module_id, -1)
 
     def module_working(self, module_id):
-        """Updates working state in the module table.
-        """
+        """Updates working state in the module table."""
         self.module_safety_table[module_id] = 0
 
     def critical_error(self, module_id, module_state):
         """Handles the safety guidelines
-            for specifc errors states.
+        for specifc errors states.
         """
         self.module_safety_table[module_id] = module_state
         if module_state == -1:
-            pass # Handle module does not share health state
+            pass  # Handle module does not share health state
         else:
             ...
         # Check if system freeze is neccessary, else do nothing
 
     def reset_module_safety_table(self):
-        """Resets the error_state of modules
-        """
+        """Resets the error_state of modules"""
         for module_id, error_state in self.module_safety_table.items():
             if error_state > 0:
                 # Error handling here
-                print(f'Modul {module_id} hat einen Fehlercode {error_state}!')
+                print(f"Modul {module_id} hat einen Fehlercode {error_state}!")
             else:
                 self.module_safety_table[module_id] = -1
 
     def system_freeze(self):
         """In a worst case scenario this function
-            will initialize a system freeze.
+        will initialize a system freeze.
         """
 
 
 def main(args=None):
-    """Main function
-    """
+    """Main function"""
     rclpy.init(args=args)
 
     my_ros2_node = CentralSafetyNode()

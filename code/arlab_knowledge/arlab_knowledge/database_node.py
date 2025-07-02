@@ -3,10 +3,10 @@ import asyncio
 from contextlib import asynccontextmanager
 
 import sqlalchemy
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine, AsyncSession
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.exc import SQLAlchemyError, DBAPIError
+from sqlalchemy.orm import joinedload
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 
 import rclpy
 from rclpy.node import Node
@@ -24,6 +24,18 @@ from arlab_knowledge_interfaces.srv import AddEntity
 from arlab_knowledge_interfaces.msg import EntityType
 from arlab_knowledge_interfaces.msg import Result
 
+from arlab_knowledge_interfaces.srv import UpdEntity
+from arlab_knowledge_interfaces.srv import UpdCupboard
+from arlab_knowledge_interfaces.srv import UpdDoor
+from arlab_knowledge_interfaces.srv import UpdFurniture
+from arlab_knowledge_interfaces.srv import UpdHuman
+from arlab_knowledge_interfaces.srv import UpdPickable
+from arlab_knowledge_interfaces.srv import UpdShelf
+from arlab_knowledge_interfaces.srv import UpdTable
+from arlab_knowledge_interfaces.srv import UpdPose
+from arlab_knowledge_interfaces.srv import UpdShape
+
+
 from arlab_knowledge.db.base import Base
 from arlab_knowledge.db.entities.entity import Entity
 from arlab_knowledge.db.entities.shape import Shape
@@ -38,6 +50,7 @@ from arlab_knowledge.db.entities.furniture import (
 from arlab_knowledge.db.entities.pickable import Pickable
 from arlab_knowledge.db.ros_adapters.pose import PoseData
 from arlab_knowledge.db.ros_adapters.time import TimeData
+
 
 from arlab_asyncio_executor.executors import AsyncIOExecutor
 
@@ -262,6 +275,158 @@ class DatabaseNode(Node):
             async with session.begin():
                 session.add(entity)
             response.entityid = entity.id
+        return response
+
+    async def update_entity_callback(
+        self, request: UpdEntity.Request, response: UpdEntity.Response
+    ):
+        async with self.Session(response) as session:
+            entity = await session.get(Entity, request.entityid)
+            if entity is None:
+                response.result.result_type = Result.ERROR_ID_NOT_FOUND
+                return response
+            entity.description = request.description
+            entity.pose = PoseData(request.pose)
+            entity.frame_id = request.pose_reference_frame
+            entity.stamp = TimeData(request.stamp)
+            await session.commit()
+        return response
+
+    async def update_cupboard_callback(
+        self, request: UpdCupboard.Request, response: UpdCupboard.Response
+    ):
+        async with self.Session(response) as session:
+            cupboard = await session.get(Cupboard, request.entityid)
+            if cupboard is None:
+                response.result.result_type = Result.ERROR_ID_NOT_FOUND
+                return response
+            cupboard.description = request.description
+            cupboard.pose = PoseData(request.pose)
+            cupboard.frame_id = request.pose_reference_frame
+            cupboard.stamp = TimeData(request.stamp)
+            await session.commit()
+        return response
+
+    async def update_door_callback(
+        self, request: UpdDoor.Request, response: UpdDoor.Response
+    ):
+        async with self.Session(response) as session:
+            door = await session.get(Door, request.entityid)
+            if door is None:
+                response.result.result_type = Result.ERROR_ID_NOT_FOUND
+                return response
+            door.description = request.description
+            door.pose = PoseData(request.pose)
+            door.frame_id = request.pose_reference_frame
+            door.stamp = TimeData(request.stamp)
+            await session.commit()
+        return response
+
+    async def update_furniture_callback(
+        self, request: UpdFurniture.Request, response: UpdFurniture.Response
+    ):
+        async with self.Session(response) as session:
+            furniture = await session.get(Furniture, request.entityid)
+            if furniture is None:
+                response.result.result_type = Result.ERROR_ID_NOT_FOUND
+                return response
+            furniture.description = request.description
+            furniture.pose = PoseData(request.pose)
+            furniture.frame_id = request.pose_reference_frame
+            furniture.stamp = TimeData(request.stamp)
+            await session.commit()
+        return response
+
+    async def update_human_callback(
+        self, request: UpdHuman.Request, response: UpdHuman.Response
+    ):
+        async with self.Session(response) as session:
+            human = await session.get(Human, request.entityid)
+            if human is None:
+                response.result.result_type = Result.ERROR_ID_NOT_FOUND
+                return response
+            human.description = request.description
+            human.pose = PoseData(request.pose)
+            human.shape = request.shape
+            human.frame_id = request.pose_reference_frame
+            human.stamp = TimeData(request.stamp)
+            await session.commit()
+        return response
+
+    async def update_pickable_callback(
+        self, request: UpdPickable.Request, response: UpdPickable.Response
+    ):
+        async with self.Session(response) as session:
+            pickable = await session.get(Pickable, request.entityid)
+            if pickable is None:
+                response.result.result_type = Result.ERROR_ID_NOT_FOUND
+                return response
+            pickable.description = request.description
+            pickable.pose = PoseData(request.pose)
+            pickable.frame_id = request.pose_reference_frame
+            pickable.stamp = TimeData(request.stamp)
+            await session.commit()
+        return response
+
+    async def update_shelf_callback(
+        self, request: UpdShelf.Request, response: UpdShelf.Response
+    ):
+        async with self.Session(response) as session:
+            shelf = await session.get(Shelf, request.entityid)
+            if shelf is None:
+                response.result.result_type = Result.ERROR_ID_NOT_FOUND
+                return response
+            shelf.description = request.description
+            shelf.pose = PoseData(request.pose)
+            shelf.frame_id = request.pose_reference_frame
+            shelf.stamp = TimeData(request.stamp)
+            await session.commit()
+        return response
+
+    async def update_table_callback(
+        self, request: UpdTable.Request, response: UpdTable.Response
+    ):
+        async with self.Session(response) as session:
+            table = await session.get(Table, request.entityid)
+            if table is None:
+                response.result.result_type = Result.ERROR_ID_NOT_FOUND
+                return response
+            table.description = request.description
+            table.pose = PoseData(request.pose)
+            table.frame_id = request.pose_reference_frame
+            table.stamp = TimeData(request.stamp)
+            await session.commit()
+        return response
+
+    async def update_pose_callback(
+        self, request: UpdPose.Request, response: UpdPose.Response
+    ):
+        async with self.Session(response) as session:
+            entity = await session.get(Entity, request.entityid)
+            if entity is None:
+                response.result.result_type = Result.ERROR_ID_NOT_FOUND
+                return response
+            entity.pose = PoseData(request.pose)
+            entity.frame_id = request.pose_reference_frame
+            entity.stamp = TimeData(request.stamp)
+            await session.commit()
+        return response
+
+    async def update_shape_callback(
+        self, request: UpdShape.Request, response: UpdShape.Response
+    ):
+        async with self.Session(response) as session:
+            entity_shape = await session.get(
+                Entity, request.entityid, options=(joinedload(Entity.shape),)
+            )
+            if entity_shape is None:
+                response.result.result_type = Result.ERROR_ID_NOT_FOUND
+                return response
+            if entity_shape.shape is None:
+                entity_shape.shape = Shape(data=request.shape)
+            else:
+                entity_shape.shape.data = request.shape
+            await session.commit()
         return response
 
     def destroy_node(self):

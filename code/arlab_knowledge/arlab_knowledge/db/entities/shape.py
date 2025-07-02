@@ -1,4 +1,4 @@
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import (
     Mapped,
     mapped_column,
@@ -17,3 +17,5 @@ class Shape(Base):
         ForeignKey("entity.id", ondelete="CASCADE"), unique=True
     )
     entity: Mapped["Entity"] = relationship(back_populates="shape", single_parent=True)  # type: ignore # noqa: F821
+
+    data: Mapped[String]

@@ -36,6 +36,7 @@ from arlab_knowledge_interfaces.srv import UpdTable
 from arlab_knowledge_interfaces.srv import UpdPose
 from arlab_knowledge_interfaces.srv import UpdShape
 from arlab_knowledge_interfaces.srv import DelEntities
+from arlab_knowledge_interfaces.srv import GetReference
 
 
 from arlab_knowledge.db.base import Base
@@ -156,6 +157,34 @@ class DatabaseNode(Node):
             AddEntity,
             f"{prefix}/add_entity",
             self.add_entity_callback,
+            callback_group=self.reentrant_callback_group,
+        )
+
+        self.create_service(
+            FurnitureGetPickable,
+            f"{prefix}/furniture_get_pickable",
+            self.furniture_get_pickable_callback,
+            callback_group=self.reentrant_callback_group,
+        )
+
+        self.create_service(
+            PickableGetFurniture,
+            f"{prefix}/pickable_get_furniture",
+            self.pickable_get_furniture_callback,
+            callback_group=self.reentrant_callback_group,
+        )
+
+        self.create_service(
+            CupboardGetShelf,
+            f"{prefix}/cupboard_get_shelf",
+            self.cupboard_get_shelf_callback,
+            callback_group=self.reentrant_callback_group,
+        )
+
+        self.create_service(
+            ShelfGetCupboard,
+            f"{prefix}/shelf_get_cupboard",
+            self.shelf_get_cupboard_callback,
             callback_group=self.reentrant_callback_group,
         )
 
@@ -445,6 +474,70 @@ class DatabaseNode(Node):
             if result.rowcount == 0:
                 response.result.result_type = Result.ERROR_ID_NOT_FOUND
             return response
+
+    async def furniture_get_pickable_callback(
+        self, request: GetReference.Request, response: GetReference.Response
+    ):
+        async with self.Session(response) as session:
+            furniture = await session.execute(
+                select(Furniture)
+                .where(Furniture.id == request.entityid)
+                .options(joinedload(Furniture.pickables))
+            )
+            furniture = furniture.scalar_one_or_none()
+            if furniture is None:
+                response.result.result_type = Result.ERROR_ID_NOT_FOUND
+                return response
+        response.entities = list(map(lambda pickable: pickable.id, furniture.pickables))
+        return response
+
+    async def pickable_get_furniture_callback(
+        self, request: GetReference.Request, response: GetReference.Response
+    ):
+        async with self.Session(response) as session:
+            pickable = await session.execute(
+                select(Pickable)
+                .where(Pickable.id == request.entityid)
+                .options(joinedload(Pickable.located_on_id))
+            )
+            pickable = pickable.scalar_one_or_none()
+            if pickable is None:
+                response.result.result_type = Result.ERROR_ID_NOT_FOUND
+                return response
+        response.entities = pickable.located_on_id
+        return response
+
+    async def cupboard_get_shelf_callback(
+        self, request: GetReference.Request, response: GetReference.Response
+    ):
+        async with self.Session(response) as session:
+            cupboard = await session.execute(
+                select(Cupboard)
+                .where(Cupboard.id == request.entityid)
+                .options(joinedload(Cupboard.shelves))
+            )
+            cupboard = cupboard.scalar_one_or_none()
+            if cupboard is None:
+                response.result.result_type = Result.ERROR_ID_NOT_FOUND
+                return response
+        response.entities = list(map(lambda shelf: shelf.id, cupboard.shelves))
+        return response
+
+    async def shelf_get_cupboard_callback(
+        self, request: GetReference.Request, response: GetReference.Response
+    ):
+        async with self.Session(response) as session:
+            shelf = await session.execute(
+                select(Shelf)
+                .where(Shelf.id == request.entityid)
+                .options(joinedload(Shelf.cupboard))
+            )
+            shelf = shelf.scalar_one_or_none()
+            if shelf is None:
+                response.result.result_type = Result.ERROR_ID_NOT_FOUND
+                return response
+        response.entities = shelf.cupboard_id
+        return response
 
     def destroy_node(self):
         asyncio.run(self.db_engine.dispose())

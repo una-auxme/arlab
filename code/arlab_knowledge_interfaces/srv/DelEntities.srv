@@ -1,0 +1,4 @@
+int64[] entityids
+---
+#id of the deletion
+Result result

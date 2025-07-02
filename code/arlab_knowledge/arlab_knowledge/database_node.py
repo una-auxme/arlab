@@ -161,28 +161,28 @@ class DatabaseNode(Node):
         )
 
         self.create_service(
-            FurnitureGetPickable,
+            GetReference,
             f"{prefix}/furniture_get_pickable",
             self.furniture_get_pickable_callback,
             callback_group=self.reentrant_callback_group,
         )
 
         self.create_service(
-            PickableGetFurniture,
+            GetReference,
             f"{prefix}/pickable_get_furniture",
             self.pickable_get_furniture_callback,
             callback_group=self.reentrant_callback_group,
         )
 
         self.create_service(
-            CupboardGetShelf,
+            GetReference,
             f"{prefix}/cupboard_get_shelf",
             self.cupboard_get_shelf_callback,
             callback_group=self.reentrant_callback_group,
         )
 
         self.create_service(
-            ShelfGetCupboard,
+            GetReference,
             f"{prefix}/shelf_get_cupboard",
             self.shelf_get_cupboard_callback,
             callback_group=self.reentrant_callback_group,

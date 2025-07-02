@@ -48,7 +48,7 @@ class AsyncIORosTask(RosTask):
                 try:
                     result = await self._handler
                     self.set_result(result)
-                except Exception as e:
+                except BaseException as e:
                     self.set_exception(e)
                 finally:
                     self._complete_task()

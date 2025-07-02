@@ -57,6 +57,9 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/UpdTable.srv"
   "srv/UpdPose.srv"
   "srv/UpdShape.srv"
+
+  "srv/DelEntities.srv"
+  "srv/GetReference.srv"
   DEPENDENCIES # Add packages that above messages depend on
   geometry_msgs
 )

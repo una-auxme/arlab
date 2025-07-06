@@ -28,6 +28,7 @@ find_package(rosidl_default_generators REQUIRED)
 # Add all your interface files here:
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/DeleteMe.msg"
+  "srv/GrippingForce.srv"
   DEPENDENCIES # Add packages that above messages depend on
 )
 

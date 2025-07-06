@@ -2,46 +2,47 @@
 
 import rclpy
 from rclpy.node import Node
-from arlab_manipulation.srv import GetGrippingForce
 
-class GripForceService(Node):
+from arlab_common_interfaces.srv import GrippingForce
+
+class GetGrippingForce(Node):
     def __init__(self):
-        super().__init__('grip_force_service')
-        self.srv = self.create_service(GetGrippingForce, 'GetGrippingForce', self.handle_grip_force_request)
-        self.get_logger().info("Grip force service is ready.")
+        super().__init__('GetGrippingForce')
+        self.srv = self.create_service(GrippingForce, 'GetGrippingForce', self.callback)
 
-        # Greifkraft in Newton (N)
-        self.force_profiles = {
-            "leicht": ["banane", "joghurt", "avocado", "toast", "paprika", "chips"],
-            "mittel": ["müsli", "tomate", "cola", "wasser", "nudeln"],
-            "fest": ["milch", "apfel", "salz", "dose", "konserve", "reis", "mehl"]
+        # Example object-gripping-force table --> need to be more detailed
+        self.object_force_table = {
+            "banane": 2.0,
+            "apfel": 5.0,
+            "flasche": 8.0,
+            "tasse": 4.0,
+            "milch": 7.5,
+            "zahnpastatube": 3.0,
+            "chipsdose": 3.0,
+            "joghurtbecher": 2.0
         }
 
-        self.force_values = {
-            "leicht": 5.0,
-            "mittel": 10.0,
-            "fest": 15.0
-        }
+        self.default_force = 5.0
 
-    def handle_grip_force_request(self, request, response):
-        obj = request.object_name.lower()
-        force = self.determine_force(obj)
-        response.grip_force = force
-        self.get_logger().info(f"Object '{obj}' assigned grip force: {force} N")
+    def callback(self, request, response):
+        raw_name = request.object_name
+        object_name = raw_name.lower().strip()
+        grip_force = self.object_force_table.get(object_name, self.default_force)
+        response.grip_force = grip_force
+
+        self.get_logger().info(
+            f"Request: Original='{raw_name}' → Normalised='{object_name}' → Grippingforce={grip_force:.1f} N"
+        )
+
         return response
 
-    def determine_force(self, object_name):
-        for category, objects in self.force_profiles.items():
-            if object_name in objects:
-                return self.force_values[category]
-        return self.force_values["mittel"]  # fallback
 
 def main(args=None):
     rclpy.init(args=args)
-    node = GripForceService()
+    node = GetGrippingForce()
     rclpy.spin(node)
-    node.destroy_node()
     rclpy.shutdown()
+
 
 if __name__ == '__main__':
     main()

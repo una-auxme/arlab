@@ -12,7 +12,7 @@ find_package(moveit_ros_planning_interface REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(moveit_visual_tools REQUIRED)
 
-add_executable(Ur5MoveToGoal src/moveit_main.cpp src/utils.cpp)
+add_executable(Ur5MoveToGoal src/Ur5MoveToGoal.cpp)
 
 target_include_directories(Ur5MoveToGoal PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -31,5 +31,26 @@ ament_target_dependencies(
 
 install(TARGETS Ur5MoveToGoal
   DESTINATION lib/${PROJECT_NAME})
+
+add_executable(moveit_main src/moveit_main.cpp src/utils.cpp)
+
+target_include_directories(moveit_main PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include/${PROJECT_NAME}>)
+
+target_compile_features(moveit_main PUBLIC cxx_std_17)
+
+ament_target_dependencies(
+  moveit_main
+  moveit_ros_planning_interface
+  moveit_visual_tools
+  rclcpp
+  geometry_msgs
+  std_msgs
+)
+
+install(TARGETS moveit_main
+  DESTINATION lib/${PROJECT_NAME})
+
 
 ament_package()

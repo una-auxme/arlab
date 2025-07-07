@@ -1,65 +1,58 @@
-import os
 import asyncio
+import os
 from contextlib import asynccontextmanager
 
-import sqlalchemy
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlalchemy.exc import SQLAlchemyError, DBAPIError
-from sqlalchemy.orm import joinedload
-from sqlalchemy import select
-from sqlalchemy import delete
-
 import rclpy
-from rclpy.node import Node
-from rclpy.callback_groups import ReentrantCallbackGroup
-
+import sqlalchemy
+from arlab_asyncio_executor.executors import AsyncIOExecutor
+from arlab_knowledge_interfaces.msg import EntityType, Result
+from arlab_knowledge_interfaces.srv import (
+    AddEntity,
+    AddMap,
+    DelEntities,
+    DoorGetOpen,
+    DoorGetWidth,
+    GetDescription,
+    GetEntities,
+    GetMap,
+    GetPose,
+    GetReference,
+    GetShape,
+    UpdCupboard,
+    UpdDoor,
+    UpdEntity,
+    UpdFurniture,
+    UpdHuman,
+    UpdPickable,
+    UpdPose,
+    UpdShape,
+    UpdShelf,
+    UpdTable,
+)
 from geometry_msgs.msg import Pose
-
-from arlab_knowledge_interfaces.srv import GetEntities
-from arlab_knowledge_interfaces.srv import GetPose
-from arlab_knowledge_interfaces.srv import GetShape
-from arlab_knowledge_interfaces.srv import DoorGetOpen
-from arlab_knowledge_interfaces.srv import DoorGetWidth
-from arlab_knowledge_interfaces.srv import GetDescription
-from arlab_knowledge_interfaces.srv import AddEntity
-from arlab_knowledge_interfaces.msg import EntityType
-from arlab_knowledge_interfaces.msg import Result
-
-from arlab_knowledge_interfaces.srv import UpdEntity
-from arlab_knowledge_interfaces.srv import UpdCupboard
-from arlab_knowledge_interfaces.srv import UpdDoor
-from arlab_knowledge_interfaces.srv import UpdFurniture
-from arlab_knowledge_interfaces.srv import UpdHuman
-from arlab_knowledge_interfaces.srv import UpdPickable
-from arlab_knowledge_interfaces.srv import UpdShelf
-from arlab_knowledge_interfaces.srv import UpdTable
-from arlab_knowledge_interfaces.srv import UpdPose
-from arlab_knowledge_interfaces.srv import UpdShape
-from arlab_knowledge_interfaces.srv import DelEntities
-from arlab_knowledge_interfaces.srv import GetReference
-
-from arlab_knowledge_interfaces.srv import AddMap, GetMap
-
+from rclpy.callback_groups import ReentrantCallbackGroup
+from rclpy.node import Node
+from sqlalchemy import delete, select
+from sqlalchemy.exc import DBAPIError, SQLAlchemyError
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.orm import joinedload
 
 from arlab_knowledge.db.base import Base
 from arlab_knowledge.db.entities.entity import Entity
-from arlab_knowledge.db.entities.shape import Shape
-from arlab_knowledge.db.entities.human import Human
 from arlab_knowledge.db.entities.furniture import (
-    Furniture,
     Cupboard,
     Door,
-    Table,
+    Furniture,
     Shelf,
+    Table,
 )
+from arlab_knowledge.db.entities.human import Human
 from arlab_knowledge.db.entities.pickable import Pickable
+from arlab_knowledge.db.entities.shape import Shape
+from arlab_knowledge.db.map import Map
+from arlab_knowledge.db.ros_adapters.occupancy_grid import OccupancyGridData
 from arlab_knowledge.db.ros_adapters.pose import PoseData
 from arlab_knowledge.db.ros_adapters.time import TimeData
-from arlab_knowledge.db.ros_adapters.occupancy_grid import OccupancyGridData
-from arlab_knowledge.db.map import Map
-
-
-from arlab_asyncio_executor.executors import AsyncIOExecutor
 
 prefix = "/arlab/knowledge"
 

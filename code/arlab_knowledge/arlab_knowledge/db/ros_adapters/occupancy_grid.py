@@ -1,7 +1,7 @@
-from typing import Tuple
-import numpy as np
 import array
+from typing import Tuple
 
+import numpy as np
 from nav_msgs.msg import OccupancyGrid
 
 

@@ -1,0 +1,7 @@
+
+RobotStatusEvent event
+
+---
+# id of the newly added event
+int64 eventid
+Result result

@@ -75,17 +75,16 @@ class AsyncIORosTask(RosTask):
                     wrapped_handler(), self._asyncio_loop
                 )
         else:
+            # Execute a normal function
+            self._executing = True
             try:
-                # Execute a normal function
-                self._executing = True
-                try:
-                    self.set_result(self._handler(*self._args, **self._kwargs))
-                except Exception as e:
-                    self.set_exception(e)
+                self.set_result(self._handler(*self._args, **self._kwargs))
+            except BaseException as e:
+                self.set_exception(e)
+                self._exception_queue.put_nowait(e)
+            finally:
                 self._complete_task()
                 self._executing = False
-
-            finally:
                 self._task_lock.release()
 
 
@@ -101,7 +100,7 @@ class AsyncIOExecutor(Executor):
         self._exception_queue = Queue()
 
         loop_setup_event = threading.Event()
-        self._asyncio_shutdown_event = asyncio.Event()
+        self._shutdown_event = threading.Event()
         self._asyncio_loop = None
 
         def asyncio_thread():
@@ -110,12 +109,15 @@ class AsyncIOExecutor(Executor):
                     await async_init
                     self._asyncio_loop = asyncio.get_running_loop()
                     loop_setup_event.set()
-                    await self._asyncio_shutdown_event.wait()
+                    await asyncio.to_thread(self._shutdown_event.wait)
                 except BaseException as e:
                     self._exception_queue.put_nowait(e)
                 finally:
-                    for task in asyncio.all_tasks():
+                    all_tasks = asyncio.all_tasks()
+                    all_tasks.remove(asyncio.current_task())
+                    for task in all_tasks:
                         task.cancel()
+                    print("All asyncio tasks cancelled.")
 
             asyncio.run(asyncio_wait())
 
@@ -186,7 +188,15 @@ class AsyncIOExecutor(Executor):
         if self._spin_thread is not None:
             return
 
-        self._spin_thread = threading.Thread(target=super().spin, daemon=True)
+        super_spin_fn = super().spin
+
+        def spin_thread():
+            try:
+                super_spin_fn()
+            except BaseException as e:
+                self._exception_queue.put_nowait(e)
+
+        self._spin_thread = threading.Thread(target=spin_thread, daemon=True)
         self._spin_thread.start()
 
     def spin(self):
@@ -224,7 +234,7 @@ class AsyncIOExecutor(Executor):
         future.add_done_callback(lambda x: self.wake())
         self._spin_once_impl(timeout_sec, future.done)
 
-    def wait_for_exception(self, shutdown_timeout: Optional[float] = 1.0):
+    def wait_for_exception(self, shutdown_timeout: Optional[float] = 5.0):
         """Blocks until an exception occurs or an exit signal is received
 
         Raises:
@@ -248,8 +258,10 @@ class AsyncIOExecutor(Executor):
 
     def shutdown(self, timeout_sec=None):
         result = super().shutdown(timeout_sec)
-        self._asyncio_shutdown_event.set()
+        self._shutdown_event.set()
+        print("Waiting for asyncio thread to finish...")
         self._asyncio_thread.join(timeout=timeout_sec)
         if self._spin_thread is not None:
+            print("Waiting for spin thread to finish...")
             self._spin_thread.join(timeout=timeout_sec)
         return result

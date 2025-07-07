@@ -1,8 +1,8 @@
 from sqlalchemy import Float, Integer, LargeBinary, String
 from sqlalchemy.orm import (
     Mapped,
-    mapped_column,
     composite,
+    mapped_column,
 )
 
 from .base import Base

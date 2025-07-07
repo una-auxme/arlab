@@ -1,6 +1,7 @@
 from typing import Optional
+
 from sqlalchemy import Float, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column, composite, relationship
+from sqlalchemy.orm import Mapped, composite, mapped_column, relationship
 
 from .base import Base
 from .ros_adapters.time import TimeData

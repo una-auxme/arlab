@@ -26,7 +26,7 @@ private:
 
         RCLCPP_INFO(this->get_logger(),"Received pose - Orientation: w=%.3f | Position: x=%.3f, y=%.3f, z=%.3f", orientation.w, position.x, position.y, position.z);
     }
-    
+
     void grip_callback(const std_msgs::msg::Float64::SharedPtr msg)
     {
         RCLCPP_INFO(this->get_logger(),"Received grip force: %.2f N", msg->data);

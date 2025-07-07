@@ -11,5 +11,5 @@
   "cmake.configureOnEdit": false,
   "cmake.configureOnOpen": false,
   "flake8.enabled": false,
-  "cSpell.words": ["moveit", "rclcpp"]
+  "cSpell.words": ["moveit", "rclcpp", "rviz", "RVIZ"]
 }

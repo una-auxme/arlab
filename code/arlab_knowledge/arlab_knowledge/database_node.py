@@ -425,7 +425,7 @@ class DatabaseNode(Node):
             if pose is None:
                 response.result.result_type = Result.ERROR_ID_NOT_FOUND
             else:
-                response.pose = result
+                response.pose = pose
         return response
 
     async def get_description_callback(
@@ -438,7 +438,7 @@ class DatabaseNode(Node):
             if description is None:
                 response.result.result_type = Result.ERROR_ID_NOT_FOUND
             else:
-                response.description = result
+                response.description = description
         return response
 
     async def add_entity_callback(

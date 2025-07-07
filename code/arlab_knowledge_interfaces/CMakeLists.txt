@@ -66,6 +66,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 
   "srv/DelEntities.srv"
   "srv/GetReference.srv"
+  "srv/UpdReference.srv"
 
   "srv/AddMap.srv"
   "srv/GetMap.srv"

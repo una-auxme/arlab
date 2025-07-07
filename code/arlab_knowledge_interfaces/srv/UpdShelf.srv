@@ -1,4 +1,5 @@
 int64 entityid
+int64 cupboard_id
 string description
 geometry_msgs/Pose pose
 string pose_reference_frame

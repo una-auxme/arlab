@@ -1,9 +1,9 @@
 from typing import List
 
-from .entity import Entity
-
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from .entity import Entity
 
 
 class Furniture(Entity):
@@ -26,7 +26,7 @@ class Door(Furniture):
     id: Mapped[int] = mapped_column(ForeignKey("entity_furniture.id"), primary_key=True)
 
     width: Mapped[float]
-    is_open: Mapped[bool]
+    open: Mapped[str]
 
     __mapper_args__ = {
         "polymorphic_identity": "entity_furniture_door",
@@ -56,7 +56,7 @@ class Cupboard(Furniture):
 
     width: Mapped[float]
     height: Mapped[float]
-    is_open: Mapped[bool]
+    open: Mapped[str]
 
     __mapper_args__ = {
         "polymorphic_identity": "entity_furniture_cupboard",
@@ -74,6 +74,7 @@ class Shelf(Furniture):
         back_populates="shelves", foreign_keys=cupboard_id
     )
 
+    width: Mapped[float]
     height: Mapped[float]
 
     __mapper_args__ = {

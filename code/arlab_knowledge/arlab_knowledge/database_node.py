@@ -469,7 +469,7 @@ class DatabaseNode(Node):
                 frame_id=request.pose_reference_frame,
                 height=request.height,
                 width=request.width,
-                is_open=request.open,
+                open=request.open,
                 stamp=TimeData(request.stamp),
             )
             async with session.begin():
@@ -486,7 +486,7 @@ class DatabaseNode(Node):
                 pose=PoseData(request.pose),
                 frame_id=request.pose_reference_frame,
                 width=request.width,
-                is_open=request.open,
+                open=request.open,
                 stamp=TimeData(request.stamp),
             )
             async with session.begin():
@@ -541,19 +541,21 @@ class DatabaseNode(Node):
         return response
 
     async def add_shelf_callback(
-        self, request: AddDoor.Request, response: AddDoor.Response
+        self, request: AddShelf.Request, response: AddShelf.Response
     ):
         async with self.Session(response) as session:
-            door = Door(
+            shelf = Shelf(
+                cupboard_id=request.cupboard_id,
                 description=request.description,
                 pose=PoseData(request.pose),
                 frame_id=request.pose_reference_frame,
+                height=request.height,
                 width=request.width,
                 stamp=TimeData(request.stamp),
             )
             async with session.begin():
-                session.add(door)
-            response.entityid = door.id
+                session.add(shelf)
+            response.entityid = shelf.id
         return response
 
     async def add_table_callback(
@@ -671,6 +673,7 @@ class DatabaseNode(Node):
             if shelf is None:
                 response.result.result_type = Result.ERROR_ID_NOT_FOUND
                 return response
+            shelf.cupboard_id = request.cupboard_id
             shelf.description = request.description
             shelf.pose = PoseData(request.pose)
             shelf.frame_id = request.pose_reference_frame
@@ -747,7 +750,7 @@ class DatabaseNode(Node):
                 response.result.error = f"Pickable ID {request.childid} not found"
                 return response
 
-            if request.delete:
+            if request.delete_ref:
                 if pickable in furniture.pickables:
                     furniture.pickables.remove(pickable)
             else:

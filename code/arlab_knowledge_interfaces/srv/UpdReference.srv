@@ -1,6 +1,6 @@
 int64 parentid
 int64 childid
-bool delete
+bool delete_ref
 builtin_interfaces/Time stamp
 ---
 Result result

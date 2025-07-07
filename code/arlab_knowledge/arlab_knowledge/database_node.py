@@ -165,6 +165,54 @@ class DatabaseNode(Node):
         )
 
         self.create_service(
+            AddCupboard,
+            f"{prefix}/add_cupboard",
+            self.add_cupboard_callback,
+            callback_group=self.reentrant_callback_group,
+        )
+
+        self.create_service(
+            AddDoor,
+            f"{prefix}/add_door",
+            self.add_door_callback,
+            callback_group=self.reentrant_callback_group,
+        )
+
+        self.create_service(
+            AddFurniture,
+            f"{prefix}/add_furniture",
+            self.add_furniture_callback,
+            callback_group=self.reentrant_callback_group,
+        )
+
+        self.create_service(
+            AddHuman,
+            f"{prefix}/add_human",
+            self.add_human_callback,
+            callback_group=self.reentrant_callback_group,
+        )
+        self.create_service(
+            AddPickable,
+            f"{prefix}/add_pickable",
+            self.add_pickable_callback,
+            callback_group=self.reentrant_callback_group,
+        )
+
+        self.create_service(
+            AddShelf,
+            f"{prefix}/add_shelf",
+            self.add_shelf_callback,
+            callback_group=self.reentrant_callback_group,
+        )
+
+        self.create_service(
+            AddTable,
+            f"{prefix}/add_table",
+            self.add_table_callback,
+            callback_group=self.reentrant_callback_group,
+        )
+
+        self.create_service(
             GetReference,
             f"{prefix}/furniture_get_pickable",
             self.furniture_get_pickable_callback,
@@ -401,6 +449,119 @@ class DatabaseNode(Node):
             async with session.begin():
                 session.add(entity)
             response.entityid = entity.id
+        return response
+
+    async def add_cupboard_callback(
+        self, request: AddCupboard.Request, response: AddCupboard.Response
+    ):
+        async with self.Session(response) as session:
+            cupboard = Cupboard(
+                description=request.description,
+                pose=PoseData(request.pose),
+                frame_id=request.pose_reference_frame,
+                height=request.height,
+                width=request.width,
+                is_open=request.open,
+                stamp=TimeData(request.stamp),
+            )
+            async with session.begin():
+                session.add(cupboard)
+            response.entityid = cupboard.id
+        return response
+
+    async def add_door_callback(
+        self, request: AddDoor.Request, response: AddDoor.Response
+    ):
+        async with self.Session(response) as session:
+            door = Door(
+                description=request.description,
+                pose=PoseData(request.pose),
+                frame_id=request.pose_reference_frame,
+                width=request.width,
+                is_open=request.open,
+                stamp=TimeData(request.stamp),
+            )
+            async with session.begin():
+                session.add(door)
+            response.entityid = door.id
+        return response
+
+    async def add_furniture_callback(
+        self, request: AddFurniture.Request, response: AddFurniture.Response
+    ):
+        async with self.Session(response) as session:
+            furniture = Furniture(
+                description=request.description,
+                pose=PoseData(request.pose),
+                frame_id=request.pose_reference_frame,
+                stamp=TimeData(request.stamp),
+            )
+            async with session.begin():
+                session.add(furniture)
+            response.entityid = furniture.id
+        return response
+
+    async def add_human_callback(
+        self, request: AddHuman.Request, response: AddHuman.Response
+    ):
+        async with self.Session(response) as session:
+            human = Human(
+                description=request.description,
+                pose=PoseData(request.pose),
+                frame_id=request.pose_reference_frame,
+                stamp=TimeData(request.stamp),
+            )
+            async with session.begin():
+                session.add(human)
+            response.entityid = human.id
+        return response
+
+    async def add_pickable_callback(
+        self, request: AddPickable.Request, response: AddPickable.Response
+    ):
+        async with self.Session(response) as session:
+            pickable = Pickable(
+                description=request.description,
+                pose=PoseData(request.pose),
+                frame_id=request.pose_reference_frame,
+                max_picking_force=request.max_picking_force,
+                stamp=TimeData(request.stamp),
+            )
+            async with session.begin():
+                session.add(pickable)
+            response.entityid = pickable.id
+        return response
+
+    async def add_shelf_callback(
+        self, request: AddDoor.Request, response: AddDoor.Response
+    ):
+        async with self.Session(response) as session:
+            door = Door(
+                description=request.description,
+                pose=PoseData(request.pose),
+                frame_id=request.pose_reference_frame,
+                width=request.width,
+                stamp=TimeData(request.stamp),
+            )
+            async with session.begin():
+                session.add(door)
+            response.entityid = door.id
+        return response
+
+    async def add_table_callback(
+        self, request: AddTable.Request, response: AddTable.Response
+    ):
+        async with self.Session(response) as session:
+            table = Table(
+                description=request.description,
+                pose=PoseData(request.pose),
+                frame_id=request.pose_reference_frame,
+                height=request.height,
+                stamp=TimeData(request.stamp),
+            )
+            async with session.begin():
+                session.add(table)
+            response.entityid = table.id
         return response
 
     async def update_entity_callback(

@@ -32,6 +32,7 @@ from arlab_knowledge_interfaces.srv import (
     UpdHuman,
     UpdPickable,
     UpdPose,
+    UpdReference,
     UpdShape,
     UpdShelf,
     UpdTable,
@@ -328,6 +329,13 @@ class DatabaseNode(Node):
             DelEntities,
             f"{prefix}/del_entities",
             self.del_entities_callback,
+            callback_group=self.reentrant_callback_group,
+        )
+
+        self.create_service(
+            UpdReference,
+            f"{prefix}/del_reference",
+            self.furniture_update_pickable_callback,
             callback_group=self.reentrant_callback_group,
         )
 
@@ -713,6 +721,41 @@ class DatabaseNode(Node):
                 entity_shape.shape = Shape(data=request.shape)
             else:
                 entity_shape.shape.data = request.shape
+            await session.commit()
+        return response
+
+    async def furniture_update_pickable_callback(
+        self, request: UpdReference.Request, response: UpdReference.Response
+    ):
+        async with self.Session(response) as session:
+            furniture_id = request.parentid
+            furniture = await session.execute(
+                select(Furniture)
+                .where(Furniture.id == furniture_id)
+                .options(joinedload(Furniture.pickables))
+            )
+            furniture = furniture.scalar_one_or_none()
+
+            if furniture is None:
+                response.result.result_type = Result.ERROR_ID_NOT_FOUND
+                response.result.error = f"Furniture ID {furniture_id} not found"
+                return response
+
+            pickable = await session.get(Pickable, request.childid)
+            if pickable is None:
+                response.result.result_type = Result.ERROR_ID_NOT_FOUND
+                response.result.error = f"Pickable ID {request.childid} not found"
+                return response
+
+            if request.delete:
+                if pickable in furniture.pickables:
+                    furniture.pickables.remove(pickable)
+            else:
+                if pickable not in furniture.pickables:
+                    furniture.pickables.append(pickable)
+
+            furniture.stamp = TimeData(request.stamp)
+            pickable.stamp = TimeData(request.stamp)
             await session.commit()
         return response
 

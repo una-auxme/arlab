@@ -25,6 +25,7 @@ endif()
 
 find_package(rosidl_default_generators REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
 
 # Add all your interface files here:
 rosidl_generate_interfaces(${PROJECT_NAME}
@@ -60,8 +61,12 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 
   "srv/DelEntities.srv"
   "srv/GetReference.srv"
+
+  "srv/AddMap.srv"
+  "srv/GetMap.srv"
   DEPENDENCIES # Add packages that above messages depend on
   geometry_msgs
+  nav_msgs
 )
 
 ament_package()

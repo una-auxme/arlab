@@ -1,26 +1,34 @@
-from sqlalchemy import String, Float
+from sqlalchemy import Float, Integer, LargeBinary, String
 from sqlalchemy.orm import (
     Mapped,
     mapped_column,
     composite,
 )
-from nav_msgs.msg import OccupancyGrid
 
 from .base import Base
-from .ros_adapters.time import TimeData
-from .ros_adapters.occupancy_grid import DBOccupancygridData
+from .ros_adapters.occupancy_grid import OccupancyGridData
 
 
 class Map(Base):
     __tablename__ = "map"
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
-    frame_id: Mapped[str] = mapped_column(String(100))
-
-    stamp: Mapped[TimeData] = composite(
-        TimeData._generate,
-        mapped_column("stamp_nanosec", Float),
-        mapped_column("stamp_sec", Float),
+    grid: Mapped[OccupancyGridData] = composite(
+        OccupancyGridData._generate,
+        mapped_column("header_stamp_nanosec", Integer),
+        mapped_column("header_stamp_sec", Integer),
+        mapped_column("header_frame_id", String(100)),
+        mapped_column("info_map_load_time_nanosec", Integer),
+        mapped_column("info_map_load_time_sec", Integer),
+        mapped_column("info_resolution", Float),
+        mapped_column("info_width", Integer),
+        mapped_column("info_height", Integer),
+        mapped_column("info_origin_x", Float),
+        mapped_column("info_origin_y", Float),
+        mapped_column("info_origin_z", Float),
+        mapped_column("info_origin_ox", Float),
+        mapped_column("info_origin_oy", Float),
+        mapped_column("info_origin_oz", Float),
+        mapped_column("info_origin_ow", Float),
+        mapped_column("data", LargeBinary),
     )
-
-    data: Mapped[OccupancyGrid] = mapped_column(DBOccupancygridData)

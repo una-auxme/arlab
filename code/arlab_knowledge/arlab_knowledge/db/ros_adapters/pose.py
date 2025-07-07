@@ -1,4 +1,3 @@
-from copy import deepcopy
 from typing import Tuple
 
 from geometry_msgs.msg import Pose
@@ -9,8 +8,8 @@ from geometry_msgs.msg import Quaternion
 class PoseData(Pose):
     def __init__(self, pose: Pose):
         super().__init__()
-        self.position = deepcopy(pose.position)
-        self.orientation = deepcopy(pose.orientation)
+        self.position = pose.position
+        self.orientation = pose.orientation
 
     @classmethod
     def _generate(

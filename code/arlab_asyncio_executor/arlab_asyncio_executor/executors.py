@@ -1,32 +1,45 @@
 # This file is heavily based on the implementations in rclpy.executors and rclpy.task
 # and adapted to work with asyncio.
 
-import concurrent.futures
-from typing import Optional, Union, Callable, Coroutine
-import inspect
-import concurrent
 import asyncio
+import concurrent
+import concurrent.futures
+import inspect
+import signal
+import sys
+import threading
+from queue import Queue
+from typing import Callable, Coroutine, Optional, Union
 
+from rclpy.context import Context
+from rclpy.exceptions import InvalidHandle
 from rclpy.executors import (
+    ConditionReachedException,
     Executor,
-    TimeoutException,
     ExternalShutdownException,
     ShutdownException,
-    ConditionReachedException,
+    TimeoutException,
     TimeoutObject,
     WaitableEntityType,
 )
-from rclpy.context import Context
-from rclpy.exceptions import InvalidHandle
+from rclpy.node import Node
 from rclpy.task import Future as RosFuture
 from rclpy.task import Task as RosTask
-from rclpy.node import Node
 
 
 class AsyncIORosTask(RosTask):
-    def __init__(self, handler, asyncio_loop, args=None, kwargs=None, executor=None):
+    def __init__(
+        self,
+        handler,
+        asyncio_loop,
+        exception_queue: Queue,
+        args=None,
+        kwargs=None,
+        executor=None,
+    ):
         super().__init__(handler=handler, args=args, kwargs=kwargs, executor=executor)
 
+        self._exception_queue = exception_queue
         self._asyncio_loop = asyncio_loop
         self._asyncio_future: Optional[concurrent.futures.Future] = None
 
@@ -50,6 +63,7 @@ class AsyncIORosTask(RosTask):
                     self.set_result(result)
                 except BaseException as e:
                     self.set_exception(e)
+                    self._exception_queue.put_nowait(e)
                 finally:
                     self._complete_task()
                     self._executing = False
@@ -78,16 +92,48 @@ class AsyncIORosTask(RosTask):
 class AsyncIOExecutor(Executor):
     # Based on the rclpy MultiThreadedExecutor
 
-    def __init__(self, asyncio_loop, *, context: Optional[Context] = None) -> None:
+    def __init__(
+        self, async_init: Coroutine, *, context: Optional[Context] = None
+    ) -> None:
         super().__init__(context=context)
 
-        self._asyncio_loop = asyncio_loop
-        self._asyncio_running_tasks = []
+        self._spin_thread = None
+        self._exception_queue = Queue()
+
+        loop_setup_event = threading.Event()
+        self._asyncio_shutdown_event = asyncio.Event()
+        self._asyncio_loop = None
+
+        def asyncio_thread():
+            async def asyncio_wait():
+                try:
+                    await async_init
+                    self._asyncio_loop = asyncio.get_running_loop()
+                    loop_setup_event.set()
+                    await self._asyncio_shutdown_event.wait()
+                except BaseException as e:
+                    self._exception_queue.put_nowait(e)
+                finally:
+                    for task in asyncio.all_tasks():
+                        task.cancel()
+
+            asyncio.run(asyncio_wait())
+
+        self._asyncio_thread = threading.Thread(target=asyncio_thread, daemon=True)
+        self._asyncio_thread.start()
+        loop_setup_event.wait()
 
     def create_task(
         self, callback: Union[Callable, Coroutine], *args, **kwargs
     ) -> RosTask:
-        task = AsyncIORosTask(callback, self._asyncio_loop, args, kwargs, executor=self)
+        task = AsyncIORosTask(
+            callback,
+            self._asyncio_loop,
+            self._exception_queue,
+            args,
+            kwargs,
+            executor=self,
+        )
         with self._tasks_lock:
             self._tasks.append((task, None, None))
             self._guard.trigger()
@@ -128,12 +174,24 @@ class AsyncIOExecutor(Executor):
         task = AsyncIORosTask(
             handler,
             self._asyncio_loop,
+            self._exception_queue,
             (entity, self._guard, self._is_shutdown, self._work_tracker),
             executor=self,
         )
         with self._tasks_lock:
             self._tasks.append((task, entity, node))
         return task
+
+    def start_spin_thread(self):
+        if self._spin_thread is not None:
+            return
+
+        self._spin_thread = threading.Thread(target=super().spin, daemon=True)
+        self._spin_thread.start()
+
+    def spin(self):
+        self.start_spin_thread()
+        self.wait_for_exception()
 
     def _spin_once_impl(
         self,
@@ -154,13 +212,6 @@ class AsyncIOExecutor(Executor):
             pass
         else:
             task()
-            self._asyncio_running_tasks.append(task)
-            # make a copy of the list that we iterate over while modifying it
-            # (https://stackoverflow.com/q/1207406/3753684)
-            for task in self._asyncio_running_tasks[:]:
-                if task.done():
-                    self._asyncio_running_tasks.remove(task)
-                    task.result()  # raise any exceptions
 
     def spin_once(self, timeout_sec: Optional[float] = None) -> None:
         self._spin_once_impl(timeout_sec)
@@ -172,3 +223,33 @@ class AsyncIOExecutor(Executor):
     ) -> None:
         future.add_done_callback(lambda x: self.wake())
         self._spin_once_impl(timeout_sec, future.done)
+
+    def wait_for_exception(self, shutdown_timeout: Optional[float] = 1.0):
+        """Blocks until an exception occurs or an exit signal is received
+
+        Raises:
+            e: The exception that occurred
+        """
+
+        def signal_handler(signum, frame):
+            signal_name = signal.Signals(signum).name
+            print(f"Received signal {signal_name}. Shutting down.")
+            self.shutdown(shutdown_timeout)
+            sys.exit(0)
+
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
+
+        e = self._exception_queue.get()
+        if e is not None:
+            # Cleanup
+            self.shutdown(shutdown_timeout)
+            raise e
+
+    def shutdown(self, timeout_sec=None):
+        result = super().shutdown(timeout_sec)
+        self._asyncio_shutdown_event.set()
+        self._asyncio_thread.join(timeout=timeout_sec)
+        if self._spin_thread is not None:
+            self._spin_thread.join(timeout=timeout_sec)
+        return result

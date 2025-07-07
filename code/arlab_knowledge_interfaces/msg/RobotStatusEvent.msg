@@ -1,0 +1,9 @@
+# When this event happened
+builtin_interfaces/Time stamp
+
+bool has_movement_status
+MovementStatus movement_status
+bool has_manipulation_status
+ManipulationStatus manipulation_status
+bool has_safety_status
+SafetyStatus safety_status

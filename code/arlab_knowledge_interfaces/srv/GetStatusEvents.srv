@@ -1,0 +1,13 @@
+builtin_interfaces/Time max_age_stamp
+builtin_interfaces/Time min_age_stamp
+
+int32 STATUS_ALL=0
+int32 STATUS_MOVEMENT=1
+int32 STATUS_MANIPULATION=2
+int32 STATUS_SAFETY=3
+# If set to a specific type instead of STATUS_ALL,
+# the service only returns events that have this status type
+int32 status_type
+---
+RobotStatusEvent[] events
+Result result

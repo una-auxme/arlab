@@ -32,6 +32,11 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/EntityType.msg"
   "msg/Result.msg"
 
+  "msg/RobotStatusEvent.msg"
+  "msg/MovementStatus.msg"
+  "msg/ManipulationStatus.msg"
+  "msg/SafetyStatus.msg"
+
   "srv/GetDescription.srv"
   "srv/GetEntities.srv"
   "srv/DoorGetOpen.srv"
@@ -64,6 +69,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 
   "srv/AddMap.srv"
   "srv/GetMap.srv"
+  "srv/AddStatusEvent.srv"
+  "srv/GetStatusEvents.srv"
   DEPENDENCIES # Add packages that above messages depend on
   geometry_msgs
   nav_msgs

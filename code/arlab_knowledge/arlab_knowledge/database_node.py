@@ -7,8 +7,15 @@ import sqlalchemy
 from arlab_asyncio_executor.executors import AsyncIOExecutor
 from arlab_knowledge_interfaces.msg import EntityType, Result
 from arlab_knowledge_interfaces.srv import (
+    AddCupboard,
+    AddDoor,
     AddEntity,
+    AddFurniture,
+    AddHuman,
     AddMap,
+    AddPickable,
+    AddShelf,
+    AddTable,
     DelEntities,
     DoorGetOpen,
     DoorGetWidth,
@@ -196,6 +203,83 @@ class DatabaseNode(Node):
             GetMap,
             f"{prefix}/get_map",
             self.get_map_callback,
+            callback_group=self.reentrant_callback_group,
+        )
+
+        self.create_service(
+            UpdEntity,
+            f"{prefix}/upd_entity",
+            self.update_entity_callback,
+            callback_group=self.reentrant_callback_group,
+        )
+
+        self.create_service(
+            UpdCupboard,
+            f"{prefix}/upd_cupboard",
+            self.update_cupboard_callback,
+            callback_group=self.reentrant_callback_group,
+        )
+
+        self.create_service(
+            UpdDoor,
+            f"{prefix}/upd_door",
+            self.update_door_callback,
+            callback_group=self.reentrant_callback_group,
+        )
+
+        self.create_service(
+            UpdFurniture,
+            f"{prefix}/upd_furniture",
+            self.update_furniture_callback,
+            callback_group=self.reentrant_callback_group,
+        )
+
+        self.create_service(
+            UpdHuman,
+            f"{prefix}/upd_human",
+            self.update_human_callback,
+            callback_group=self.reentrant_callback_group,
+        )
+
+        self.create_service(
+            UpdPickable,
+            f"{prefix}/upd_pickable",
+            self.update_pickable_callback,
+            callback_group=self.reentrant_callback_group,
+        )
+
+        self.create_service(
+            UpdShelf,
+            f"{prefix}/upd_shelf",
+            self.update_shelf_callback,
+            callback_group=self.reentrant_callback_group,
+        )
+
+        self.create_service(
+            UpdTable,
+            f"{prefix}/upd_table",
+            self.update_table_callback,
+            callback_group=self.reentrant_callback_group,
+        )
+
+        self.create_service(
+            UpdPose,
+            f"{prefix}/upd_pose",
+            self.update_pose_callback,
+            callback_group=self.reentrant_callback_group,
+        )
+
+        self.create_service(
+            UpdShape,
+            f"{prefix}/upd_shape",
+            self.update_shape_callback,
+            callback_group=self.reentrant_callback_group,
+        )
+
+        self.create_service(
+            DelEntities,
+            f"{prefix}/del_entities",
+            self.del_entities_callback,
             callback_group=self.reentrant_callback_group,
         )
 

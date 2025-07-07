@@ -12,7 +12,7 @@ find_package(moveit_ros_planning_interface REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(moveit_visual_tools REQUIRED)
 
-add_executable(Ur5MoveToGoal src/moveit_main.cpp)
+add_executable(Ur5MoveToGoal src/moveit_main.cpp src/utils.cpp)
 
 target_include_directories(Ur5MoveToGoal PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

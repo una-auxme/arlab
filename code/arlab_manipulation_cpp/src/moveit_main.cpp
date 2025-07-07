@@ -1,9 +1,15 @@
+
 #include <memory>
 #include <rclcpp/rclcpp.hpp>
+#include <thread>
+
+
+// MoveIt
 #include <moveit/move_group_interface/move_group_interface.hpp>
 #include <moveit_visual_tools/moveit_visual_tools.h>
 #include <moveit/planning_scene_interface/planning_scene_interface.hpp>
-#include <thread>  // <---- add this to the set of includes at the top
+
+#include "arlab_manipulation_cpp/utils.hpp"
 
 
 int main(int argc, char * argv[])
@@ -54,116 +60,44 @@ int main(int argc, char * argv[])
       };
 
   // Set a target Pose
-  auto const target_pose = []{
-    geometry_msgs::msg::Pose msg;
-    msg.orientation.x = 0.996;
-    msg.orientation.y = 0.041;
-    msg.orientation.z = 0.009;
-    msg.orientation.w = 0.076;
-    msg.position.x = -0.12;
-    msg.position.y = 0.5;
-    msg.position.z = 0.6;
-    return msg;
-  }();
-  auto const target_pose2 = []{
-    geometry_msgs::msg::Pose msg;
-    msg.orientation.x = 0.999;
-    msg.orientation.y = 0.041;
-    msg.orientation.z = 0.006;
-    msg.orientation.w = 0.004;
-    msg.position.x = 0.372;
-    msg.position.y = 0.124;
-    msg.position.z = 0.621;
-    return msg;
-  }();
-
-  move_group_interface.setPoseTarget(target_pose);
+  auto home_pose = createPose(-0.12,0.5,0.6,0.996,0.041,0.009,0.076);
+  auto table_pose = createPose(0.372,0.124,0.621,0.999,0.041,0.006,0.004);
+  auto standup_pose = createPose(0.1,0.233,0.98,-0.5,0.5,0.5,0.5);
 
   // Create collision object for the robot to avoid
-  auto const collision_object = [frame_id = move_group_interface.getPlanningFrame()] {
-    moveit_msgs::msg::CollisionObject collision_object;
-    collision_object.header.frame_id = frame_id;
-    collision_object.id = "box1";
-    shape_msgs::msg::SolidPrimitive primitive;
+  auto frame_id = move_group_interface.getPlanningFrame();
+  auto collision_object_pose = createPose(-0.4,0.0,0.25,0,0,0,1);
+  auto collision_object = createCollisionBox(frame_id,"box1",collision_object_pose,0.1,0.1,0.5);
 
-    // Define the size of the box in meters
-    primitive.type = primitive.BOX;
-    primitive.dimensions.resize(3);
-    primitive.dimensions[primitive.BOX_X] = 0.1;
-    primitive.dimensions[primitive.BOX_Y] = 0.1;
-    primitive.dimensions[primitive.BOX_Z] = 0.5;
-
-    // Define the pose of the box (relative to the frame_id)
-    geometry_msgs::msg::Pose box_pose;
-    box_pose.orientation.w = 1.0;  // We can leave out the x, y, and z components of the quaternion since they are initialized to 0
-    box_pose.position.x = -0.4;
-    box_pose.position.y = 0.0;
-    box_pose.position.z = 0.25;
-
-    collision_object.primitives.push_back(primitive);
-    collision_object.primitive_poses.push_back(box_pose);
-    collision_object.operation = collision_object.ADD;
-
-    return collision_object;
-  }();
+  auto collision_object_pose2 = createPose(0.6,0.0,0.25,0,0,0,1);
+  auto collision_object2 = createCollisionBox(frame_id,"table",collision_object_pose2,1,1,0.2);
 
   // Add the collision object to the scene
   moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
   planning_scene_interface.applyCollisionObject(collision_object);
+  planning_scene_interface.applyCollisionObject(collision_object2);
 
-  // Create a plan to that target pose
-  prompt("Press 'Next' in the RvizVisualToolsGui window to plan");
-  draw_title("Planning");
-  moveit_visual_tools.trigger();
-  auto const [success, plan] = [&move_group_interface] {
-    moveit::planning_interface::MoveGroupInterface::Plan msg;
-    auto const ok = static_cast<bool>(move_group_interface.plan(msg));
-    return std::make_pair(ok, msg);
-  }();
-
-  // Execute the plan
-  if (success) {
-    draw_trajectory_tool_path(plan.trajectory);
-    moveit_visual_tools.trigger();
-    //prompt("Press 'Next' in the RvizVisualToolsGui window to execute");
-    draw_title("Executing");
-    moveit_visual_tools.trigger();
-
-    move_group_interface.execute(plan);
-  } else {
-    draw_title("Planning Failed!");
-    moveit_visual_tools.trigger();
-
-    RCLCPP_ERROR(logger, "Planning failed!");
+  // ----------------- Plan and Execute -----------------------
+  // - Move to Home Pose
+  auto success = planAndExecutePose(move_group_interface,home_pose,moveit_visual_tools,logger);
+  if (!success) {
+    planAndExecutePose(move_group_interface,standup_pose,moveit_visual_tools,logger);
+    planAndExecutePose(move_group_interface,home_pose,moveit_visual_tools,logger);
   }
-
-  move_group_interface.setPoseTarget(target_pose2);
-
-  // Create a plan to that target pose 2
-  prompt("Press 'Next' in the RvizVisualToolsGui window to plan");
-  draw_title("Planning");
-  moveit_visual_tools.trigger();
-  auto const [success2, plan2] = [&move_group_interface] {
-    moveit::planning_interface::MoveGroupInterface::Plan msg;
-    auto const ok = static_cast<bool>(move_group_interface.plan(msg));
-    return std::make_pair(ok, msg);
-  }();
-
-  // Execute the plan
-  if (success2) {
-    draw_trajectory_tool_path(plan2.trajectory);
-    moveit_visual_tools.trigger();
-    //prompt("Press 'Next' in the RvizVisualToolsGui window to execute");
-    draw_title("Executing");
-    moveit_visual_tools.trigger();
-
-    move_group_interface.execute(plan2);
-  } else {
-    draw_title("Planning Failed!");
-    moveit_visual_tools.trigger();
-
-    RCLCPP_ERROR(logger, "Planning failed!");
+  // - Move to Table Pose
+  auto success2 = planAndExecutePose(move_group_interface,table_pose,moveit_visual_tools,logger);
+  if (!success2) {
+    planAndExecutePose(move_group_interface,standup_pose,moveit_visual_tools,logger);
+    planAndExecutePose(move_group_interface,table_pose,moveit_visual_tools,logger);
   }
+  // - Move to Home Pose
+  auto success3 = planAndExecutePose(move_group_interface,home_pose,moveit_visual_tools,logger);
+  if (!success3) {
+    planAndExecutePose(move_group_interface,standup_pose,moveit_visual_tools,logger);
+    planAndExecutePose(move_group_interface,home_pose,moveit_visual_tools,logger);
+  }
+  // ----------------------------------------------------
+
 
   // Shutdown ROS
   rclcpp::shutdown();  // <--- This will cause the spin function in the thread to return

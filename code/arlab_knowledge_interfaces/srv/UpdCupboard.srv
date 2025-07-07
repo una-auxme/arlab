@@ -2,7 +2,7 @@ int64 entityid
 string description
 geometry_msgs/Pose pose
 string pose_reference_frame
-float64 hight
+float64 height
 float64 width
 string open
 # Add further updates here

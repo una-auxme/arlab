@@ -38,6 +38,8 @@ from arlab_knowledge_interfaces.srv import UpdShape
 from arlab_knowledge_interfaces.srv import DelEntities
 from arlab_knowledge_interfaces.srv import GetReference
 
+from arlab_knowledge_interfaces.srv import AddMap, GetMap
+
 
 from arlab_knowledge.db.base import Base
 from arlab_knowledge.db.entities.entity import Entity
@@ -53,6 +55,8 @@ from arlab_knowledge.db.entities.furniture import (
 from arlab_knowledge.db.entities.pickable import Pickable
 from arlab_knowledge.db.ros_adapters.pose import PoseData
 from arlab_knowledge.db.ros_adapters.time import TimeData
+from arlab_knowledge.db.ros_adapters.occupancy_grid import OccupancyGridData
+from arlab_knowledge.db.map import Map
 
 
 from arlab_asyncio_executor.executors import AsyncIOExecutor
@@ -185,6 +189,20 @@ class DatabaseNode(Node):
             GetReference,
             f"{prefix}/shelf_get_cupboard",
             self.shelf_get_cupboard_callback,
+            callback_group=self.reentrant_callback_group,
+        )
+
+        self.create_service(
+            AddMap,
+            f"{prefix}/add_map",
+            self.add_map_callback,
+            callback_group=self.reentrant_callback_group,
+        )
+
+        self.create_service(
+            GetMap,
+            f"{prefix}/get_map",
+            self.get_map_callback,
             callback_group=self.reentrant_callback_group,
         )
 
@@ -537,6 +555,47 @@ class DatabaseNode(Node):
                 response.result.result_type = Result.ERROR_ID_NOT_FOUND
                 return response
         response.entities = shelf.cupboard_id
+        return response
+
+    async def add_map_callback(
+        self, request: AddMap.Request, response: AddMap.Response
+    ):
+        async with self.Session(response) as session:
+            map = Map(grid=OccupancyGridData(request.grid))
+            async with session.begin():
+                session.add(map)
+            response.mapid = map.id
+        return response
+
+    async def get_map_callback(
+        self, request: GetMap.Request, response: GetMap.Response
+    ):
+        async with self.Session(response) as session:
+            map = await session.execute(
+                select(Map)
+                .select(
+                    request.min_age_stamp.sec > Map.header_stamp_sec
+                    or (
+                        request.min_age_stamp.sec == Map.header_stamp_sec
+                        and request.min_age_stamp.nanosec >= Map.header_stamp_nanosec
+                    )
+                )
+                .select(
+                    request.max_age_stamp.sec < Map.header_stamp_sec
+                    or (
+                        request.max_age_stamp.sec == Map.header_stamp_sec
+                        and request.max_age_stamp.nanosec <= Map.header_stamp_nanosec
+                    )
+                )
+                .order_by(Map.header_stamp_sec, Map.header_stamp_nanosec)
+                .offset(request.backwards_index)
+                .limit(1)
+            )
+            map = map.scalar_one_or_none()
+            if map is None:
+                response.result.result_type = Result.ERROR_ID_NOT_FOUND
+                return response
+        response.grid = map
         return response
 
     def destroy_node(self):

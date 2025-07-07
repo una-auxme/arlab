@@ -107,15 +107,12 @@ class DatabaseNode(Node):
 
         self.reentrant_callback_group = ReentrantCallbackGroup()
 
-    @classmethod
-    async def create(cls) -> "DatabaseNode":
-        node = cls()
-        async with node.db_engine.begin() as conn:
+    async def async_init(self):
+        async with self.db_engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
-        node.init_services()
-        return node
+        self._init_services()
 
-    def init_services(self):
+    def _init_services(self):
         self.create_service(
             GetEntities,
             f"{prefix}/get_entities",
@@ -887,28 +884,14 @@ class DatabaseNode(Node):
         super().destroy_node()
 
 
-async def ros_loop():
-    asyncio_loop = asyncio.get_running_loop()
-    executor = AsyncIOExecutor(asyncio_loop)
-    database_node = await DatabaseNode.create()
-    executor.add_node(database_node)
-
-    try:
-        database_node.get_logger().info(
-            "Beginning database_node, shut down with CTRL-C"
-        )
-        await asyncio.to_thread(executor.spin)
-    except KeyboardInterrupt:
-        database_node.get_logger().info(
-            "Keyboard interrupt, shutting down database_node.\n"
-        )
-    database_node.destroy_node()
-
-
 def main(args=None):
     rclpy.init(args=args)
-    asyncio.run(ros_loop())
-    rclpy.shutdown()
+    database_node = DatabaseNode()
+    executor = AsyncIOExecutor(async_init=database_node.async_init())
+    executor.add_node(database_node)
+
+    database_node.get_logger().info("Beginning database_node, shut down with CTRL-C")
+    executor.spin()
 
 
 if __name__ == "__main__":

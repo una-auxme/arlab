@@ -7,35 +7,20 @@ import sqlalchemy
 from arlab_asyncio_executor.executors import AsyncIOExecutor
 from arlab_knowledge_interfaces.msg import EntityType, Result
 from arlab_knowledge_interfaces.srv import (
-    AddCupboard,
-    AddDoor,
     AddEntity,
-    AddFurniture,
-    AddHuman,
     AddMap,
-    AddPickable,
-    AddShelf,
-    AddTable,
     DelEntities,
-    DoorGetOpen,
-    DoorGetWidth,
     GetDescription,
     GetEntities,
+    GetEntity,
     GetMap,
     GetPose,
     GetReference,
     GetShape,
-    UpdCupboard,
-    UpdDoor,
     UpdEntity,
-    UpdFurniture,
-    UpdHuman,
-    UpdPickable,
     UpdPose,
     UpdReference,
     UpdShape,
-    UpdShelf,
-    UpdTable,
 )
 from geometry_msgs.msg import Pose
 from rclpy.callback_groups import ReentrantCallbackGroup
@@ -45,16 +30,14 @@ from sqlalchemy.exc import DBAPIError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import joinedload
 
+import arlab_knowledge.db.entities as entities
 from arlab_knowledge.db.base import Base
 from arlab_knowledge.db.entities.entity import Entity
 from arlab_knowledge.db.entities.furniture import (
     Cupboard,
-    Door,
     Furniture,
     Shelf,
-    Table,
 )
-from arlab_knowledge.db.entities.human import Human
 from arlab_knowledge.db.entities.pickable import Pickable
 from arlab_knowledge.db.entities.shape import Shape
 from arlab_knowledge.db.map import Map
@@ -121,23 +104,16 @@ class DatabaseNode(Node):
         )
 
         self.create_service(
+            GetEntity,
+            f"{prefix}/get_entity",
+            self.get_entity_callback,
+            callback_group=self.reentrant_callback_group,
+        )
+
+        self.create_service(
             GetShape,
             f"{prefix}/get_shape",
             self.get_shape_callback,
-            callback_group=self.reentrant_callback_group,
-        )
-
-        self.create_service(
-            DoorGetOpen,
-            f"{prefix}/door_get_open",
-            self.door_get_open_callback,
-            callback_group=self.reentrant_callback_group,
-        )
-
-        self.create_service(
-            DoorGetWidth,
-            f"{prefix}/door_get_width",
-            self.door_get_width_callback,
             callback_group=self.reentrant_callback_group,
         )
 
@@ -159,54 +135,6 @@ class DatabaseNode(Node):
             AddEntity,
             f"{prefix}/add_entity",
             self.add_entity_callback,
-            callback_group=self.reentrant_callback_group,
-        )
-
-        self.create_service(
-            AddCupboard,
-            f"{prefix}/add_cupboard",
-            self.add_cupboard_callback,
-            callback_group=self.reentrant_callback_group,
-        )
-
-        self.create_service(
-            AddDoor,
-            f"{prefix}/add_door",
-            self.add_door_callback,
-            callback_group=self.reentrant_callback_group,
-        )
-
-        self.create_service(
-            AddFurniture,
-            f"{prefix}/add_furniture",
-            self.add_furniture_callback,
-            callback_group=self.reentrant_callback_group,
-        )
-
-        self.create_service(
-            AddHuman,
-            f"{prefix}/add_human",
-            self.add_human_callback,
-            callback_group=self.reentrant_callback_group,
-        )
-        self.create_service(
-            AddPickable,
-            f"{prefix}/add_pickable",
-            self.add_pickable_callback,
-            callback_group=self.reentrant_callback_group,
-        )
-
-        self.create_service(
-            AddShelf,
-            f"{prefix}/add_shelf",
-            self.add_shelf_callback,
-            callback_group=self.reentrant_callback_group,
-        )
-
-        self.create_service(
-            AddTable,
-            f"{prefix}/add_table",
-            self.add_table_callback,
             callback_group=self.reentrant_callback_group,
         )
 
@@ -260,55 +188,6 @@ class DatabaseNode(Node):
         )
 
         self.create_service(
-            UpdCupboard,
-            f"{prefix}/upd_cupboard",
-            self.update_cupboard_callback,
-            callback_group=self.reentrant_callback_group,
-        )
-
-        self.create_service(
-            UpdDoor,
-            f"{prefix}/upd_door",
-            self.update_door_callback,
-            callback_group=self.reentrant_callback_group,
-        )
-
-        self.create_service(
-            UpdFurniture,
-            f"{prefix}/upd_furniture",
-            self.update_furniture_callback,
-            callback_group=self.reentrant_callback_group,
-        )
-
-        self.create_service(
-            UpdHuman,
-            f"{prefix}/upd_human",
-            self.update_human_callback,
-            callback_group=self.reentrant_callback_group,
-        )
-
-        self.create_service(
-            UpdPickable,
-            f"{prefix}/upd_pickable",
-            self.update_pickable_callback,
-            callback_group=self.reentrant_callback_group,
-        )
-
-        self.create_service(
-            UpdShelf,
-            f"{prefix}/upd_shelf",
-            self.update_shelf_callback,
-            callback_group=self.reentrant_callback_group,
-        )
-
-        self.create_service(
-            UpdTable,
-            f"{prefix}/upd_table",
-            self.update_table_callback,
-            callback_group=self.reentrant_callback_group,
-        )
-
-        self.create_service(
             UpdPose,
             f"{prefix}/upd_pose",
             self.update_pose_callback,
@@ -358,24 +237,7 @@ class DatabaseNode(Node):
         self, request: GetEntities.Request, response: GetEntities.Response
     ):
         async with self.Session(response) as session:
-            if request.entity_type.entity_type == EntityType.ENTITY:
-                entity_class = Entity
-            elif request.entity_type.entity_type == EntityType.HUMAN:
-                entity_class = Human
-            elif request.entity_type.entity_type == EntityType.CUPBOARD:
-                entity_class = Cupboard
-            elif request.entity_type.entity_type == EntityType.PICKABLE:
-                entity_class = Pickable
-            elif request.entity_type.entity_type == EntityType.DOOR:
-                entity_class = Door
-            elif request.entity_type.entity_type == EntityType.FURNITURE:
-                entity_class = Furniture
-            elif request.entity_type.entity_type == EntityType.SHELF:
-                entity_class = Shelf
-            elif request.entity_type.entity_type == EntityType.TABLE:
-                entity_class = Table
-            else:
-                entity_class = None
+            entity_class = entities.entity_msg_type_to_class(request.entity_type)
 
             if entity_class is None:
                 response.result.result_type = Result.ERROR_INVALID_INPUT
@@ -387,12 +249,21 @@ class DatabaseNode(Node):
                 result = await session.execute(stmt)
                 entity_ids = result.columns("id").scalars().all()
                 rows = result.all()
-                print(entity_ids)
                 response.entities = entity_ids
                 if len(rows) > 0:
                     latest = rows[len(rows) - 1]
                     response.stamp = latest[1].time
-        self.get_logger().info("Incoming request:")
+        return response
+
+    async def get_entity_callback(
+        self, request: GetEntity.Request, response: GetEntity.Response
+    ):
+        async with self.Session(response) as session:
+            entity = await session.get(Entity, request.entityid)
+            if entity is None:
+                response.result.result_type = Result.ERROR_ID_NOT_FOUND
+                return response
+            response.data = entity.to_ros_msg()
         return response
 
     async def get_shape_callback(
@@ -406,18 +277,6 @@ class DatabaseNode(Node):
                 response.result.result_type = Result.ERROR_ID_NOT_FOUND
             else:
                 response.shape = shape.data
-        return response
-
-    async def door_get_open_callback(
-        self, request: DoorGetOpen.Request, response: DoorGetOpen.Response
-    ):
-        ### TODO implement the function once the database exists
-        return response
-
-    async def door_get_width_callback(
-        self, request: DoorGetWidth.Request, response: DoorGetWidth.Response
-    ):
-        ### TODO implement the function once the database exists
         return response
 
     async def get_pose_callback(
@@ -452,130 +311,10 @@ class DatabaseNode(Node):
         self, request: AddEntity.Request, response: AddEntity.Response
     ):
         async with self.Session(response) as session:
-            entity = Entity(
-                description=request.description,
-                pose=PoseData(request.pose),
-                frame_id=request.pose_reference_frame,
-                stamp=TimeData(request.stamp),
-            )
+            entity = Entity.from_ros_msg(request.data)
             async with session.begin():
                 session.add(entity)
             response.entityid = entity.id
-        return response
-
-    async def add_cupboard_callback(
-        self, request: AddCupboard.Request, response: AddCupboard.Response
-    ):
-        async with self.Session(response) as session:
-            cupboard = Cupboard(
-                description=request.description,
-                pose=PoseData(request.pose),
-                frame_id=request.pose_reference_frame,
-                height=request.height,
-                width=request.width,
-                open=request.open,
-                stamp=TimeData(request.stamp),
-            )
-            async with session.begin():
-                session.add(cupboard)
-            response.entityid = cupboard.id
-        return response
-
-    async def add_door_callback(
-        self, request: AddDoor.Request, response: AddDoor.Response
-    ):
-        async with self.Session(response) as session:
-            door = Door(
-                description=request.description,
-                pose=PoseData(request.pose),
-                frame_id=request.pose_reference_frame,
-                width=request.width,
-                open=request.open,
-                stamp=TimeData(request.stamp),
-            )
-            async with session.begin():
-                session.add(door)
-            response.entityid = door.id
-        return response
-
-    async def add_furniture_callback(
-        self, request: AddFurniture.Request, response: AddFurniture.Response
-    ):
-        async with self.Session(response) as session:
-            furniture = Furniture(
-                description=request.description,
-                pose=PoseData(request.pose),
-                frame_id=request.pose_reference_frame,
-                stamp=TimeData(request.stamp),
-            )
-            async with session.begin():
-                session.add(furniture)
-            response.entityid = furniture.id
-        return response
-
-    async def add_human_callback(
-        self, request: AddHuman.Request, response: AddHuman.Response
-    ):
-        async with self.Session(response) as session:
-            human = Human(
-                description=request.description,
-                pose=PoseData(request.pose),
-                frame_id=request.pose_reference_frame,
-                stamp=TimeData(request.stamp),
-            )
-            async with session.begin():
-                session.add(human)
-            response.entityid = human.id
-        return response
-
-    async def add_pickable_callback(
-        self, request: AddPickable.Request, response: AddPickable.Response
-    ):
-        async with self.Session(response) as session:
-            pickable = Pickable(
-                description=request.description,
-                pose=PoseData(request.pose),
-                frame_id=request.pose_reference_frame,
-                max_picking_force=request.max_picking_force,
-                stamp=TimeData(request.stamp),
-            )
-            async with session.begin():
-                session.add(pickable)
-            response.entityid = pickable.id
-        return response
-
-    async def add_shelf_callback(
-        self, request: AddShelf.Request, response: AddShelf.Response
-    ):
-        async with self.Session(response) as session:
-            shelf = Shelf(
-                cupboard_id=request.cupboard_id,
-                description=request.description,
-                pose=PoseData(request.pose),
-                frame_id=request.pose_reference_frame,
-                height=request.height,
-                width=request.width,
-                stamp=TimeData(request.stamp),
-            )
-            async with session.begin():
-                session.add(shelf)
-            response.entityid = shelf.id
-        return response
-
-    async def add_table_callback(
-        self, request: AddTable.Request, response: AddTable.Response
-    ):
-        async with self.Session(response) as session:
-            table = Table(
-                description=request.description,
-                pose=PoseData(request.pose),
-                frame_id=request.pose_reference_frame,
-                height=request.height,
-                stamp=TimeData(request.stamp),
-            )
-            async with session.begin():
-                session.add(table)
-            response.entityid = table.id
         return response
 
     async def update_entity_callback(
@@ -586,116 +325,15 @@ class DatabaseNode(Node):
             if entity is None:
                 response.result.result_type = Result.ERROR_ID_NOT_FOUND
                 return response
-            entity.description = request.description
-            entity.pose = PoseData(request.pose)
-            entity.frame_id = request.pose_reference_frame
-            entity.stamp = TimeData(request.stamp)
-            await session.commit()
-        return response
-
-    async def update_cupboard_callback(
-        self, request: UpdCupboard.Request, response: UpdCupboard.Response
-    ):
-        async with self.Session(response) as session:
-            cupboard = await session.get(Cupboard, request.entityid)
-            if cupboard is None:
-                response.result.result_type = Result.ERROR_ID_NOT_FOUND
-                return response
-            cupboard.description = request.description
-            cupboard.pose = PoseData(request.pose)
-            cupboard.frame_id = request.pose_reference_frame
-            cupboard.stamp = TimeData(request.stamp)
-            await session.commit()
-        return response
-
-    async def update_door_callback(
-        self, request: UpdDoor.Request, response: UpdDoor.Response
-    ):
-        async with self.Session(response) as session:
-            door = await session.get(Door, request.entityid)
-            if door is None:
-                response.result.result_type = Result.ERROR_ID_NOT_FOUND
-                return response
-            door.description = request.description
-            door.pose = PoseData(request.pose)
-            door.frame_id = request.pose_reference_frame
-            door.stamp = TimeData(request.stamp)
-            await session.commit()
-        return response
-
-    async def update_furniture_callback(
-        self, request: UpdFurniture.Request, response: UpdFurniture.Response
-    ):
-        async with self.Session(response) as session:
-            furniture = await session.get(Furniture, request.entityid)
-            if furniture is None:
-                response.result.result_type = Result.ERROR_ID_NOT_FOUND
-                return response
-            furniture.description = request.description
-            furniture.pose = PoseData(request.pose)
-            furniture.frame_id = request.pose_reference_frame
-            furniture.stamp = TimeData(request.stamp)
-            await session.commit()
-        return response
-
-    async def update_human_callback(
-        self, request: UpdHuman.Request, response: UpdHuman.Response
-    ):
-        async with self.Session(response) as session:
-            human = await session.get(Human, request.entityid)
-            if human is None:
-                response.result.result_type = Result.ERROR_ID_NOT_FOUND
-                return response
-            human.description = request.description
-            human.pose = PoseData(request.pose)
-            human.frame_id = request.pose_reference_frame
-            human.stamp = TimeData(request.stamp)
-            await session.commit()
-        return response
-
-    async def update_pickable_callback(
-        self, request: UpdPickable.Request, response: UpdPickable.Response
-    ):
-        async with self.Session(response) as session:
-            pickable = await session.get(Pickable, request.entityid)
-            if pickable is None:
-                response.result.result_type = Result.ERROR_ID_NOT_FOUND
-                return response
-            pickable.description = request.description
-            pickable.pose = PoseData(request.pose)
-            pickable.frame_id = request.pose_reference_frame
-            pickable.stamp = TimeData(request.stamp)
-            await session.commit()
-        return response
-
-    async def update_shelf_callback(
-        self, request: UpdShelf.Request, response: UpdShelf.Response
-    ):
-        async with self.Session(response) as session:
-            shelf = await session.get(Shelf, request.entityid)
-            if shelf is None:
-                response.result.result_type = Result.ERROR_ID_NOT_FOUND
-                return response
-            shelf.cupboard_id = request.cupboard_id
-            shelf.description = request.description
-            shelf.pose = PoseData(request.pose)
-            shelf.frame_id = request.pose_reference_frame
-            shelf.stamp = TimeData(request.stamp)
-            await session.commit()
-        return response
-
-    async def update_table_callback(
-        self, request: UpdTable.Request, response: UpdTable.Response
-    ):
-        async with self.Session(response) as session:
-            table = await session.get(Table, request.entityid)
-            if table is None:
-                response.result.result_type = Result.ERROR_ID_NOT_FOUND
-                return response
-            table.description = request.description
-            table.pose = PoseData(request.pose)
-            table.frame_id = request.pose_reference_frame
-            table.stamp = TimeData(request.stamp)
+            msg_entity_class = entities.entity_msg_type_to_class(
+                request.data.entity_type
+            )
+            if msg_entity_class is None or not isinstance(entity, msg_entity_class):
+                # Type mismatch
+                response.result.result_type = Result.ERROR_INVALID_INPUT
+                response.result.error = "Existing entity "
+                f"of type {type(entity)} is not an instance of {msg_entity_class}"
+            entity.apply_ros_msg(request.data)
             await session.commit()
         return response
 
@@ -708,7 +346,7 @@ class DatabaseNode(Node):
                 response.result.result_type = Result.ERROR_ID_NOT_FOUND
                 return response
             entity.pose = PoseData(request.pose)
-            entity.frame_id = request.pose_reference_frame
+            entity.pose_reference_frame = request.pose_reference_frame
             entity.stamp = TimeData(request.stamp)
             await session.commit()
         return response
@@ -739,6 +377,7 @@ class DatabaseNode(Node):
                 select(Furniture)
                 .where(Furniture.id == furniture_id)
                 .options(joinedload(Furniture.pickables))
+                .limit(1)
             )
             furniture = furniture.unique().scalar_one_or_none()
 
@@ -778,7 +417,7 @@ class DatabaseNode(Node):
             result = await session.execute(stmt)
             if result.rowcount == 0:
                 response.result.result_type = Result.ERROR_ID_NOT_FOUND
-            return response
+        return response
 
     async def furniture_get_pickable_callback(
         self, request: GetReference.Request, response: GetReference.Response

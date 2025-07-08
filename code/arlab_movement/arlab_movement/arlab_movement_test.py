@@ -36,7 +36,6 @@ class MovementNode(Node):
         msg = String()
         msg.data = 'Hello World: %d' % self.i
         self.publisher_.publish(msg)
-        self.get_logger().info('Publishing: "%s"' % msg.data)
         self.i += 1
 
     def receive_pose(self, pose_msg):

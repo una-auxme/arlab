@@ -9,15 +9,18 @@ setup(
     data_files=[
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
         ("share/" + package_name, ["package.xml"]),
+        ('share/' + package_name + '/launch', ['launch/arlab_movement.launch.py']),
     ],
     install_requires=["setuptools"],
     zip_safe=True,
-    maintainer="root",
-    maintainer_email="root@todo.todo",
-    description="TODO: Package description",
+    maintainer="Lukas Asam",
+    maintainer_email="lukas.asam@uni-a.de",
+    description="Package for AR Lab robot movement and navigation.",
     license="MIT",
     tests_require=["pytest"],
     entry_points={
-        "console_scripts": ["dummy = arlab_movement.dummy:main"],
+        "console_scripts": ["dummy = arlab_movement.dummy:main",
+            "arlab_movement_test = arlab_movement.arlab_movement_test:main"
+        ], 
     },
 )

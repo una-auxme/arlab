@@ -4,7 +4,7 @@
   <name>arlab_movement</name>
   <version>0.0.0</version>
   <description>Package for AR Lab robot movement and navigation.</description>
-  <maintainer email="your_email@example.com">Your Name</maintainer>
+  <maintainer email="lukas.asam@uni-a.de">Lukas Asam</maintainer>
   <license>MIT</license>
 
   <test_depend>python3-pytest</test_depend>

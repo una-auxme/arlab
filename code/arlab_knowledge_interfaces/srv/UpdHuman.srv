@@ -2,7 +2,6 @@ int64 entityid
 string description
 geometry_msgs/Pose pose
 string pose_reference_frame
-string shape #subject to change
 # Add further updates here
 # Time stamp when the entity was last updated
 builtin_interfaces/Time stamp

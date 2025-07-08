@@ -331,7 +331,7 @@ class DatabaseNode(Node):
 
         self.create_service(
             UpdReference,
-            f"{prefix}/del_reference",
+            f"{prefix}/furniture_update_pickable",
             self.furniture_update_pickable_callback,
             callback_group=self.reentrant_callback_group,
         )
@@ -348,6 +348,11 @@ class DatabaseNode(Node):
         except SQLAlchemyError as e:
             response.result.error = str(e)
             response.result.result_type = Result.ERROR_SQL
+        if (
+            response.result.result_type == Result.ERROR_ID_NOT_FOUND
+            and not response.result.error
+        ):
+            response.result.error = "Id not found"
 
     async def get_entities_callback(
         self, request: GetEntities.Request, response: GetEntities.Response
@@ -400,7 +405,7 @@ class DatabaseNode(Node):
             if shape is None:
                 response.result.result_type = Result.ERROR_ID_NOT_FOUND
             else:
-                response.shape = result
+                response.shape = shape.data
         return response
 
     async def door_get_open_callback(
@@ -643,7 +648,6 @@ class DatabaseNode(Node):
                 return response
             human.description = request.description
             human.pose = PoseData(request.pose)
-            human.shape = request.shape
             human.frame_id = request.pose_reference_frame
             human.stamp = TimeData(request.stamp)
             await session.commit()
@@ -736,7 +740,7 @@ class DatabaseNode(Node):
                 .where(Furniture.id == furniture_id)
                 .options(joinedload(Furniture.pickables))
             )
-            furniture = furniture.scalar_one_or_none()
+            furniture = furniture.unique().scalar_one_or_none()
 
             if furniture is None:
                 response.result.result_type = Result.ERROR_ID_NOT_FOUND
@@ -785,11 +789,13 @@ class DatabaseNode(Node):
                 .where(Furniture.id == request.entityid)
                 .options(joinedload(Furniture.pickables))
             )
-            furniture = furniture.scalar_one_or_none()
+            furniture = furniture.unique().scalar_one_or_none()
             if furniture is None:
                 response.result.result_type = Result.ERROR_ID_NOT_FOUND
                 return response
-        response.entities = list(map(lambda pickable: pickable.id, furniture.pickables))
+            response.entities = list(
+                map(lambda pickable: pickable.id, furniture.pickables)
+            )
         return response
 
     async def pickable_get_furniture_callback(

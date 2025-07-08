@@ -29,6 +29,15 @@ find_package(nav_msgs REQUIRED)
 
 # Add all your interface files here:
 rosidl_generate_interfaces(${PROJECT_NAME}
+  "msg/Entity.msg"
+  "msg/EntityPickable.msg"
+  "msg/EntityHuman.msg"
+  "msg/EntityFurniture.msg"
+  "msg/EntityFurnitureCupboard.msg"
+  "msg/EntityFurnitureDoor.msg"
+  "msg/EntityFurnitureShelf.msg"
+  "msg/EntityFurnitureTable.msg"
+
   "msg/EntityType.msg"
   "msg/Result.msg"
 
@@ -39,28 +48,13 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 
   "srv/GetDescription.srv"
   "srv/GetEntities.srv"
-  "srv/DoorGetOpen.srv"
-  "srv/DoorGetWidth.srv"
+  "srv/GetEntity.srv"
   "srv/GetPose.srv"
   "srv/GetShape.srv"
 
   "srv/AddEntity.srv"
-  "srv/AddCupboard.srv"
-  "srv/AddDoor.srv"
-  "srv/AddFurniture.srv"
-  "srv/AddHuman.srv"
-  "srv/AddPickable.srv"
-  "srv/AddShelf.srv"
-  "srv/AddTable.srv"
 
   "srv/UpdEntity.srv"
-  "srv/UpdCupboard.srv"
-  "srv/UpdDoor.srv"
-  "srv/UpdFurniture.srv"
-  "srv/UpdHuman.srv"
-  "srv/UpdPickable.srv"
-  "srv/UpdShelf.srv"
-  "srv/UpdTable.srv"
   "srv/UpdPose.srv"
   "srv/UpdShape.srv"
 

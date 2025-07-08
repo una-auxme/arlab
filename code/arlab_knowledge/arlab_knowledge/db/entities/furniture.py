@@ -1,5 +1,6 @@
-from typing import List
+from typing import Dict, List
 
+from arlab_knowledge_interfaces import msg
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -8,7 +9,9 @@ from .entity import Entity
 
 class Furniture(Entity):
     __tablename__ = "entity_furniture"
-    id: Mapped[int] = mapped_column(ForeignKey("entity.id"), primary_key=True)
+    id: Mapped[int] = mapped_column(
+        ForeignKey("entity.id", ondelete="CASCADE"), primary_key=True
+    )
 
     pickables: Mapped[List["Pickable"]] = relationship(  # type: ignore # noqa: F821
         back_populates="located_on",
@@ -20,33 +23,23 @@ class Furniture(Entity):
         "polymorphic_identity": "entity_furniture",
     }
 
+    @classmethod
+    def _extract_kwargs(cls, m: msg.Entity) -> Dict:
+        kwargs = super()._extract_kwargs(m)
+        # Assign subclass specific attributes here
+        return kwargs
 
-class Door(Furniture):
-    __tablename__ = "entity_furniture_door"
-    id: Mapped[int] = mapped_column(ForeignKey("entity_furniture.id"), primary_key=True)
-
-    width: Mapped[float]
-    open: Mapped[str]
-
-    __mapper_args__ = {
-        "polymorphic_identity": "entity_furniture_door",
-    }
-
-
-class Table(Furniture):
-    __tablename__ = "entity_furniture_table"
-    id: Mapped[int] = mapped_column(ForeignKey("entity_furniture.id"), primary_key=True)
-
-    height: Mapped[float]
-
-    __mapper_args__ = {
-        "polymorphic_identity": "entity_furniture_table",
-    }
+    def to_ros_msg(self) -> msg.Entity:
+        m = super().to_ros_msg()
+        # Assign subclass specific attributes here
+        return m
 
 
 class Cupboard(Furniture):
     __tablename__ = "entity_furniture_cupboard"
-    id: Mapped[int] = mapped_column(ForeignKey("entity_furniture.id"), primary_key=True)
+    id: Mapped[int] = mapped_column(
+        ForeignKey("entity_furniture.id", ondelete="CASCADE"), primary_key=True
+    )
 
     shelves: Mapped[List["Shelf"]] = relationship(
         back_populates="cupboard",
@@ -62,10 +55,58 @@ class Cupboard(Furniture):
         "polymorphic_identity": "entity_furniture_cupboard",
     }
 
+    @classmethod
+    def _extract_kwargs(cls, m: msg.Entity) -> Dict:
+        kwargs = super()._extract_kwargs(m)
+        # Assign subclass specific attributes here
+        kwargs["width"] = m.furniture.cupboard.width
+        kwargs["height"] = m.furniture.cupboard.height
+        kwargs["open"] = m.furniture.cupboard.open
+        return kwargs
+
+    def to_ros_msg(self) -> msg.Entity:
+        m = super().to_ros_msg()
+        # Assign subclass specific attributes here
+        m.furniture.cupboard.width = self.width
+        m.furniture.cupboard.height = self.height
+        m.furniture.cupboard.open = self.open
+        return m
+
+
+class Door(Furniture):
+    __tablename__ = "entity_furniture_door"
+    id: Mapped[int] = mapped_column(
+        ForeignKey("entity_furniture.id", ondelete="CASCADE"), primary_key=True
+    )
+
+    width: Mapped[float]
+    open: Mapped[str]
+
+    __mapper_args__ = {
+        "polymorphic_identity": "entity_furniture_door",
+    }
+
+    @classmethod
+    def _extract_kwargs(cls, m: msg.Entity) -> Dict:
+        kwargs = super()._extract_kwargs(m)
+        # Assign subclass specific attributes here
+        kwargs["width"] = m.furniture.door.width
+        kwargs["open"] = m.furniture.door.open
+        return kwargs
+
+    def to_ros_msg(self) -> msg.Entity:
+        m = super().to_ros_msg()
+        # Assign subclass specific attributes here
+        m.furniture.door.width = self.width
+        m.furniture.door.open = self.open
+        return m
+
 
 class Shelf(Furniture):
     __tablename__ = "entity_furniture_shelf"
-    id: Mapped[int] = mapped_column(ForeignKey("entity_furniture.id"), primary_key=True)
+    id: Mapped[int] = mapped_column(
+        ForeignKey("entity_furniture.id", ondelete="CASCADE"), primary_key=True
+    )
 
     cupboard_id: Mapped[int] = mapped_column(
         ForeignKey("entity_furniture_cupboard.id", ondelete="CASCADE")
@@ -80,3 +121,46 @@ class Shelf(Furniture):
     __mapper_args__ = {
         "polymorphic_identity": "entity_furniture_shelf",
     }
+
+    @classmethod
+    def _extract_kwargs(cls, m: msg.Entity) -> Dict:
+        kwargs = super()._extract_kwargs(m)
+        # Assign subclass specific attributes here
+        kwargs["cupboard_id"] = m.furniture.shelf.cupboard_id
+        kwargs["width"] = m.furniture.shelf.width
+        kwargs["height"] = m.furniture.shelf.height
+        return kwargs
+
+    def to_ros_msg(self) -> msg.Entity:
+        m = super().to_ros_msg()
+        # Assign subclass specific attributes here
+        m.furniture.shelf.cupboard_id = self.cupboard_id
+        m.furniture.shelf.width = self.width
+        m.furniture.shelf.height = self.height
+        return m
+
+
+class Table(Furniture):
+    __tablename__ = "entity_furniture_table"
+    id: Mapped[int] = mapped_column(
+        ForeignKey("entity_furniture.id", ondelete="CASCADE"), primary_key=True
+    )
+
+    height: Mapped[float]
+
+    __mapper_args__ = {
+        "polymorphic_identity": "entity_furniture_table",
+    }
+
+    @classmethod
+    def _extract_kwargs(cls, m: msg.Entity) -> Dict:
+        kwargs = super()._extract_kwargs(m)
+        # Assign subclass specific attributes here
+        kwargs["height"] = m.furniture.table.height
+        return kwargs
+
+    def to_ros_msg(self) -> msg.Entity:
+        m = super().to_ros_msg()
+        # Assign subclass specific attributes here
+        m.furniture.table.height = self.height
+        return m

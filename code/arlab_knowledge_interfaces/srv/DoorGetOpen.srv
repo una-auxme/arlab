@@ -1,7 +1,0 @@
-int64 entityid
----
-# Description of the door status
-string open
-Result result
-# Time stamp when the entity was last updated
-builtin_interfaces/Time stamp

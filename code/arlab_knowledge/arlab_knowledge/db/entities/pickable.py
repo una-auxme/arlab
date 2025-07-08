@@ -1,14 +1,17 @@
-from typing import Optional
+from typing import Dict, Optional
 
-from .entity import Entity
-
+from arlab_knowledge_interfaces import msg
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from .entity import Entity
 
 
 class Pickable(Entity):
     __tablename__ = "entity_pickable"
-    id: Mapped[int] = mapped_column(ForeignKey("entity.id"), primary_key=True)
+    id: Mapped[int] = mapped_column(
+        ForeignKey("entity.id", ondelete="CASCADE"), primary_key=True
+    )
 
     located_on_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("entity_furniture.id", ondelete="CASCADE")
@@ -22,3 +25,16 @@ class Pickable(Entity):
     __mapper_args__ = {
         "polymorphic_identity": "entity_pickable",
     }
+
+    @classmethod
+    def _extract_kwargs(cls, m: msg.Entity) -> Dict:
+        kwargs = super()._extract_kwargs(m)
+        # Assign subclass specific attributes here
+        kwargs["max_picking_force"] = m.pickable.max_picking_force
+        return kwargs
+
+    def to_ros_msg(self) -> msg.Entity:
+        m = super().to_ros_msg()
+        # Assign subclass specific attributes here
+        m.pickable.max_picking_force = self.max_picking_force
+        return m

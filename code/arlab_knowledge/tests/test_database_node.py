@@ -1,45 +1,27 @@
+import arlab_knowledge.db.entities as entities
 import rclpy
 import rclpy.clock
+import utils
 from arlab_knowledge_interfaces.msg import EntityType
 from arlab_knowledge_interfaces.srv import (
-    AddCupboard,
-    AddDoor,
     AddEntity,
-    AddFurniture,
-    AddHuman,
     AddMap,
-    AddPickable,
-    AddShelf,
-    AddTable,
+    DelEntities,
     GetDescription,
     GetEntities,
     GetMap,
     GetPose,
     GetReference,
     GetShape,
-    UpdCupboard,
-    UpdDoor,
     UpdEntity,
-    UpdFurniture,
-    UpdHuman,
-    UpdPickable,
     UpdPose,
     UpdReference,
     UpdShape,
-    UpdShelf,
-    UpdTable,
 )
 from geometry_msgs.msg import Point, Pose, Quaternion
 from nav_msgs.msg import OccupancyGrid
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.node import Node
-
-
-def create_pose():
-    return Pose(
-        position=Point(x=1.0, y=2.0, z=0.5),
-        orientation=Quaternion(x=0.0, y=0.0, z=0.0, w=1.0),
-    )
 
 
 class DatabaseServiceTester(Node):
@@ -75,6 +57,7 @@ class DatabaseServiceTester(Node):
             self.test_update_pose,
             self.test_update_shelf,
             self.test_update_table,
+            self.test_del_entities,
         ]
 
         self.entity_id = 0
@@ -86,11 +69,6 @@ class DatabaseServiceTester(Node):
         self.pickable_id = 0
         self.shelf_id = 0
         self.table_id = 0
-
-        # 🟡 Replace these with actual IDs from your database
-        self.entity_id = 1
-        self.parent_id = 1
-        self.child_id = 2
 
         self.current_test = 0
         self.timer = self.create_timer(0.01, self.run_next_test)
@@ -116,117 +94,47 @@ class DatabaseServiceTester(Node):
                 f"[{name}] ❌ ERROR {result.result_type}: {result.error}"
             )
 
-    async def test_add_entity(self):
+    async def generic_test_add_entity(self, gen_fn):
         request = AddEntity.Request()
-        request.description = "TestEntity"
-        request.pose = create_pose()
-        request.pose_reference_frame = "map"
-        request.stamp = self.create_stamp()
+        request.data = gen_fn().to_ros_msg()
+        # For shelves:
+        request.data.furniture.shelf.cupboard_id = self.cupboard_id
 
         response = await self.call_service(
             AddEntity, f"{self.prefix}/add_entity", request
         )
-        self.entity_id = response.entityid
-        self.log_result("AddEntity", response.result)
+        class_name = entities.entity_msg_type_to_class(
+            request.data.entity_type
+        ).__name__
+        self.log_result(
+            f"AddEntity: {class_name}",
+            response.result,
+        )
+        return response.entityid
+
+    async def test_add_entity(self):
+        self.entity_id = await self.generic_test_add_entity(utils.get_entity)
 
     async def test_add_furniture(self):
-        request = AddFurniture.Request()
-        request.description = "TestFurniture"
-        request.pose = create_pose()
-        request.pose_reference_frame = "map"
-        request.stamp = self.create_stamp()
-
-        response = await self.call_service(
-            AddFurniture, f"{self.prefix}/add_furniture", request
-        )
-        self.furniture_id = response.entityid
-        self.log_result("AddFurniture", response.result)
+        self.furniture_id = await self.generic_test_add_entity(utils.get_furniture)
 
     async def test_add_human(self):
-        request = AddHuman.Request()
-        request.description = "TestHuman"
-        request.pose = create_pose()
-        request.pose_reference_frame = "map"
-        request.stamp = self.create_stamp()
-
-        response = await self.call_service(
-            AddHuman, f"{self.prefix}/add_human", request
-        )
-        self.human_id = response.entityid
-        self.log_result("AddHuman", response.result)
+        self.human_id = await self.generic_test_add_entity(utils.get_human)
 
     async def test_add_door(self):
-        request = AddDoor.Request()
-        request.description = "TestDoor"
-        request.pose = create_pose()
-        request.pose_reference_frame = "map"
-        request.width = 0.9
-        request.open = "true"
-        request.stamp = self.create_stamp()
-
-        response = await self.call_service(AddDoor, f"{self.prefix}/add_door", request)
-        self.door_id = response.entityid
-        self.log_result("AddDoor", response.result)
+        self.door_id = await self.generic_test_add_entity(utils.get_door)
 
     async def test_add_cupboard(self):
-        request = AddCupboard.Request()
-        request.description = "TestCupboard"
-        request.pose = create_pose()
-        request.pose_reference_frame = "map"
-        request.height = 1.8
-        request.width = 0.8
-        request.open = "false"
-        request.stamp = self.create_stamp()
-
-        response = await self.call_service(
-            AddCupboard, f"{self.prefix}/add_cupboard", request
-        )
-        self.cupboard_id = response.entityid
-        self.log_result("AddCupboard", response.result)
+        self.cupboard_id = await self.generic_test_add_entity(utils.get_cupboard)
 
     async def test_add_shelf(self):
-        request = AddShelf.Request()
-        request.cupboard_id = self.cupboard_id
-        request.description = "TestShelf"
-        request.pose = create_pose()
-        request.pose_reference_frame = "map"
-        request.width = 0.5
-        request.height = 0.7
-        request.stamp = self.create_stamp()
-
-        response = await self.call_service(
-            AddShelf, f"{self.prefix}/add_shelf", request
-        )
-        self.shelf_id = response.entityid
-        self.log_result("AddShelf", response.result)
+        self.shelf_id = await self.generic_test_add_entity(utils.get_shelf)
 
     async def test_add_table(self):
-        request = AddTable.Request()
-        request.description = "TestTable"
-        request.pose = create_pose()
-        request.pose_reference_frame = "map"
-        request.height = 0.75
-        request.stamp = self.create_stamp()
-
-        response = await self.call_service(
-            AddTable, f"{self.prefix}/add_table", request
-        )
-        self.table_id = response.entityid
-        self.log_result("AddTable", response.result)
+        self.table_id = await self.generic_test_add_entity(utils.get_table)
 
     async def test_add_pickable(self):
-        request = AddPickable.Request()
-        request.description = "TestPickable"
-        request.pose = create_pose()
-        request.pose_reference_frame = "map"
-        request.max_picking_force = 5.0
-        request.stamp = self.create_stamp()
-
-        response = await self.call_service(
-            AddPickable, f"{self.prefix}/add_pickable", request
-        )
-        self.pickable_id = response.entityid
-        self.log_result("AddPickable", response.result)
+        self.pickable_id = await self.generic_test_add_entity(utils.get_pickable)
 
     async def test_add_map(self):
         request = AddMap.Request()
@@ -298,74 +206,104 @@ class DatabaseServiceTester(Node):
         )
         self.log_result("GetMap", res.result)
 
+    async def generic_test_update_entity(self, req: UpdEntity.Request):
+        req.data.stamp = self.create_stamp()
+        res = await self.call_service(UpdEntity, f"{self.prefix}/upd_entity", req)
+        class_name = entities.entity_msg_type_to_class(req.data.entity_type).__name__
+        self.log_result(
+            f"UpdEntity: {class_name}",
+            res.result,
+        )
+
     async def test_update_entity(self):
         req = UpdEntity.Request()
         req.entityid = self.entity_id
-        req.description = "Updated Entity"
-        req.pose = create_pose()
-        req.pose_reference_frame = "map"
-        req.stamp = self.create_stamp()
-        res = await self.call_service(UpdEntity, f"{self.prefix}/upd_entity", req)
-        self.log_result("UpdEntity", res.result)
+        req.data.description = "Updated Entity"
+        req.data.pose = utils.create_pose2()
+        req.data.pose_reference_frame = "map"
+        await self.generic_test_update_entity(req)
 
     async def test_update_cupboard(self):
-        req = UpdCupboard.Request()
+        req = UpdEntity.Request()
         req.entityid = self.cupboard_id
-        req.description = "Updated Cupboard"
-        req.pose = create_pose()
-        req.pose_reference_frame = "map"
-        req.height = 2.0
-        req.width = 0.7
-        req.open = "true"
-        req.stamp = self.create_stamp()
-        res = await self.call_service(UpdCupboard, f"{self.prefix}/upd_cupboard", req)
-        self.log_result("UpdCupboard", res.result)
+        req.data.entity_type.entity_type = EntityType.CUPBOARD
+        req.data.description = "Updated Cupboard"
+        req.data.pose = utils.create_pose2()
+        req.data.pose_reference_frame = "map"
+        req.data.furniture.cupboard.height = 2.0
+        req.data.furniture.cupboard.width = 0.7
+        req.data.furniture.cupboard.open = "true"
+        req.data.stamp = self.create_stamp()
+        await self.generic_test_update_entity(req)
 
     async def test_update_door(self):
-        req = UpdDoor.Request()
+        req = UpdEntity.Request()
         req.entityid = self.door_id
-        req.description = "Updated Door"
-        req.pose = create_pose()
-        req.pose_reference_frame = "map"
-        req.stamp = self.create_stamp()
-        res = await self.call_service(UpdDoor, f"{self.prefix}/upd_door", req)
-        self.log_result("UpdDoor", res.result)
+        req.data.entity_type.entity_type = EntityType.DOOR
+        req.data.description = "Updated Door"
+        req.data.pose = utils.create_pose2()
+        req.data.pose_reference_frame = "map"
+        req.data.stamp = self.create_stamp()
+        await self.generic_test_update_entity(req)
 
     async def test_update_furniture(self):
-        req = UpdFurniture.Request()
+        req = UpdEntity.Request()
         req.entityid = self.furniture_id
-        req.description = "Updated Furniture"
-        req.pose = create_pose()
-        req.pose_reference_frame = "map"
-        req.stamp = self.create_stamp()
-        res = await self.call_service(UpdFurniture, f"{self.prefix}/upd_furniture", req)
-        self.log_result("UpdFurniture", res.result)
+        req.data.entity_type.entity_type = EntityType.FURNITURE
+        req.data.description = "Updated Furniture"
+        req.data.pose = utils.create_pose2()
+        req.data.pose_reference_frame = "map"
+        req.data.stamp = self.create_stamp()
+        await self.generic_test_update_entity(req)
 
     async def test_update_human(self):
-        req = UpdHuman.Request()
+        req = UpdEntity.Request()
         req.entityid = self.human_id
-        req.description = "Updated Human"
-        req.pose = create_pose()
-        req.pose_reference_frame = "map"
-        req.stamp = self.create_stamp()
-        res = await self.call_service(UpdHuman, f"{self.prefix}/upd_human", req)
-        self.log_result("UpdHuman", res.result)
+        req.data.entity_type.entity_type = EntityType.HUMAN
+        req.data.description = "Updated Human"
+        req.data.pose = utils.create_pose2()
+        req.data.pose_reference_frame = "map"
+        req.data.stamp = self.create_stamp()
+        await self.generic_test_update_entity(req)
 
     async def test_update_pickable(self):
-        req = UpdPickable.Request()
+        req = UpdEntity.Request()
         req.entityid = self.pickable_id
-        req.description = "Updated Pickable"
-        req.pose = create_pose()
-        req.pose_reference_frame = "map"
-        req.max_picking_force = 10.0
-        req.stamp = self.create_stamp()
-        res = await self.call_service(UpdPickable, f"{self.prefix}/upd_pickable", req)
-        self.log_result("UpdPickable", res.result)
+        req.data.entity_type.entity_type = EntityType.PICKABLE
+        req.data.description = "Updated Pickable"
+        req.data.pose = utils.create_pose2()
+        req.data.pose_reference_frame = "map"
+        req.data.pickable.max_picking_force = 10.0
+        req.data.stamp = self.create_stamp()
+        await self.generic_test_update_entity(req)
+
+    async def test_update_shelf(self):
+        req = UpdEntity.Request()
+        req.entityid = self.shelf_id
+        req.data.entity_type.entity_type = EntityType.SHELF
+        req.data.furniture.shelf.cupboard_id = self.cupboard_id
+        req.data.description = "Updated Shelf"
+        req.data.pose = utils.create_pose2()
+        req.data.pose_reference_frame = "map"
+        req.data.furniture.shelf.height = 1.2
+        req.data.stamp = self.create_stamp()
+        await self.generic_test_update_entity(req)
+
+    async def test_update_table(self):
+        req = UpdEntity.Request()
+        req.entityid = self.table_id
+        req.data.entity_type.entity_type = EntityType.TABLE
+        req.data.description = "Updated Table"
+        req.data.pose = utils.create_pose2()
+        req.data.pose_reference_frame = "map"
+        req.data.furniture.table.height = 0.75
+        req.data.stamp = self.create_stamp()
+        await self.generic_test_update_entity(req)
 
     async def test_update_pose(self):
         req = UpdPose.Request()
         req.entityid = self.entity_id
-        req.pose = create_pose()
+        req.pose = utils.create_pose2()
         req.pose_reference_frame = "map"
         req.stamp = self.create_stamp()
         res = await self.call_service(UpdPose, f"{self.prefix}/upd_pose", req)
@@ -373,14 +311,14 @@ class DatabaseServiceTester(Node):
 
     async def test_furniture_update_pickable(self):
         req = UpdReference.Request()
-        req.parentid = self.shelf_id
+        req.parentid = self.table_id
         req.childid = self.pickable_id
         req.delete_ref = False  # set to True to test deletion
         req.stamp = self.create_stamp()
         res = await self.call_service(
             UpdReference, f"{self.prefix}/furniture_update_pickable", req
         )
-        self.log_result("UpdReference", res.result)
+        self.log_result("UpdReference: furniture_update_pickable", res.result)
 
     async def test_update_shape(self):
         req = UpdShape.Request()
@@ -390,28 +328,20 @@ class DatabaseServiceTester(Node):
         res = await self.call_service(UpdShape, f"{self.prefix}/upd_shape", req)
         self.log_result("UpdShape", res.result)
 
-    async def test_update_shelf(self):
-        req = UpdShelf.Request()
-        req.entityid = self.shelf_id
-        req.cupboard_id = self.cupboard_id
-        req.description = "Updated Shelf"
-        req.pose = create_pose()
-        req.pose_reference_frame = "map"
-        req.height = 1.2
-        req.stamp = self.create_stamp()
-        res = await self.call_service(UpdShelf, f"{self.prefix}/upd_shelf", req)
-        self.log_result("UpdShelf", res.result)
-
-    async def test_update_table(self):
-        req = UpdTable.Request()
-        req.entityid = self.table_id
-        req.description = "Updated Table"
-        req.pose = create_pose()
-        req.pose_reference_frame = "map"
-        req.height = 0.75
-        req.stamp = self.create_stamp()
-        res = await self.call_service(UpdTable, f"{self.prefix}/upd_table", req)
-        self.log_result("UpdTable", res.result)
+    async def test_del_entities(self):
+        req = DelEntities.Request()
+        req.entityids = [
+            self.entity_id,
+            self.cupboard_id,
+            self.door_id,
+            self.furniture_id,
+            self.human_id,
+            self.pickable_id,
+            self.shelf_id,
+            self.table_id,
+        ]
+        res = await self.call_service(DelEntities, f"{self.prefix}/del_entities", req)
+        self.log_result("DelEntities", res.result)
 
     async def run_next_test(self):
         if self.current_test >= len(self.test_services):

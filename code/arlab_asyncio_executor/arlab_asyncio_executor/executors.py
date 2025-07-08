@@ -254,7 +254,7 @@ class AsyncIOExecutor(Executor):
         if e is not None:
             # Cleanup
             self.shutdown(shutdown_timeout)
-            raise e
+            raise e from e
 
     def shutdown(self, timeout_sec=None):
         result = super().shutdown(timeout_sec)

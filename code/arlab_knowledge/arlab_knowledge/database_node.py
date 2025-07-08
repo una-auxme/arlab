@@ -40,7 +40,7 @@ from arlab_knowledge_interfaces.srv import (
 from geometry_msgs.msg import Pose
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.node import Node
-from sqlalchemy import delete, select
+from sqlalchemy import and_, delete, or_, select
 from sqlalchemy.exc import DBAPIError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import joinedload
@@ -376,15 +376,17 @@ class DatabaseNode(Node):
                 response.result.result_type = Result.ERROR_INVALID_INPUT
                 response.result.error = "Unknown entity type"
             else:
-                stmt = select(entity_class.id).order_by(
+                stmt = select(entity_class.id, entity_class.stamp).order_by(
                     entity_class.stamp_sec, entity_class.stamp_nanosec
                 )
                 result = await session.execute(stmt)
-                entities = result.scalars().all()
-                response.entities = entities
-                if len(entities) > 0:
-                    latest = entities[len(entities) - 1]
-                    response.stamp = latest
+                entity_ids = result.columns("id").scalars().all()
+                rows = result.all()
+                print(entity_ids)
+                response.entities = entity_ids
+                if len(rows) > 0:
+                    latest = rows[len(rows) - 1]
+                    response.stamp = latest[1].time
         self.get_logger().info("Incoming request:")
         return response
 
@@ -419,13 +421,13 @@ class DatabaseNode(Node):
         response: GetPose.Response,
     ):
         async with self.Session(response) as session:
-            stmt = select(Pose).where(Entity.id == request.entityid)
+            stmt = select(Entity.pose).where(Entity.id == request.entityid)
             result = await session.execute(stmt)
             pose = result.scalar_one_or_none()
             if pose is None:
                 response.result.result_type = Result.ERROR_ID_NOT_FOUND
             else:
-                response.pose = pose
+                response.pose = pose.pose
         return response
 
     async def get_description_callback(
@@ -854,18 +856,22 @@ class DatabaseNode(Node):
         async with self.Session(response) as session:
             map = await session.execute(
                 select(Map)
-                .select(
-                    request.min_age_stamp.sec > Map.header_stamp_sec
-                    or (
-                        request.min_age_stamp.sec == Map.header_stamp_sec
-                        and request.min_age_stamp.nanosec >= Map.header_stamp_nanosec
+                .filter(
+                    or_(
+                        request.min_age_stamp.sec > Map.header_stamp_sec,
+                        and_(
+                            request.min_age_stamp.sec == Map.header_stamp_sec,
+                            request.min_age_stamp.nanosec >= Map.header_stamp_nanosec,
+                        ),
                     )
                 )
-                .select(
-                    request.max_age_stamp.sec < Map.header_stamp_sec
-                    or (
-                        request.max_age_stamp.sec == Map.header_stamp_sec
-                        and request.max_age_stamp.nanosec <= Map.header_stamp_nanosec
+                .filter(
+                    or_(
+                        request.max_age_stamp.sec < Map.header_stamp_sec,
+                        and_(
+                            request.max_age_stamp.sec == Map.header_stamp_sec,
+                            request.max_age_stamp.nanosec <= Map.header_stamp_nanosec,
+                        ),
                     )
                 )
                 .order_by(Map.header_stamp_sec, Map.header_stamp_nanosec)

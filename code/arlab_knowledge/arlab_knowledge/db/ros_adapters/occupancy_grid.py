@@ -1,16 +1,13 @@
 import array
 from typing import Tuple
 
-import numpy as np
 from nav_msgs.msg import OccupancyGrid
 
 
-class OccupancyGridData(OccupancyGrid):
+class OccupancyGridData:
     def __init__(self, grid: OccupancyGrid):
         super().__init__()
-        self.header = grid.header
-        self.info = grid.info
-        self.data = np.array(grid.data, dtype=np.int8)
+        self.grid = grid
 
     @classmethod
     def _generate(
@@ -74,17 +71,17 @@ class OccupancyGridData(OccupancyGrid):
         float,
         bytes,
     ]:
-        origin_pos = self.info.origin.position
-        origin_quat = self.info.origin.orientation
+        origin_pos = self.grid.info.origin.position
+        origin_quat = self.grid.info.origin.orientation
         return (
-            self.header.stamp.nanosec,
-            self.header.stamp.sec,
-            self.header.frame_id,
-            self.info.map_load_time.nanosec,
-            self.info.map_load_time.sec,
-            self.info.resolution,
-            self.info.width,
-            self.info.height,
+            self.grid.header.stamp.nanosec,
+            self.grid.header.stamp.sec,
+            self.grid.header.frame_id,
+            self.grid.info.map_load_time.nanosec,
+            self.grid.info.map_load_time.sec,
+            self.grid.info.resolution,
+            self.grid.info.width,
+            self.grid.info.height,
             origin_pos.x,
             origin_pos.y,
             origin_pos.z,
@@ -92,5 +89,5 @@ class OccupancyGridData(OccupancyGrid):
             origin_quat.y,
             origin_quat.z,
             origin_quat.w,
-            self.data.tobytes(),
+            self.grid.data.tobytes(),
         )

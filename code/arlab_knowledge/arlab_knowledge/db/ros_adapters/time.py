@@ -3,11 +3,10 @@ from typing import Tuple
 from builtin_interfaces.msg import Time
 
 
-class TimeData(Time):
+class TimeData:
     def __init__(self, time: Time):
         super().__init__()
-        self.nanosec = time.nanosec
-        self.sec = time.sec
+        self.time = time
 
     @classmethod
     def _generate(cls, nanosec: int, sec: int) -> "TimeData":
@@ -20,4 +19,4 @@ class TimeData(Time):
     def __composite_values__(
         self,
     ) -> Tuple[int, int]:
-        return self.nanosec, self.sec
+        return self.time.nanosec, self.time.sec

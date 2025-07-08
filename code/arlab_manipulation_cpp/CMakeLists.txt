@@ -12,16 +12,16 @@ find_package(moveit_ros_planning_interface REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(moveit_visual_tools REQUIRED)
 
-add_executable(Ur5MoveToGoal src/Ur5MoveToGoal.cpp)
+add_executable(PoseSubscriber src/PoseSubscriber.cpp)
 
-target_include_directories(Ur5MoveToGoal PUBLIC
+target_include_directories(PoseSubscriber PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include/${PROJECT_NAME}>)
 
-target_compile_features(Ur5MoveToGoal PUBLIC cxx_std_17)
+target_compile_features(PoseSubscriber PUBLIC cxx_std_17)
 
 ament_target_dependencies(
-  Ur5MoveToGoal
+  PoseSubscriber
   moveit_ros_planning_interface
   moveit_visual_tools
   rclcpp
@@ -29,7 +29,7 @@ ament_target_dependencies(
   std_msgs
 )
 
-install(TARGETS Ur5MoveToGoal
+install(TARGETS PoseSubscriber
   DESTINATION lib/${PROJECT_NAME})
 
 add_executable(moveit_main src/moveit_main.cpp src/utils.cpp)

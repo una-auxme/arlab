@@ -17,9 +17,9 @@ class GetGrippingForce(Node):
             "flasche": 8.0,
             "tasse": 4.0,
             "milch": 7.5,
-            "zahnpastatube": 3.0,
-            "chipsdose": 3.0,
-            "joghurtbecher": 2.0
+            "zahnpasta": 3.0,
+            "pringles": 3.0,
+            "joghurt": 2.0
         }
 
         self.default_force = 5.0

@@ -20,9 +20,9 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
-            "MoveItGoalPublisher = arlab_manipulation.MoveItGoalPublisher:main",
+            "PosePublisher = arlab_manipulation.PosePublisher:main",
             "GetGrippingForce = arlab_manipulation.GetGrippingForce:main",
+            "Test = arlab_manipulation.Test:main",
         ],
     },
 )
-

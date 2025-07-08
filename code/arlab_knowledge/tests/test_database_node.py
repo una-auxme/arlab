@@ -17,6 +17,17 @@ from arlab_knowledge_interfaces.srv import (
     GetPose,
     GetReference,
     GetShape,
+    UpdCupboard,
+    UpdDoor,
+    UpdEntity,
+    UpdFurniture,
+    UpdHuman,
+    UpdPickable,
+    UpdPose,
+    UpdReference,
+    UpdShape,
+    UpdShelf,
+    UpdTable,
 )
 from geometry_msgs.msg import Point, Pose, Quaternion
 from nav_msgs.msg import OccupancyGrid
@@ -53,6 +64,28 @@ class DatabaseServiceTester(Node):
             self.test_get_reference,
             self.test_get_shape,
             self.test_get_map,
+            self.test_update_entity,
+            self.test_update_cupboard,
+            self.test_update_door,
+            self.test_update_furniture,
+            self.test_update_human,
+            self.test_update_pickable,
+            self.test_update_pose,
+            self.test_update_reference,
+            self.test_update_shape,
+            self.test_update_shelf,
+            self.test_update_table,
+            self.test_update_entity,
+            self.test_update_cupboard,
+            self.test_update_door,
+            self.test_update_furniture,
+            self.test_update_human,
+            self.test_update_pickable,
+            self.test_update_pose,
+            self.test_update_reference,
+            self.test_update_shape,
+            self.test_update_shelf,
+            self.test_update_table,
         ]
 
         self.entity_id = 0
@@ -64,6 +97,11 @@ class DatabaseServiceTester(Node):
         self.pickable_id = 0
         self.shelf_id = 0
         self.table_id = 0
+
+        # 🟡 Replace these with actual IDs from your database
+        self.entity_id = 1
+        self.parent_id = 1
+        self.child_id = 2
 
         self.current_test = 0
         self.timer = self.create_timer(0.01, self.run_next_test)
@@ -298,6 +336,119 @@ class DatabaseServiceTester(Node):
             f"[GetMap] → has_data: {has_data} ({res.result.result_type}: "
             f"{res.result.error})"
         )
+
+    async def test_update_entity(self):
+        req = UpdEntity.Request()
+        req.entityid = self.entity_id
+        req.description = "Updated Entity"
+        req.pose = create_pose()
+        req.pose_reference_frame = "map"
+        req.stamp = self.create_stamp()
+        res = await self.call_service(UpdEntity, f"{self.prefix}/upd_entity", req)
+        self.get_logger().info(f"[UpdEntity] → {res.result.result_type}")
+
+    async def test_update_cupboard(self):
+        req = UpdCupboard.Request()
+        req.entityid = self.entity_id
+        req.description = "Updated Cupboard"
+        req.pose = create_pose()
+        req.pose_reference_frame = "map"
+        req.height = 2.0
+        req.width = 0.7
+        req.open = "true"
+        req.stamp = self.create_stamp()
+        res = await self.call_service(UpdCupboard, f"{self.prefix}/upd_cupboard", req)
+        self.get_logger().info(f"[UpdCupboard] → {res.result.result_type}")
+
+    async def test_update_door(self):
+        req = UpdDoor.Request()
+        req.entityid = self.entity_id
+        req.description = "Updated Door"
+        req.pose = create_pose()
+        req.pose_reference_frame = "map"
+        req.stamp = self.create_stamp()
+        res = await self.call_service(UpdDoor, f"{self.prefix}/upd_door", req)
+        self.get_logger().info(f"[UpdDoor] → {res.result.result_type}")
+
+    async def test_update_furniture(self):
+        req = UpdFurniture.Request()
+        req.entityid = self.entity_id
+        req.description = "Updated Furniture"
+        req.pose = create_pose()
+        req.pose_reference_frame = "map"
+        req.stamp = self.create_stamp()
+        res = await self.call_service(UpdFurniture, f"{self.prefix}/upd_furniture", req)
+        self.get_logger().info(f"[UpdFurniture] → {res.result.result_type}")
+
+    async def test_update_human(self):
+        req = UpdHuman.Request()
+        req.entityid = self.entity_id
+        req.description = "Updated Human"
+        req.pose = create_pose()
+        req.pose_reference_frame = "map"
+        req.shape = "tall"
+        req.stamp = self.create_stamp()
+        res = await self.call_service(UpdHuman, f"{self.prefix}/upd_human", req)
+        self.get_logger().info(f"[UpdHuman] → {res.result.result_type}")
+
+    async def test_update_pickable(self):
+        req = UpdPickable.Request()
+        req.entityid = self.entity_id
+        req.description = "Updated Pickable"
+        req.pose = create_pose()
+        req.pose_reference_frame = "map"
+        req.max_picking_force = 10.0
+        req.stamp = self.create_stamp()
+        res = await self.call_service(UpdPickable, f"{self.prefix}/upd_pickable", req)
+        self.get_logger().info(f"[UpdPickable] → {res.result.result_type}")
+
+    async def test_update_pose(self):
+        req = UpdPose.Request()
+        req.entityid = self.entity_id
+        req.pose = create_pose()
+        req.pose_reference_frame = "map"
+        req.stamp = self.create_stamp()
+        res = await self.call_service(UpdPose, f"{self.prefix}/upd_pose", req)
+        self.get_logger().info(f"[UpdPose] → {res.result.result_type}")
+
+    async def test_update_reference(self):
+        req = UpdReference.Request()
+        req.parentid = self.parent_id
+        req.childid = self.child_id
+        req.delete_ref = False  # set to True to test deletion
+        req.stamp = self.create_stamp()
+        res = await self.call_service(UpdReference, f"{self.prefix}/del_reference", req)
+        self.get_logger().info(f"[UpdReference] → {res.result.result_type}")
+
+    async def test_update_shape(self):
+        req = UpdShape.Request()
+        req.entityid = self.entity_id
+        req.shape = "box_1x1x1"
+        req.stamp = self.create_stamp()
+        res = await self.call_service(UpdShape, f"{self.prefix}/upd_shape", req)
+        self.get_logger().info(f"[UpdShape] → {res.result.result_type}")
+
+    async def test_update_shelf(self):
+        req = UpdShelf.Request()
+        req.entityid = self.entity_id
+        req.description = "Updated Shelf"
+        req.pose = create_pose()
+        req.pose_reference_frame = "map"
+        req.height = 1.2
+        req.stamp = self.create_stamp()
+        res = await self.call_service(UpdShelf, f"{self.prefix}/upd_shelf", req)
+        self.get_logger().info(f"[UpdShelf] → {res.result.result_type}")
+
+    async def test_update_table(self):
+        req = UpdTable.Request()
+        req.entityid = self.entity_id
+        req.description = "Updated Table"
+        req.pose = create_pose()
+        req.pose_reference_frame = "map"
+        req.height = 0.75
+        req.stamp = self.create_stamp()
+        res = await self.call_service(UpdTable, f"{self.prefix}/upd_table", req)
+        self.get_logger().info(f"[UpdTable] → {res.result.result_type}")
 
     async def run_next_test(self):
         if self.current_test >= len(self.test_services):

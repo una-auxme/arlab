@@ -882,7 +882,7 @@ class DatabaseNode(Node):
             if map is None:
                 response.result.result_type = Result.ERROR_ID_NOT_FOUND
                 return response
-        response.grid = map.grid.grid
+            response.grid = map.grid.grid
         return response
 
     def destroy_node(self):

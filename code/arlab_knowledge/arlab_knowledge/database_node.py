@@ -255,6 +255,22 @@ class DatabaseNode(Node):
                     response.stamp = latest[1].time
         return response
 
+    async def del_entities_callback(
+        self, request: DelEntities.Request, response: DelEntities.Response
+    ):
+        async with self.Session(response) as session:
+            entity_ids = request.entityids
+            if not entity_ids:
+                response.result.result_type = Result.ERROR_INVALID_INPUT
+                response.result.error = "No entity IDs provided"
+                return response
+            stmt = delete(Entity).where(Entity.id.in_(entity_ids))
+            result = await session.execute(stmt)
+            if result.rowcount == 0:
+                response.result.result_type = Result.ERROR_ID_NOT_FOUND
+            await session.commit()
+        return response
+
     async def get_entity_callback(
         self, request: GetEntity.Request, response: GetEntity.Response
     ):
@@ -402,21 +418,6 @@ class DatabaseNode(Node):
             furniture.stamp = TimeData(request.stamp)
             pickable.stamp = TimeData(request.stamp)
             await session.commit()
-        return response
-
-    async def del_entities_callback(
-        self, request: DelEntities.Request, response: DelEntities.Response
-    ):
-        async with self.Session(response) as session:
-            entity_ids = request.entityids
-            if not entity_ids:
-                response.result.result_type = Result.ERROR_INVALID_INPUT
-                response.result.error = "No entity IDs provided"
-                return response
-            stmt = delete(Entity).where(Entity.id.in_(entity_ids))
-            result = await session.execute(stmt)
-            if result.rowcount == 0:
-                response.result.result_type = Result.ERROR_ID_NOT_FOUND
         return response
 
     async def furniture_get_pickable_callback(

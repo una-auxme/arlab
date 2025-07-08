@@ -1,6 +1,5 @@
-import time
-
 import rclpy
+import rclpy.clock
 from arlab_knowledge_interfaces.msg import EntityType
 from arlab_knowledge_interfaces.srv import (
     AddCupboard,
@@ -19,8 +18,8 @@ from arlab_knowledge_interfaces.srv import (
     GetReference,
     GetShape,
 )
-from builtin_interfaces.msg import Time
 from geometry_msgs.msg import Point, Pose, Quaternion
+from nav_msgs.msg import OccupancyGrid
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.node import Node
 
@@ -30,13 +29,6 @@ def create_pose():
         position=Point(x=1.0, y=2.0, z=0.5),
         orientation=Quaternion(x=0.0, y=0.0, z=0.0, w=1.0),
     )
-
-
-def create_stamp():
-    now = time.time()
-    sec = int(now)
-    nanosec = int((now - sec) * 1e9)
-    return Time(sec=sec, nanosec=nanosec)
 
 
 class DatabaseServiceTester(Node):
@@ -54,7 +46,7 @@ class DatabaseServiceTester(Node):
             self.test_add_shelf,
             self.test_add_table,
             self.test_add_pickable,
-            # self.test_add_map,  # ggf. später, wenn OccupancyGrid-Daten generiert werden
+            self.test_add_map,
             self.test_get_description,
             self.test_get_entities,
             self.test_get_pose,
@@ -76,6 +68,9 @@ class DatabaseServiceTester(Node):
         self.current_test = 0
         self.timer = self.create_timer(0.01, self.run_next_test)
 
+    def create_stamp(self):
+        return self.get_clock().now().to_msg()
+
     async def call_service(self, srv_type, service_name, request):
         client = self.create_client(
             srv_type, service_name, callback_group=self.service_client_group
@@ -91,7 +86,7 @@ class DatabaseServiceTester(Node):
         request.description = "TestEntity"
         request.pose = create_pose()
         request.pose_reference_frame = "map"
-        request.stamp = create_stamp()
+        request.stamp = self.create_stamp()
 
         response = await self.call_service(
             AddEntity, f"{self.prefix}/add_entity", request
@@ -107,14 +102,14 @@ class DatabaseServiceTester(Node):
         request.description = "TestFurniture"
         request.pose = create_pose()
         request.pose_reference_frame = "map"
-        request.stamp = create_stamp()
+        request.stamp = self.create_stamp()
 
         response = await self.call_service(
             AddFurniture, f"{self.prefix}/add_furniture", request
         )
         self.furniture_id = response.entityid
         self.get_logger().info(
-            f"AddEntity response: {response.entityid} ({response.result.result_type}: "
+            f"AddFurniture response: {response.entityid} ({response.result.result_type}: "
             f"{response.result.error})"
         )
 
@@ -123,14 +118,14 @@ class DatabaseServiceTester(Node):
         request.description = "TestHuman"
         request.pose = create_pose()
         request.pose_reference_frame = "map"
-        request.stamp = create_stamp()
+        request.stamp = self.create_stamp()
 
         response = await self.call_service(
             AddHuman, f"{self.prefix}/add_human", request
         )
         self.human_id = response.entityid
         self.get_logger().info(
-            f"AddEntity response: {response.entityid} ({response.result.result_type}: "
+            f"AddHuman response: {response.entityid} ({response.result.result_type}: "
             f"{response.result.error})"
         )
 
@@ -141,12 +136,12 @@ class DatabaseServiceTester(Node):
         request.pose_reference_frame = "map"
         request.width = 0.9
         request.open = "true"
-        request.stamp = create_stamp()
+        request.stamp = self.create_stamp()
 
         response = await self.call_service(AddDoor, f"{self.prefix}/add_door", request)
         self.door_id = response.entityid
         self.get_logger().info(
-            f"AddEntity response: {response.entityid} ({response.result.result_type}: "
+            f"AddDoor response: {response.entityid} ({response.result.result_type}: "
             f"{response.result.error})"
         )
 
@@ -158,14 +153,14 @@ class DatabaseServiceTester(Node):
         request.height = 1.8
         request.width = 0.8
         request.open = "false"
-        request.stamp = create_stamp()
+        request.stamp = self.create_stamp()
 
         response = await self.call_service(
             AddCupboard, f"{self.prefix}/add_cupboard", request
         )
         self.cupboard_id = response.entityid
         self.get_logger().info(
-            f"AddEntity response: {response.entityid} ({response.result.result_type}: "
+            f"AddCupboard response: {response.entityid} ({response.result.result_type}: "
             f"{response.result.error})"
         )
 
@@ -177,14 +172,14 @@ class DatabaseServiceTester(Node):
         request.pose_reference_frame = "map"
         request.width = 0.5
         request.height = 0.7
-        request.stamp = create_stamp()
+        request.stamp = self.create_stamp()
 
         response = await self.call_service(
             AddShelf, f"{self.prefix}/add_shelf", request
         )
         self.shelf_id = response.entityid
         self.get_logger().info(
-            f"AddEntity response: {response.entityid} ({response.result.result_type}: "
+            f"AddShelf response: {response.entityid} ({response.result.result_type}: "
             f"{response.result.error})"
         )
 
@@ -194,14 +189,14 @@ class DatabaseServiceTester(Node):
         request.pose = create_pose()
         request.pose_reference_frame = "map"
         request.height = 0.75
-        request.stamp = create_stamp()
+        request.stamp = self.create_stamp()
 
         response = await self.call_service(
             AddTable, f"{self.prefix}/add_table", request
         )
         self.table_id = response.entityid
         self.get_logger().info(
-            f"AddEntity response: {response.entityid} ({response.result.result_type}: "
+            f"AddTable response: {response.entityid} ({response.result.result_type}: "
             f"{response.result.error})"
         )
 
@@ -211,14 +206,26 @@ class DatabaseServiceTester(Node):
         request.pose = create_pose()
         request.pose_reference_frame = "map"
         request.max_picking_force = 5.0
-        request.stamp = create_stamp()
+        request.stamp = self.create_stamp()
 
         response = await self.call_service(
             AddPickable, f"{self.prefix}/add_pickable", request
         )
         self.pickable_id = response.entityid
         self.get_logger().info(
-            f"AddEntity response: {response.entityid} ({response.result.result_type}: "
+            f"AddPickable response: {response.entityid} ({response.result.result_type}: "
+            f"{response.result.error})"
+        )
+
+    async def test_add_map(self):
+        request = AddMap.Request()
+        request.grid = OccupancyGrid()
+        request.grid.header.stamp = self.create_stamp()
+
+        response = await self.call_service(AddMap, f"{self.prefix}/add_map", request)
+        self.pickable_id = response.mapid
+        self.get_logger().info(
+            f"AddMap response: {response.mapid} ({response.result.result_type}: "
             f"{response.result.error})"
         )
 
@@ -279,9 +286,11 @@ class DatabaseServiceTester(Node):
 
     async def test_get_map(self):
         req = GetMap.Request()
-        now = create_stamp()
+        now = self.create_stamp()
+        max_age_stamp = self.create_stamp()
+        max_age_stamp.sec -= 10
         req.min_age_stamp = now
-        req.max_age_stamp = now
+        req.max_age_stamp = max_age_stamp
         req.backwards_index = 0
         res = await self.call_service(GetMap, f"{self.prefix}/get_map", req)
         has_data = bool(res.grid.data)

@@ -63,7 +63,15 @@ class DatabaseServiceTester(Node):
             self.test_get_map,
         ]
 
-        self.entity_id = 1
+        self.entity_id = 0
+        self.cupboard_id = 0
+        self.door_id = 0
+        self.furniture_id = 0
+        self.human_id = 0
+        self.map_id = 0
+        self.pickable_id = 0
+        self.shelf_id = 0
+        self.table_id = 0
 
         self.current_test = 0
         self.timer = self.create_timer(0.01, self.run_next_test)
@@ -88,6 +96,7 @@ class DatabaseServiceTester(Node):
         response = await self.call_service(
             AddEntity, f"{self.prefix}/add_entity", request
         )
+        self.entity_id = response.entityid
         self.get_logger().info(
             f"AddEntity response: {response.entityid} ({response.result.result_type}: "
             f"{response.result.error})"
@@ -103,6 +112,7 @@ class DatabaseServiceTester(Node):
         response = await self.call_service(
             AddFurniture, f"{self.prefix}/add_furniture", request
         )
+        self.furniture_id = response.entityid
         self.get_logger().info(
             f"AddEntity response: {response.entityid} ({response.result.result_type}: "
             f"{response.result.error})"
@@ -118,6 +128,7 @@ class DatabaseServiceTester(Node):
         response = await self.call_service(
             AddHuman, f"{self.prefix}/add_human", request
         )
+        self.human_id = response.entityid
         self.get_logger().info(
             f"AddEntity response: {response.entityid} ({response.result.result_type}: "
             f"{response.result.error})"
@@ -133,6 +144,7 @@ class DatabaseServiceTester(Node):
         request.stamp = create_stamp()
 
         response = await self.call_service(AddDoor, f"{self.prefix}/add_door", request)
+        self.door_id = response.entityid
         self.get_logger().info(
             f"AddEntity response: {response.entityid} ({response.result.result_type}: "
             f"{response.result.error})"
@@ -151,6 +163,7 @@ class DatabaseServiceTester(Node):
         response = await self.call_service(
             AddCupboard, f"{self.prefix}/add_cupboard", request
         )
+        self.cupboard_id = response.entityid
         self.get_logger().info(
             f"AddEntity response: {response.entityid} ({response.result.result_type}: "
             f"{response.result.error})"
@@ -158,6 +171,7 @@ class DatabaseServiceTester(Node):
 
     async def test_add_shelf(self):
         request = AddShelf.Request()
+        request.cupboard_id = self.cupboard_id
         request.description = "TestShelf"
         request.pose = create_pose()
         request.pose_reference_frame = "map"
@@ -168,6 +182,7 @@ class DatabaseServiceTester(Node):
         response = await self.call_service(
             AddShelf, f"{self.prefix}/add_shelf", request
         )
+        self.shelf_id = response.entityid
         self.get_logger().info(
             f"AddEntity response: {response.entityid} ({response.result.result_type}: "
             f"{response.result.error})"
@@ -184,6 +199,7 @@ class DatabaseServiceTester(Node):
         response = await self.call_service(
             AddTable, f"{self.prefix}/add_table", request
         )
+        self.table_id = response.entityid
         self.get_logger().info(
             f"AddEntity response: {response.entityid} ({response.result.result_type}: "
             f"{response.result.error})"
@@ -200,6 +216,7 @@ class DatabaseServiceTester(Node):
         response = await self.call_service(
             AddPickable, f"{self.prefix}/add_pickable", request
         )
+        self.pickable_id = response.entityid
         self.get_logger().info(
             f"AddEntity response: {response.entityid} ({response.result.result_type}: "
             f"{response.result.error})"
@@ -212,7 +229,9 @@ class DatabaseServiceTester(Node):
             GetDescription, f"{self.prefix}/get_description", req
         )
         self.get_logger().info(
-            f"[GetDescription] ID: {req.entityid} → '{res.description}' ({res.result.result_type})"
+            f"[GetDescription] ID: {req.entityid} → '{res.description}' "
+            f"({res.result.result_type}: "
+            f"{res.result.error})"
         )
 
     async def test_get_entities(self):
@@ -220,7 +239,9 @@ class DatabaseServiceTester(Node):
         req.entity_type.entity_type = EntityType.ENTITY
         res = await self.call_service(GetEntities, f"{self.prefix}/get_entities", req)
         self.get_logger().info(
-            f"[GetEntities] Found: {res.entities} ({res.result.result_type})"
+            f"[GetEntities] Found: {res.entities} "
+            f"({res.result.result_type}: "
+            f"{res.result.error})"
         )
 
     async def test_get_pose(self):
@@ -229,7 +250,9 @@ class DatabaseServiceTester(Node):
         res = await self.call_service(GetPose, f"{self.prefix}/get_pose", req)
         pos = res.pose.position
         self.get_logger().info(
-            f"[GetPose] ID: {req.entityid} → (x={pos.x}, y={pos.y}, z={pos.z}) in '{res.frame_id}' ({res.result.result_type})"
+            f"[GetPose] ID: {req.entityid} → (x={pos.x}, y={pos.y}, z={pos.z}) in "
+            f"'{res.frame_id}' ({res.result.result_type}: "
+            f"{res.result.error})"
         )
 
     async def test_get_reference(self):
@@ -239,7 +262,9 @@ class DatabaseServiceTester(Node):
             GetReference, f"{self.prefix}/furniture_get_pickable", req
         )
         self.get_logger().info(
-            f"[GetReference] ID: {req.entityid} → refs: {res.entities} ({res.result.result_type})"
+            f"[GetReference] ID: {req.entityid} → refs: {res.entities} "
+            f"({res.result.result_type}: "
+            f"{res.result.error})"
         )
 
     async def test_get_shape(self):
@@ -247,7 +272,9 @@ class DatabaseServiceTester(Node):
         req.entityid = self.entity_id
         res = await self.call_service(GetShape, f"{self.prefix}/get_shape", req)
         self.get_logger().info(
-            f"[GetShape] ID: {req.entityid} → shape: {res.shape} ({res.result.result_type})"
+            f"[GetShape] ID: {req.entityid} → shape: {res.shape} "
+            f"({res.result.result_type}: "
+            f"{res.result.error})"
         )
 
     async def test_get_map(self):
@@ -259,7 +286,8 @@ class DatabaseServiceTester(Node):
         res = await self.call_service(GetMap, f"{self.prefix}/get_map", req)
         has_data = bool(res.grid.data)
         self.get_logger().info(
-            f"[GetMap] → has_data: {has_data} ({res.result.result_type})"
+            f"[GetMap] → has_data: {has_data} ({res.result.result_type}: "
+            f"{res.result.error})"
         )
 
     async def run_next_test(self):

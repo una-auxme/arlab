@@ -119,6 +119,14 @@ class DatabaseServiceTester(Node):
         await future
         return future.result()
 
+    def log_result(self, name, result):
+        if result.result_type == result.SUCCESS:
+            self.get_logger().info(f"[{name}] ✅ SUCCESS")
+        else:
+            self.get_logger().error(
+                f"[{name}] ❌ ERROR {result.result_type}: {result.error}"
+            )
+
     async def test_add_entity(self):
         request = AddEntity.Request()
         request.description = "TestEntity"
@@ -134,6 +142,7 @@ class DatabaseServiceTester(Node):
             f"AddEntity response: {response.entityid} ({response.result.result_type}: "
             f"{response.result.error})"
         )
+        self.log_result("AddEntity", response.result)
 
     async def test_add_furniture(self):
         request = AddFurniture.Request()
@@ -150,6 +159,7 @@ class DatabaseServiceTester(Node):
             f"AddFurniture response: {response.entityid} ({response.result.result_type}: "
             f"{response.result.error})"
         )
+        self.log_result("AddFurniture", response.result)
 
     async def test_add_human(self):
         request = AddHuman.Request()
@@ -166,6 +176,7 @@ class DatabaseServiceTester(Node):
             f"AddHuman response: {response.entityid} ({response.result.result_type}: "
             f"{response.result.error})"
         )
+        self.log_result("AddHuman", response.result)
 
     async def test_add_door(self):
         request = AddDoor.Request()
@@ -182,6 +193,7 @@ class DatabaseServiceTester(Node):
             f"AddDoor response: {response.entityid} ({response.result.result_type}: "
             f"{response.result.error})"
         )
+        self.log_result("AddDoor", response.result)
 
     async def test_add_cupboard(self):
         request = AddCupboard.Request()
@@ -201,6 +213,7 @@ class DatabaseServiceTester(Node):
             f"AddCupboard response: {response.entityid} ({response.result.result_type}: "
             f"{response.result.error})"
         )
+        self.log_result("AddCupboard", response.result)
 
     async def test_add_shelf(self):
         request = AddShelf.Request()
@@ -220,6 +233,7 @@ class DatabaseServiceTester(Node):
             f"AddShelf response: {response.entityid} ({response.result.result_type}: "
             f"{response.result.error})"
         )
+        self.log_result("AddShelf", response.result)
 
     async def test_add_table(self):
         request = AddTable.Request()
@@ -237,6 +251,7 @@ class DatabaseServiceTester(Node):
             f"AddTable response: {response.entityid} ({response.result.result_type}: "
             f"{response.result.error})"
         )
+        self.log_result("AddTable", response.result)
 
     async def test_add_pickable(self):
         request = AddPickable.Request()
@@ -254,6 +269,7 @@ class DatabaseServiceTester(Node):
             f"AddPickable response: {response.entityid} ({response.result.result_type}: "
             f"{response.result.error})"
         )
+        self.log_result("AddPickable", response.result)
 
     async def test_add_map(self):
         request = AddMap.Request()
@@ -266,6 +282,7 @@ class DatabaseServiceTester(Node):
             f"AddMap response: {response.mapid} ({response.result.result_type}: "
             f"{response.result.error})"
         )
+        self.log_result("AddMap", response.result)
 
     async def test_get_description(self):
         req = GetDescription.Request()
@@ -278,6 +295,7 @@ class DatabaseServiceTester(Node):
             f"({res.result.result_type}: "
             f"{res.result.error})"
         )
+        self.log_result("GetDescription", res.result)
 
     async def test_get_entities(self):
         req = GetEntities.Request()
@@ -288,6 +306,7 @@ class DatabaseServiceTester(Node):
             f"({res.result.result_type}: "
             f"{res.result.error})"
         )
+        self.log_result("GetEntities", res.result)
 
     async def test_get_pose(self):
         req = GetPose.Request()
@@ -299,6 +318,7 @@ class DatabaseServiceTester(Node):
             f"'{res.frame_id}' ({res.result.result_type}: "
             f"{res.result.error})"
         )
+        self.log_result("GetPose", res.result)
 
     async def test_get_reference(self):
         req = GetReference.Request()
@@ -311,6 +331,7 @@ class DatabaseServiceTester(Node):
             f"({res.result.result_type}: "
             f"{res.result.error})"
         )
+        self.log_result("GetReference", res.result)
 
     async def test_get_shape(self):
         req = GetShape.Request()
@@ -321,6 +342,7 @@ class DatabaseServiceTester(Node):
             f"({res.result.result_type}: "
             f"{res.result.error})"
         )
+        self.log_result("GetShape", res.result)
 
     async def test_get_map(self):
         req = GetMap.Request()
@@ -336,6 +358,7 @@ class DatabaseServiceTester(Node):
             f"[GetMap] → has_data: {has_data} ({res.result.result_type}: "
             f"{res.result.error})"
         )
+        self.log_result("GetMap", res.result)
 
     async def test_update_entity(self):
         req = UpdEntity.Request()
@@ -346,6 +369,7 @@ class DatabaseServiceTester(Node):
         req.stamp = self.create_stamp()
         res = await self.call_service(UpdEntity, f"{self.prefix}/upd_entity", req)
         self.get_logger().info(f"[UpdEntity] → {res.result.result_type}")
+        self.log_result("UpdEntity", res.result)
 
     async def test_update_cupboard(self):
         req = UpdCupboard.Request()
@@ -359,6 +383,7 @@ class DatabaseServiceTester(Node):
         req.stamp = self.create_stamp()
         res = await self.call_service(UpdCupboard, f"{self.prefix}/upd_cupboard", req)
         self.get_logger().info(f"[UpdCupboard] → {res.result.result_type}")
+        self.log_result("UpdCupboard", res.result)
 
     async def test_update_door(self):
         req = UpdDoor.Request()
@@ -369,6 +394,7 @@ class DatabaseServiceTester(Node):
         req.stamp = self.create_stamp()
         res = await self.call_service(UpdDoor, f"{self.prefix}/upd_door", req)
         self.get_logger().info(f"[UpdDoor] → {res.result.result_type}")
+        self.log_result("UpdDoor", res.result)
 
     async def test_update_furniture(self):
         req = UpdFurniture.Request()
@@ -379,6 +405,7 @@ class DatabaseServiceTester(Node):
         req.stamp = self.create_stamp()
         res = await self.call_service(UpdFurniture, f"{self.prefix}/upd_furniture", req)
         self.get_logger().info(f"[UpdFurniture] → {res.result.result_type}")
+        self.log_result("UpdFurniture", res.result)
 
     async def test_update_human(self):
         req = UpdHuman.Request()
@@ -390,6 +417,7 @@ class DatabaseServiceTester(Node):
         req.stamp = self.create_stamp()
         res = await self.call_service(UpdHuman, f"{self.prefix}/upd_human", req)
         self.get_logger().info(f"[UpdHuman] → {res.result.result_type}")
+        self.log_result("UpdHuman", res.result)
 
     async def test_update_pickable(self):
         req = UpdPickable.Request()
@@ -401,6 +429,7 @@ class DatabaseServiceTester(Node):
         req.stamp = self.create_stamp()
         res = await self.call_service(UpdPickable, f"{self.prefix}/upd_pickable", req)
         self.get_logger().info(f"[UpdPickable] → {res.result.result_type}")
+        self.log_result("UpdPickable", res.result)
 
     async def test_update_pose(self):
         req = UpdPose.Request()
@@ -410,6 +439,7 @@ class DatabaseServiceTester(Node):
         req.stamp = self.create_stamp()
         res = await self.call_service(UpdPose, f"{self.prefix}/upd_pose", req)
         self.get_logger().info(f"[UpdPose] → {res.result.result_type}")
+        self.log_result("UpdPose", res.result)
 
     async def test_update_reference(self):
         req = UpdReference.Request()
@@ -419,6 +449,7 @@ class DatabaseServiceTester(Node):
         req.stamp = self.create_stamp()
         res = await self.call_service(UpdReference, f"{self.prefix}/del_reference", req)
         self.get_logger().info(f"[UpdReference] → {res.result.result_type}")
+        self.log_result("UpdReference", res.result)
 
     async def test_update_shape(self):
         req = UpdShape.Request()
@@ -427,6 +458,7 @@ class DatabaseServiceTester(Node):
         req.stamp = self.create_stamp()
         res = await self.call_service(UpdShape, f"{self.prefix}/upd_shape", req)
         self.get_logger().info(f"[UpdShape] → {res.result.result_type}")
+        self.log_result("UpdShape", res.result)
 
     async def test_update_shelf(self):
         req = UpdShelf.Request()
@@ -438,6 +470,7 @@ class DatabaseServiceTester(Node):
         req.stamp = self.create_stamp()
         res = await self.call_service(UpdShelf, f"{self.prefix}/upd_shelf", req)
         self.get_logger().info(f"[UpdShelf] → {res.result.result_type}")
+        self.log_result("UpdShelf", res.result)
 
     async def test_update_table(self):
         req = UpdTable.Request()
@@ -449,6 +482,7 @@ class DatabaseServiceTester(Node):
         req.stamp = self.create_stamp()
         res = await self.call_service(UpdTable, f"{self.prefix}/upd_table", req)
         self.get_logger().info(f"[UpdTable] → {res.result.result_type}")
+        self.log_result("UpdTable", res.result)
 
     async def run_next_test(self):
         if self.current_test >= len(self.test_services):

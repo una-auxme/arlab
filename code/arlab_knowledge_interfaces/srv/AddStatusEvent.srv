@@ -2,6 +2,6 @@
 RobotStatusEvent event
 
 ---
-# id of the newly added event
+# Id of the newly added event
 int64 eventid
 Result result

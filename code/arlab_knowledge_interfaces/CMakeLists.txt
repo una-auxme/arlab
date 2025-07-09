@@ -42,9 +42,11 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Result.msg"
 
   "msg/RobotStatusEvent.msg"
-  "msg/MovementStatus.msg"
-  "msg/ManipulationStatus.msg"
-  "msg/SafetyStatus.msg"
+  "msg/RobotStatus.msg"
+  "msg/StatusType.msg"
+  "msg/StatusMovement.msg"
+  "msg/StatusManipulation.msg"
+  "msg/StatusSafety.msg"
 
   "srv/GetDescription.srv"
   "srv/GetEntities.srv"

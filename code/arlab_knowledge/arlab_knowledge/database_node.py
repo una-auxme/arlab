@@ -49,10 +49,15 @@ prefix = "/arlab/knowledge"
 
 
 class DatabaseNode(Node):
-    """This node provides a service that adds two ints
+    """This node provides services persistently storing knowledge
 
-    The custom service definition can be found in the
-    arlab_template_interfaces.srv folder
+    The main supported classes are:
+    - Entity: An Entity in the world around the robot
+    - Map: A map created by/for the SLAM
+    - RobotStatusEvent: Events from the different subsystems
+
+    The custom service definitions can be found in the
+    arlab_knowledge_interfaces.srv folder
     """
 
     def __init__(self):

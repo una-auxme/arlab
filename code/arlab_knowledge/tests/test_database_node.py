@@ -1,7 +1,7 @@
 import arlab_knowledge.db.entities as entities
 import rclpy
 import rclpy.clock
-import utils
+from arlab_knowledge import test_utils as utils
 from arlab_knowledge_interfaces.msg import EntityType
 from arlab_knowledge_interfaces.srv import (
     AddEntity,

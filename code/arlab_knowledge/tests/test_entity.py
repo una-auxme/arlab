@@ -1,6 +1,5 @@
+from arlab_knowledge import test_utils as utils
 from arlab_knowledge.db.entities.entity import Entity
-
-from . import utils
 
 
 def convert(entity: Entity):

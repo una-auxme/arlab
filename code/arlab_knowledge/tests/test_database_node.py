@@ -2,10 +2,11 @@ import arlab_knowledge.db.entities as entities
 import rclpy
 import rclpy.clock
 from arlab_knowledge import test_utils as utils
-from arlab_knowledge_interfaces.msg import EntityType
+from arlab_knowledge_interfaces.msg import EntityType, StatusType
 from arlab_knowledge_interfaces.srv import (
     AddEntity,
     AddMap,
+    AddStatusEvent,
     DelEntities,
     GetDescription,
     GetEntities,
@@ -13,6 +14,7 @@ from arlab_knowledge_interfaces.srv import (
     GetPose,
     GetReference,
     GetShape,
+    GetStatusEvents,
     UpdEntity,
     UpdPose,
     UpdReference,
@@ -58,6 +60,8 @@ class DatabaseServiceTester(Node):
             self.test_update_shelf,
             self.test_update_table,
             self.test_del_entities,
+            self.test_add_status_event,
+            self.test_get_status_events,
         ]
 
         self.entity_id = 0
@@ -342,6 +346,31 @@ class DatabaseServiceTester(Node):
         ]
         res = await self.call_service(DelEntities, f"{self.prefix}/del_entities", req)
         self.log_result("DelEntities", res.result)
+
+    async def test_add_status_event(self):
+        req = AddStatusEvent.Request()
+        req.event.sender = "TestSender"
+        req.event.stamp = self.create_stamp()
+        req.event.status.is_ok = True
+        req.event.status.status_type.id = StatusType.STATUS_SAFETY
+        res = await self.call_service(
+            AddStatusEvent, f"{self.prefix}/add_status_event", req
+        )
+        self.log_result("AddStatusEvent", res.result)
+
+    async def test_get_status_events(self):
+        req = GetStatusEvents.Request()
+        now = self.create_stamp()
+        max_age_stamp = self.create_stamp()
+        max_age_stamp.sec -= 10
+        req.min_age_stamp = now
+        req.max_age_stamp = max_age_stamp
+        req.status_type.id = StatusType.STATUS_SAFETY
+        res = await self.call_service(
+            GetStatusEvents, f"{self.prefix}/get_status_events", req
+        )
+        self.get_logger().info(f"[GetStatusEvents] Found: {res.events}")
+        self.log_result("GetStatusEvents", res.result)
 
     async def run_next_test(self):
         if self.current_test >= len(self.test_services):

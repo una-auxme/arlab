@@ -2,7 +2,7 @@ from typing import Any, Dict
 
 import rclpy.logging
 from arlab_knowledge_interfaces import msg
-from sqlalchemy import Float, ForeignKey, String
+from sqlalchemy import ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, composite, mapped_column, relationship
 
 import arlab_knowledge.db as db
@@ -160,8 +160,8 @@ class RobotStatusEvent(Base):
 
     stamp: Mapped[TimeData] = composite(
         TimeData._generate,
-        mapped_column("stamp_nanosec", Float),
-        mapped_column("stamp_sec", Float),
+        mapped_column("stamp_nanosec", Integer),
+        mapped_column("stamp_sec", Integer),
     )
 
     sender: Mapped[str] = mapped_column(String(100))

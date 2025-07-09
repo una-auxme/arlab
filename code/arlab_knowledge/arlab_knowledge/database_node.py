@@ -9,6 +9,7 @@ from arlab_knowledge_interfaces.msg import EntityType, Result
 from arlab_knowledge_interfaces.srv import (
     AddEntity,
     AddMap,
+    AddStatusEvent,
     DelEntities,
     GetDescription,
     GetEntities,
@@ -17,6 +18,7 @@ from arlab_knowledge_interfaces.srv import (
     GetPose,
     GetReference,
     GetShape,
+    GetStatusEvents,
     UpdEntity,
     UpdPose,
     UpdReference,
@@ -25,12 +27,13 @@ from arlab_knowledge_interfaces.srv import (
 from geometry_msgs.msg import Pose
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.node import Node
-from sqlalchemy import and_, delete, or_, select
+from sqlalchemy import and_, delete, desc, or_, select
 from sqlalchemy.exc import DBAPIError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import joinedload
 
 import arlab_knowledge.db.entities as entities
+import arlab_knowledge.db.status as status
 from arlab_knowledge.db.base import Base
 from arlab_knowledge.db.entities.entity import Entity
 from arlab_knowledge.db.entities.furniture import (
@@ -44,6 +47,7 @@ from arlab_knowledge.db.map import Map
 from arlab_knowledge.db.ros_adapters.occupancy_grid import OccupancyGridData
 from arlab_knowledge.db.ros_adapters.pose import PoseData
 from arlab_knowledge.db.ros_adapters.time import TimeData
+from arlab_knowledge.db.status import RobotStatus, RobotStatusEvent
 
 prefix = "/arlab/knowledge"
 
@@ -220,6 +224,20 @@ class DatabaseNode(Node):
             callback_group=self.reentrant_callback_group,
         )
 
+        self.create_service(
+            AddStatusEvent,
+            f"{prefix}/add_status_event",
+            self.add_status_event_callback,
+            callback_group=self.reentrant_callback_group,
+        )
+
+        self.create_service(
+            GetStatusEvents,
+            f"{prefix}/get_status_events",
+            self.get_status_events_callback,
+            callback_group=self.reentrant_callback_group,
+        )
+
     @asynccontextmanager
     async def Session(self, response):
         response.result.result_type = Result.SUCCESS
@@ -247,17 +265,19 @@ class DatabaseNode(Node):
             if entity_class is None:
                 response.result.result_type = Result.ERROR_INVALID_INPUT
                 response.result.error = "Unknown entity type"
-            else:
-                stmt = select(entity_class.id, entity_class.stamp).order_by(
-                    entity_class.stamp_sec, entity_class.stamp_nanosec
-                )
-                result = await session.execute(stmt)
-                entity_ids = result.columns("id").scalars().all()
-                rows = result.all()
-                response.entities = entity_ids
-                if len(rows) > 0:
-                    latest = rows[len(rows) - 1]
-                    response.stamp = latest[1].time
+                return response
+            stmt = (
+                select(entity_class.id, entity_class.stamp)
+                .order_by(desc(entity_class.stamp_nanosec))
+                .order_by(desc(entity_class.stamp_sec))
+            )
+            result = await session.execute(stmt)
+            entity_ids = result.columns("id").scalars().all()
+            rows = result.all()
+            response.entities = entity_ids
+            if len(rows) > 0:
+                latest = rows[0]
+                response.stamp = latest[1].time
         return response
 
     async def del_entities_callback(
@@ -525,7 +545,8 @@ class DatabaseNode(Node):
                         ),
                     )
                 )
-                .order_by(Map.header_stamp_sec, Map.header_stamp_nanosec)
+                .order_by(desc(Map.header_stamp_nanosec))
+                .order_by(desc(Map.header_stamp_sec))
                 .offset(request.backwards_index)
                 .limit(1)
             )
@@ -536,9 +557,63 @@ class DatabaseNode(Node):
             response.grid = map.grid.grid
         return response
 
+    async def add_status_event_callback(
+        self, request: AddStatusEvent.Request, response: AddStatusEvent.Response
+    ):
+        async with self.Session(response) as session:
+            event = RobotStatusEvent.from_ros_msg(request.event)
+            async with session.begin():
+                session.add(event)
+            response.eventid = event.id
+        return response
+
     def destroy_node(self):
         asyncio.run(self.db_engine.dispose())
         super().destroy_node()
+
+    async def get_status_events_callback(
+        self, request: GetStatusEvents.Request, response: GetStatusEvents.Response
+    ):
+        async with self.Session(response) as session:
+            status_class = status.status_msg_type_to_class(request.status_type)
+
+            if status_class is None:
+                response.result.result_type = Result.ERROR_INVALID_INPUT
+                response.result.error = "Unknown status type"
+                return response
+
+            events = await session.execute(
+                select(RobotStatusEvent)
+                .join(status_class)
+                .options(joinedload(RobotStatusEvent.status))
+                .filter(
+                    or_(
+                        request.min_age_stamp.sec > RobotStatusEvent.stamp_sec,
+                        and_(
+                            request.min_age_stamp.sec == RobotStatusEvent.stamp_sec,
+                            request.min_age_stamp.nanosec
+                            >= RobotStatusEvent.stamp_nanosec,
+                        ),
+                    )
+                )
+                .filter(
+                    or_(
+                        request.max_age_stamp.sec < RobotStatusEvent.stamp_sec,
+                        and_(
+                            request.max_age_stamp.sec == RobotStatusEvent.stamp_sec,
+                            request.max_age_stamp.nanosec
+                            <= RobotStatusEvent.stamp_nanosec,
+                        ),
+                    )
+                )
+                .order_by(desc(RobotStatusEvent.stamp_nanosec))
+                .order_by(desc(RobotStatusEvent.stamp_sec))
+            )
+            events = events.scalars().unique().all()
+            response.events = list(map(lambda e: e.to_ros_msg(), events))
+            if len(events) > 0:
+                response.stamp = events[0].stamp.time
+        return response
 
 
 def main(args=None):

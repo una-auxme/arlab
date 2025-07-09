@@ -1,6 +1,7 @@
 EntityType entity_type
 ---
 # Entities with the specified type
+# The list is sorted by time stamps in descending order ("freshest" entity first)
 int64[] entities
 Result result
 # Time stamp of the "freshest" entity

@@ -4,6 +4,7 @@ builtin_interfaces/Time min_age_stamp
 # Filter for status_type
 StatusType status_type
 ---
+# The list is sorted by time stamps in descending order ("freshest" status first)
 RobotStatusEvent[] events
 Result result
 # Time stamp of the "freshest" event

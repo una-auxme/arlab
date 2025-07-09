@@ -158,7 +158,7 @@ class DatabaseServiceTester(Node):
 
     async def test_get_entities(self):
         req = GetEntities.Request()
-        req.entity_type.entity_type = EntityType.ENTITY
+        req.entity_type.id = EntityType.ENTITY
         res = await self.call_service(GetEntities, f"{self.prefix}/get_entities", req)
         self.get_logger().info(f"[GetEntities] Found: {res.entities}")
         self.log_result("GetEntities", res.result)
@@ -226,7 +226,7 @@ class DatabaseServiceTester(Node):
     async def test_update_cupboard(self):
         req = UpdEntity.Request()
         req.entityid = self.cupboard_id
-        req.data.entity_type.entity_type = EntityType.CUPBOARD
+        req.data.entity_type.id = EntityType.CUPBOARD
         req.data.description = "Updated Cupboard"
         req.data.pose = utils.create_pose2()
         req.data.pose_reference_frame = "map"
@@ -239,7 +239,7 @@ class DatabaseServiceTester(Node):
     async def test_update_door(self):
         req = UpdEntity.Request()
         req.entityid = self.door_id
-        req.data.entity_type.entity_type = EntityType.DOOR
+        req.data.entity_type.id = EntityType.DOOR
         req.data.description = "Updated Door"
         req.data.pose = utils.create_pose2()
         req.data.pose_reference_frame = "map"
@@ -249,7 +249,7 @@ class DatabaseServiceTester(Node):
     async def test_update_furniture(self):
         req = UpdEntity.Request()
         req.entityid = self.furniture_id
-        req.data.entity_type.entity_type = EntityType.FURNITURE
+        req.data.entity_type.id = EntityType.FURNITURE
         req.data.description = "Updated Furniture"
         req.data.pose = utils.create_pose2()
         req.data.pose_reference_frame = "map"
@@ -259,7 +259,7 @@ class DatabaseServiceTester(Node):
     async def test_update_human(self):
         req = UpdEntity.Request()
         req.entityid = self.human_id
-        req.data.entity_type.entity_type = EntityType.HUMAN
+        req.data.entity_type.id = EntityType.HUMAN
         req.data.description = "Updated Human"
         req.data.pose = utils.create_pose2()
         req.data.pose_reference_frame = "map"
@@ -269,7 +269,7 @@ class DatabaseServiceTester(Node):
     async def test_update_pickable(self):
         req = UpdEntity.Request()
         req.entityid = self.pickable_id
-        req.data.entity_type.entity_type = EntityType.PICKABLE
+        req.data.entity_type.id = EntityType.PICKABLE
         req.data.description = "Updated Pickable"
         req.data.pose = utils.create_pose2()
         req.data.pose_reference_frame = "map"
@@ -280,7 +280,7 @@ class DatabaseServiceTester(Node):
     async def test_update_shelf(self):
         req = UpdEntity.Request()
         req.entityid = self.shelf_id
-        req.data.entity_type.entity_type = EntityType.SHELF
+        req.data.entity_type.id = EntityType.SHELF
         req.data.furniture.shelf.cupboard_id = self.cupboard_id
         req.data.description = "Updated Shelf"
         req.data.pose = utils.create_pose2()
@@ -292,7 +292,7 @@ class DatabaseServiceTester(Node):
     async def test_update_table(self):
         req = UpdEntity.Request()
         req.entityid = self.table_id
-        req.data.entity_type.entity_type = EntityType.TABLE
+        req.data.entity_type.id = EntityType.TABLE
         req.data.description = "Updated Table"
         req.data.pose = utils.create_pose2()
         req.data.pose_reference_frame = "map"

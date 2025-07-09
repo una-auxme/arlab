@@ -8,4 +8,4 @@ int32 CUPBOARD=6
 int32 SHELF=7
 
 # Enum-like type of an entity. One of the constants defined above.
-int32 entity_type
+int32 id

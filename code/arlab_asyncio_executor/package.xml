@@ -5,7 +5,7 @@
   <version>0.0.0</version>
   <description>TODO: Package description</description>
   <maintainer email="peter.viechter@student.uni-augsburg.de">peter</maintainer>
-  <license>MIT</license>
+  <license>Apache-2.0</license>
 
   <test_depend>python3-pytest</test_depend>
 

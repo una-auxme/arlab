@@ -89,7 +89,16 @@ class AsyncIORosTask(RosTask):
 
 
 class AsyncIOExecutor(Executor):
-    # Based on the rclpy MultiThreadedExecutor
+    """ROS executor that has been integrated with asyncio to improve throughput
+
+    The default and MultiThreaded ROS executors
+    do not support asyncio based futures.
+    This Executor makes using asyncio in ros callbacks possible.
+
+    Usage recommendation: Nodes that make heavy, concurrent use of I/O.
+
+    Based on the rclpy MultiThreadedExecutor
+    """
 
     def __init__(
         self, async_init: Coroutine, *, context: Optional[Context] = None

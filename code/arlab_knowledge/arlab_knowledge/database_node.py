@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 import rclpy
 import sqlalchemy
 from arlab_asyncio_executor.executors import AsyncIOExecutor
-from arlab_knowledge_interfaces.msg import EntityType, Result
+from arlab_knowledge_interfaces.msg import Result
 from arlab_knowledge_interfaces.srv import (
     AddEntity,
     AddMap,
@@ -24,7 +24,6 @@ from arlab_knowledge_interfaces.srv import (
     UpdReference,
     UpdShape,
 )
-from geometry_msgs.msg import Pose
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.node import Node
 from sqlalchemy import and_, delete, desc, or_, select
@@ -47,7 +46,7 @@ from arlab_knowledge.db.map import Map
 from arlab_knowledge.db.ros_adapters.occupancy_grid import OccupancyGridData
 from arlab_knowledge.db.ros_adapters.pose import PoseData
 from arlab_knowledge.db.ros_adapters.time import TimeData
-from arlab_knowledge.db.status import RobotStatus, RobotStatusEvent
+from arlab_knowledge.db.status import RobotStatusEvent
 
 prefix = "/arlab/knowledge"
 

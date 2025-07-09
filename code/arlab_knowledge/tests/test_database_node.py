@@ -20,7 +20,6 @@ from arlab_knowledge_interfaces.srv import (
     UpdReference,
     UpdShape,
 )
-from geometry_msgs.msg import Point, Pose, Quaternion
 from nav_msgs.msg import OccupancyGrid
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.node import Node

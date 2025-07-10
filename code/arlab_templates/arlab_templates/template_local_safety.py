@@ -1,4 +1,6 @@
 import rclpy
+import rospy
+
 from rclpy.node import Node
 from std_msgs.msg import Int32
 
@@ -10,10 +12,11 @@ class LocalSafety(Node):
         super().__init__(type(self).__name__)
 
         # Static table of node ids
-        # {int:nodeID: bool:is_alive}
+        # Struktur: { node_id: {"last_seen": ..., "is_alive": ..., "heartbeat": ...} }
         self.module_node_table = {}
-        self.timer = self.create_timer(1.0, self.reset_module_node_table)
+        self.timer = self.create_timer(0.001, self.reset_module_node_table)
         self.health_state = -1
+        self.unhealthy_nodes = []
         self.pub_global_heartbeat = self.create_publisher(
             Int32, "/global_heartbeat", 10
         )
@@ -28,10 +31,10 @@ class LocalSafety(Node):
             msg(Int32) = Encoded module health_state_error
         """
         msg = Int32()
-        msg.data = self.health_state
-        # print(f"Received message: debugHelper")
+        msg.data = str(self.health_state)
+        for node in self.unhealthy_nodes:
+            msg.data += str(node)
         self.pub_global_heartbeat.publish(msg)
-        # reset node health_state
         self.health_state = 0
 
     def callback(self, msg: Int32):
@@ -42,15 +45,20 @@ class LocalSafety(Node):
         """
         print(f"Received message: {msg.data}")
         node_id = msg.data
-        self.module_node_table[node_id] = True
+        self.module_node_table[node_id] = {
+            "last_seen": rospy.time(),  # oder rospy.get_time()
+            "is_alive": True,
+        }
 
     def reset_module_node_table(self):
-        """Resets the is_alive state of module nodes"""
-        for key in self.module_node_table:
-            if self.module_node_table[key] is False:
-                self.health_state = key
+        """Checks timestamps and updates is_alive status based on timeout"""
+        for node_id, info in self.module_node_table.items():
+            if rospy.get_time() - info["last_seen"] > info["heartbeat"]:
+                info["is_alive"] = False
+                self.health_state = node_id
+                self.unhealthy_nodes.append(node_id)
             else:
-                self.module_node_table[key] = False
+                info["is_alive"] = True
         self.pub_module_heartbeat()
 
     def local_safety_checks(self):

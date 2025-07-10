@@ -1,6 +1,3 @@
-import cv2
-import torch
-import time
 import rclpy
 
 from rclpy.node import Node

@@ -7,6 +7,7 @@ from std_msgs.msg import String
 from sensor_msgs.msg import PointCloud2, PointField
 from sensor_msgs_py import point_cloud2
 
+
 class ObjectDetection(Node):
     """Cool ros2 template node that publishes stuff to itself ;-)"""
 
@@ -24,20 +25,6 @@ class ObjectDetection(Node):
         # Todo: Implement the obejct detection with the ML model
         pass
 
-
-    def flatten_pointcloud2_to_xy(self, pc2_msg: PointCloud2) -> PointCloud2:
-        points = point_cloud2.read_points(pc2_msg, field_names=('x', 'y'), skip_nans=True)
-        flattened = [(x, y) for (x, y) in points]
-
-        fields = [
-            PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
-            PointField(name='y', offset=4, datatype=PointField.FLOAT32, count=1),
-        ]
-
-        return point_cloud2.create_cloud(pc2_msg.header, fields, flattened)
-
-
-
     def process_data(self, data: PointCloud2):
         """Receives messages from the /depth_camera_raw
 
@@ -46,9 +33,7 @@ class ObjectDetection(Node):
         """
         print(f"Received message: {String(data)}")
 
-        pointcloud_2d = self.flatten_pointcloud2_to_xy(data)
-        output = self.detect_objects(pointcloud_2d)
-
+        output = self.detect_objects(data)
 
         # Todo: Save classified data in knowledge base.
         pass

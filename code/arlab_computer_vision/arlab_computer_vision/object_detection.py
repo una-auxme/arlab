@@ -1,11 +1,8 @@
 import rclpy
-import numpy as np
 
 from rclpy.node import Node
-
 from std_msgs.msg import String
-from sensor_msgs.msg import PointCloud2, PointField
-from sensor_msgs_py import point_cloud2
+from sensor_msgs.msg import PointCloud2
 
 
 class ObjectDetection(Node):
@@ -33,7 +30,7 @@ class ObjectDetection(Node):
         """
         print(f"Received message: {String(data)}")
 
-        output = self.detect_objects(data)
+        # output = self.detect_objects(data)
 
         # Todo: Save classified data in knowledge base.
         pass

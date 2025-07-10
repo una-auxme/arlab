@@ -4,9 +4,7 @@ import message_filters
 
 from ultralytics import YOLO
 from rclpy.node import Node
-from std_msgs.msg import String
-from sensor_msgs.msg import PointCloud2, PointField, Image, CameraInfo
-from sensor_msgs_py import point_cloud2
+from sensor_msgs.msg import Image, CameraInfo
 from cv_bridge import CvBridge
 
 

@@ -14,8 +14,8 @@ class ObjectDetection(Node):
     def __init__(self):
         super().__init__(type(self).__name__)
 
-        self.model = YOLO('yolo_weights/yolo11n-seg.pt')
-        self.model.to('cuda')
+        self.model = YOLO("yolo_weights/yolo11n-seg.pt")
+        self.model.to("cuda")
         self.camera_intrinsics = None
 
         self.create_subscription(
@@ -23,23 +23,32 @@ class ObjectDetection(Node):
         )
 
         # Kamera-Info abonnieren (einmalig, async)
-        self.create_subscription(CameraInfo, '/camera/aligned_depth_to_color/camera_info', self.camera_info_cb, queue_size=1)
+        self.create_subscription(
+            CameraInfo,
+            "/camera/aligned_depth_to_color/camera_info",
+            self.camera_info_cb,
+            queue_size=1,
+        )
 
         # Synchrone Subscriptions für RGB & Tiefe
-        rgb_sub = message_filters.Subscriber('/camera/color/image_raw', Image)
-        depth_sub = message_filters.Subscriber('/camera/aligned_depth_to_color/image_raw', Image)
-        self.sync = message_filters.ApproximateTimeSynchronizer([rgb_sub, depth_sub], queue_size=10, slop=0.1)
+        rgb_sub = message_filters.Subscriber("/camera/color/image_raw", Image)
+        depth_sub = message_filters.Subscriber(
+            "/camera/aligned_depth_to_color/image_raw", Image
+        )
+        self.sync = message_filters.ApproximateTimeSynchronizer(
+            [rgb_sub, depth_sub], queue_size=10, slop=0.1
+        )
         self.sync.registerCallback(self.process_data)
 
     def camera_info_callback(self, msg):
         # Extrahiere Kamera-Intrinsic Matrix
         K = np.array(msg.K).reshape(3, 3)
         self.camera_intrinsics = {
-            'fx': K[0, 0],
-            'fy': K[1, 1],
-            'cx': K[0, 2],
-            'cy': K[1, 2]
-    }
+            "fx": K[0, 0],
+            "fy": K[1, 1],
+            "cx": K[0, 2],
+            "cy": K[1, 2],
+        }
 
     def process_data(self, rgb_msg, depth_msg):
         """Empfängt synchronisierte RGB- und Tiefenbilder, führt YOLOv8-Segmentierung durch
@@ -50,8 +59,10 @@ class ObjectDetection(Node):
             return
 
         # Konvertiere Bilder
-        rgb_image = self.bridge.imgmsg_to_cv2(rgb_msg, desired_encoding='bgr8')
-        depth_image = self.bridge.imgmsg_to_cv2(depth_msg, desired_encoding='passthrough')
+        rgb_image = self.bridge.imgmsg_to_cv2(rgb_msg, desired_encoding="bgr8")
+        depth_image = self.bridge.imgmsg_to_cv2(
+            depth_msg, desired_encoding="passthrough"
+        )
         depth_np = depth_image.astype(np.float32)  # z. B. 16UC1 in mm
 
         # YOLOv8-Inferenz
@@ -64,8 +75,8 @@ class ObjectDetection(Node):
             return
 
         # Kameraparameter
-        fx, fy = self.camera_intrinsics['fx'], self.camera_intrinsics['fy']
-        cx, cy = self.camera_intrinsics['cx'], self.camera_intrinsics['cy']
+        fx, fy = self.camera_intrinsics["fx"], self.camera_intrinsics["fy"]
+        cx, cy = self.camera_intrinsics["cx"], self.camera_intrinsics["cy"]
 
         # Hole Klassen-IDs + Namen
         class_ids = boxes.cls.cpu().numpy().astype(int)  # shape: (N,)
@@ -101,14 +112,15 @@ class ObjectDetection(Node):
 
             points_3d = np.stack((X, Y, Z), axis=-1)
 
-            print(f"[Maske {i}] Klasse: {class_name} ({class_id}) → {len(points_3d)} 3D-Punkte extrahiert.")
+            print(
+                f"[Maske {i}] Klasse: {class_name} ({class_id}) → {len(points_3d)} 3D-Punkte extrahiert."
+            )
 
         # Todo: Save classified data in knowledge base.
         pass
 
 
 def main(args=None):
-
     bridge = CvBridge()
 
     rclpy.init(args=args)

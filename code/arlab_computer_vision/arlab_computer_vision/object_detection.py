@@ -12,8 +12,6 @@ from cv_bridge import CvBridge
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.node import Node
 from sensor_msgs.msg import CameraInfo, Image
-from sensor_msgs_py import point_cloud2
-from ultralytics import YOLO
 
 
 class ObjectDetection(Node):

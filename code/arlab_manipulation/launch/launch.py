@@ -4,7 +4,7 @@ from launch_ros.actions import Node
 def generate_launch_description():
     ld = LaunchDescription()
 
-    Get_Gripping_Force = Node(
+    GetGrippingForce = Node(
         package="arlab_manipulation",
         executable="GetGrippingForce",
     )
@@ -19,7 +19,7 @@ def generate_launch_description():
         executable="PoseSubscriber"
     )
 
-    ld.add_action(Get_Gripping_Force)
+    ld.add_action(GetGrippingForce)
     ld.add_action(PosePublisher)
     ld.add_action(PoseSubscriber)
 

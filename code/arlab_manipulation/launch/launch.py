@@ -6,7 +6,7 @@ def generate_launch_description():
 
     Get_Gripping_Force = Node(
         package="arlab_manipulation",
-        executable="Get_Gripping_Force",
+        executable="GetGrippingForce",
     )
 
     PosePublisher = Node(

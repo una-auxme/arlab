@@ -12,6 +12,8 @@
   <depend>py_trees_ros_interfaces</depend>
   <depend>py_trees_ros_viewer</depend>
 
+  <depend>action_msgs</depend>
+
   <test_depend>python3-pytest</test_depend>
 
   <exec_depend>ros2launch</exec_depend>

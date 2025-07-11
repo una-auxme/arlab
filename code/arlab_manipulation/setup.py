@@ -1,4 +1,5 @@
 from setuptools import find_packages, setup
+from glob import glob
 
 package_name = "arlab_manipulation"
 
@@ -10,6 +11,7 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
+        ('share/' + package_name + '/launch', glob('launch.py')), 
     ],
     install_requires=["setuptools"],
     zip_safe=True,
@@ -22,7 +24,6 @@ setup(
         "console_scripts": [
             "PosePublisher = arlab_manipulation.PosePublisher:main",
             "GetGrippingForce = arlab_manipulation.GetGrippingForce:main",
-            "Test = arlab_manipulation.Test:main",
         ],
     },
 )

@@ -9,7 +9,7 @@ from pyk4a import PyK4A, Config, ColorResolution, DepthMode
 
 class KinectAzurePublisher(Node):
     def __init__(self):
-        super().__init__("kinect_publisher")
+        super().__init__(type(self).__name__)
         self.kinect_pub = self.create_publisher(Image, "/camera/image_raw", 10)
         self.bridge = CvBridge()
 
@@ -29,7 +29,7 @@ class KinectAzurePublisher(Node):
         try:
             capture = self.config.get_capture()
             if capture.color is None:
-                # Alpha Kamal wird entfernt wegen BGR
+                # Alpha Kanal wird entfernt wegen BGR
                 frame = capture.color[:, :, :3]
                 # OpenCV wird in ROS Image konvertiert
                 msg = self.bridge.cv2_to_imgmsg(frame, encoding="bgr8")

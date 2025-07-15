@@ -1,6 +1,13 @@
 import rclpy
+<<<<<<< HEAD
 
 from rclpy.node import Node
+=======
+import numpy as np
+
+from rclpy.node import Node
+
+>>>>>>> 16bc2ef (Revert "Concluding merge.")
 from std_msgs.msg import String
 from sensor_msgs.msg import PointCloud2
 

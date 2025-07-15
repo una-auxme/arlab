@@ -2,7 +2,7 @@ import rclpy
 import rospy
 
 from rclpy.node import Node
-from std_msgs.msg import Int32
+from std_msgs.msg import Int32, String
 
 
 class LocalSafety(Node):
@@ -15,10 +15,17 @@ class LocalSafety(Node):
         # Struktur: { node_id: {"last_seen": ..., "is_alive": ..., "heartbeat": ...} }
         self.module_node_table = {}
         self.timer = self.create_timer(0.001, self.reset_module_node_table)
+
+        # Definition:
+        # -1 : Initial state
+        #  0: Working
+        # Integer > 0 represents nodes id of the least Safety Issue.
         self.health_state = -1
+
+        # Represents a list of nodes with unsafe behaviour
         self.unhealthy_nodes = []
         self.pub_global_heartbeat = self.create_publisher(
-            Int32, "/global_heartbeat", 10
+            String, "/global_heartbeat", 10
         )
 
         self.create_subscription(Int32, "/local_module_heartbeat", self.callback, 10)
@@ -34,6 +41,10 @@ class LocalSafety(Node):
         msg.data = str(self.health_state)
         for node in self.unhealthy_nodes:
             msg.data += str(node)
+
+        # Message for Central Safety Node
+        # Message represents all nodes with unsafe behaviour
+        # including concatenated node ids as a Strng.
         self.pub_global_heartbeat.publish(msg)
         self.health_state = 0
 
@@ -46,7 +57,7 @@ class LocalSafety(Node):
         print(f"Received message: {msg.data}")
         node_id = msg.data
         self.module_node_table[node_id] = {
-            "last_seen": rospy.time(),  # oder rospy.get_time()
+            "last_seen": rospy.time(),
             "is_alive": True,
         }
 

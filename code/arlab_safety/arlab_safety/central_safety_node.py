@@ -2,7 +2,7 @@ import rclpy
 import rospy
 
 from rclpy.node import Node
-from std_msgs.msg import Int32MultiArray
+from std_msgs.msg import String
 
 
 class CentralSafetyNode(Node):
@@ -23,20 +23,18 @@ class CentralSafetyNode(Node):
         self.module_safety_table = {}
 
         self.timer = self.create_timer(0.001, self.reset_module_safety_table)
-        self.create_subscription(
-            Int32MultiArray, "/global_heartbeat", self.callback, 10
-        )
+        self.create_subscription(String, "/global_heartbeat", self.callback, 10)
 
-    def callback(self, msg: Int32MultiArray):
+    def callback(self, msg: String):
         """Receives messages from the /global_heartbeat
 
         Args:
-            msg (Int32MultiArray): Received an integer array
+            msg (String): Received an integer array
                 with module_id and error_state inside.
         """
         print(f"Received message: {msg.data}")
         module_id = msg.data[0]
-        module_state = msg.data[1]
+        module_state = msg.data[:1]
 
         if module_state == -1:
             self.register_module(module_id)

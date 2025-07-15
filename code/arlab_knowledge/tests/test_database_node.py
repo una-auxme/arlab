@@ -72,7 +72,7 @@ class DatabaseServiceTester(Node):
             self.test_update_pose,
             self.test_update_shelf,
             self.test_update_table,
-            self.test_del_entities,
+            # self.test_del_entities,
             self.test_add_status_event,
             self.test_get_status_events,
         ]

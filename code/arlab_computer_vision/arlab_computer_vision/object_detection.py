@@ -1,24 +1,19 @@
-import rclpy
 import numpy as np
-import message_filters
+import rclpy
 import std_msgs.msg
-import rospy
-
-from sensor_msgs_py import point_cloud2
-from ultralytics import YOLO
-from rclpy.node import Node
-from sensor_msgs.msg import Image, CameraInfo
+from arlab_knowledge_interfaces.msg import EntityType
+from arlab_knowledge_interfaces.srv import (
+    AddEntity,
+    DelEntities,
+    GetEntities,
+    UpdEntity,
+)
 from cv_bridge import CvBridge
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
-
-from arlab_template_interfaces.srv import (
-    AddEntity,
-    GetEntities,
-    DelEntities,
-    UpdEntities,
-)
-from arlab_knowledge_interfaces.msg import EntityType
-from knowledge_client import KnowledgeClient
+from rclpy.node import Node
+from sensor_msgs.msg import CameraInfo, Image
+from sensor_msgs_py import point_cloud2
+from ultralytics import YOLO
 
 
 class ObjectDetection(Node):
@@ -30,8 +25,9 @@ class ObjectDetection(Node):
     def __init__(self):
         super().__init__(type(self).__name__)
 
-        self.model = YOLO("yolo_weights/yolo11n-seg.pt")
-        self.model.to("cuda")
+        self.bridge = CvBridge()
+        # self.model = YOLO("yolo_weights/yolo11n-seg.pt")
+        # self.model.to("cuda")
         self.camera_intrinsics = None
 
         # Service Clients
@@ -51,16 +47,7 @@ class ObjectDetection(Node):
             self.camera_info_cb,
             queue_size=1,
         )
-
-        # Synchrone Subscriptions für RGB & Tiefe
-        rgb_sub = message_filters.Subscriber("/camera/color/image_raw", Image)
-        depth_sub = message_filters.Subscriber(
-            "/camera/aligned_depth_to_color/image_raw", Image
-        )
-        self.sync = message_filters.ApproximateTimeSynchronizer(
-            [rgb_sub, depth_sub], queue_size=10, slop=0.1
-        )
-        self.sync.registerCallback(self.process_data)
+        self.create_subscription(Image, "/camera/image_raw", self.process_data, 10)
 
     def camera_info_callback(self, msg):
         # Extrahiere Kamera-Intrinsic Matrix
@@ -72,12 +59,11 @@ class ObjectDetection(Node):
             "cy": K[1, 2],
         }
 
-    def process_data(self, rgb_msg, depth_msg):
+    def process_data(self, rgb_msg: Image):
         """Empfängt synchronisierte RGB- und Tiefenbilder, führt YOLOv8-Segmentierung durch
         und berechnet 3D-Koordinaten pro Maske mit zugehörigem Klassennamen.
         """
         if self.camera_intrinsics is None:
-            rospy.logwarn_throttle(5, "Noch keine Kameraintrinsik verfügbar.")
             return
 
         # Konvertiere Bilder
@@ -152,7 +138,7 @@ class ObjectDetection(Node):
         # 2. Get all Entities
         entities_req = GetEntities.Request()
         entities_req.entity_type.id = EntityType.ENTITY
-        entities_knowledge = await self.client_get_entities.call_async(entities_req)
+        entities_knowledge = self.client_get_entities.call_async(entities_req)
         entities_knowledge = entities_knowledge.result()
 
         # 3. Compare Entities for tracking (IoU)
@@ -170,7 +156,7 @@ class ObjectDetection(Node):
             self.shelf_id,
             self.table_id,
         ]
-        res = await self.call_service(
+        res = self.call_service(
             DelEntities, f"{self.prefix}/del_entities", del_entities_req
         )
         self.log_result("DelEntities", res.result)
@@ -182,7 +168,7 @@ class ObjectDetection(Node):
             # For shelves:
             add_entity_req.data.furniture.shelf.cupboard_id = self.cupboard_id
 
-            response = await self.call_service(
+            response = self.call_service(
                 AddEntity, f"{self.prefix}/add_entity", add_entity_req
             )
 

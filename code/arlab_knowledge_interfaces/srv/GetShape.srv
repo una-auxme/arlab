@@ -1,7 +1,6 @@
 int64 entityid
 ---
-# Description of the entity
-string shape #subject to change
+Shape shape
 Result result
 # Time stamp when the entity was last updated
 builtin_interfaces/Time stamp

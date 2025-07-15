@@ -26,9 +26,12 @@ endif()
 find_package(rosidl_default_generators REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(vision_msgs REQUIRED)
 
 # Add all your interface files here:
 rosidl_generate_interfaces(${PROJECT_NAME}
+  "msg/Shape.msg"
   "msg/Entity.msg"
   "msg/EntityPickable.msg"
   "msg/EntityHuman.msg"
@@ -71,6 +74,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   DEPENDENCIES # Add packages that above messages depend on
   geometry_msgs
   nav_msgs
+  sensor_msgs
+  vision_msgs
 )
 
 ament_package()

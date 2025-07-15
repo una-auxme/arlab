@@ -1,0 +1,6 @@
+
+bool has_pointcloud
+sensor_msgs/PointCloud2 pointcloud
+
+bool has_boundingbox2d
+vision_msgs/BoundingBox2D boundingbox2d

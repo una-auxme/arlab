@@ -1,6 +1,6 @@
 from typing import Tuple
 
-from geometry_msgs.msg import Point, Pose, Quaternion
+from geometry_msgs.msg import Point, Pose, Pose2D, Quaternion
 
 
 class PoseData:
@@ -33,3 +33,23 @@ class PoseData:
         pos = self.pose.position
         ori = self.pose.orientation
         return pos.x, pos.y, pos.z, ori.x, ori.y, ori.z, ori.w
+
+
+class Pose2DData:
+    def __init__(self, pose: Pose2D):
+        super().__init__()
+        self.pose = pose
+
+    @classmethod
+    def _generate(cls, x: float, y: float, theta: float) -> "Pose2DData":
+        """Generate a Pose2D from a row"""
+        pose = Pose2D()
+        pose.x = x
+        pose.y = y
+        pose.theta = theta
+        return Pose2DData(pose)
+
+    def __composite_values__(
+        self,
+    ) -> Tuple[float, float, float]:
+        return self.pose.x, self.pose.y, self.pose.theta

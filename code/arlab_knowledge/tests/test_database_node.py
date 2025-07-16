@@ -2,7 +2,7 @@ import arlab_knowledge.db.entities as entities
 import rclpy
 import rclpy.clock
 from arlab_knowledge import test_utils as utils
-from arlab_knowledge_interfaces.msg import EntityType, StatusType
+from arlab_knowledge_interfaces.msg import EntityPickable, EntityType, StatusType
 from arlab_knowledge_interfaces.srv import (
     AddEntity,
     AddMap,
@@ -23,6 +23,7 @@ from arlab_knowledge_interfaces.srv import (
 from nav_msgs.msg import OccupancyGrid
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.node import Node
+from sensor_msgs.msg import PointField
 
 
 class DatabaseServiceTester(Node):
@@ -276,7 +277,7 @@ class DatabaseServiceTester(Node):
         req.data.description = "Updated Pickable"
         req.data.pose = utils.create_pose2()
         req.data.pose_reference_frame = "map"
-        req.data.pickable.max_picking_force = 10.0
+        req.data.pickable.picking_tag = EntityPickable.TAG_MILK
         req.data.stamp = self.create_stamp()
         await self.generic_test_update_entity(req)
 
@@ -326,7 +327,15 @@ class DatabaseServiceTester(Node):
     async def test_update_shape(self):
         req = UpdShape.Request()
         req.entityid = self.entity_id
-        req.shape = "box_1x1x1"
+        req.shape.has_boundingbox2d = True
+        req.shape.boundingbox2d.size_x = 500.0
+        req.shape.has_pointcloud = True
+        req.shape.pointcloud.height = 20
+        new_field = PointField()
+        new_field.name = "chungus_power"
+        new_field.datatype = 254
+        new_field.offset = 50000
+        req.shape.pointcloud.fields.append(new_field)
         req.stamp = self.create_stamp()
         res = await self.call_service(UpdShape, f"{self.prefix}/upd_shape", req)
         self.log_result("UpdShape", res.result)

@@ -310,13 +310,27 @@ class DatabaseNode(Node):
         self, request: GetShape.Request, response: GetShape.Response
     ):
         async with self.Session(response) as session:
-            stmt = select(Shape).where(Shape.entity_id == request.entityid)
+            stmt = (
+                select(Shape)
+                .where(Shape.entity_id == request.entityid)
+                .options(
+                    joinedload(Shape.entity),
+                    joinedload(Shape.boundingbox2d),
+                    joinedload(Shape.pointcloud2),
+                )
+            )
             result = await session.execute(stmt)
             shape = result.scalar_one_or_none()
             if shape is None:
                 response.result.result_type = Result.ERROR_ID_NOT_FOUND
             else:
-                response.shape = shape.data
+                stamp = shape.entity.stamp.time
+                response.shape = shape.to_ros_msg()
+                response.stamp = stamp
+                response.shape.pointcloud.header.stamp = stamp
+                response.shape.pointcloud.header.frame_id = (
+                    shape.entity.pose_reference_frame
+                )
         return response
 
     async def get_pose_callback(
@@ -401,10 +415,8 @@ class DatabaseNode(Node):
             if entity_shape is None:
                 response.result.result_type = Result.ERROR_ID_NOT_FOUND
                 return response
-            if entity_shape.shape is None:
-                entity_shape.shape = Shape(data=request.shape)
-            else:
-                entity_shape.shape.data = request.shape
+            entity_shape.shape = Shape.from_ros_msg(request.shape)
+            entity_shape.stamp = TimeData(request.stamp)
             await session.commit()
         return response
 

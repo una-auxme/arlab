@@ -1,3 +1,4 @@
+from arlab_knowledge_interfaces import msg
 from builtin_interfaces.msg import Time
 from geometry_msgs.msg import Point, Pose, Quaternion
 from sqlalchemy import inspect
@@ -85,7 +86,7 @@ def get_pickable():
         pose=PoseData(pose),
         pose_reference_frame="map",
         stamp=TimeData(stamp),
-        max_picking_force=99999.9,
+        picking_tag=msg.EntityPickable.TAG_PRINGLES,
     )
 
 

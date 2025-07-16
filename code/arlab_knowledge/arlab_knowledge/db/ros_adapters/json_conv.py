@@ -54,15 +54,25 @@ def dict2rosmsg(msg, d: Dict | List | Any, type_dict: Dict[str, Type]):
             msg_type = type_dict[msg_type_name]
             for item in d:
                 msg.append(dict2rosmsg(msg_type(), item, type_dict))
+    else:
+        msg = d
 
     return msg
 
 
-def json2rosmsg(msg, j: str, type_list: List[Type]):
+def json2rosmsg(j: str, type_list: List[Type]):
     field_dict = json.loads(j)
     type_dict = {}
     for t in type_list:
         type_dict[t.__name__] = t
+    if isinstance(field_dict, Dict):
+        msg_type_name = field_dict["__typename__"]
+        msg_type = type_list[msg_type_name]
+        msg = msg_type()
+    elif isinstance(field_dict, List):
+        msg = []
+    else:
+        raise ValueError("Unable to convert json")
     return dict2rosmsg(msg, field_dict, type_dict)
 
 
@@ -88,7 +98,6 @@ class DBRosMsgJson(TypeDecorator):
         return value
 
     def process_result_value(self, value, dialect):
-        msg = self.python_type()
         if value is not None:
-            return json2rosmsg(msg, value, self.msg_type_list)
+            return json2rosmsg(value, self.msg_type_list)
         return value

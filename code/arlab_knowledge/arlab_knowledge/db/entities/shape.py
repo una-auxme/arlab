@@ -92,16 +92,16 @@ class PointCloud2(Base):
         cascade="all, delete-orphan",
     )
 
-    height: Mapped[Integer]
-    width: Mapped[Integer]
+    height: Mapped[int]
+    width: Mapped[int]
 
-    fields: Mapped[JSON] = mapped_column(DBRosMsgJson(PointFieldMsg))
+    fields: Mapped[list] = mapped_column(DBRosMsgJson([PointFieldMsg]))
 
-    is_bigendian: Mapped[Boolean]
-    point_step: Mapped[Integer]
-    row_step: Mapped[Integer]
+    is_bigendian: Mapped[bool]
+    point_step: Mapped[int]
+    row_step: Mapped[int]
 
-    is_dense: Mapped[Boolean]
+    is_dense: Mapped[bool]
 
     @classmethod
     def from_ros_msg(cls, m: PointCloud2Msg) -> "PointCloud2":

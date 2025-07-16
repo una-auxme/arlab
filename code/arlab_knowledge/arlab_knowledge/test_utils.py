@@ -1,7 +1,9 @@
 from arlab_knowledge_interfaces import msg
 from builtin_interfaces.msg import Time
 from geometry_msgs.msg import Point, Pose, Quaternion
+from sensor_msgs.msg import PointField
 from sqlalchemy import inspect
+from vision_msgs.msg import Pose2D
 
 from arlab_knowledge.db.base import Base
 from arlab_knowledge.db.entities.entity import Entity
@@ -14,7 +16,8 @@ from arlab_knowledge.db.entities.furniture import (
 )
 from arlab_knowledge.db.entities.human import Human
 from arlab_knowledge.db.entities.pickable import Pickable
-from arlab_knowledge.db.ros_adapters.pose import PoseData
+from arlab_knowledge.db.entities.shape import BoundingBox2D, PointCloud2, Shape
+from arlab_knowledge.db.ros_adapters.pose import Pose2DData, PoseData
 from arlab_knowledge.db.ros_adapters.time import TimeData
 from arlab_knowledge.db.status import (
     ManipulationStatus,
@@ -152,6 +155,29 @@ def get_table():
         stamp=TimeData(stamp),
         height=1.5,
     )
+
+
+def get_shape():
+    pose2d = Pose2D()
+    pose2d.position.x = 22.0
+    pose2d.position.y = -1.0
+    pose2d.theta = 20.0
+    bounding_box = BoundingBox2D(size_x=5.0, size_y=10.0, center=Pose2DData(pose2d))
+    pointcloud = PointCloud2()
+    pointcloud.height = 10
+    pointcloud.width = 20
+    pointcloud.is_dense = True
+    pointcloud.point_step = 2
+    pointcloud.row_step = 3
+    pointcloud.is_bigendian = True
+    new_field = PointField()
+    new_field.name = "chungus_power"
+    new_field.datatype = 2
+    new_field.offset = 2
+    pointcloud.fields = [new_field]
+    pointcloud.data = [1, 2, 3, 4, 5]
+    shape = Shape(boundingbox2d=bounding_box, pointcloud2=pointcloud)
+    return shape
 
 
 def get_robot_status_event():

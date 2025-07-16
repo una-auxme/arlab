@@ -47,8 +47,10 @@ class Shape(Base):
         m = msg.Shape()
         if self.boundingbox2d is not None:
             m.boundingbox2d = self.boundingbox2d.to_ros_msg()
+            m.has_boundingbox2d = True
         if self.pointcloud2 is not None:
             m.pointcloud = self.pointcloud2.to_ros_msg()
+            m.has_pointcloud = True
         return m
 
 

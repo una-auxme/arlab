@@ -23,7 +23,6 @@ from arlab_knowledge_interfaces.srv import (
 from nav_msgs.msg import OccupancyGrid
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.node import Node
-from sensor_msgs.msg import PointField
 
 
 class DatabaseServiceTester(Node):
@@ -327,15 +326,8 @@ class DatabaseServiceTester(Node):
     async def test_update_shape(self):
         req = UpdShape.Request()
         req.entityid = self.entity_id
-        req.shape.has_boundingbox2d = True
-        req.shape.boundingbox2d.size_x = 500.0
-        req.shape.has_pointcloud = True
-        req.shape.pointcloud.height = 20
-        new_field = PointField()
-        new_field.name = "chungus_power"
-        new_field.datatype = 254
-        new_field.offset = 50000
-        req.shape.pointcloud.fields.append(new_field)
+        shape = utils.get_shape()
+        req.shape = shape.to_ros_msg()
         req.stamp = self.create_stamp()
         res = await self.call_service(UpdShape, f"{self.prefix}/upd_shape", req)
         self.log_result("UpdShape", res.result)

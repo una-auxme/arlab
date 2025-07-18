@@ -20,7 +20,7 @@ class Pickable(Entity):
         back_populates="pickables", foreign_keys=located_on_id
     )
 
-    picking_tag: Mapped[int]
+    picking_tag: Mapped[str]
 
     __mapper_args__ = {
         "polymorphic_identity": "entity_pickable",

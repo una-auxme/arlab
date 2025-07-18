@@ -89,7 +89,7 @@ def get_pickable():
         pose=PoseData(pose),
         pose_reference_frame="map",
         stamp=TimeData(stamp),
-        picking_tag=msg.EntityPickable.TAG_PRINGLES,
+        picking_tag=msg.EntityPickable.TAG_BEER,
     )
 
 

@@ -12,37 +12,35 @@ class GetGrippingForce(Node):
 
         # Example object-gripping-force table --> need to be more detailed
         self.object_force_table = {
-            "banane": 2.0,
-            "apfel": 5.0,
-            "flasche": 8.0,
-            "tasse": 4.0,
-            "milch": 7.5,
-            "zahnpasta": 3.0,
-            "pringles": 3.0,
-            "joghurt": 2.0
+            "banana": 2.0,
+            "apple": 5.0,
+            "bottle": 8.0,
+            "cup": 4.0,
+            "milk": 7.5,
+            "beer": 3.0,
+            "chipscan": 3.0,
+            "chipsbag": 2.0,
+            "cereals": 2.0,
+            "shoppingbag": 7.0
         }
 
         self.default_force = 5.0
 
     def callback(self, request, response):
-        raw_name = request.object_name
-        object_name = raw_name.lower().strip()
-        grip_force = self.object_force_table.get(object_name, self.default_force)
-        response.grip_force = grip_force
+        gripforce = self.object_force_table.get(request.objectname, self.default_force)
 
         self.get_logger().info(
-            f"Request: Original='{raw_name}' → Normalised='{object_name}' → Grippingforce={grip_force:.1f} N"
+            f"Objectname='{request.objectname}' → Grippingforce={gripforce:.1f} N"
         )
 
+        response.gripforce = gripforce
         return response
-
 
 def main(args=None):
     rclpy.init(args=args)
     node = GetGrippingForce()
     rclpy.spin(node)
     rclpy.shutdown()
-
 
 if __name__ == '__main__':
     main()

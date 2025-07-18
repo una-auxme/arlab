@@ -10,12 +10,12 @@ public:
     {
         // Subscriber für Pose
         pose_subscription_ = this->create_subscription<geometry_msgs::msg::Pose>(
-            "/goal_pose", 10,
+            "/goalpose", 10,
             std::bind(&PoseListener::pose_callback, this, std::placeholders::_1));
 
         // Subscriber für Greifkraft
         grip_subscription_ = this->create_subscription<std_msgs::msg::Float64>(
-            "/grip_force", 10,
+            "/gripforce", 10,
             std::bind(&PoseListener::grip_callback, this, std::placeholders::_1));
         
         // Subscriber für Command

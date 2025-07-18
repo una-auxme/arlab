@@ -9,9 +9,9 @@ def generate_launch_description():
         executable="GetGrippingForce",
     )
 
-    PosePublisher = Node(
+    Orchestrator = Node(
         package="arlab_manipulation",
-        executable="PosePublisher"
+        executable="Orchestrator"
     )
 
     PoseSubscriber = Node(
@@ -20,7 +20,7 @@ def generate_launch_description():
     )
 
     ld.add_action(GetGrippingForce)
-    ld.add_action(PosePublisher)
+    ld.add_action(Orchestrator)
     ld.add_action(PoseSubscriber)
 
     return ld

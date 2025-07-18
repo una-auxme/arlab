@@ -15,27 +15,27 @@ import tf2_geometry_msgs
 
 from arlab_common_interfaces.srv import GrippingForce
 
-class PosePublisher(Node):
+class Orchestrator(Node):
     def __init__(self):
-        super().__init__('PosePublisher')
+        super().__init__('Orchestrator')
 
         # Publisher for C++ (MoveItNode)
         self.goal_pub = self.create_publisher(Pose, '/goalpose', 10)
         self.gripforce_pub = self.create_publisher(Float64, '/gripforce', 10)
         self.cmd_pub = self.create_publisher(String, '/cmd', 10)
 
-        # Action Server for ManipulationCommand --> in future expected in ochestrator
+        # Action Server for ManipulationCommand
         # ---- string                       command_type
         # ---- int64                        target_entityid
         # ---- geometry_msgs/Pose           target_pose
         
-        # Service client for getShape --> in future maybe expected in ochestrator
+        # Service client for getShape
         # ---- bool                         has_pointcloud
         # ---- sensor_msgs/PointCloud2      pointcloud
         # ---- bool                         has_boundingbox2d
         # ---- vision_msgs/BoundingBox2D    boundingbox2d
 
-        # Service client for getEntity --> in future maybe expected in ochestrator
+        # Service client for getEntity
         # ---- builtin_interfaces/Time      stamp
         # ---- string                       description
         # ---- geometry_msgs/Pose           pose 
@@ -183,7 +183,7 @@ class PosePublisher(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = PosePublisher()
+    node = Orchestrator()
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()

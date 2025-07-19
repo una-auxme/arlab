@@ -20,7 +20,8 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": ["dummy = arlab_movement.dummy:main",
-            "arlab_movement_test = arlab_movement.arlab_movement_test:main"
+            "arlab_movement_test = arlab_movement.arlab_movement_test:main",
+            "arlab_movement_orchestrator = arlab_movement.arlab_movement_orchestrator:main"
         ], 
     },
 )

@@ -10,4 +10,11 @@ def generate_launch_description():
             name='arlab_movement_test',
             output='screen'
         ),
+        Node(
+            package='arlab_movement',
+            namespace='arlab_movement',
+            executable='arlab_movement_orchestrator',
+            name='arlab_movement_orchestrator',
+            output='screen'
+        ),
     ])

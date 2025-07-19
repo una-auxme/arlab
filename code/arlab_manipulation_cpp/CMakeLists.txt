@@ -32,7 +32,7 @@ ament_target_dependencies(
 install(TARGETS PoseSubscriber
   DESTINATION lib/${PROJECT_NAME})
 
-add_executable(moveit_main src/moveit_main.cpp src/utils.cpp)
+add_executable(Moveit_init src/moveit_main.cpp src/utils.cpp)
 
 target_include_directories(moveit_main PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

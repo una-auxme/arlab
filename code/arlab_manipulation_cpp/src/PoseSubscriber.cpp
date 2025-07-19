@@ -2,23 +2,24 @@
 #include <geometry_msgs/msg/pose.hpp>
 #include <std_msgs/msg/float64.hpp>
 #include <std_msgs/msg/string.hpp>
+#include "moveit_main.cpp"
 
 class PoseListener : public rclcpp::Node
 {
 public:
     PoseListener() : Node("PoseListener")
     {
-        // Subscriber für Pose
+        // Subscriber for Pose
         pose_subscription_ = this->create_subscription<geometry_msgs::msg::Pose>(
             "/goalpose", 10,
             std::bind(&PoseListener::pose_callback, this, std::placeholders::_1));
 
-        // Subscriber für Greifkraft
+        // Subscriber for gripping force
         grip_subscription_ = this->create_subscription<std_msgs::msg::Float64>(
             "/gripforce", 10,
             std::bind(&PoseListener::grip_callback, this, std::placeholders::_1));
-        
-        // Subscriber für Command
+
+        // Subscriber for Job Command
         cmd_subscription_ = this->create_subscription<std_msgs::msg::String>(
             "/cmd", 10,
             std::bind(&PoseListener::cmd_callback, this, std::placeholders::_1));

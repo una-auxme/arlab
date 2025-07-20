@@ -11,6 +11,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(moveit_ros_planning_interface REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(moveit_visual_tools REQUIRED)
+find_package(arlab_common_interfaces REQUIRED)
 
 add_executable(PoseSubscriber src/PoseSubscriber.cpp)
 
@@ -27,6 +28,7 @@ ament_target_dependencies(
   rclcpp
   geometry_msgs
   std_msgs
+  arlab_common_interfaces
 )
 
 install(TARGETS PoseSubscriber

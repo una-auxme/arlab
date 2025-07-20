@@ -14,21 +14,24 @@ import tf2_ros
 import tf2_geometry_msgs
 
 from arlab_common_interfaces.srv import GrippingForce
+from arlab_common_interfaces.msg import OrchestratorData
 
 class Orchestrator(Node):
     def __init__(self):
         super().__init__('Orchestrator')
 
         # Publisher for C++ (MoveItNode)
-        self.goal_pub = self.create_publisher(Pose, '/goalpose', 10)
-        self.gripforce_pub = self.create_publisher(Float64, '/gripforce', 10)
-        self.cmd_pub = self.create_publisher(String, '/cmd', 10)
+        #self.goal_pub = self.create_publisher(Pose, '/goalpose', 10)
+        #self.gripforce_pub = self.create_publisher(Float64, '/gripforce', 10)
+        #self.cmd_pub = self.create_publisher(String, '/cmd', 10)
+
+        self.data_publisher = self.create_publisher(OrchestratorData, '/gripper_goal', 10)
 
         # Action Server for ManipulationCommand
         # ---- string                       command_type
         # ---- int64                        target_entityid
         # ---- geometry_msgs/Pose           target_pose
-        
+
         # Service client for getShape
         # ---- bool                         has_pointcloud
         # ---- sensor_msgs/PointCloud2      pointcloud
@@ -38,7 +41,7 @@ class Orchestrator(Node):
         # Service client for getEntity
         # ---- builtin_interfaces/Time      stamp
         # ---- string                       description
-        # ---- geometry_msgs/Pose           pose 
+        # ---- geometry_msgs/Pose           pose
         # ---- string                       pose_reference_frame
         # ---- EntityFurniture              furniture
         # ---- EntityHuman                  human
@@ -80,7 +83,7 @@ class Orchestrator(Node):
         future = self.client.call_async(self.req)
         future.add_done_callback(self.handle_service_response)
 
-    
+
     def bbox_callback(self, msg: BoundingBox2D):
         # 2D-Infos from BoundingBox2D: center (x,y), size_x, size_y
 
@@ -99,7 +102,7 @@ class Orchestrator(Node):
     def pointcloud_callback(self, msg: PointCloud2):
         # goal coorinates
         base_frame = 'base_link'
-        cam_frame = 'camera_link' # change in world frame when slam is working 
+        cam_frame = 'camera_link' # change in world frame when slam is working
 
         points_base = []
 
@@ -131,7 +134,7 @@ class Orchestrator(Node):
         # Gripping pose (position&orientation)
         self.gripping_pose = np.concatenate([self.gripping_point_pos, self.gripping_point_orient])
 
-    
+
     def handle_service_response(self, future):
         try:
             response = future.result()
@@ -157,7 +160,7 @@ class Orchestrator(Node):
         self.goal_pub.publish(gripping_pose)
         """
 
-        gripping_pose = Pose()  #dummy pose
+        gripping_pose = Pose()
         gripping_pose.position.x = 0.372
         gripping_pose.position.y = 0.124
         gripping_pose.position.z = 0.621
@@ -165,20 +168,22 @@ class Orchestrator(Node):
         gripping_pose.orientation.y = 0.041
         gripping_pose.orientation.z = 0.006
         gripping_pose.orientation.w = 0.004
-        self.goal_pub.publish(gripping_pose)
 
-        force_msg = Float64()
-        force_msg.data = self.force
-        self.gripforce_pub.publish(force_msg)
+        msg = OrchestratorData()
+        msg.pose = gripping_pose
+        msg.grip_force = Float64()
+        msg.grip_force.data = self.force
+        msg.cmd = String()
+        msg.cmd.data = self.cmd #pick, place, open, close, move, home
 
-        cmd_msg = String()
-        cmd_msg.data = self.cmd #pick, place, open, close, move, home
-        self.cmd_pub.publish(cmd_msg)
+        self.data_publisher.publish(msg)
 
         pos = gripping_pose.position
         orient = gripping_pose.orientation
-        self.get_logger().info( 
-            f"Published gripping pose: Position x={pos.x:.3f}, y={pos.y:.3f}, z={pos.z:.3f} | Orientation: ox={orient.x:.3f}, oy={orient.y:.3f}, oz={orient.z:.3f}, ow={orient.w:.3f} | Grip force: {self.force:.1f} N | Command: {self.cmd}"
+        self.get_logger().info(
+            f"Published gripper goal: Position x={pos.x:.3f}, y={pos.y:.3f}, z={pos.z:.3f} | "
+            f"Orientation ox={orient.x:.3f}, oy={orient.y:.3f}, oz={orient.z:.3f}, ow={orient.w:.3f} | "
+            f"Grip force: {self.force:.1f} N | Command: {self.cmd}"
         )
 
 def main(args=None):

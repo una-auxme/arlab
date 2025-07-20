@@ -11,15 +11,34 @@
 
 #include "arlab_manipulation_cpp/utils.hpp"
 
-void job_gripper_open()
-{
+// void job_gripper_open(trajectory_msgs::JointTrajectory& gripper_pos){
 
-}
+//   gripper_pos.joint_names.resize(1);
+//   gripper_pos.joint_names[0] = "r_robotiq_85_left_knuckle_joint";
 
-void job_gripper_close()
-{
+//   // Set the gripper as open
+//   gripper_pos.points.resize(1);
+//   gripper_pos.points[0].positions.resize(1)
+//   gripper_pos.points[0].positions[0] = 0;
+//   gripper_pos.points[0].time_from_start = ros::Duration(0.5);
 
-}
+//   ROS_INFO("Greifer-Befehl gesendet!");
+// }
+
+
+// void job_gripper_close(trajectory_msgs::JointTrajectory& gripper_pos){
+
+//   gripper_pos.joint_names.resize(1);
+//   gripper_pos.joint_names[0] = "r_robotiq_85_left_knuckle_joint";
+
+//   // Set the gripper as open
+//   gripper_pos.points.resize(1);
+//   gripper_pos.points[0].positions.resize(1)
+//   gripper_pos.points[0].positions[0] = 0.5;
+//   gripper_pos.points[0].time_from_start = ros::Duration(0.5);
+
+//   ROS_INFO("Greifer-Befehl gesendet!");
+// }
 
 void job_move2pose(
   moveit::planning_interface::MoveGroupInterface &move_group_interface,
@@ -97,8 +116,7 @@ void job_pick(
 
 }
 
-void job_place()
-{
+void job_place(){
   // ----------------- Plan and Execute -----------------
 
   // 1. Is in Home Pos?
@@ -114,6 +132,21 @@ void job_place()
 
 }
 
+
+void addCollisionObjects(moveit::planning_interface::MoveGroupInterface &move_group_interface){
+  // Create collision object for the robot to avoid
+  auto frame_id = move_group_interface.getPlanningFrame();
+  auto collision_object_pose = createPose(-0.4,0.0,0.25,0,0,0,1);
+  auto collision_object = createCollisionBox(frame_id,"box1",collision_object_pose,0.1,0.1,0.5);
+
+  auto collision_object_pose2 = createPose(0.6,0.0,0.25,0,0,0,1);
+  auto collision_object2 = createCollisionBox(frame_id,"table",collision_object_pose2,1,1,0.2);
+
+  // Add the collision object to the scene
+  moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
+  planning_scene_interface.applyCollisionObject(collision_object);
+  planning_scene_interface.applyCollisionObject(collision_object2);
+}
 
 
 int main(int argc, char * argv[])
@@ -167,20 +200,6 @@ int main(int argc, char * argv[])
         moveit_visual_tools.publishTrajectoryLine(trajectory, jmg);
       };
 
-  // // Create collision object for the robot to avoid
-  // auto frame_id = move_group_interface.getPlanningFrame();
-  // auto collision_object_pose = createPose(-0.4,0.0,0.25,0,0,0,1);
-  // auto collision_object = createCollisionBox(frame_id,"box1",collision_object_pose,0.1,0.1,0.5);
-
-  // auto collision_object_pose2 = createPose(0.6,0.0,0.25,0,0,0,1);
-  // auto collision_object2 = createCollisionBox(frame_id,"table",collision_object_pose2,1,1,0.2);
-
-  // // Add the collision object to the scene
-  // moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
-  // planning_scene_interface.applyCollisionObject(collision_object);
-  // planning_scene_interface.applyCollisionObject(collision_object2);
-
-
 
   // ---------------- Job Execution ----------------
   // -----------------------------------------------
@@ -199,11 +218,11 @@ int main(int argc, char * argv[])
 
   } else if (cmd == "open") {
     // Job gripper open
-    job_gripper_open();
+    //job_gripper_open();
 
   } else if (cmd == "close") {
     // Job gripper close
-    job_gripper_close();
+    //job_gripper_close();
 
   } else if (cmd == "move") {
     // Job move to pose

@@ -1,0 +1,26 @@
+moveit_setup_assistant_config:
+  urdf:
+    package: ur_simulation_gz
+    relative_path: urdf/ur_gz.urdf.xacro
+    xacro_args: name:=ur5 ur_type:=ur5e
+  srdf:
+    relative_path: config/ur5.srdf
+  package_settings:
+    author_name: leonie
+    author_email: leonie@blabla.com
+    generated_timestamp: 1753010758
+  control_xacro:
+    command:
+      - position
+    state:
+      - position
+      - velocity
+  modified_urdf:
+    xacros:
+      - control_xacro
+  control_xacro:
+    command:
+      - position
+    state:
+      - position
+      - velocity

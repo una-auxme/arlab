@@ -2,7 +2,6 @@
 #include <geometry_msgs/msg/pose.hpp>
 #include <std_msgs/msg/float64.hpp>
 #include <std_msgs/msg/string.hpp>
-#include "moveit_main.cpp"
 
 class PoseListener : public rclcpp::Node
 {

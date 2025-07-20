@@ -25,7 +25,7 @@ class Orchestrator(Node):
         #self.gripforce_pub = self.create_publisher(Float64, '/gripforce', 10)
         #self.cmd_pub = self.create_publisher(String, '/cmd', 10)
 
-        self.data_publisher = self.create_publisher(OrchestratorData, '/gripper_goal', 10)
+        self.data_publisher = self.create_publisher(OrchestratorData, '/orchestrator_data', 10)
 
         # Action Server for ManipulationCommand
         # ---- string                       command_type

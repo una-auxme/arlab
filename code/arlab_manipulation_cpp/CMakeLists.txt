@@ -13,16 +13,16 @@ find_package(std_msgs REQUIRED)
 find_package(moveit_visual_tools REQUIRED)
 find_package(arlab_common_interfaces REQUIRED)
 
-add_executable(PoseSubscriber src/PoseSubscriber.cpp)
+add_executable(OrchestratorSubscriber src/OrchestratorSubscriber.cpp src/utils.cpp src/job_runner.cpp)
 
-target_include_directories(PoseSubscriber PUBLIC
+target_include_directories(OrchestratorSubscriber PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include/${PROJECT_NAME}>)
 
-target_compile_features(PoseSubscriber PUBLIC cxx_std_17)
+target_compile_features(OrchestratorSubscriber PUBLIC cxx_std_17)
 
 ament_target_dependencies(
-  PoseSubscriber
+  OrchestratorSubscriber
   moveit_ros_planning_interface
   moveit_visual_tools
   rclcpp
@@ -31,28 +31,7 @@ ament_target_dependencies(
   arlab_common_interfaces
 )
 
-install(TARGETS PoseSubscriber
+install(TARGETS OrchestratorSubscriber
   DESTINATION lib/${PROJECT_NAME})
-
-add_executable(Moveit_init src/moveit_main.cpp src/utils.cpp)
-
-target_include_directories(Moveit_init PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include/${PROJECT_NAME}>)
-
-target_compile_features(Moveit_init PUBLIC cxx_std_17)
-
-ament_target_dependencies(
-  Moveit_init
-  moveit_ros_planning_interface
-  moveit_visual_tools
-  rclcpp
-  geometry_msgs
-  std_msgs
-)
-
-install(TARGETS Moveit_init
-  DESTINATION lib/${PROJECT_NAME})
-
 
 ament_package()

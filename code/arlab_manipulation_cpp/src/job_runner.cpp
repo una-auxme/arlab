@@ -10,6 +10,8 @@
 #include <moveit/planning_scene_interface/planning_scene_interface.hpp>
 
 #include "arlab_manipulation_cpp/utils.hpp"
+#include "arlab_common_interfaces/msg/orchestrator_data.hpp"
+
 
 // void job_gripper_open(trajectory_msgs::JointTrajectory& gripper_pos){
 
@@ -148,31 +150,27 @@ void addCollisionObjects(moveit::planning_interface::MoveGroupInterface &move_gr
   planning_scene_interface.applyCollisionObject(collision_object2);
 }
 
-
-int main(int argc, char * argv[])
+int run_job(const arlab_common_interfaces::msg::OrchestratorData &msg, std::shared_ptr<rclcpp::Node> node)
 {
+
 
   // -------------------- Setup --------------------
   // -----------------------------------------------
 
-  // Initialize ROS and create the Node
-  rclcpp::init(argc, argv);
-  auto const node = std::make_shared<rclcpp::Node>(
-    "hello_moveit",
-    rclcpp::NodeOptions().automatically_declare_parameters_from_overrides(true)
-  );
-
-  // Create a ROS logger
-  auto const logger = rclcpp::get_logger("hello_moveit");
+  auto logger = node->get_logger();
 
   // Spin up a SingleThreadedExecutor for MoveItVisualTools to interact with ROS
-  rclcpp::executors::SingleThreadedExecutor executor;
-  executor.add_node(node);
-  auto spinner = std::thread([&executor]() { executor.spin(); });
+  // rclcpp::executors::SingleThreadedExecutor executor;
+  // executor.add_node(node);
+  // auto spinner = std::thread([&executor]() { executor.spin(); });
 
+  RCLCPP_INFO(logger,"Start Job Run!");
+  
   // Create the MoveIt MoveGroup Interface
   using moveit::planning_interface::MoveGroupInterface;
   auto move_group_interface = MoveGroupInterface(node, "ur_manipulator");
+
+  RCLCPP_INFO(logger,"Start Job Run!");
 
   // Construct and initialize MoveItVisualTools
   auto moveit_visual_tools = moveit_visual_tools::MoveItVisualTools{
@@ -184,9 +182,9 @@ int main(int argc, char * argv[])
   // Create closures for visualization
   auto const draw_title = [&moveit_visual_tools](auto text) {
     auto const text_pose = [] {
-      auto msg = Eigen::Isometry3d::Identity();
-      msg.translation().z() = 1.0;  // Place text 1m above the base link
-      return msg;
+      auto msg2 = Eigen::Isometry3d::Identity();
+      msg2.translation().z() = 1.0;  // Place text 1m above the base link
+      return msg2;
     }();
     moveit_visual_tools.publishText(text_pose, text, rviz_visual_tools::WHITE,rviz_visual_tools::XLARGE);
   };
@@ -210,27 +208,39 @@ int main(int argc, char * argv[])
 
   if (cmd == "pick") {
     // Job pick
-    job_pick(move_group_interface,target_pose,moveit_visual_tools,logger);
+    RCLCPP_INFO(logger,"Job pick!");
+
+    //job_pick(move_group_interface,target_pose,moveit_visual_tools,logger);
 
   } else if (cmd == "place") {
     // Job place
-    job_place();
+    RCLCPP_INFO(logger,"Job place!");
+
+    //job_place();
 
   } else if (cmd == "open") {
     // Job gripper open
+    RCLCPP_INFO(logger,"Job gripper open!");
+
     //job_gripper_open();
 
   } else if (cmd == "close") {
     // Job gripper close
+    RCLCPP_INFO(logger,"Job gripper close!");
+
     //job_gripper_close();
 
   } else if (cmd == "move") {
     // Job move to pose
-    job_move2pose(move_group_interface,target_pose,moveit_visual_tools,logger);
+    RCLCPP_INFO(logger,"Job move to pose!");
+
+    //job_move2pose(move_group_interface,target_pose,moveit_visual_tools,logger);
 
   } else if (cmd == "home") {
     // Job move to home
-    job_move2home(move_group_interface,moveit_visual_tools,logger);
+    RCLCPP_INFO(logger,"Job move to home!");
+
+    //job_move2home(move_group_interface,moveit_visual_tools,logger);
 
   }
 
@@ -238,8 +248,8 @@ int main(int argc, char * argv[])
   // -----------------------------------------------
 
 
-  // Shutdown ROS
-  rclcpp::shutdown();  // <--- This will cause the spin function in the thread to return
-  spinner.join();  // <--- Join the thread before exiting
+  // // Shutdown ROS
+  // rclcpp::shutdown();  // <--- This will cause the spin function in the thread to return
+  // spinner.join();  // <--- Join the thread before exiting
   return 0;
 }

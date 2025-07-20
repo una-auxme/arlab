@@ -14,19 +14,13 @@ def generate_launch_description():
         executable="Orchestrator"
     )
 
-    PoseSubscriber = Node(
+    OrchestratorSubscriber = Node(
         package="arlab_manipulation_cpp",
-        executable="PoseSubscriber"
+        executable="OrchestratorSubscriber"
     )
-
-    # Moveit_init = Node(
-    #     package="arlab_manipulation_cpp",
-    #     executable="Moveit_init"
-    # )
 
     ld.add_action(GetGrippingForce)
     ld.add_action(Orchestrator)
-    ld.add_action(PoseSubscriber)
-    # ld.add_action(Moveit_init)
+    ld.add_action(OrchestratorSubscriber)
 
     return ld

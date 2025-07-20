@@ -2,19 +2,20 @@
 #include <geometry_msgs/msg/pose.hpp>
 #include "arlab_common_interfaces/msg/orchestrator_data.hpp"
 
+#include "arlab_manipulation_cpp/job_runner.hpp"
 
-class PoseListener : public rclcpp::Node
+class OrchestratorListener : public rclcpp::Node
 {
 public:
-    PoseListener() : Node("PoseListener")
+    OrchestratorListener() : Node("OrchestratorListener")
     {
         data_sub = this->create_subscription<arlab_common_interfaces::msg::OrchestratorData>(
-            "/gripper_goal", 10,
-            std::bind(&PoseListener::gripper_goal_callback, this, std::placeholders::_1));
+            "/orchestrator_data", 10,
+            std::bind(&OrchestratorListener::orchestrator_data_callback, this, std::placeholders::_1));
     }
 
 private:
-    void gripper_goal_callback(const arlab_common_interfaces::msg::OrchestratorData::SharedPtr msg)
+    void orchestrator_data_callback(const arlab_common_interfaces::msg::OrchestratorData::SharedPtr msg)
     {
         const auto &pose = msg->pose;
         const auto &position = pose.position;
@@ -30,6 +31,8 @@ private:
             orientation.x, orientation.y, orientation.z, orientation.w,
             msg->grip_force.data,
             msg->cmd.data.c_str());
+
+        run_job(*msg,this->shared_from_this());
     }
 
     rclcpp::Subscription<arlab_common_interfaces::msg::OrchestratorData>::SharedPtr data_sub;
@@ -38,7 +41,7 @@ private:
 int main(int argc, char **argv)
 {
     rclcpp::init(argc, argv);
-    auto node = std::make_shared<PoseListener>();
+    auto node = std::make_shared<OrchestratorListener>();
     rclcpp::spin(node);
     rclcpp::shutdown();
     return 0;

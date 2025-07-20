@@ -28,7 +28,7 @@ class Orchestrator(Node):
         # ---- string                       command_type
         # ---- int64                        target_entityid
         # ---- geometry_msgs/Pose           target_pose
-        
+
         # Service client for getShape
         # ---- bool                         has_pointcloud
         # ---- sensor_msgs/PointCloud2      pointcloud
@@ -38,7 +38,7 @@ class Orchestrator(Node):
         # Service client for getEntity
         # ---- builtin_interfaces/Time      stamp
         # ---- string                       description
-        # ---- geometry_msgs/Pose           pose 
+        # ---- geometry_msgs/Pose           pose
         # ---- string                       pose_reference_frame
         # ---- EntityFurniture              furniture
         # ---- EntityHuman                  human
@@ -80,7 +80,7 @@ class Orchestrator(Node):
         future = self.client.call_async(self.req)
         future.add_done_callback(self.handle_service_response)
 
-    
+
     def bbox_callback(self, msg: BoundingBox2D):
         # 2D-Infos from BoundingBox2D: center (x,y), size_x, size_y
 
@@ -99,7 +99,7 @@ class Orchestrator(Node):
     def pointcloud_callback(self, msg: PointCloud2):
         # goal coorinates
         base_frame = 'base_link'
-        cam_frame = 'camera_link' # change in world frame when slam is working 
+        cam_frame = 'camera_link' # change in world frame when slam is working
 
         points_base = []
 
@@ -131,7 +131,7 @@ class Orchestrator(Node):
         # Gripping pose (position&orientation)
         self.gripping_pose = np.concatenate([self.gripping_point_pos, self.gripping_point_orient])
 
-    
+
     def handle_service_response(self, future):
         try:
             response = future.result()
@@ -177,8 +177,8 @@ class Orchestrator(Node):
 
         pos = gripping_pose.position
         orient = gripping_pose.orientation
-        self.get_logger().info( 
-            f"Published gripping pose: Position x={pos.x:.3f}, y={pos.y:.3f}, z={pos.z:.3f} | Orientation: ox={orient.x:.3f}, oy={orient.y:.3f}, oz={orient.z:.3f}, ow={orient.w:.3f} | Grip force: {self.force:.1f} N | Command: {self.cmd}"
+        self.get_logger().info(
+            f"Published gripping pose: Pos x={pos.x:.3f}, y={pos.y:.3f}, z={pos.z:.3f} | Orient: ox={orient.x:.3f}, oy={orient.y:.3f}, oz={orient.z:.3f}, ow={orient.w:.3f} | Grip force: {self.force:.1f} N | Cmd: {self.cmd}"
         )
 
 def main(args=None):

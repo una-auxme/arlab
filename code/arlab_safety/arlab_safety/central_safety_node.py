@@ -1,6 +1,6 @@
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import String
+from std_msgs.msg import Int32MultiArray
 
 
 class CentralSafetyNode(Node):
@@ -21,9 +21,15 @@ class CentralSafetyNode(Node):
         self.module_safety_table = {}
 
         self.timer = self.create_timer(0.1, self.reset_module_safety_table)
-        self.create_subscription(String, "/global_heartbeat", self.callback, 10)
+        self.create_subscription(
+            Int32MultiArray, "/global_heartbeat", self.callback, 10
+        )
 
-    def callback(self, msg: String):
+    def now(self):
+        """Returns current time in seconds (float)"""
+        return self.get_clock().now().nanoseconds / 1e9
+
+    def callback(self, msg: Int32MultiArray):
         """Receives messages from the /global_heartbeat"""
         print(f"Received message: {msg.data}")
         if len(msg.data) < 2:
@@ -37,7 +43,7 @@ class CentralSafetyNode(Node):
             self.register_module(module_id)
         elif module_state == 0:
             self.module_working(module_id)
-        elif module_state != 0:
+        elif module_state > 0:
             self.critical_error(module_id, module_state)
 
     def register_module(self, module_id):
@@ -46,7 +52,7 @@ class CentralSafetyNode(Node):
             self.get_logger().info(f"Registering module {module_id}.")
             self.module_safety_table[module_id] = {
                 "error_state": -1,
-                "last_seen": self.get_clock().now(),
+                "last_seen": self.now(),
                 "heartbeat": 0.5,
             }
         else:
@@ -57,7 +63,7 @@ class CentralSafetyNode(Node):
         """Updates working state in the module table."""
         if module_id in self.module_safety_table:
             self.module_safety_table[module_id]["error_state"] = 0
-            self.module_safety_table[module_id]["last_seen"] = self.get_clock().now()
+            self.module_safety_table[module_id]["last_seen"] = self.now()
         else:
             self.get_logger().warn(
                 f"Received 'working' message from unknown module {module_id}. Registering now."
@@ -81,9 +87,9 @@ class CentralSafetyNode(Node):
 
     def reset_module_safety_table(self):
         """Checks if modules have timed out and triggers error if necessary."""
-        now = self.get_clock().now()
+        now = self.now()
         for module_id, info in self.module_safety_table.items():
-            if ((now - info["last_seen"]).nanoseconds / 1e9) > info["heartbeat"]:
+            if now - info["last_seen"] > info["heartbeat"]:
                 self.get_logger().warn(f"Module {module_id} heartbeat timeout.")
                 self.critical_error(module_id, -1)
 

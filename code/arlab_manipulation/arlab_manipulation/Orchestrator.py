@@ -14,15 +14,18 @@ import tf2_ros
 import tf2_geometry_msgs
 
 from arlab_common_interfaces.srv import GrippingForce
+from arlab_common_interfaces.msg import OrchestratorData
 
 class Orchestrator(Node):
     def __init__(self):
         super().__init__('Orchestrator')
 
         # Publisher for C++ (MoveItNode)
-        self.goal_pub = self.create_publisher(Pose, '/goalpose', 10)
-        self.gripforce_pub = self.create_publisher(Float64, '/gripforce', 10)
-        self.cmd_pub = self.create_publisher(String, '/cmd', 10)
+        #self.goal_pub = self.create_publisher(Pose, '/goalpose', 10)
+        #self.gripforce_pub = self.create_publisher(Float64, '/gripforce', 10)
+        #self.cmd_pub = self.create_publisher(String, '/cmd', 10)
+
+        self.data_publisher = self.create_publisher(OrchestratorData, '/gripper_goal', 10)
 
         # Action Server for ManipulationCommand
         # ---- string                       command_type
@@ -157,7 +160,7 @@ class Orchestrator(Node):
         self.goal_pub.publish(gripping_pose)
         """
 
-        gripping_pose = Pose()  #dummy pose
+        gripping_pose = Pose()
         gripping_pose.position.x = 0.372
         gripping_pose.position.y = 0.124
         gripping_pose.position.z = 0.621
@@ -165,20 +168,22 @@ class Orchestrator(Node):
         gripping_pose.orientation.y = 0.041
         gripping_pose.orientation.z = 0.006
         gripping_pose.orientation.w = 0.004
-        self.goal_pub.publish(gripping_pose)
 
-        force_msg = Float64()
-        force_msg.data = self.force
-        self.gripforce_pub.publish(force_msg)
+        msg = OrchestratorData()
+        msg.pose = gripping_pose
+        msg.grip_force = Float64()
+        msg.grip_force.data = self.force
+        msg.cmd = String()
+        msg.cmd.data = self.cmd #pick, place, open, close, move, home
 
-        cmd_msg = String()
-        cmd_msg.data = self.cmd #pick, place, open, close, move, home
-        self.cmd_pub.publish(cmd_msg)
+        self.data_publisher.publish(msg)
 
         pos = gripping_pose.position
         orient = gripping_pose.orientation
         self.get_logger().info(
-            f"Published gripping pose: Pos x={pos.x:.3f}, y={pos.y:.3f}, z={pos.z:.3f} | Orient: ox={orient.x:.3f}, oy={orient.y:.3f}, oz={orient.z:.3f}, ow={orient.w:.3f} | Grip force: {self.force:.1f} N | Cmd: {self.cmd}"
+            f"Published gripper goal: Position x={pos.x:.3f}, y={pos.y:.3f}, z={pos.z:.3f} | "
+            f"Orientation ox={orient.x:.3f}, oy={orient.y:.3f}, oz={orient.z:.3f}, ow={orient.w:.3f} | "
+            f"Grip force: {self.force:.1f} N | Command: {self.cmd}"
         )
 
 def main(args=None):

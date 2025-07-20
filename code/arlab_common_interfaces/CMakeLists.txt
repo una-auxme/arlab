@@ -24,12 +24,16 @@ endif()
 # find_package(<dependency> REQUIRED)
 
 find_package(rosidl_default_generators REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
 
 # Add all your interface files here:
 rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/DeleteMe.msg"
   "srv/GrippingForce.srv"
-  DEPENDENCIES # Add packages that above messages depend on
+  "msg/OrchestratorData.msg"
+  DEPENDENCIES
+    geometry_msgs
+    std_msgs
 )
 
 ament_package()

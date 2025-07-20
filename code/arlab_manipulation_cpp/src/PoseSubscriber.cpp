@@ -1,54 +1,38 @@
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/pose.hpp>
-#include <std_msgs/msg/float64.hpp>
-#include <std_msgs/msg/string.hpp>
+#include "arlab_common_interfaces/msg/orchestrator_data.hpp"
+
 
 class PoseListener : public rclcpp::Node
 {
 public:
     PoseListener() : Node("PoseListener")
     {
-        // Subscriber for Pose
-        pose_subscription_ = this->create_subscription<geometry_msgs::msg::Pose>(
-            "/goalpose", 10,
-            std::bind(&PoseListener::pose_callback, this, std::placeholders::_1));
-
-        // Subscriber for gripping force
-        grip_subscription_ = this->create_subscription<std_msgs::msg::Float64>(
-            "/gripforce", 10,
-            std::bind(&PoseListener::grip_callback, this, std::placeholders::_1));
-
-        // Subscriber for Job Command
-        cmd_subscription_ = this->create_subscription<std_msgs::msg::String>(
-            "/cmd", 10,
-            std::bind(&PoseListener::cmd_callback, this, std::placeholders::_1));
+        data_sub = this->create_subscription<arlab_common_interfaces::msg::OrchestratorData>(
+            "/gripper_goal", 10,
+            std::bind(&PoseListener::gripper_goal_callback, this, std::placeholders::_1));
     }
 
 private:
-    void pose_callback(const geometry_msgs::msg::Pose::SharedPtr msg)
+    void gripper_goal_callback(const arlab_common_interfaces::msg::OrchestratorData::SharedPtr msg)
     {
-        auto &position = msg->position;
-        auto &orientation = msg->orientation;
+        const auto &pose = msg->pose;
+        const auto &position = pose.position;
+        const auto &orientation = pose.orientation;
 
         RCLCPP_INFO(this->get_logger(),
-            "Received pose - Position: x=%.3f, y=%.3f, z=%.3f | Orientation: ox=%.3f, oy=%.3f, oz=%.3f, ow=%.3f",
+            "Received data:\n"
+            " Position: x=%.3f, y=%.3f, z=%.3f\n"
+            " Orientation: ox=%.3f, oy=%.3f, oz=%.3f, ow=%.3f\n"
+            " Grip force: %.2f N\n"
+            " Command: '%s'",
             position.x, position.y, position.z,
-            orientation.x, orientation.y, orientation.z, orientation.w);
+            orientation.x, orientation.y, orientation.z, orientation.w,
+            msg->grip_force.data,
+            msg->cmd.data.c_str());
     }
 
-    void grip_callback(const std_msgs::msg::Float64::SharedPtr msg)
-    {
-        RCLCPP_INFO(this->get_logger(), "Received grip force: %.2f N", msg->data);
-    }
-
-    void cmd_callback(const std_msgs::msg::String::SharedPtr msg)
-    {
-        RCLCPP_INFO(this->get_logger(), "Received command: '%s'", msg->data.c_str());
-    }
-
-    rclcpp::Subscription<geometry_msgs::msg::Pose>::SharedPtr pose_subscription_;
-    rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr grip_subscription_;
-    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr cmd_subscription_;
+    rclcpp::Subscription<arlab_common_interfaces::msg::OrchestratorData>::SharedPtr data_sub;
 };
 
 int main(int argc, char **argv)

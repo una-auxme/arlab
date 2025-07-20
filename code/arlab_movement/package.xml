@@ -18,13 +18,21 @@
   <depend>nav2_map_server</depend>
   <depend>nav2_costmap_2d</depend>
   <depend>nav2_waypoint_follower</depend>
-  <depend>rclpy</depend> <depend>geometry_msgs</depend> <depend>tf2_ros</depend> <depend>slam_toolbox</depend>
+  <depend>rclpy</depend> 
+  <depend>geometry_msgs</depend> 
+  <depend>tf2_ros</depend> 
 
   <depend>turtlebot3_navigation2</depend>
   <depend>turtlebot3_msgs</depend>
   <depend>turtlebot3_description</depend>
   <depend>turtlebot3_gazebo</depend>
   <depend>xacro</depend>
+
+  <exec_depend>ros_gz_sim</exec_depend>
+  <exec_depend>slam_toolbox</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+  <exec_depend>teleop_twist_keyboard</exec_depend>
 
   <!--dependencie for rosbot_xl-->
   <depend>laser_filters</depend>

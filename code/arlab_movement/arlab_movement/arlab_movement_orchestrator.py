@@ -20,10 +20,10 @@ class MovementOrchestratorNode(Node):
         timer_period = 1.0  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
         self.i = 0
-        self.setup_subscriber()
-        self.setup_publisher()
+        self.setup_subscribers()
+        self.setup_publishers()
 
-    def setup_subscriber(self):
+    def setup_subscribers(self):
         self.pose_sub = self.create_subscription(
             msg_type=MovementCommand,
             callback=self.receive_command, 

@@ -165,13 +165,11 @@ int run_job(const arlab_common_interfaces::msg::OrchestratorData &msg, std::shar
   // auto spinner = std::thread([&executor]() { executor.spin(); });
 
   RCLCPP_INFO(logger,"Start Job Run!");
-  
+
   // Create the MoveIt MoveGroup Interface
   using moveit::planning_interface::MoveGroupInterface;
   auto move_group_interface = MoveGroupInterface(node, "ur_manipulator");
-
-  RCLCPP_INFO(logger,"Start Job Run!");
-
+  
   // Construct and initialize MoveItVisualTools
   auto moveit_visual_tools = moveit_visual_tools::MoveItVisualTools{
       node, "base_link", rviz_visual_tools::RVIZ_MARKER_TOPIC,

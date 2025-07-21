@@ -31,6 +31,7 @@ class LocalSafety(Node):
         """
         msg = Int32MultiArray()
         msg.data = [self.module_id, self.health_state]
+        print(f"Publishing message: Array {list(msg.data)}")
         self.pub_global_heartbeat.publish(msg)
         # reset node health_state
         self.health_state = 0

@@ -31,7 +31,7 @@ class CentralSafetyNode(Node):
 
     def callback(self, msg: Int32MultiArray):
         """Receives messages from the /global_heartbeat"""
-        print(f"Received message: {msg.data}")
+        print(f"Received message: Array {list(msg.data)}")
         if len(msg.data) < 2:
             self.get_logger().warn("Invalid message received. Skipping.")
             return
@@ -82,7 +82,7 @@ class CentralSafetyNode(Node):
             self.module_safety_table[module_id]["error_state"] = module_state
 
         # Here you could add actions such as triggering alerts or system freeze
-        if module_state != -1:
+        if module_state != 0:
             self.system_freeze()
 
     def reset_module_safety_table(self):

@@ -10,7 +10,7 @@ find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(moveit_ros_planning_interface REQUIRED)
 find_package(std_msgs REQUIRED)
-find_package(moveit_visual_tools REQUIRED)
+# find_package(moveit_visual_tools REQUIRED)
 find_package(arlab_common_interfaces REQUIRED)
 
 add_executable(OrchestratorSubscriber src/OrchestratorSubscriber.cpp src/utils.cpp src/job_runner.cpp)
@@ -24,7 +24,6 @@ target_compile_features(OrchestratorSubscriber PUBLIC cxx_std_17)
 ament_target_dependencies(
   OrchestratorSubscriber
   moveit_ros_planning_interface
-  moveit_visual_tools
   rclcpp
   geometry_msgs
   std_msgs

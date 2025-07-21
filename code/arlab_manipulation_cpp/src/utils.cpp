@@ -33,10 +33,15 @@ moveit_msgs::msg::CollisionObject createCollisionBox(const std::string &frame_id
 }
 
 
-bool planAndExecutePose(
+// bool planAndExecutePose(
+//   moveit::planning_interface::MoveGroupInterface &move_group_interface,
+//   const geometry_msgs::msg::Pose &target_pose,
+//   moveit_visual_tools::MoveItVisualTools &visual_tools,
+//   const rclcpp::Logger &logger
+// ) {
+  bool planAndExecutePose(
   moveit::planning_interface::MoveGroupInterface &move_group_interface,
   const geometry_msgs::msg::Pose &target_pose,
-  moveit_visual_tools::MoveItVisualTools &visual_tools,
   const rclcpp::Logger &logger
 ) {
   // Set target pose
@@ -48,23 +53,23 @@ bool planAndExecutePose(
     pose.translation().z() = 1.0;
     return pose;
   }();
-  visual_tools.publishText(text_pose, "Planning", rviz_visual_tools::WHITE, rviz_visual_tools::XLARGE);
-  visual_tools.prompt("Press 'Next' in the RvizVisualToolsGui window to plan");
-  visual_tools.trigger();
+  // visual_tools.publishText(text_pose, "Planning", rviz_visual_tools::WHITE, rviz_visual_tools::XLARGE);
+  // visual_tools.prompt("Press 'Next' in the RvizVisualToolsGui window to plan");
+  // visual_tools.trigger();
 
   // Plan trajectory
   moveit::planning_interface::MoveGroupInterface::Plan plan;
   bool success = static_cast<bool>(move_group_interface.plan(plan));
 
   if (success) {
-    visual_tools.publishTrajectoryLine(plan.trajectory, move_group_interface.getRobotModel()->getJointModelGroup(move_group_interface.getName()));
-    visual_tools.publishText(text_pose, "Executing", rviz_visual_tools::WHITE, rviz_visual_tools::XLARGE);
-    visual_tools.trigger();
+    // visual_tools.publishTrajectoryLine(plan.trajectory, move_group_interface.getRobotModel()->getJointModelGroup(move_group_interface.getName()));
+    // visual_tools.publishText(text_pose, "Executing", rviz_visual_tools::WHITE, rviz_visual_tools::XLARGE);
+    // visual_tools.trigger();
 
     move_group_interface.execute(plan);
   } else {
-    visual_tools.publishText(text_pose, "Planning Failed!", rviz_visual_tools::RED, rviz_visual_tools::XLARGE);
-    visual_tools.trigger();
+    // visual_tools.publishText(text_pose, "Planning Failed!", rviz_visual_tools::RED, rviz_visual_tools::XLARGE);
+    // visual_tools.trigger();
     RCLCPP_ERROR(logger, "Planning failed!");
   }
 

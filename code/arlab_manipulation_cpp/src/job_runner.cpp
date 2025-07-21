@@ -6,7 +6,7 @@
 
 // MoveIt
 #include <moveit/move_group_interface/move_group_interface.hpp>
-#include <moveit_visual_tools/moveit_visual_tools.h>
+// #include <moveit_visual_tools/moveit_visual_tools.h>
 #include <moveit/planning_scene_interface/planning_scene_interface.hpp>
 
 #include "arlab_manipulation_cpp/utils.hpp"
@@ -42,60 +42,67 @@
 //   ROS_INFO("Greifer-Befehl gesendet!");
 // }
 
-void job_move2pose(
-  moveit::planning_interface::MoveGroupInterface &move_group_interface,
-  const geometry_msgs::msg::Pose &target_pose,
-  moveit_visual_tools::MoveItVisualTools &moveit_visual_tools,
-  const rclcpp::Logger &logger
-) {
+// void job_move2pose(
+//   moveit::planning_interface::MoveGroupInterface &move_group_interface,
+//   const geometry_msgs::msg::Pose &target_pose,
+//   moveit_visual_tools::MoveItVisualTools &moveit_visual_tools,
+//   const rclcpp::Logger &logger
+// ) {
 
-  // ----------------- Plan and Execute -----------------
-  auto success = planAndExecutePose(move_group_interface,target_pose,moveit_visual_tools,logger);
+//   // ----------------- Plan and Execute -----------------
+//   auto success = planAndExecutePose(move_group_interface,target_pose,moveit_visual_tools,logger);
 
-}
+// }
 
-void job_move2home(
-  moveit::planning_interface::MoveGroupInterface &move_group_interface,
-  moveit_visual_tools::MoveItVisualTools &moveit_visual_tools,
-  const rclcpp::Logger &logger
-) {
+// void job_move2home(
+//   moveit::planning_interface::MoveGroupInterface &move_group_interface,
+//   moveit_visual_tools::MoveItVisualTools &moveit_visual_tools,
+//   const rclcpp::Logger &logger
+// ) {
 
-  // Set a target Pose
-  auto home_pose = createPose(-0.12,0.5,0.6,0.996,0.041,0.009,0.076);
+//   // Set a target Pose
+//   auto home_pose = createPose(-0.12,0.5,0.6,0.996,0.041,0.009,0.076);
 
-  // ----------------- Plan and Execute -----------------
+//   // ----------------- Plan and Execute -----------------
 
-  // 1. Is in Home Pos?
-  // -> False: Move to Home Pos
-  auto success = planAndExecutePose(move_group_interface,home_pose,moveit_visual_tools,logger);
+//   // 1. Is in Home Pos?
+//   // -> False: Move to Home Pos
+//   auto success = planAndExecutePose(move_group_interface,home_pose,moveit_visual_tools,logger);
 
-}
+// }
 
+// void job_pick(
+//   moveit::planning_interface::MoveGroupInterface &move_group_interface,
+//   const geometry_msgs::msg::Pose &target_pose,
+//   moveit_visual_tools::MoveItVisualTools &moveit_visual_tools,
+//   const rclcpp::Logger &logger
+// ) {
 void job_pick(
   moveit::planning_interface::MoveGroupInterface &move_group_interface,
   const geometry_msgs::msg::Pose &target_pose,
-  moveit_visual_tools::MoveItVisualTools &moveit_visual_tools,
   const rclcpp::Logger &logger
 ) {
 
   // Set a target Pose
   auto home_pose = createPose(-0.12,0.5,0.6,0.996,0.041,0.009,0.076);
-  auto table_pose = createPose(0.372,0.124,0.621,0.999,0.041,0.006,0.004);
-  auto standup_pose = createPose(0.1,0.233,0.98,-0.5,0.5,0.5,0.5);
+  auto table_pose = createPose(0.372,0.124,0.3,0.999,0.041,0.006,0.004);
+  auto standup_pose = createPose(0.3,0.233,0.7,-0.5,0.5,0.5,0.5);
 
   // ----------------- Plan and Execute -----------------
 
 
   // 1. Is in Home Pos?
   // -> False: Move to Home Pos
-  auto success = planAndExecutePose(move_group_interface,home_pose,moveit_visual_tools,logger);
+  // auto success = planAndExecutePose(move_group_interface,home_pose,moveit_visual_tools,logger);
+  auto success = planAndExecutePose(move_group_interface,home_pose,logger);
   // if (!success) {
   //   planAndExecutePose(move_group_interface,standup_pose,moveit_visual_tools,logger);
   //   planAndExecutePose(move_group_interface,home_pose,moveit_visual_tools,logger);
   // }
 
   // 2. Move to Table Pose
-  auto success2 = planAndExecutePose(move_group_interface,table_pose,moveit_visual_tools,logger);
+  // auto success2 = planAndExecutePose(move_group_interface,table_pose,moveit_visual_tools,logger);
+  auto success2 = planAndExecutePose(move_group_interface,table_pose,logger);
   // if (!success2) {
   //   planAndExecutePose(move_group_interface,standup_pose,moveit_visual_tools,logger);
   //   planAndExecutePose(move_group_interface,table_pose,moveit_visual_tools,logger);
@@ -108,7 +115,8 @@ void job_pick(
   // 5. Move to Table Pose
 
   // 6. Move to Home Pos
-  auto success3 = planAndExecutePose(move_group_interface,home_pose,moveit_visual_tools,logger);
+  // auto success3 = planAndExecutePose(move_group_interface,home_pose,moveit_visual_tools,logger);
+  auto success3 = planAndExecutePose(move_group_interface,home_pose,logger);
   // if (!success3) {
   //   planAndExecutePose(move_group_interface,standup_pose,moveit_visual_tools,logger);
   //   planAndExecutePose(move_group_interface,home_pose,moveit_visual_tools,logger);
@@ -169,32 +177,32 @@ int run_job(const arlab_common_interfaces::msg::OrchestratorData &msg, std::shar
   // Create the MoveIt MoveGroup Interface
   using moveit::planning_interface::MoveGroupInterface;
   auto move_group_interface = MoveGroupInterface(node, "ur_manipulator");
-  
-  // Construct and initialize MoveItVisualTools
-  auto moveit_visual_tools = moveit_visual_tools::MoveItVisualTools{
-      node, "base_link", rviz_visual_tools::RVIZ_MARKER_TOPIC,
-      move_group_interface.getRobotModel()};
-  moveit_visual_tools.deleteAllMarkers();
-  moveit_visual_tools.loadRemoteControl();
 
-  // Create closures for visualization
-  auto const draw_title = [&moveit_visual_tools](auto text) {
-    auto const text_pose = [] {
-      auto msg2 = Eigen::Isometry3d::Identity();
-      msg2.translation().z() = 1.0;  // Place text 1m above the base link
-      return msg2;
-    }();
-    moveit_visual_tools.publishText(text_pose, text, rviz_visual_tools::WHITE,rviz_visual_tools::XLARGE);
-  };
-  auto const prompt = [&moveit_visual_tools](auto text) {
-    moveit_visual_tools.prompt(text);
-  };
-  auto const draw_trajectory_tool_path =
-      [&moveit_visual_tools,
-      jmg = move_group_interface.getRobotModel()->getJointModelGroup(
-          "ur_manipulator")](auto const trajectory) {
-        moveit_visual_tools.publishTrajectoryLine(trajectory, jmg);
-      };
+  // Construct and initialize MoveItVisualTools
+  // auto moveit_visual_tools = moveit_visual_tools::MoveItVisualTools{
+  //     node, "base_link", rviz_visual_tools::RVIZ_MARKER_TOPIC,
+  //     move_group_interface.getRobotModel()};
+  // moveit_visual_tools.deleteAllMarkers();
+  // moveit_visual_tools.loadRemoteControl();
+
+  // // Create closures for visualization
+  // auto const draw_title = [&moveit_visual_tools](auto text) {
+  //   auto const text_pose = [] {
+  //     auto msg2 = Eigen::Isometry3d::Identity();
+  //     msg2.translation().z() = 1.0;  // Place text 1m above the base link
+  //     return msg2;
+  //   }();
+  //   moveit_visual_tools.publishText(text_pose, text, rviz_visual_tools::WHITE,rviz_visual_tools::XLARGE);
+  // };
+  // auto const prompt = [&moveit_visual_tools](auto text) {
+  //   moveit_visual_tools.prompt(text);
+  // };
+  // auto const draw_trajectory_tool_path =
+  //     [&moveit_visual_tools,
+  //     jmg = move_group_interface.getRobotModel()->getJointModelGroup(
+  //         "ur_manipulator")](auto const trajectory) {
+  //       moveit_visual_tools.publishTrajectoryLine(trajectory, jmg);
+  //     };
 
 
   // ---------------- Job Execution ----------------
@@ -208,7 +216,7 @@ int run_job(const arlab_common_interfaces::msg::OrchestratorData &msg, std::shar
     // Job pick
     RCLCPP_INFO(logger,"Job pick!");
 
-    //job_pick(move_group_interface,target_pose,moveit_visual_tools,logger);
+    job_pick(move_group_interface,target_pose,logger);
 
   } else if (cmd == "place") {
     // Job place

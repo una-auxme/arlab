@@ -1,12 +1,26 @@
 import numpy as np
 import rclpy
-import std_msgs.msg
+import torch
+import cv2
+
+from cv_bridge import CvBridge
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
+from rclpy.node import Node
+from sensor_msgs.msg import CameraInfo, Image
+from sensor_msgs_py import point_cloud2
+from ultralytics import YOLO
+from std_msgs.msg import Header
+from vision_msgs.msg import BoundingBox2D
+from vision_msgs.msg import Point2D
+from std_msgs.msg import String
+from geometry_msgs.msg import Pose, Point, Quaternion
+
+from arlab_knowledge_interfaces.msg import Entity
 from arlab_knowledge_interfaces.msg import EntityType
 from arlab_knowledge_interfaces.srv import (
     AddEntity,
     DelEntities,
     GetEntities,
-    UpdEntity,
 )
 from cv_bridge import CvBridge
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
@@ -15,17 +29,19 @@ from sensor_msgs.msg import CameraInfo, Image
 
 
 class ObjectDetection(Node):
-    """
-    ROS2-Node: Abonniert RGB + Depth, führt YOLOv8-Segmentierung aus und
-    (Platzhalter) bereitet die 3D-Auswertung vor.
+    """ROS2 node that performs real-time object detection using YOLO,
+    extracts semantic and geometric information from masks, and communicates
+    with a knowledge base via ROS services.
     """
 
     def __init__(self):
         super().__init__(type(self).__name__)
 
         self.bridge = CvBridge()
-        # self.model = YOLO("yolo_weights/yolo11n-seg.pt")
-        # self.model.to("cuda")
+        self.model = YOLO("yolo_weights/yolo11n-seg.pt")
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        print(f"Using device: {device}")
+        self.model.to(device)
         self.camera_intrinsics = None
 
         # Service Clients
@@ -38,17 +54,31 @@ class ObjectDetection(Node):
             callback_group=self.service_client_group,
         )
 
-        # Kamera-Info abonnieren (einmalig, async)
+        self.client_del_entities = self.create_client(
+            DelEntities,
+            f"{self.prefix}/del_entities",
+            callback_group=self.service_client_group,
+        )
+
+        self.client_add_entities = self.create_client(
+            AddEntity,
+            f"{self.prefix}/add_entity",
+            callback_group=self.service_client_group,
+        )
+
+        # Subscribe to camera info (once, async)
         self.create_subscription(
             CameraInfo,
             "/camera/aligned_depth_to_color/camera_info",
             self.camera_info_callback,
             qos_profile=10,
         )
+
+        # Subscribe to RGB image stream
         self.create_subscription(Image, "/camera/image_raw", self.process_data, 10)
 
     def camera_info_callback(self, msg):
-        # Extrahiere Kamera-Intrinsic Matrix
+        # Extract camera intrinsics from K matrix
         K = np.array(msg.K).reshape(3, 3)
         self.camera_intrinsics = {
             "fx": K[0, 0],
@@ -57,14 +87,18 @@ class ObjectDetection(Node):
             "cy": K[1, 2],
         }
 
-    def process_data(self, rgb_msg: Image):
-        """Empfängt synchronisierte RGB- und Tiefenbilder, führt YOLOv8-Segmentierung durch
-        und berechnet 3D-Koordinaten pro Maske mit zugehörigem Klassennamen.
+    async def process_data(self, rgb_msg: Image):
+        """Main callback for processing incoming RGB images.
+        Performs YOLO segmentation, generates semantic and geometric entity data,
+        and communicates with the knowledge base to insert or update entities.
         """
         if self.camera_intrinsics is None:
             return
 
-        # Konvertiere Bilder
+        print("\n-------------------------------------------------------------")
+        print("Processing Image.")
+
+        rgb_header = rgb_msg.header
         rgb_image = self.bridge.imgmsg_to_cv2(rgb_msg, desired_encoding="bgr8")
         depth_image = self.bridge.imgmsg_to_cv2(
             depth_msg, desired_encoding="passthrough"
@@ -74,88 +108,32 @@ class ObjectDetection(Node):
         # YOLOv8-Inferenz
         results = self.model(rgb_image)
         result = results[0]
-        masks = result.masks
-        boxes = result.boxes
 
-        if masks is None or boxes is None:
-            return
+        entities_cv = generate_entities_from_yolo_result(
+            result, self.model.names, rgb_header, self.get_clock(), frame=rgb_image
+        )
 
-        # Kameraparameter
-        fx, fy = self.camera_intrinsics["fx"], self.camera_intrinsics["fy"]
-        cx, cy = self.camera_intrinsics["cx"], self.camera_intrinsics["cy"]
+        # 1. Generate new entities from current detections
+        # Each entity consists of:
+        # - class label (tag)
+        # - segmented point cloud
+        # - bounding box and pose
 
-        # Hole Klassen-IDs + Namen
-        class_ids = boxes.cls.cpu().numpy().astype(int)  # shape: (N,)
-        class_names = self.model.names  # dict: {id: name}
+        # 2. Retrieve all existing entities from the knowledge base
+        get_entities_req = GetEntities.Request()
+        get_entities_req.entity_type.id = EntityType.ENTITY
+        entities_knowledge_resp: GetEntities.Response = (
+            await self.client_get_entities.call_async(get_entities_req)
+        )
 
-        # Hole Masken als NumPy (N, H, W)
-        masks_np = masks.data.cpu().numpy()
+        print("\nGet Entities: ", entities_knowledge_resp, "\n")
 
-        for i, mask in enumerate(masks_np):
-            class_id = class_ids[i]
-            class_name = class_names[class_id]
+        entity_knowledge_ids = entities_knowledge_resp.entities
 
-            # Binarisiere Maske
-            mask_binary = mask > 0.5
+        # 3. Compare existing entities to new detections (e.g., for tracking via IoU)
+        # TODO: Implement comparison between entities_knowledge and entities_cv
 
-            # Wende Maske auf Tiefenbild an
-            depth_masked = np.where(mask_binary, depth_np, 0)
-
-            # Finde gültige Tiefenpunkte
-            valid_y, valid_x = np.nonzero(depth_masked)
-            z = depth_masked[valid_y, valid_x] / 1000.0  # mm → m
-
-            if z.size == 0:
-                continue
-
-            # Vektorisierte Umprojektion
-            x = valid_x.astype(np.float32)
-            y = valid_y.astype(np.float32)
-
-            X = (x - cx) * z / fx
-            Y = (y - cy) * z / fy
-            Z = z
-
-            points_3d = np.stack((X, Y, Z), axis=-1)
-
-            header = std_msgs.msg.Header()
-            header.stamp = self.get_clock().now().to_msg()
-            header.frame_id = rgb_header.frame_id
-
-            # Konvertierung NumPy → PointCloud2
-            pc2_msg = point_cloud2.create_cloud_xyz32(header, points_3d.tolist())
-
-            new_entity = {
-                "name": class_names[class_ids[i]],
-                "pointcloud": pc2_msg,
-                "OBB": boxes[i],
-            }
-
-            entities_cv.append(new_entity)
-
-            print(new_entity)
-
-        # Todo: Save classified data in knowledge base.
-
-        # 1. Create Entities from object detection data
-        """
-            Tag_name = Klasse
-            segmentierte punktwolke
-            winkel
-        """
-
-        entities_knowledge = None
-
-        # 2. Get all Entities
-        entities_req = GetEntities.Request()
-        entities_req.entity_type.id = EntityType.ENTITY
-        entities_knowledge = self.client_get_entities.call_async(entities_req)
-        entities_knowledge = entities_knowledge.result()
-
-        # 3. Compare Entities for tracking (IoU)
-        # Todo enities_knowledge mit entities_cv
-
-        # 4. Delete all Entities
+        # 4. Delete all existing entities from the knowledge base
         del_entities_req = DelEntities.Request()
         del_entities_req.entityids = [
             self.entity_id,
@@ -172,18 +150,136 @@ class ObjectDetection(Node):
         )
         self.log_result("DelEntities", res.result)
 
-        # 5. Update / Insert Entities
-        for entity in entities_cv:
-            add_entity_req = AddEntity.Request()
-            add_entity_req.data = entity.to_ros_msg()
-            # For shelves:
-            add_entity_req.data.furniture.shelf.cupboard_id = self.cupboard_id
+        print("Del Entities: ", del_resp, "\n")
 
-            response = self.call_service(
-                AddEntity, f"{self.prefix}/add_entity", add_entity_req
+        # 5. Insert or update detected entities into the knowledge base
+        for entity_cv in entities_cv:
+            add_entity_req = AddEntity.Request()
+            add_entity_req.data = Entity(
+                description="Testing Knowledgebase Services.",
+                pose=entity_cv["pose"],
+                pose_reference_frame=rgb_header.frame_id,
+                stamp=self.get_clock().now().to_msg(),
             )
 
-        pass
+            add_resp = await self.client_add_entities.call_async(add_entity_req)
+            print("Add Entities: ", add_resp, "\n")
+
+
+def pose_from_point2d(point2d: Point2D) -> Pose:
+    """Convert a 2D point (typically from bounding box center) into a 3D pose with fixed orientation."""
+    return Pose(
+        position=Point(x=point2d.x, y=point2d.y, z=0.0),
+        orientation=Quaternion(x=0.0, y=0.0, z=0.0, w=1.0),
+    )
+
+
+def generate_entities_from_yolo_result(
+    result, class_names, rgb_header, clock, frame=None
+):
+    """Convert YOLO segmentation results into a list of entity dictionaries.
+    Each entity contains:
+    - class label as std_msgs/String
+    - bounding box (vision_msgs/BoundingBox2D)
+    - 2D point cloud (as fake 3D PointCloud2 with z=0)
+    - estimated pose (geometry_msgs/Pose)
+    """
+
+    masks = result.masks
+    boxes = result.boxes
+
+    if masks is None or boxes is None:
+        return []
+
+    class_ids = boxes.cls.cpu().numpy().astype(int)
+    masks_np = masks.data.cpu().numpy()
+
+    entities = []
+
+    for i, mask in enumerate(masks_np):
+        coords_2d = np.argwhere(mask > 0)
+        if coords_2d.size == 0:
+            continue
+
+        class_name_msg = String(data=class_names[class_ids[i]])
+
+        xywh = boxes[i].xywh[0].cpu().tolist()
+        center_x, center_y, width, height = xywh
+        bbox = BoundingBox2D()
+        bbox.center = Point2D(x=center_x, y=center_y)
+        bbox.size_x = width
+        bbox.size_y = height
+
+        header = Header()
+        header.stamp = clock.now().to_msg()
+        header.frame_id = rgb_header.frame_id
+
+        pc2_msg = coords2d_to_pointcloud(coords_2d, header)
+
+        pose_msg = pose_from_point2d(bbox.center)
+
+        new_entity = {
+            "name": class_name_msg,
+            "pointcloud": pc2_msg,
+            "bbox": bbox,
+            "pose": pose_msg,
+        }
+
+        entities.append(new_entity)
+
+        # 🎯 Live-Visualisierung
+        if frame is not None:
+            color = (0, 255, 0)
+            alpha = 0.4
+
+            # 🟢 Maske in Farbe überlagern
+            colored_mask = np.zeros_like(frame, dtype=np.uint8)
+            # Skaliere Maske auf Bildgröße (same height/width as frame)
+            mask_resized = cv2.resize(
+                mask.astype(np.uint8),
+                (frame.shape[1], frame.shape[0]),
+                interpolation=cv2.INTER_NEAREST,
+            )
+
+            # Erstelle leere Maske in Bildgröße
+            colored_mask = np.zeros_like(frame, dtype=np.uint8)
+            colored_mask[mask_resized > 0] = color
+            overlay = cv2.addWeighted(frame, 1.0, colored_mask, alpha, 0)
+
+            # 🟥 Bounding Box zeichnen
+            x = int(center_x - width / 2)
+            y = int(center_y - height / 2)
+            w = int(width)
+            h = int(height)
+            cv2.rectangle(overlay, (x, y), (x + w, y + h), color, 2)
+
+            # 🏷️ Label schreiben
+            label = class_names[class_ids[i]]
+            cv2.putText(
+                overlay, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2
+            )
+
+            # Zeige das Bild
+            cv2.imshow("YOLO Segmentation", overlay)
+            cv2.waitKey(1)
+
+    return entities
+
+
+def coords2d_to_pointcloud(coords_2d, header: Header):
+    """Convert 2D pixel coordinates to a fake 3D point cloud by setting z=0.
+    Useful for debug visualization or simplified geometry reasoning.
+    """
+    points = []
+
+    for v, u in coords_2d:
+        x = float(u)  # column
+        y = float(v)  # row
+        z = 0.0  # no depth available
+        points.append([x, y, z])
+
+    pc2_msg = point_cloud2.create_cloud_xyz32(header, points)
+    return pc2_msg
 
 
 def main(args=None):

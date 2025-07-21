@@ -1,21 +1,21 @@
+import numpy as np
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from std_msgs.msg import Header
 import cv2
-import os
 
 
 class VideoPublisher(Node):
     def __init__(self):
         super().__init__(type(self).__name__)
-        self.video_pub = self.create_publisher(Image, "/camera/image_raw", 10)
+        self.video_pub = self.create_publisher(Image, "/camera/image_raw", 1)
         self.bridge = CvBridge()
 
         # Lokales Video laden (Pfad anpassen)
         self.video_path = (
-            "/workspace/src/arlab/code/arlab_perception/test_videos/groceries.mp4"
+            "/workspace/src/arlab/code/arlab_perception/test_videos/vid1.mp4"
         )
         self.cap = cv2.VideoCapture(self.video_path)
 
@@ -36,6 +36,7 @@ class VideoPublisher(Node):
                 self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)  # Wieder von vorne starten
                 return
 
+            frame = np.array(frame, copy=False)
             msg = self.bridge.cv2_to_imgmsg(frame, encoding="bgr8")
 
             msg.header = Header()

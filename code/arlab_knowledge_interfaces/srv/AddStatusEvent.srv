@@ -1,7 +1,6 @@
 # ===== Request =====
 # Robot status event to be added
 RobotStatusEvent event
-
 ---
 # ===== Response =====
 # ID of the newly added event

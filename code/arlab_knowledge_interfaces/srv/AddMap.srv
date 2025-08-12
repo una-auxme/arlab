@@ -1,7 +1,6 @@
 # ===== Request =====
 # Map data to be added
 nav_msgs/OccupancyGrid grid
-
 ---
 # ===== Response =====
 # ID of the newly added map

@@ -1,7 +1,6 @@
 # ===== Request =====
 # Data of the entity to be added
 Entity data
-
 ---
 # ===== Response =====
 # ID of the newly added entity

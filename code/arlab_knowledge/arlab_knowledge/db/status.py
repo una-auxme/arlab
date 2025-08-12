@@ -1,3 +1,12 @@
+"""Contains the RobotStatus and RobotStatusEvent database schemata.
+
+More documentation in the corresponding ros definitions:
+RobotStatus.msg, RobotStatusEvent.msg and Status[].msg
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-augsburg.de>
+"""
+
 from typing import Any, Dict
 
 import rclpy.logging

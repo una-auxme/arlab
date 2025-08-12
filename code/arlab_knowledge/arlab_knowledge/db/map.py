@@ -1,3 +1,11 @@
+"""Contains the Map database schema.
+
+More documentation in the corresponding ros definitions: GetMap.srv
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-augsburg.de>
+"""
+
 from sqlalchemy import Float, Integer, LargeBinary, String
 from sqlalchemy.orm import (
     Mapped,

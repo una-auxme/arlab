@@ -8,7 +8,7 @@ class DBInt8Data(TypeDecorator):
 
     Usage::
 
-        DBRosMsgJson(msg)
+        DBInt8Data(msg)
 
     """
 

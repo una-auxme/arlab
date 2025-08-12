@@ -4,7 +4,8 @@
   <name>arlab_knowledge_interfaces</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
-  <maintainer email="peter.viechter@student.uni-augsburg.de">peter</maintainer>
+  <maintainer email="peter.viechter@uni-augsburg.de">Peter Viechter</maintainer>
+  <maintainer email="daniel.gabler@uni-augsburg.de">Daniel Gabler</maintainer>
   <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>

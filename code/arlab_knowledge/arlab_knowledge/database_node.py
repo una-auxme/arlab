@@ -58,10 +58,12 @@ from arlab_knowledge.db.ros_adapters.time import TimeData
 from arlab_knowledge.db.status import RobotStatusEvent
 
 prefix = "/arlab/knowledge"
+"""ROS prefix/namespace for all services
+"""
 
 
 class DatabaseNode(Node):
-    """This node provides services persistently storing knowledge
+    """This node provides services for persistently storing knowledge
 
     The main supported classes are:
     - Entity: An Entity in the world around the robot
@@ -69,7 +71,8 @@ class DatabaseNode(Node):
     - RobotStatusEvent: Events from the different subsystems
 
     The custom service definitions can be found in the
-    arlab_knowledge_interfaces.srv folder
+    arlab_knowledge_interfaces.srv folder.
+    The service documentation is also part of the service definitions.
     """
 
     def __init__(self):
@@ -113,6 +116,7 @@ class DatabaseNode(Node):
         self._init_services()
 
     def _init_services(self):
+        """Create all services"""
         self.create_service(
             GetEntities,
             f"{prefix}/get_entities",
@@ -248,6 +252,26 @@ class DatabaseNode(Node):
 
     @asynccontextmanager
     async def Session(self, response):
+        """Creates a database session with default error handling
+
+        Automatically catches database exceptions and writes
+        them into the response
+
+        Example:
+            ```python
+            async with self.Session(response) as session:
+                # Do db stuff; commit to apply db changes
+                await session.commit()
+            return response
+            ```
+
+        Args:
+            response ([Service].Response): Service response that will be populated
+                with result/error data
+
+        Yields:
+            AsyncSession: Async db session
+        """
         response.result.result_type = Result.SUCCESS
         try:
             async with self.db_sessionmaker() as session:

@@ -36,6 +36,15 @@ from arlab_knowledge.db.status import (
 
 
 def equality_check(b0: Base, b1: Base):
+    """Checks b0 and b1 for equality
+
+    Since b0 and b1 are database types, this function
+    only takes into account the columns of the database type.
+
+    Args:
+        b0 (Base):
+        b1 (Base):
+    """
     assert type(b0) is type(b1), "Type equality"
     mapper = inspect(type(b0))
     for col in mapper.columns:

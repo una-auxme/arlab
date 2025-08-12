@@ -10,7 +10,6 @@ Maintainers:
 
 import arlab_knowledge.db.entities as entities
 import rclpy
-import rclpy.clock
 from arlab_knowledge import test_utils as utils
 from arlab_knowledge_interfaces.msg import EntityPickable, EntityType, StatusType
 from arlab_knowledge_interfaces.srv import (
@@ -36,6 +35,11 @@ from rclpy.node import Node
 
 
 class DatabaseServiceTester(Node):
+    """Sequentially executes tests on the database services
+
+    All tests are specified in self.test_services
+    """
+
     def __init__(self):
         super().__init__("database_service_tester")
         self.prefix = "/arlab/knowledge"

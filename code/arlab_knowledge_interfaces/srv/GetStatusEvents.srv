@@ -1,11 +1,16 @@
+# ===== Request =====
+# Maximum allowed age for returned events
 builtin_interfaces/Time max_age_stamp
+# Minimum allowed age for returned events
 builtin_interfaces/Time min_age_stamp
-
-# Filter for status_type
+# Filter for status type
 StatusType status_type
 ---
-# The list is sorted by time stamps in descending order ("freshest" status first)
+# ===== Response =====
+# List of robot status events sorted by time stamp in descending order
+# ("freshest" event first)
 RobotStatusEvent[] events
+# Result of the get operation (success/failure with error code)
 Result result
 # Time stamp of the "freshest" event
 builtin_interfaces/Time stamp

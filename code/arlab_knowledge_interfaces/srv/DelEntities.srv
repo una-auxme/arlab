@@ -1,4 +1,7 @@
+# ===== Request =====
+# IDs of the entities to be deleted
 int64[] entityids
 ---
-#id of the deletion
+# ===== Response =====
+# Result of the deleted operation (success/failure with error code)
 Result result

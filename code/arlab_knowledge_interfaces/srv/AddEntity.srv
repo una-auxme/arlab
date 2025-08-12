@@ -1,5 +1,10 @@
+# ===== Request =====
+# Data of the entity to be added
 Entity data
+
 ---
-# Id of the newly added entity
+# ===== Response =====
+# ID of the newly added entity
 int64 entityid
+# Result of the add operation (success/failure with error code)
 Result result

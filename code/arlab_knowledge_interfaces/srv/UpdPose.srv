@@ -1,7 +1,13 @@
+# ===== Request =====
+# ID of the entity to update pose information for
 int64 entityid
+# New pose of the entity
 geometry_msgs/Pose pose
+# Reference frame of the pose (e.g., "map", "base_link")
 string pose_reference_frame
 # Time stamp when the entity was last seen by a sensor
 builtin_interfaces/Time stamp
 ---
+# ===== Response =====
+# Result of the update operation (success/failure with error code)
 Result result

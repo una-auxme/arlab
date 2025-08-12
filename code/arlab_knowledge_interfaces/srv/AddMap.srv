@@ -1,5 +1,10 @@
+# ===== Request =====
+# Map data to be added
 nav_msgs/OccupancyGrid grid
+
 ---
-# id of the newly added map
+# ===== Response =====
+# ID of the newly added map
 int64 mapid
+# Result of the add operation (success/failure with error code)
 Result result

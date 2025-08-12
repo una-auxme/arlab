@@ -1,10 +1,15 @@
-# If the map fetched via backwards_index is older than max_age, ERROR_ID_NOT_FOUND is returned
+# ===== Request =====
+# If the map fetched via backwards_index is older than max_age_stamp,
+# ERROR_ID_NOT_FOUND is returned
 builtin_interfaces/Time max_age_stamp
-# Sets the age where backwards_index "starts"
+# Minimum age threshold for map selection (sets the age where backwards_index starts)
 builtin_interfaces/Time min_age_stamp
-# Based on age, this index fetches the (latest-backwards_index) map
-# => 0->lastest map, 1->latest-1 map...
+# Index based on age to fetch the map (latest - backwards_index)
+# Example: 0 -> latest map, 1 -> second-latest map, etc.
 uint32 backwards_index
 ---
+# ===== Response =====
+# Retrieved occupancy grid map
 nav_msgs/OccupancyGrid grid
+# Result of the get operation (success/failure with error code)
 Result result

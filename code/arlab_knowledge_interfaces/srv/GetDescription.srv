@@ -1,7 +1,11 @@
+# ===== Request =====
+# ID of the entity to retrieve
 int64 entityid
 ---
-# Description of the entity
+# ===== Response =====
+# Human-readable description of the entity
 string description
+# Result of the get operation (success/failure with error code)
 Result result
 # Time stamp when the entity was last updated
 builtin_interfaces/Time stamp

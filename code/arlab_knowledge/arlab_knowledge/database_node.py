@@ -1,3 +1,12 @@
+"""Contains the DatabaseNode ROS node.
+
+Run the DatabaseNode with `ros2 run arlab_knowledge database_node`.
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-augsburg.de>
+    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+"""
+
 import asyncio
 import os
 from contextlib import asynccontextmanager

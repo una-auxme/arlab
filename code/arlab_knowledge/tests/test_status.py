@@ -1,3 +1,15 @@
+"""Status tests
+
+Run these tests with `pytest .` or `colcon test`
+
+Test cases:
+    Status class to/from ROS Message Conversion Tests
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-augsburg.de>
+    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+"""
+
 from arlab_knowledge import test_utils as utils
 from arlab_knowledge.db.status import RobotStatus, RobotStatusEvent
 

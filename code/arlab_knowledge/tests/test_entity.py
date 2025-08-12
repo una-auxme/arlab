@@ -1,3 +1,15 @@
+"""Entity tests
+
+Run these tests with `pytest .` or `colcon test`
+
+Test cases:
+    Entity class to/from ROS Message Conversion Tests
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-augsburg.de>
+    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+"""
+
 from arlab_knowledge import test_utils as utils
 from arlab_knowledge.db.entities.entity import Entity
 

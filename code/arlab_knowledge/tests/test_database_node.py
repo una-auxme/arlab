@@ -1,3 +1,13 @@
+"""Contains the DatabaseServiceTester node for testing the database services.
+
+These tests are not compatible with `pytest`/`colcon test` and need to be manually
+executed via `python3 test_database_node.py`.
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-augsburg.de>
+    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+"""
+
 import arlab_knowledge.db.entities as entities
 import rclpy
 import rclpy.clock

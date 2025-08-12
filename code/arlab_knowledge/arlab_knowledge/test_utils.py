@@ -1,3 +1,10 @@
+"""Utilities for creating sample data for testing the database.
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-augsburg.de>
+    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+"""
+
 from arlab_knowledge_interfaces import msg
 from builtin_interfaces.msg import Time
 from geometry_msgs.msg import Point, Pose, Quaternion

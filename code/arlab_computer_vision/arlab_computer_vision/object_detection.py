@@ -9,13 +9,18 @@ from cv_bridge import CvBridge
 
 
 class ObjectDetection(Node):
-    """Cool ros2 template node that publishes stuff to itself ;-)"""
+    """
+    ROS2-Node: Abonniert RGB + Depth, führt YOLOv8-Segmentierung aus und
+    (Platzhalter) bereitet die 3D-Auswertung vor.
+    """
 
     def __init__(self):
         super().__init__(type(self).__name__)
 
+        self.bridge = CvBridge()
         self.model = YOLO("yolo_weights/yolo11n-seg.pt")
         self.model.to("cuda")
+       
         self.camera_intrinsics = None
 
         self.create_subscription(
@@ -23,6 +28,13 @@ class ObjectDetection(Node):
         )
 
         # Kamera-Info abonnieren (einmalig, async)
+        self.create_subscription(
+            CameraInfo,
+            "/camera/aligned_depth_to_color/camera_info",
+            self.camera_info_cb,
+            queue_size=1,
+        )
+
         self.create_subscription(
             CameraInfo,
             "/camera/aligned_depth_to_color/camera_info",
@@ -38,6 +50,15 @@ class ObjectDetection(Node):
         self.sync = message_filters.ApproximateTimeSynchronizer(
             [rgb_sub, depth_sub], queue_size=10, slop=0.1
         )
+
+        rgb_sub = message_filters.Subscriber("/camera/color/image_raw", Image)
+        depth_sub = message_filters.Subscriber(
+            "/camera/aligned_depth_to_color/image_raw", Image
+        )
+        self.sync = message_filters.ApproximateTimeSynchronizer(
+            [rgb_sub, depth_sub], queue_size=10, slop=0.1
+        )
+
         self.sync.registerCallback(self.process_data)
 
     def camera_info_callback(self, msg):
@@ -64,6 +85,12 @@ class ObjectDetection(Node):
         depth_image = self.bridge.imgmsg_to_cv2(
             depth_msg, desired_encoding="passthrough"
         )
+
+        rgb_image = self.bridge.imgmsg_to_cv2(rgb_msg, desired_encoding="bgr8")
+        depth_image = self.bridge.imgmsg_to_cv2(
+            depth_msg, desired_encoding="passthrough"
+        )
+
         depth_np = depth_image.astype(np.float32)  # z. B. 16UC1 in mm
 
         # YOLOv8-Inferenz
@@ -76,6 +103,9 @@ class ObjectDetection(Node):
             return
 
         # Kameraparameter
+        fx, fy = self.camera_intrinsics["fx"], self.camera_intrinsics["fy"]
+        cx, cy = self.camera_intrinsics["cx"], self.camera_intrinsics["cy"]
+
         fx, fy = self.camera_intrinsics["fx"], self.camera_intrinsics["fy"]
         cx, cy = self.camera_intrinsics["cx"], self.camera_intrinsics["cy"]
 
@@ -92,6 +122,7 @@ class ObjectDetection(Node):
 
             # Binarisiere Maske
             mask_binary = mask > 0.5
+
 
             # Wende Maske auf Tiefenbild an
             depth_masked = np.where(mask_binary, depth_np, 0)
@@ -125,11 +156,8 @@ class ObjectDetection(Node):
 def main(args=None):
 
     rclpy.init(args=args)
-
     my_ros2_node = ObjectDetection()
-
     rclpy.spin(my_ros2_node)
-
     rclpy.shutdown()
 
 

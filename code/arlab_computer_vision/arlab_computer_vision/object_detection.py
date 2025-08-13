@@ -152,7 +152,6 @@ class ObjectDetection(Node):
 
 
 def main(args=None):
-
     rclpy.init(args=args)
     my_ros2_node = ObjectDetection()
     rclpy.spin(my_ros2_node)

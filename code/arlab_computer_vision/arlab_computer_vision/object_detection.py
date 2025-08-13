@@ -1,36 +1,147 @@
 import rclpy
+import numpy as np
+import message_filters
 
+from ultralytics import YOLO
 from rclpy.node import Node
-from std_msgs.msg import String
-from sensor_msgs.msg import PointCloud2
+from sensor_msgs.msg import Image, CameraInfo
+from cv_bridge import CvBridge
 
 
 class ObjectDetection(Node):
-    """Cool ros2 template node that publishes stuff to itself ;-)"""
+    """
+    ROS2-Node: Abonniert RGB + Depth, führt YOLOv8-Segmentierung aus und
+    (Platzhalter) bereitet die 3D-Auswertung vor.
+    """
 
     def __init__(self):
         super().__init__(type(self).__name__)
 
-        # Todo: Implement object detection model here.
-        self.model = None
+        self.bridge = CvBridge()
+        self.model = YOLO("yolo_weights/yolo11n-seg.pt")
+        self.model.to("cuda")
+        self.model = YOLO("yolo_weights/yolo11n-seg.pt")
+        self.model.to("cuda")
+        self.camera_intrinsics = None
 
-        self.create_camera_data_subscriber(
-            PointCloud2, "/depth_data", self.process_data, 10
+        self.create_subscription(
+            Image, "/camera/alligned_depth_to_color", self.process_data, 10
         )
 
-    def detect_objects(self, data: PointCloud2):
-        # Todo: Implement the obejct detection with the ML model
-        pass
+        # Kamera-Info abonnieren (einmalig, async)
+        self.create_subscription(
+            CameraInfo,
+            "/camera/aligned_depth_to_color/camera_info",
+            self.camera_info_cb,
+            queue_size=1,
+        )
+        self.create_subscription(
+            CameraInfo,
+            "/camera/aligned_depth_to_color/camera_info",
+            self.camera_info_cb,
+            queue_size=1,
+        )
 
-    def process_data(self, data: PointCloud2):
-        """Receives messages from the /depth_camera_raw
+        # Synchrone Subscriptions für RGB & Tiefe
+        rgb_sub = message_filters.Subscriber("/camera/color/image_raw", Image)
+        depth_sub = message_filters.Subscriber(
+            "/camera/aligned_depth_to_color/image_raw", Image
+        )
+        self.sync = message_filters.ApproximateTimeSynchronizer(
+            [rgb_sub, depth_sub], queue_size=10, slop=0.1
+        )
+        rgb_sub = message_filters.Subscriber("/camera/color/image_raw", Image)
+        depth_sub = message_filters.Subscriber(
+            "/camera/aligned_depth_to_color/image_raw", Image
+        )
+        self.sync = message_filters.ApproximateTimeSynchronizer(
+            [rgb_sub, depth_sub], queue_size=10, slop=0.1
+        )
+        self.sync.registerCallback(self.process_data)
 
-        Args:
-            msg (String): Received cool message
+    def camera_info_callback(self, msg):
+        # Extrahiere Kamera-Intrinsic Matrix
+        K = np.array(msg.K).reshape(3, 3)
+        self.camera_intrinsics = {
+            "fx": K[0, 0],
+            "fy": K[1, 1],
+            "cx": K[0, 2],
+            "cy": K[1, 2],
+        }
+
+    def process_data(self, rgb_msg, depth_msg):
+        """Empfängt synchronisierte RGB- und Tiefenbilder,
+        führt YOLOv8-Segmentierung durch
+        und berechnet 3D-Koordinaten pro Maske mit zugehörigem Klassennamen.
         """
-        print(f"Received message: {String(data)}")
+        if self.camera_intrinsics is None:
+            self.get_logger().warn("Noch keine Kameraintrinsik verfügbar.")
+            return
 
-        # output = self.detect_objects(data)
+        # Konvertiere Bilder
+        rgb_image = self.bridge.imgmsg_to_cv2(rgb_msg, desired_encoding="bgr8")
+        depth_image = self.bridge.imgmsg_to_cv2(
+            depth_msg, desired_encoding="passthrough"
+        )
+        rgb_image = self.bridge.imgmsg_to_cv2(rgb_msg, desired_encoding="bgr8")
+        depth_image = self.bridge.imgmsg_to_cv2(
+            depth_msg, desired_encoding="passthrough"
+        )
+        depth_np = depth_image.astype(np.float32)  # z. B. 16UC1 in mm
+
+        # YOLOv8-Inferenz
+        results = self.model(rgb_image)
+        result = results[0]
+        masks = result.masks
+        boxes = result.boxes
+
+        if masks is None or boxes is None:
+            return
+
+        # Kameraparameter
+        fx, fy = self.camera_intrinsics["fx"], self.camera_intrinsics["fy"]
+        cx, cy = self.camera_intrinsics["cx"], self.camera_intrinsics["cy"]
+        fx, fy = self.camera_intrinsics["fx"], self.camera_intrinsics["fy"]
+        cx, cy = self.camera_intrinsics["cx"], self.camera_intrinsics["cy"]
+
+        # Hole Klassen-IDs + Namen
+        class_ids = boxes.cls.cpu().numpy().astype(int)  # shape: (N,)
+        class_names = self.model.names  # dict: {id: name}
+
+        # Hole Masken als NumPy (N, H, W)
+        masks_np = masks.data.cpu().numpy()
+
+        for i, mask in enumerate(masks_np):
+            class_id = class_ids[i]
+            class_name = class_names[class_id]
+
+            # Binarisiere Maske
+            mask_binary = mask > 0.5
+
+            # Wende Maske auf Tiefenbild an
+            depth_masked = np.where(mask_binary, depth_np, 0)
+
+            # Finde gültige Tiefenpunkte
+            valid_y, valid_x = np.nonzero(depth_masked)
+            z = depth_masked[valid_y, valid_x] / 1000.0  # mm → m
+
+            if z.size == 0:
+                continue
+
+            # Vektorisierte Umprojektion
+            x = valid_x.astype(np.float32)
+            y = valid_y.astype(np.float32)
+
+            X = (x - cx) * z / fx
+            Y = (y - cy) * z / fy
+            Z = z
+
+            points_3d = np.stack((X, Y, Z), axis=-1)
+
+            print(
+                f"[Maske {i}] Klasse: {class_name} ({class_id}) → "
+                f"{len(points_3d)} 3D-Punkte extrahiert."
+            )
 
         # Todo: Save classified data in knowledge base.
         pass
@@ -38,11 +149,8 @@ class ObjectDetection(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-
     my_ros2_node = ObjectDetection()
-
     rclpy.spin(my_ros2_node)
-
     rclpy.shutdown()
 
 

@@ -11,7 +11,7 @@ class KinectAzurePublisher(Node):
     def __init__(self):
         super().__init__(type(self).__name__)
 
-         # Create a publisher for the camera image topic
+        # Create a publisher for the camera image topic
         self.kinect_pub = self.create_publisher(Image, "/camera/image_raw", 10)
         self.bridge = CvBridge()
 
@@ -59,6 +59,7 @@ class KinectAzurePublisher(Node):
         self.capture_thread.join()
         self.config.stop()
         self.get_logger().info("Azure Kinect stopped")
+
 
 def main(args=None):
     rclpy.init(args=args)

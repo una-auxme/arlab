@@ -122,7 +122,6 @@ class ObjectDetection(Node):
             # Binarisiere Maske
             mask_binary = mask > 0.5
 
-
             # Wende Maske auf Tiefenbild an
             depth_masked = np.where(mask_binary, depth_np, 0)
 

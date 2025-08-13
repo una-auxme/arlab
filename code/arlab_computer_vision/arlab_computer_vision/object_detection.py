@@ -20,7 +20,6 @@ class ObjectDetection(Node):
         self.bridge = CvBridge()
         self.model = YOLO("yolo_weights/yolo11n-seg.pt")
         self.model.to("cuda")
-       
         self.camera_intrinsics = None
 
         self.create_subscription(

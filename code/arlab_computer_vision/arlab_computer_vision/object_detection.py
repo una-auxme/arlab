@@ -33,8 +33,28 @@ class ObjectDetection(Node):
     def __init__(self):
         super().__init__(type(self).__name__)
 
+        # Declare configurable parameters
+        self.declare_parameter("yolo_weights", "yolo_weights/yolo11n-seg.pt")
+        self.declare_parameter("rgb_topic", "/camera/image_raw")
+        self.declare_parameter(
+            "camera_info_topic", "/camera/aligned_depth_to_color/camera_info"
+        )
+        self.declare_parameter("visualize", True)
+
+        # Load parameters
+        yolo_weights = (
+            self.get_parameter("yolo_weights").get_parameter_value().string_value
+        )
+        rgb_topic = self.get_parameter("rgb_topic").get_parameter_value().string_value
+        camera_info_topic = (
+            self.get_parameter("camera_info_topic").get_parameter_value().string_value
+        )
+        self.visualize = (
+            self.get_parameter("visualize").get_parameter_value().bool_value
+        )
+
         self.bridge = CvBridge()
-        self.model = YOLO("yolo_weights/yolo11n-seg.pt")
+        self.model = YOLO(yolo_weights)
         device = "cuda" if torch.cuda.is_available() else "cpu"
         print(f"Using device: {device}")
         self.model.to(device)
@@ -65,13 +85,13 @@ class ObjectDetection(Node):
         # Subscribe to camera info (once, async)
         self.create_subscription(
             CameraInfo,
-            "/camera/aligned_depth_to_color/camera_info",
+            camera_info_topic,
             self.camera_info_callback,
             qos_profile=10,
         )
 
         # Subscribe to RGB image stream
-        self.create_subscription(Image, "/camera/image_raw", self.process_data, 10)
+        self.create_subscription(Image, rgb_topic, self.process_data, 10)
 
     def camera_info_callback(self, msg):
         # Extract camera intrinsics from K matrix
@@ -96,6 +116,7 @@ class ObjectDetection(Node):
 
         rgb_header = rgb_msg.header
         rgb_image = self.bridge.imgmsg_to_cv2(rgb_msg, desired_encoding="bgr8")
+        rgb_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2RGB)
 
         # TODO => Depth image handling should be done here.
 
@@ -117,6 +138,18 @@ class ObjectDetection(Node):
         # - class label (tag)
         # - segmented point cloud
         # - bounding box and pose
+
+        if not self.client_get_entities.wait_for_service(timeout_sec=2.0):
+            self.get_logger().error("Service /get_entities not available!")
+            return
+
+        if not self.client_add_entities.wait_for_service(timeout_sec=2.0):
+            self.get_logger().error("Service /get_entities not available!")
+            return
+
+        if not self.client_del_entities.wait_for_service(timeout_sec=2.0):
+            self.get_logger().error("Service /get_entities not available!")
+            return
 
         # 2. Retrieve all existing entities from the knowledge base
         get_entities_req = GetEntities.Request()
@@ -155,7 +188,7 @@ class ObjectDetection(Node):
         for entity_cv in entities_cv:
             add_entity_req = AddEntity.Request()
             add_entity_req.data = Entity(
-                description="Testing Knowledgebase Services.",
+                description=f"Detected: {entity_cv['name'].data}",  # Label ins KB
                 pose=entity_cv["pose"],
                 pose_reference_frame=rgb_header.frame_id,
                 stamp=self.get_clock().now().to_msg(),
@@ -268,14 +301,16 @@ def generate_entities_from_yolo_result(
 
 def coords2d_to_pointcloud(coords_2d, header: Header):
     """Convert 2D pixel coordinates to a fake 3D point cloud by setting z=0.
-    Useful for debug visualization or simplified geometry reasoning.
+    Downsample to reduce message size and CPU load.
     """
-    points = []
+    # Downsample every 10th pixel for efficiency
+    coords_2d = coords_2d[::10]
 
+    points = []
     for v, u in coords_2d:
         x = float(u)  # column
         y = float(v)  # row
-        z = 0.0  # no depth available
+        z = 0.0
         points.append([x, y, z])
 
     pc2_msg = point_cloud2.create_cloud_xyz32(header, points)
@@ -287,6 +322,7 @@ def main(args=None):
     my_ros2_node = ObjectDetection()
     rclpy.spin(my_ros2_node)
     rclpy.shutdown()
+    cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":

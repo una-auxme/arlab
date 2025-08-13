@@ -45,8 +45,8 @@ class KinectAzurePublisher(Node):
             else:
                 self.get_logger().info("Kein Farb-Frame vorhanden")
 
-        except Exception as e:
-            self.get_logger().warn("Fehler bei der Kamera-Frame {e}")
+        except Exception:
+            self.get_logger().warn("Fehler bei der Kamera-Frame.")
 
 
 def main(args=None):

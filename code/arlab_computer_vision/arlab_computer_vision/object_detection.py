@@ -22,10 +22,6 @@ from arlab_knowledge_interfaces.srv import (
     DelEntities,
     GetEntities,
 )
-from cv_bridge import CvBridge
-from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
-from rclpy.node import Node
-from sensor_msgs.msg import CameraInfo, Image
 
 
 class ObjectDetection(Node):
@@ -100,10 +96,13 @@ class ObjectDetection(Node):
 
         rgb_header = rgb_msg.header
         rgb_image = self.bridge.imgmsg_to_cv2(rgb_msg, desired_encoding="bgr8")
-        depth_image = self.bridge.imgmsg_to_cv2(
-            depth_msg, desired_encoding="passthrough"
-        )
-        depth_np = depth_image.astype(np.float32)  # z. B. 16UC1 in mm
+
+        # TODO => Depth image handling should be done here.
+
+        # depth_image = self.bridge.imgmsg_to_cv2(
+        #    depth_msg, desired_encoding="passthrough"
+        # )
+        # depth_np = depth_image.astype(np.float32)  # z. B. 16UC1 in mm
 
         # YOLOv8-Inferenz
         results = self.model(rgb_image)
@@ -128,7 +127,7 @@ class ObjectDetection(Node):
 
         print("\nGet Entities: ", entities_knowledge_resp, "\n")
 
-        entity_knowledge_ids = entities_knowledge_resp.entities
+        # entity_knowledge_ids = entities_knowledge_resp.entities
 
         # 3. Compare existing entities to new detections (e.g., for tracking via IoU)
         # TODO: Implement comparison between entities_knowledge and entities_cv
@@ -150,7 +149,7 @@ class ObjectDetection(Node):
         )
         self.log_result("DelEntities", res.result)
 
-        print("Del Entities: ", del_resp, "\n")
+        print("Del Entities: ", res.result, "\n")
 
         # 5. Insert or update detected entities into the knowledge base
         for entity_cv in entities_cv:
@@ -167,7 +166,8 @@ class ObjectDetection(Node):
 
 
 def pose_from_point2d(point2d: Point2D) -> Pose:
-    """Convert a 2D point (typically from bounding box center) into a 3D pose with fixed orientation."""
+    """Convert a 2D point (typically from bounding box center)
+    into a 3D pose with fixed orientation."""
     return Pose(
         position=Point(x=point2d.x, y=point2d.y, z=0.0),
         orientation=Quaternion(x=0.0, y=0.0, z=0.0, w=1.0),

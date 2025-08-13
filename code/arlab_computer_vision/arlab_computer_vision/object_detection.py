@@ -19,6 +19,7 @@ class ObjectDetection(Node):
     def __init__(self):
         super().__init__(type(self).__name__)
 
+        self.bridge = CvBridge()
         self.model = YOLO("yolo_weights/yolo11n-seg.pt")
         self.model.to("cuda")
         self.model = YOLO("yolo_weights/yolo11n-seg.pt")
@@ -69,18 +70,13 @@ class ObjectDetection(Node):
             "cx": K[0, 2],
             "cy": K[1, 2],
         }
-            "fx": K[0, 0],
-            "fy": K[1, 1],
-            "cx": K[0, 2],
-            "cy": K[1, 2],
-        }
 
     def process_data(self, rgb_msg, depth_msg):
         """Empfängt synchronisierte RGB- und Tiefenbilder, führt YOLOv8-Segmentierung durch
         und berechnet 3D-Koordinaten pro Maske mit zugehörigem Klassennamen.
         """
         if self.camera_intrinsics is None:
-            rospy.logwarn_throttle(5, "Noch keine Kameraintrinsik verfügbar.")
+            self.get_logger().warn("Noch keine Kameraintrinsik verfügbar.")
             return
 
         # Konvertiere Bilder
@@ -144,10 +140,8 @@ class ObjectDetection(Node):
             points_3d = np.stack((X, Y, Z), axis=-1)
 
             print(
-                f"[Maske {i}] Klasse: {class_name} ({class_id}) → {len(points_3d)} 3D-Punkte extrahiert."
-            )
-            print(
-                f"[Maske {i}] Klasse: {class_name} ({class_id}) → {len(points_3d)} 3D-Punkte extrahiert."
+                f"[Maske {i}] Klasse: {class_name} ({class_id}) → "
+                f"{len(points_3d)} 3D-Punkte extrahiert."
             )
 
         # Todo: Save classified data in knowledge base.
@@ -155,8 +149,6 @@ class ObjectDetection(Node):
 
 
 def main(args=None):
-    bridge = CvBridge()
-
     rclpy.init(args=args)
     my_ros2_node = ObjectDetection()
     rclpy.spin(my_ros2_node)

@@ -1,86 +1,119 @@
-import rclpy
-import rospy
+"""Local safety monitor node for ROS2 system submodules.
 
+Tracks heartbeat messages from local module nodes and sends global heartbeat
+messages to the CentralSafetyNode.
+
+Notes:
+    - Docstrings follow the Google Python Style Guide:
+      https://google.github.io/styleguide/pyguide.html
+"""
+
+import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Int32, Int32MultiArray
 
 
 class LocalSafety(Node):
-    """Template node for local safety nodes inside the system submodules"""
+    """ROS2 node for local safety monitoring within a subsystem.
 
-    def __init__(self):
+    Attributes:
+        module_node_table (dict[int, bool]): Node ID -> alive status.
+        module_id (int): ID of the module (e.g., 1=movement, 2=manipulation).
+        health_state (int): -1=registering, 0=OK, >0=error code.
+        pub_global_heartbeat: Publisher for the `/global_heartbeat` topic.
+    """
+
+    def __init__(self) -> None:
+        """Initialize node, subscriptions, publishers, and timer."""
         super().__init__(type(self).__name__)
 
-        # Static table of node ids => {int:nodeID: bool:is_alive}
-        self.module_node_table = {}
+        # Static table: node_id -> is_alive
+        self.module_node_table: dict[int, bool] = {}
 
-        # module 1 = movement, module 2 = manipulation
+        # Module 1 = movement, module 2 = manipulation
         self.module_id = 1
 
+        # Timer to reset the node table periodically
         self.timer = self.create_timer(0.1, self.reset_module_node_table)
+
         self.health_state = -1
         self.pub_global_heartbeat = self.create_publisher(
-            Int32MultiArray, "/global_heartbeat", 10
+            Int32MultiArray,
+            "/global_heartbeat",
+            10,
         )
-        self.create_subscription(Int32, "/local_module_heartbeat", self.callback, 10)
+        self.create_subscription(
+            Int32,
+            "/local_module_heartbeat",
+            self.callback,
+            10,
+        )
 
-    def pub_module_heartbeat(self):
-        """Publishes a global heartbeat to the Central Safety node
-            If heartbeat is not -1 or 0 the Central Safety Node
-            will receive an error code
-        Args:
-            msg(Int32) = Encoded module health_state_error
+    def pub_module_heartbeat(self) -> None:
+        """Publish a global heartbeat to the CentralSafetyNode.
+
+        Notes:
+            - If health_state is -1 or 0 → normal operation.
+            - Any other value → error code for CentralSafetyNode.
         """
         msg = Int32MultiArray()
         msg.data = [self.module_id, self.health_state]
-        print(f"Publishing message: Array {list(msg.data)}")
+        self.get_logger().info(f"Publishing heartbeat: {list(msg.data)}")
         self.pub_global_heartbeat.publish(msg)
-        # reset node health_state
+
+        # Reset health_state after publishing
         self.health_state = 0
 
-    def callback(self, msg: Int32):
-        """Receives messages from the /local_module_heartbeat
+    def callback(self, msg: Int32) -> None:
+        """Handle heartbeat messages from local module nodes.
 
         Args:
-            msg (Int32): Node ID of the publisher
+            msg: Node ID of the publisher as `std_msgs/Int32`.
         """
-        print(f"Received message: {msg.data}")
+        self.get_logger().debug(f"Received local heartbeat: {msg.data}")
         node_id = msg.data
-        self.module_node_table[node_id] = {
-            "last_seen": rospy.time(),
-            "is_alive": True,
-        }
+        self.module_node_table[node_id] = True
 
-    def reset_module_node_table(self):
-        """Resets the is_alive state of module nodes"""
+    def reset_module_node_table(self) -> None:
+        """Reset the is_alive state of tracked nodes.
+
+        Notes:
+            - Marks non-responsive nodes with their ID in health_state.
+            - Sends updated heartbeat to CentralSafetyNode.
+        """
         for node_id, is_alive in self.module_node_table.items():
-            if is_alive is False:
-                # Error Encoding for Central Safety has to be done here!
+            if not is_alive:
+                # Error encoding for CentralSafetyNode
                 self.health_state = node_id
             else:
                 self.module_node_table[node_id] = False
 
         self.pub_module_heartbeat()
 
-    def local_safety_checks(self):
-        """Design your local safety checks here.
-        Implement heath_state_errors
+    def local_safety_checks(self) -> None:
+        """Design and implement local safety checks here.
+
+        Notes:
+            - This method can set health_state to non-zero values to indicate
+              local subsystem errors.
         """
 
 
-def main(args=None):
-    """Main function
-    Publishes module health_state with initial value -1
-    to register node in Central Safety Node
+def main(args=None) -> None:
+    """Main entry point for LocalSafetyNode.
+
+    Publishes module health_state (-1 initially) to register in
+    CentralSafetyNode.
     """
     rclpy.init(args=args)
 
     my_ros2_node = LocalSafety()
     my_ros2_node.pub_module_heartbeat()
 
-    rclpy.spin(my_ros2_node)
-
-    rclpy.shutdown()
+    try:
+        rclpy.spin(my_ros2_node)
+    finally:
+        rclpy.shutdown()
 
 
 if __name__ == "__main__":

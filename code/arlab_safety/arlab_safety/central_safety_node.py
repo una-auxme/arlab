@@ -1,8 +1,7 @@
 """Central safety monitor node for ROS2 modules.
 
-This node listens for heartbeat messages from modules on the `/global_heartbeat`
-topic, maintains a safety status table, and can trigger system freezes when
-critical errors or timeouts occur.
+Listens on `/global_heartbeat`, maintains a per-module safety table, and can
+trigger a system freeze when critical errors or timeouts occur.
 
 Maintainers:
     Aleksander Michalak <aleksander.michalak@web.de>
@@ -18,10 +17,10 @@ class CentralSafetyNode(Node):
     """ROS2 node for monitoring and enforcing module safety.
 
     Attributes:
-        module_safety_table (dict[int, dict]): Stores module safety status, with:
-            - error_state (int): -1=registering, 0=OK, >0=critical.
-            - last_seen (float): Time in seconds when last seen.
-            - heartbeat (float): Max allowed time between heartbeats.
+        module_safety_table (dict[int, dict]): Safety status per module ID:
+            - error_state (int): -1=registering, 0=OK, >0=critical error code.
+            - last_seen (float): Last heartbeat time in seconds.
+            - heartbeat (float): Max allowed gap (s) between heartbeats.
         timer: ROS timer for periodic timeout checks.
     """
 
@@ -30,10 +29,10 @@ class CentralSafetyNode(Node):
         super().__init__(type(self).__name__)
         self.module_safety_table: dict[int, dict] = {}
 
-        # Timer to periodically check heartbeat timeouts.
+        # Periodic timeout checks.
         self.timer = self.create_timer(0.1, self.reset_module_safety_table)
 
-        # Subscription to heartbeat messages from all modules.
+        # Subscription for heartbeats from all modules.
         self.create_subscription(
             Int32MultiArray,
             "/global_heartbeat",
@@ -59,10 +58,10 @@ class CentralSafetyNode(Node):
 
         Notes:
             - module_state == -1 → registering state.
-            - module_state == 0 → working/OK.
-            - module_state > 0 → critical error code.
+            - module_state == 0  → working/OK.
+            - module_state > 0  → critical error code.
         """
-        self.get_logger().debug(f"Received heartbeat: {list(msg.data)}")
+        self.get_logger().debug(f"Heartbeat: {list(msg.data)}")
 
         if len(msg.data) < 2:
             self.get_logger().warn("Invalid heartbeat message. Skipping.")
@@ -85,8 +84,8 @@ class CentralSafetyNode(Node):
             module_id: Unique ID of the module to register.
 
         Notes:
-            Initializes the module with error_state=-1 (registering). If
-            already present in registering state, escalates to critical error.
+            Initializes with error_state=-1 (registering). If already present in
+            registering state, escalates to critical error.
         """
         if module_id not in self.module_safety_table:
             self.get_logger().info(f"Registering module {module_id}.")
@@ -119,7 +118,7 @@ class CentralSafetyNode(Node):
 
         Args:
             module_id: Unique ID of the module.
-            module_state: Positive integer error code (>0 = critical error).
+            module_state: Error code (>0 indicates critical error).
 
         Notes:
             Updates the module's error_state in the table. Triggers a system

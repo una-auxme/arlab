@@ -105,7 +105,7 @@ def main(args=None):
 
     # Keep the node running and process callbacks
     rclpy.spin(my_ros2_node)
-    
+
     # Stop the node and release resources when done
     my_ros2_node.stop()
     rclpy.shutdown()

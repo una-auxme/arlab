@@ -67,7 +67,7 @@ class KinectAzurePublisher(Node):
 
                     # Convert the OpenCV image to a ROS Image message
                     msg = self.bridge.cv2_to_imgmsg(frame, encoding="bgr8")
-                    
+
                     # Add timestamp and frame ID to the message header
                     msg.header = Header()
                     msg.header.stamp = self.get_clock().now().to_msg()

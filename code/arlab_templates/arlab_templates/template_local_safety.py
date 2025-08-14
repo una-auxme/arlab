@@ -58,7 +58,8 @@ class LocalSafety(Node):
         """Publish a global heartbeat to the CentralSafetyNode.
 
         Notes:
-            - If health_state is -1 or 0 → normal operation.
+            - health_state is -1 for initial registration
+            - health_state is 0 → normal operation.
             - Any other value → error code for CentralSafetyNode.
         """
         msg = Int32MultiArray()

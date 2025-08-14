@@ -13,10 +13,7 @@ Maintainers:
     Aleksander Michalak <aleksander.michalak@web.de>
 """
 
-from __future__ import annotations
-
 import numpy as np
-import rclpy
 import torch
 import cv2
 
@@ -24,11 +21,10 @@ from cv_bridge import CvBridge
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.node import Node
 from sensor_msgs.msg import CameraInfo, Image
-from sensor_msgs_py import point_cloud2
 from ultralytics import YOLO
-from std_msgs.msg import Header, String
-from vision_msgs.msg import BoundingBox2D, Point2D
+from vision_msgs.msg import Point2D
 from geometry_msgs.msg import Pose, Point, Quaternion
+from std_msgs.msg import String  # <-- needed for 'name' field in entities
 
 from arlab_knowledge_interfaces.msg import Entity, EntityType
 from arlab_knowledge_interfaces.srv import AddEntity, DelEntities, GetEntities
@@ -164,7 +160,7 @@ class ObjectDetection(Node):
 
         # TODO: Integrate depth image handling if available.
 
-        # Run YOLO inference (segmentation).
+        # Run YOLO inference (segmentation/detection).
         results = self.model(rgb_image)
         result = results[0]
 
@@ -172,8 +168,6 @@ class ObjectDetection(Node):
         entities_cv = generate_entities_from_yolo_result(
             result=result,
             class_names=self.model.names,
-            rgb_header=rgb_msg.header,
-            clock=self.get_clock(),
             frame=rgb_image if self.visualize else None,
         )
 
@@ -188,38 +182,15 @@ class ObjectDetection(Node):
             self.get_logger().error("Service /del_entities not available.")
             return
 
-        # Retrieve existing entities from KB.
+        # Retrieve existing entities from KB (optional, currently unused).
         get_entities_req = GetEntities.Request()
         get_entities_req.entity_type.id = EntityType.ENTITY
-        entities_knowledge_resp: GetEntities.Response = await (
-            self.client_get_entities.call_async(get_entities_req)
-        )
+        # resp: GetEntities.Response = await self.client_get_entities.call_async(
+        #     get_entities_req
+        # )
         self.get_logger().info("GetEntities response received.")
 
-        # TODO: Compare `entities_knowledge_resp` with `entities_cv` (IoU tracking).
-
-        # Delete all existing entities from KB (placeholder behavior).
-        del_entities_req = DelEntities.Request()
-        del_entities_req.entityids = [
-            # TODO: Replace with actual IDs from knowledge base or tracking.
-            # self.entity_id,
-            # self.cupboard_id,
-            # self.door_id,
-            # self.furniture_id,
-            # self.human_id,
-            # self.pickable_id,
-            # self.shelf_id,
-            # self.table_id,
-        ]
-        if del_entities_req.entityids:
-            del_resp = await self.client_del_entities.call_async(del_entities_req)
-            self.get_logger().info(f"DelEntities result: {del_resp.result}.")
-        else:
-            self.get_logger().warn(
-                "DelEntities skipped: no entity IDs provided (placeholder TODO)."
-            )
-
-        # Insert detected entities into KB.
+        # Insert (or upsert) detected entities into KB.
         for entity_cv in entities_cv:
             add_entity_req = AddEntity.Request()
             add_entity_req.data = Entity(
@@ -229,9 +200,7 @@ class ObjectDetection(Node):
                 stamp=self.get_clock().now().to_msg(),
             )
             add_resp = await self.client_add_entities.call_async(add_entity_req)
-            self.get_logger().info(f"AddEntity response received.")
-
-        self.get_logger().info("Frame processing complete.")
+            self.get_logger().info(f"AddEntity response received: {add_resp}")
 
 
 def pose_from_point2d(point2d: Point2D) -> Pose:
@@ -247,3 +216,70 @@ def pose_from_point2d(point2d: Point2D) -> Pose:
         position=Point(x=point2d.x, y=point2d.y, z=0.0),
         orientation=Quaternion(x=0.0, y=0.0, z=0.0, w=1.0),
     )
+
+
+def generate_entities_from_yolo_result(
+    result, class_names, frame: np.ndarray | None = None
+) -> list[dict]:
+    """Convert a YOLO result into a list of entity dicts.
+
+    Builds minimal entities used by this node:
+        - `name` (std_msgs/String)
+        - `pose` (geometry_msgs/Pose from bbox center)
+
+    Args:
+        result: Ultralytics YOLO result for one image.
+        class_names: Mapping from class indices to names (list or dict).
+        rgb_header: Header from the input RGB image (unused here).
+        clock: ROS clock used for timestamps (unused here).
+        frame: Optional RGB frame for visualization overlay.
+
+    Returns:
+        list[dict]: Each dict has keys `name` and `pose`.
+    """
+    boxes = getattr(result, "boxes", None)
+    if boxes is None or len(boxes) == 0:
+        return []
+
+    # Class ids and boxes.
+    class_ids = boxes.cls.detach().cpu().numpy().astype(int)
+    entities: list[dict] = []
+
+    for i in range(len(boxes)):
+        xywh = boxes[i].xywh[0].detach().cpu().tolist()
+        cx, cy, w, h = map(float, xywh)
+
+        label = str(class_names[class_ids[i]])
+        name_msg = String(data=label)
+
+        pose_msg = pose_from_point2d(Point2D(x=cx, y=cy))
+
+        entities.append(
+            {
+                "name": name_msg,
+                "pose": pose_msg,
+            }
+        )
+
+        # Optional visualization.
+        if frame is not None:
+            x1 = int(cx - w / 2.0)
+            y1 = int(cy - h / 2.0)
+            x2 = int(cx + w / 2.0)
+            y2 = int(cy + h / 2.0)
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            cv2.putText(
+                frame,
+                label,
+                (x1, max(0, y1 - 8)),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (0, 255, 0),
+                2,
+            )
+
+    if frame is not None:
+        cv2.imshow("YOLO Detections", frame)
+        cv2.waitKey(1)
+
+    return entities

@@ -1,7 +1,7 @@
 # ------------------------------------------------------------
 # Filename: kinect_azure_publisher.py
 # Description: ROS 2 Node for publishing images from the Azure Kinect camera.
-# Maintainer: Max Mustermann <max@example.com>
+# Maintainer: Meruna Yugarajah <m.yugarajah@gmail.com>
 # Created: 2025-07-10
 # Last Modified: 2025-08-14
 # License: MIT

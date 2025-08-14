@@ -17,12 +17,12 @@ import threading
 
 class KinectAzurePublisher(Node):
     """
-    ROS 2 Node that interfaces with the Azure Kinect camera and publishes color 
+    ROS 2 Node that interfaces with the Azure Kinect camera and publishes color
     images to the /camera/image_raw topic. Images are captured in a separate thread.
     """
     def __init__(self):
         """
-        Initializes the KinectAzurePublisher Node, sets up the image publisher, 
+        Initializes the KinectAzurePublisher Node, sets up the image publisher,
         and configures the Azure Kinect camera.
         """
         # Initialize the ROS 2 Node with the class name as the node name
@@ -39,7 +39,7 @@ class KinectAzurePublisher(Node):
             Config(
                 color_resolution=ColorResolution.RES_720P, # Set resolution to 720P
                 depth_mode=DepthMode.OFF, # Depth data is disabled
-                synchronized_images_only=False, # Capture both color and depth (even if not synchronized)
+                synchronized_images_only=False, # Allow unsynced color/depth
             )
         )
         self.config.start()
@@ -52,7 +52,7 @@ class KinectAzurePublisher(Node):
 
     def capture_loop(self):
         """
-        Continuously captures images from the Azure Kinect camera and publishes them 
+        Continuously captures images from the Azure Kinect camera and publishes them
         to the /camera/image_raw topic.
         """
         # Continuously capture and publish frames as long as the node is running
@@ -94,7 +94,7 @@ class KinectAzurePublisher(Node):
 
 def main(args=None):
     """
-    Initializes the ROS 2 client library, starts the KinectAzurePublisher Node, 
+    Initializes the ROS 2 client library, starts the KinectAzurePublisher Node,
     and keeps it running until shutdown.
     """
     # Initialize ROS 2

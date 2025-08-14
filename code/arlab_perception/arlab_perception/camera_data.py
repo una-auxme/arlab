@@ -20,6 +20,7 @@ class KinectAzurePublisher(Node):
     ROS 2 Node that interfaces with the Azure Kinect camera and publishes color
     images to the /camera/image_raw topic. Images are captured in a separate thread.
     """
+
     def __init__(self):
         """
         Initializes the KinectAzurePublisher Node, sets up the image publisher,
@@ -37,9 +38,9 @@ class KinectAzurePublisher(Node):
         # Configure and start the Azure Kinect camera
         self.config = PyK4A(
             Config(
-                color_resolution=ColorResolution.RES_720P, # Set resolution to 720P
-                depth_mode=DepthMode.OFF, # Depth data is disabled
-                synchronized_images_only=False, # Allow unsynced color/depth
+                color_resolution=ColorResolution.RES_720P,  # Set resolution to 720P
+                depth_mode=DepthMode.OFF,  # Depth data is disabled
+                synchronized_images_only=False,  # Allow unsynced color/depth
             )
         )
         self.config.start()
@@ -61,7 +62,6 @@ class KinectAzurePublisher(Node):
                 # Capture a frame from the Azure Kinect camera
                 capture = self.config.get_capture()
                 if capture.color is not None:
-
                     # Remove alpha channel (convert BGRA to BGR)
                     frame = capture.color[:, :, :3]
 

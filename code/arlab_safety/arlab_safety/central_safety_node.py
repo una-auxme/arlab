@@ -56,8 +56,10 @@ class CentralSafetyNode(Node):
             self.module_safety_table[module_id]["last_seen"] = self.now()
         else:
             self.get_logger().warn(
-                f"Received 'working' message from unknown module {module_id}. Registering now."
+                f"Received 'working' message from unknown module {module_id}. "
+                "Registering now."
             )
+
             self.register_module(module_id)
 
     def critical_error(self, module_id, module_state):

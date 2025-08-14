@@ -63,7 +63,7 @@ class CentralSafetyNode(Node):
             msg: `std_msgs/Int32MultiArray` containing heartbeat info.
 
         Notes:
-            - module_id is the id of the module that propagates its module_state 
+            - module_id is the id of the module that propagates its module_state
             - module_state == -1 → registering state.
             - module_state == 0  → working/OK.
             - module_state > 0  → critical error code.

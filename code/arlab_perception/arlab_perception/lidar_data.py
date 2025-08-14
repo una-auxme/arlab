@@ -1,7 +1,7 @@
 # ------------------------------------------------------------
 # Filename: lidar_pubsub.py
 # Description: A ROS 2 Node that subscribes to LIDAR data and relays it.
-# Maintainer: Meruna Yugarajah
+# Maintainer: Meruna Yugarajah <m.yugarajah@gmail.com>
 # Created: 2025-07-10
 # Last Modified: 2025-08-14
 # License: MIT
@@ -41,8 +41,8 @@ class LidarPubSub(Node):
         """
         Callback function that is triggered when a new LaserScan message is received.
         Currently, this function simply relays the received LIDAR data unchanged.
-        However, it is designed to be extended in the future to allow for data filtering,
-        ensuring that the original data is preserved and not modified.
+        However, it is designed to be extended in the future to allow for data
+        filtering, ensuring that the original data is preserved and not modified.
         """
         # Publish the received LIDAR data to the /relay_scan topic
         self.lidar_pub.publish(msg)

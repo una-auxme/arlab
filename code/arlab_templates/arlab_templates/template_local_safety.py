@@ -3,9 +3,9 @@
 Tracks heartbeat messages from local module nodes and sends global heartbeat
 messages to the CentralSafetyNode.
 
-Notes:
-    - Docstrings follow the Google Python Style Guide:
-      https://google.github.io/styleguide/pyguide.html
+Maintainers:
+    Aleksander Michalak <aleksander.michalak@web.de>
+    Daniel Gabler <daniel.gabler@uni-augsburg.de>
 """
 
 import rclpy

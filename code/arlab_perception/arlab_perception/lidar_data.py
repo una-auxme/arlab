@@ -1,7 +1,7 @@
 # ------------------------------------------------------------
 # Filename: lidar_pubsub.py
 # Description: A ROS 2 Node that subscribes to LIDAR data and relays it.
-# Maintainer: Meruna Yugarajah 
+# Maintainer: Meruna Yugarajah
 # Created: 2025-07-10
 # Last Modified: 2025-08-14
 # License: MIT
@@ -54,10 +54,13 @@ def main(args=None):
     """
     # Initialize the ROS 2 client library
     rclpy.init(args=args)
+
     # Create an instance of the LidarPubSub Node
     lidar_node = LidarPubSub()
+
     # Start the node and wait for incoming messages
     rclpy.spin(lidar_node)
+
     # Shutdown ROS 2 when the node finishes
     rclpy.shutdown()
 

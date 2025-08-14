@@ -30,6 +30,7 @@ class KinectAzurePublisher(Node):
 
         # Create a publisher for the camera image topic (Image message type)
         self.kinect_pub = self.create_publisher(Image, "/camera/image_raw", 10)
+
         # Create a CvBridge to convert OpenCV images to ROS Image messages
         self.bridge = CvBridge()
 
@@ -60,6 +61,7 @@ class KinectAzurePublisher(Node):
                 # Capture a frame from the Azure Kinect camera
                 capture = self.config.get_capture()
                 if capture.color is not None:
+
                     # Remove alpha channel (convert BGRA to BGR)
                     frame = capture.color[:, :, :3]
 
@@ -97,10 +99,13 @@ def main(args=None):
     """
     # Initialize ROS 2
     rclpy.init(args=args)
+
     # Create an instance of the KinectAzurePublisher Node
     my_ros2_node = KinectAzurePublisher()
+
     # Keep the node running and process callbacks
     rclpy.spin(my_ros2_node)
+    
     # Stop the node and release resources when done
     my_ros2_node.stop()
     rclpy.shutdown()

@@ -8,16 +8,6 @@ class CentralSafetyNode(Node):
 
     def __init__(self):
         super().__init__(type(self).__name__)
-
-        # module safety table
-        # {
-        #   int:module_id:
-        #       {
-        #           "error_state": INT,
-        #           "last_seen": FLOAT (timestamp),
-        #           "heartbeat": FLOAT
-        #       }
-        # }
         self.module_safety_table = {}
 
         self.timer = self.create_timer(0.1, self.reset_module_safety_table)

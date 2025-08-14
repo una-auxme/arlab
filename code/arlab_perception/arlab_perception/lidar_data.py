@@ -1,8 +1,8 @@
 # ------------------------------------------------------------
 # Filename: lidar_pubsub.py
 # Description: A ROS 2 Node that subscribes to LIDAR data and relays it.
-# Maintainer: Max Mustermann <max@example.com>
-# Created: 2025-08-14
+# Maintainer: Meruna Yugarajah 
+# Created: 2025-07-10
 # Last Modified: 2025-08-14
 # License: MIT
 # ------------------------------------------------------------

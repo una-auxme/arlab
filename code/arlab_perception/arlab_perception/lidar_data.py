@@ -17,6 +17,7 @@ class LidarPubSub(Node):
     ROS 2 Node that subscribes to LIDAR data from the /scan topic and relays
     the received data unchanged to the /relay_scan topic.
     """
+
     def __init__(self):
         """
         Initializes the LidarPubSub Node and creates the subscription
@@ -27,10 +28,10 @@ class LidarPubSub(Node):
 
         # Subscribe to the "/scan" topic (LIDAR data) and set the callback function
         self.lidar_sub = self.create_subscription(
-            LaserScan,               # Message type: LaserScan
-            "/scan",                 # Topic: /scan (LIDAR scanner data)
-            self.lidar_callback,     # Callback function when new data is received
-            10                       # Queue size for subscription
+            LaserScan,  # Message type: LaserScan
+            "/scan",  # Topic: /scan (LIDAR scanner data)
+            self.lidar_callback,  # Callback function when new data is received
+            10,  # Queue size for subscription
         )
 
         # Publisher for the "/relay_scan" topic to forward the received data

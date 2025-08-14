@@ -1,4 +1,4 @@
-"""Central safety monitor node for ROS2 modules.
+"""Central safety monitor node for Zirbi modules.
 
 Listens on `/global_heartbeat`, maintains a per-module safety table, and can
 trigger a system freeze when critical errors or timeouts occur.

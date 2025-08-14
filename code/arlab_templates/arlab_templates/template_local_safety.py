@@ -1,4 +1,4 @@
-"""Local safety monitor node for ROS2 system submodules.
+"""Local safety monitor node for Zirbi system submodules.
 
 Tracks heartbeat messages from local module nodes and sends global heartbeat
 messages to the CentralSafetyNode.
@@ -105,11 +105,7 @@ class LocalSafety(Node):
 
 
 def main(args=None) -> None:
-    """Main entry point for LocalSafetyNode.
-
-    Publishes module health_state (-1 initially) to register in
-    CentralSafetyNode.
-    """
+    """Main entry point for LocalSafetyNode."""
     rclpy.init(args=args)
 
     my_ros2_node = LocalSafety()

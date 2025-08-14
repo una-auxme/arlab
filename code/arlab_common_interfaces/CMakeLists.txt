@@ -24,11 +24,20 @@ endif()
 # find_package(<dependency> REQUIRED)
 
 find_package(rosidl_default_generators REQUIRED)
+find_package(geometry_msgs REQUIRED)
 
 # Add all your interface files here:
 rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/DeleteMe.msg"
+  "msg/Destination.msg"
+  "msg/ActionResponse.msg"
+
+  "msg/MovementCommand.msg"
+  "msg/ManipulationCommand.msg"
+
+  "action/MovementAction.action"
+  "action/ManipulationAction.action"
   DEPENDENCIES # Add packages that above messages depend on
+  geometry_msgs
 )
 
 ament_package()

@@ -1,4 +1,6 @@
 import rclpy
+import rospy
+
 from rclpy.node import Node
 from std_msgs.msg import Int32, Int32MultiArray
 
@@ -44,7 +46,10 @@ class LocalSafety(Node):
         """
         print(f"Received message: {msg.data}")
         node_id = msg.data
-        self.module_node_table[node_id] = True
+        self.module_node_table[node_id] = {
+            "last_seen": rospy.time(),
+            "is_alive": True,
+        }
 
     def reset_module_node_table(self):
         """Resets the is_alive state of module nodes"""

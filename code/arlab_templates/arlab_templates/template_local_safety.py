@@ -3,6 +3,11 @@
 Tracks heartbeat messages from local module nodes and sends global heartbeat
 messages to the CentralSafetyNode.
 
+TODO:
+    - [ ] Implement actual safety checks in `local_safety_checks()`.
+    - [ ] Replace magic numbers (-1, 0) with enums
+          for readability and precise error tracking.
+
 Maintainers:
     Aleksander Michalak <aleksander.michalak@web.de>
     Daniel Gabler <daniel.gabler@uni-augsburg.de>

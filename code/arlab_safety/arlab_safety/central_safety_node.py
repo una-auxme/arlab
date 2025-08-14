@@ -3,6 +3,12 @@
 Listens on `/global_heartbeat`, maintains a per-module safety table, and can
 trigger a system freeze when critical errors or timeouts occur.
 
+TODO:
+    - [ ] Implement error encoding for CentralSafetyNode in
+          `reset_module_node_table()`.
+    - [ ] Replace magic numbers (-1, 0) with enums
+          for readability and precise error tracking.
+
 Maintainers:
     Aleksander Michalak <aleksander.michalak@web.de>
     Daniel Gabler <daniel.gabler@uni-augsburg.de>
@@ -159,11 +165,7 @@ class CentralSafetyNode(Node):
 
 
 def main(args=None) -> None:
-    """Entry point for the CentralSafetyNode.
-
-    Args:
-        args: Optional CLI args forwarded to rclpy.init.
-    """
+    """Entry point for the CentralSafetyNode."""
     rclpy.init(args=args)
     node = CentralSafetyNode()
     try:

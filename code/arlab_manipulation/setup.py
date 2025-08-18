@@ -1,3 +1,14 @@
+"""setup.py
+
+Setup script for the arlab_manipulation ROS2 Python package.
+
+This script defines package metadata, dependencies, launch files, and
+console scripts for ROS2 execution.
+
+Author: Sofia Öttl
+Date: 2025-08-18
+"""
+
 from setuptools import find_packages, setup
 from glob import glob
 

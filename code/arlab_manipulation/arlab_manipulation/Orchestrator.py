@@ -1,4 +1,17 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Orchestrator.py
+---------------
+
+ROS2 Node 'Orchestrator' that subscribes to object, point cloud, and bounding box data,
+queries the gripping force service, computes gripping poses, and publishes orchestrator data.
+
+Author: Sofia Öttl
+Date: 2025-08-18
+License: MIT ????
+"""
+
 import rclpy
 from rclpy.node import Node
 
@@ -17,7 +30,29 @@ from arlab_common_interfaces.srv import GrippingForce
 from arlab_common_interfaces.msg import OrchestratorData
 
 class Orchestrator(Node):
+    """ROS2 Node for orchestrating robotic manipulation.
+
+    Subscribes to test commands, point cloud data, and bounding box data.
+    Calls a GrippingForce service to obtain recommended gripping forces.
+    Computes gripping poses and publishes OrchestratorData messages.
+
+    Attributes:
+        data_publisher (rclpy.Publisher): Publisher for OrchestratorData messages.
+        test_sub (rclpy.Subscription): Subscription to test command strings.
+        pointcloud_sub (rclpy.Subscription): Subscription to point cloud data.
+        boundingbox_sub (rclpy.Subscription): Subscription to bounding box data.
+        client (rclpy.ServiceClient): Client for GrippingForce service.
+        tf_buffer (tf2_ros.Buffer): TF2 buffer for frame transformations.
+        tf_listener (tf2_ros.TransformListener): TF2 listener for transforms.
+        req (GrippingForce.Request): Service request object.
+        force (float): Current gripping force in Newtons.
+        objectname (str): Current object name.
+        cmd (str): Current command type (pick, place, etc.).
+    """
+
+
     def __init__(self):
+        """Initialize the Orchestrator node, publishers, subscribers, service client, and TF2."""
         super().__init__('Orchestrator')
 
         # Publisher for C++ (MoveItNode)
@@ -69,6 +104,13 @@ class Orchestrator(Node):
 
 
     def test_callback(self, msg: String):
+        """Handle incoming test command messages.
+
+        Parses messages of the form 'command:object' and calls the GrippingForce service.
+
+        Args:
+            msg (String): Incoming ROS String message containing the command and object.
+        """
         data = msg.data.strip()
 
         if ':' in data:
@@ -85,9 +127,14 @@ class Orchestrator(Node):
 
 
     def bbox_callback(self, msg: BoundingBox2D):
-        # 2D-Infos from BoundingBox2D: center (x,y), size_x, size_y
+        """Handle incoming BoundingBox2D messages and compute orientation.
 
-        # long side = main orientation ⇒ calculate angle
+        Determines the main orientation based on the longer side of the bounding box.
+
+        Args:
+            msg (BoundingBox2D): Incoming bounding box message.
+        """
+        # Determine angle from bounding box dimensions
         if msg.size_x >= msg.size_y:
             angle = 0.0         # horicontal bbox
         else:
@@ -100,14 +147,20 @@ class Orchestrator(Node):
 
 
     def pointcloud_callback(self, msg: PointCloud2):
-        # goal coorinates
+        """Handle incoming PointCloud2 messages and compute gripping pose.
+
+        Transforms all points to the base frame, calculates the mean position,
+        and combines with bounding box orientation to define the gripping pose.
+
+        Args:
+            msg (PointCloud2): Incoming point cloud message.
+        """
         base_frame = 'base_link'
-        cam_frame = 'camera_link' # change in world frame when slam is working
+        cam_frame = 'camera_link' # Change in world frame when slam is working
 
         points_base = []
 
         for p in pc2.read_points(msg, field_names=("x", "y", "z"), skip_nans=True):
-            # point in camera frame
             point_cam = PointStamped()
             point_cam.header.stamp = msg.header.stamp
             point_cam.header.frame_id = cam_frame
@@ -115,7 +168,7 @@ class Orchestrator(Node):
             point_cam.point.y = p[1]
             point_cam.point.z = p[2]
 
-            # transform to base frame
+            # Transform points to base frame
             point_base = self.tf_buffer.transform(
                 point_cam,
                 base_frame,
@@ -136,6 +189,13 @@ class Orchestrator(Node):
 
 
     def handle_service_response(self, future):
+        """Handle the response from the GrippingForce service.
+
+        Updates the internal gripping force and publishes the goal.
+
+        Args:
+            future (rclpy.task.Future): Future object returned by service call.
+        """
         try:
             response = future.result()
             self.force = response.gripforce
@@ -148,18 +208,18 @@ class Orchestrator(Node):
 
 
     def publish_goal(self):
-        """
-        gripping_pose = Pose()
-        gripping_pose.position.x = self.gripping_point[0]
-        gripping_pose.position.y = self.gripping_point[1]
-        gripping_pose.position.z = self.gripping_point[2]
-        gripping_pose.orientation.x = self.gripping_point[3]
-        gripping_pose.orientation.y = self.gripping_point[4]
-        gripping_pose.orientation.z = self.gripping_point[5]
-        gripping_pose.orientation.w = self.gripping_point[6]
-        self.goal_pub.publish(gripping_pose)
-        """
-
+        """Publish the gripping pose, force, and command as OrchestratorData."""
+        #gripping_pose = Pose()
+        #gripping_pose.position.x = self.gripping_point[0]
+        #gripping_pose.position.y = self.gripping_point[1]
+        #gripping_pose.position.z = self.gripping_point[2]
+        #gripping_pose.orientation.x = self.gripping_point[3]
+        #gripping_pose.orientation.y = self.gripping_point[4]
+        #gripping_pose.orientation.z = self.gripping_point[5]
+        #gripping_pose.orientation.w = self.gripping_point[6]
+        #self.goal_pub.publish(gripping_pose)
+        
+        # Testdata
         gripping_pose = Pose()
         gripping_pose.position.x = 0.372
         gripping_pose.position.y = 0.124
@@ -187,6 +247,7 @@ class Orchestrator(Node):
         )
 
 def main(args=None):
+    """Initialize the Orchestrator node and spin."""
     rclpy.init(args=args)
     node = Orchestrator()
     rclpy.spin(node)

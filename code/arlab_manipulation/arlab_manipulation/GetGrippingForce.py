@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+# Copyright 2025 Sofia Öttl, University of Augsburg
+#
+# License????
 
 """
 GetGrippingForce.py
@@ -8,9 +10,6 @@ GetGrippingForce.py
 ROS2 Node 'GetGrippingForce' providing a service to return recommended gripping 
 forces for different objects.
 
-Author: Sofia Öttl
-Date: 2025-08-18
-License: MIT ????
 """
 
 import rclpy

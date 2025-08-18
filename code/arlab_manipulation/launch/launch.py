@@ -1,3 +1,7 @@
+# Copyright 2025 Sofia Öttl, University of Augsburg
+#
+# License????
+
 """launch.py
 
 Launch file for the ARLab Manipulation orchestrator system.
@@ -7,8 +11,6 @@ This launch file starts:
 2. Orchestrator Python node.
 3. OrchestratorSubscriber C++ node.
 
-Author: Sofia Öttl
-Date: 2025-08-18
 """
 
 from launch import LaunchDescription

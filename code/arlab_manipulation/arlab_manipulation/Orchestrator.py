@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-# Copyright 2025 Sofia Öttl, University of Augsburg
-#
-# License????
 
 """
 Orchestrator.py
@@ -9,6 +6,9 @@ Orchestrator.py
 
 ROS2 Node 'Orchestrator' that subscribes to object, point cloud, and bounding box data,
 queries the gripping force service, computes gripping poses, and publishes orchestrator data.
+
+Author: Sofia Öttl
+Date: 2025-08-24
 
 """
 

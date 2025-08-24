@@ -1,6 +1,3 @@
-# Copyright 2025 Sofia Öttl, University of Augsburg
-#
-# License????
 
 """launch.py
 
@@ -10,6 +7,9 @@ This launch file starts:
 1. GetGrippingForce service node.
 2. Orchestrator Python node.
 3. OrchestratorSubscriber C++ node.
+
+Author: Sofia Öttl
+Date: 2025-08-24
 
 """
 

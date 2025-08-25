@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = "arlab_safety"
+package_name = "arlab_computer_vision"
 
 setup(
     name=package_name,
@@ -18,8 +18,6 @@ setup(
     license="MIT",
     tests_require=["pytest"],
     entry_points={
-        "console_scripts": [
-            "central_safety_node = arlab_safety.central_safety_node:main",
-        ],
+        "console_scripts": ["dummy = arlab_computer_vision.dummy:main"],
     },
 )

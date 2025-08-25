@@ -1,0 +1,6 @@
+source;share/arlab_templates/hook/pythonpath.ps1
+source;share/arlab_templates/hook/pythonpath.dsv
+source;share/arlab_templates/hook/pythonpath.sh
+source;share/arlab_templates/hook/ament_prefix_path.ps1
+source;share/arlab_templates/hook/ament_prefix_path.dsv
+source;share/arlab_templates/hook/ament_prefix_path.sh

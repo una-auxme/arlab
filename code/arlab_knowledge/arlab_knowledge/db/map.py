@@ -18,6 +18,12 @@ from .ros_adapters.occupancy_grid import OccupancyGridData
 
 
 class Map(Base):
+    """Map based on ROS OccupancyGrid message.
+
+    Note that a ROS OccupancyGrid needs to be converted
+    into OccupancyGridData when creating a Map object
+    """
+
     __tablename__ = "map"
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 

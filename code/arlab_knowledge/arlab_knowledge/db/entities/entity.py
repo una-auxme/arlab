@@ -19,11 +19,18 @@ from ..ros_adapters.time import TimeData
 
 
 class Entity(Base):
+    """An entity is a physical object somewhere around the robot"""
+
     __tablename__ = "entity"
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     type: Mapped[str]
+    """Entity (sub)type
+
+    Required for database polymorphism. Do NOT set manually, use the subclasses instead.
+    """
 
     description: Mapped[str] = mapped_column(String(100))
+    """Human readable description"""
 
     pose: Mapped[PoseData] = composite(
         PoseData._generate,
@@ -35,19 +42,26 @@ class Entity(Base):
         mapped_column("oz", Float),
         mapped_column("ow", Float),
     )
+    """Pose of the entity relative to the pose_reference_frame"""
     pose_reference_frame: Mapped[str] = mapped_column(String(100))
+    """Reference frame for the pose
+
+    (e.g., "map", "base_link")
+    """
 
     stamp: Mapped[TimeData] = composite(
         TimeData._generate,
         mapped_column("stamp_nanosec", Integer),
         mapped_column("stamp_sec", Integer),
     )
+    """Time stamp of the last update"""
 
     shape: Mapped[Optional["Shape"]] = relationship(  # type: ignore # noqa: F821
         back_populates="entity",
         cascade="all, delete",
         passive_deletes=True,
     )
+    """Shape of this entity"""
 
     __mapper_args__ = {
         "polymorphic_identity": "entity",

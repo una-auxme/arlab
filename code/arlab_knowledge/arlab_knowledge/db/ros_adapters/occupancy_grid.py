@@ -5,6 +5,8 @@ from nav_msgs.msg import OccupancyGrid
 
 
 class OccupancyGridData:
+    """Adapter to create database columns from a ROS OccupancyGrid"""
+
     def __init__(self, grid: OccupancyGrid):
         super().__init__()
         self.grid = grid

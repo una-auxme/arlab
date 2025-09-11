@@ -18,6 +18,7 @@ class Furniture(Entity):
         foreign_keys="Pickable.located_on_id",
         cascade="all, delete-orphan",
     )
+    """Pickables located on this Furniture"""
 
     __mapper_args__ = {
         "polymorphic_identity": "entity_furniture",
@@ -46,6 +47,7 @@ class Cupboard(Furniture):
         foreign_keys="Shelf.cupboard_id",
         cascade="all, delete-orphan",
     )
+    """Shelves that are part of this cupboard"""
 
     width: Mapped[float]
     height: Mapped[float]
@@ -114,6 +116,7 @@ class Shelf(Furniture):
     cupboard: Mapped["Cupboard"] = relationship(
         back_populates="shelves", foreign_keys=cupboard_id
     )
+    """The cupboard this shelf belongs to"""
 
     width: Mapped[float]
     height: Mapped[float]
@@ -147,6 +150,7 @@ class Table(Furniture):
     )
 
     height: Mapped[float]
+    """Table height above the ground"""
 
     __mapper_args__ = {
         "polymorphic_identity": "entity_furniture_table",

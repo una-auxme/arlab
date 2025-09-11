@@ -5,6 +5,8 @@ from vision_msgs.msg import Pose2D
 
 
 class PoseData:
+    """Adapter to create database columns from a ROS Pose"""
+
     def __init__(self, pose: Pose):
         super().__init__()
         self.pose = pose

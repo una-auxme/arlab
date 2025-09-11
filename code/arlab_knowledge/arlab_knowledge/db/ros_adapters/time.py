@@ -4,6 +4,8 @@ from builtin_interfaces.msg import Time
 
 
 class TimeData:
+    """Adapter to create database columns from a ROS Time"""
+
     def __init__(self, time: Time):
         super().__init__()
         self.time = time

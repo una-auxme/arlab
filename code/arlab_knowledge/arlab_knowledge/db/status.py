@@ -21,6 +21,14 @@ from .ros_adapters.time import TimeData
 
 
 def status_msg_type_to_class(msg_type: msg.StatusType):
+    """Converts a StatusType message to a corresponding class.
+
+    Args:
+        msg_type (msg.StatusType):
+
+    Returns:
+        Class: RobotStatus (sub)Class
+    """
     if msg_type.id == msg.StatusType.STATUS:
         return RobotStatus
     if msg_type.id == msg.StatusType.STATUS_MANIPULATION:
@@ -34,6 +42,14 @@ def status_msg_type_to_class(msg_type: msg.StatusType):
 
 
 def status_extract_type_msg(e: "RobotStatus") -> msg.StatusType:
+    """Return a StatusType message based on a RobotStatus
+
+    Args:
+        e (RobotStatus):
+
+    Returns:
+        msg.StatusType:
+    """
     m = msg.StatusType()
     m.id = msg.StatusType.STATUS
     if isinstance(e, ManipulationStatus):
@@ -46,6 +62,8 @@ def status_extract_type_msg(e: "RobotStatus") -> msg.StatusType:
 
 
 class RobotStatus(Base):
+    """Generic robot status message"""
+
     __tablename__ = "robot_status"
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     type: Mapped[str]
@@ -55,6 +73,9 @@ class RobotStatus(Base):
     )
 
     is_ok: Mapped[bool]
+    """If the robot is in an ok state (no fatal error).
+
+    This attribute is subject to change"""
 
     __mapper_args__ = {
         "polymorphic_identity": "robot_status",
@@ -98,6 +119,8 @@ class RobotStatus(Base):
 
 
 class MovementStatus(RobotStatus):
+    """Status message from the movement subsystem"""
+
     __tablename__ = "robot_status_movement"
     id: Mapped[int] = mapped_column(
         ForeignKey("robot_status.id", ondelete="CASCADE"), primary_key=True
@@ -120,6 +143,8 @@ class MovementStatus(RobotStatus):
 
 
 class ManipulationStatus(RobotStatus):
+    """Status message from the manipulation subsystem"""
+
     __tablename__ = "robot_status_manipulation"
     id: Mapped[int] = mapped_column(
         ForeignKey("robot_status.id", ondelete="CASCADE"), primary_key=True
@@ -142,6 +167,8 @@ class ManipulationStatus(RobotStatus):
 
 
 class SafetyStatus(RobotStatus):
+    """Status message from the safety subsystem"""
+
     __tablename__ = "robot_status_safety"
     id: Mapped[int] = mapped_column(
         ForeignKey("robot_status.id", ondelete="CASCADE"), primary_key=True
@@ -164,6 +191,8 @@ class SafetyStatus(RobotStatus):
 
 
 class RobotStatusEvent(Base):
+    """Robot status event containing a status message"""
+
     __tablename__ = "robot_status_event"
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
@@ -172,8 +201,10 @@ class RobotStatusEvent(Base):
         mapped_column("stamp_nanosec", Integer),
         mapped_column("stamp_sec", Integer),
     )
+    """When this event was fired"""
 
     sender: Mapped[str] = mapped_column(String(100))
+    """Node name that sent this event"""
 
     status_id: Mapped[int] = mapped_column(
         ForeignKey("robot_status.id", ondelete="CASCADE")
@@ -181,6 +212,7 @@ class RobotStatusEvent(Base):
     status: Mapped["RobotStatus"] = relationship(
         back_populates="event", cascade="all, delete", single_parent=True
     )
+    """The status message associated with this event"""
 
     @classmethod
     def from_ros_msg(cls, m: msg.RobotStatusEvent) -> "RobotStatusEvent":

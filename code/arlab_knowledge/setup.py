@@ -14,7 +14,8 @@ setup(
     zip_safe=True,
     maintainer="Peter Viechter, Daniel Gabler",
     maintainer_email="peter.viechter@uni-augsburg.de",
-    description="Arlab knowledge base: database for handling the robot's surroundings, events and maps",
+    description="Arlab knowledge base: database for handling "
+    "the robot's surroundings, events and maps",
     license="MIT",
     tests_require=["pytest"],
     entry_points={

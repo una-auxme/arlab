@@ -10,9 +10,14 @@
 #include "arlab_manipulation_cpp/utils.hpp"
 
 
-
-void job_gripper_open(
-  const rclcpp::Logger &logger) {
+/**
+ * @brief Open the robot gripper.
+ *
+ * Sends a command to open the gripper.
+ *
+ * @param logger ROS 2 logger for status output.
+ */
+void job_gripper_open(const rclcpp::Logger &logger) {
 
   // gripper_pos.joint_names.resize(1);
   // gripper_pos.joint_names[0] = "r_robotiq_85_left_knuckle_joint";
@@ -26,9 +31,14 @@ void job_gripper_open(
   RCLCPP_INFO(logger,"Greifer-Befehl gesendet!");
 }
 
-
-void job_gripper_close(
-  const rclcpp::Logger &logger) {
+/**
+ * @brief Close the robot gripper.
+ *
+ * Sends a command to close the gripper.
+ *
+ * @param logger ROS 2 logger for status output.
+ */
+void job_gripper_close(const rclcpp::Logger &logger) {
 
   // gripper_pos.joint_names.resize(1);
   // gripper_pos.joint_names[0] = "r_robotiq_85_left_knuckle_joint";
@@ -42,6 +52,15 @@ void job_gripper_close(
   RCLCPP_INFO(logger,"Greifer-Befehl gesendet!");
 }
 
+/**
+ * @brief Move the robot to a specific target pose.
+ *
+ * Uses MoveIt to plan and execute a motion to the provided pose.
+ *
+ * @param move_group_interface Reference to the MoveGroupInterface.
+ * @param target_pose Target pose to move to.
+ * @param logger ROS 2 logger for error messages.
+ */
 void job_move2pose(
   moveit::planning_interface::MoveGroupInterface &move_group_interface,
   const geometry_msgs::msg::Pose &target_pose,
@@ -51,6 +70,12 @@ void job_move2pose(
 
 }
 
+/**
+ * @brief Move the robot to its predefined home position.
+ *
+ * @param move_group_interface Reference to the MoveGroupInterface.
+ * @param logger ROS 2 logger for status and errors.
+ */
 void job_move2home(
   moveit::planning_interface::MoveGroupInterface &move_group_interface,
   const rclcpp::Logger &logger) {
@@ -64,7 +89,19 @@ void job_move2home(
 
 }
 
-
+/**
+ * @brief Perform a pick operation.
+ *
+ * Sequence:
+ * 1. Move to home pose
+ * 2. Move to table pose
+ * 3. (Planned: Move to target pose, close gripper)
+ * 4. Move back to home pose
+ *
+ * @param move_group_interface Reference to the MoveGroupInterface.
+ * @param target_pose Target pose for picking.
+ * @param logger ROS 2 logger for status and errors.
+ */
 void job_pick(
   moveit::planning_interface::MoveGroupInterface &move_group_interface,
   const geometry_msgs::msg::Pose &target_pose,
@@ -106,7 +143,13 @@ void job_pick(
 
 }
 
+/**
+ * @brief Perform a place operation (currently stubbed).
+ */
 void job_place(){
+
+  // TODO: Implement place sequence
+
   // ----------------- Plan and Execute -----------------
 
   // 1. Is in Home Pos?
@@ -122,7 +165,15 @@ void job_place(){
 
 }
 
-
+/**
+ * @brief Run a job based on an OrchestratorData command message.
+ *
+ * Supported commands: "pick", "place", "open", "close", "move", "home".
+ *
+ * @param msg Command message from orchestrator.
+ * @param node Shared pointer to ROS 2 node.
+ * @return int Exit code
+ */
 int run_job(
   const arlab_common_interfaces::msg::OrchestratorData &msg,
   std::shared_ptr<rclcpp::Node> node) {

@@ -5,8 +5,23 @@
 #include "arlab_common_interfaces/msg/orchestrator_data.hpp"
 #include "arlab_manipulation_cpp/job_runner.hpp"
 
+
+/**
+ * @brief Node that subscribes to orchestrator data and logs pose, gripping force and job command information.
+ *
+ * This node listens on the `/orchestrator_data` topic and processes messages
+ * of type `arlab_common_interfaces::msg::OrchestratorData`. It extracts
+ * position, orientation, gripping force and job command data from the received message and logs them.
+ */
 class OrchestratorListener : public rclcpp::Node {
   public:
+
+    /**
+    * @brief Construct a new OrchestratorListener Node.
+    *
+    * Initializes the node and creates a subscription to the
+    * `/orchestrator_data` topic.
+    */
     OrchestratorListener() : Node("OrchestratorListener") {
       data_sub_ =
         this->create_subscription<arlab_common_interfaces::msg::OrchestratorData>(
@@ -16,6 +31,15 @@ class OrchestratorListener : public rclcpp::Node {
     }
 
   private:
+
+    /**
+    * @brief Callback for orchestrator data messages.
+    *
+    * Extracts the pose (position + orientation), gripping force and job command from the incoming message and
+    * prints it to the ROS 2 logger. Runs the function "run_job" after extracting the data.
+    *
+    * @param msg Shared pointer to the incoming orchestrator data message.
+    */
     void orchestrator_data_callback(const arlab_common_interfaces::msg::OrchestratorData::SharedPtr msg) {
 
       const auto& pose = msg->pose;
@@ -37,9 +61,20 @@ class OrchestratorListener : public rclcpp::Node {
       run_job(*msg,this->shared_from_this());
     }
 
-    rclcpp::Subscription<arlab_common_interfaces::msg::OrchestratorData>::SharedPtr data_sub;
+    // Subscription to orchestrator data messages.
+    rclcpp::Subscription<arlab_common_interfaces::msg::OrchestratorData>::SharedPtr data_sub_;
 };
 
+/**
+ * @brief Main entry point of the program.
+ *
+ * Initializes ROS 2, starts the OrchestratorListener node, and spins until
+ * shutdown is requested.
+ *
+ * @param argc Argument count.
+ * @param argv Argument values.
+ * @return int Exit status code.
+ */
 int main(int argc, char **argv) {
   rclcpp::init(argc, argv);
   auto node = std::make_shared<OrchestratorListener>();

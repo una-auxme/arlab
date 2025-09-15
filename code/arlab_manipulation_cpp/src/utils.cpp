@@ -1,5 +1,17 @@
 #include "arlab_manipulation_cpp/utils.hpp"
 
+/**
+ * @brief Create a geometry_msgs::msg::Pose.
+ *
+ * @param x Position along X axis.
+ * @param y Position along Y axis.
+ * @param z Position along Z axis.
+ * @param ox Orientation x component (quaternion).
+ * @param oy Orientation y component (quaternion).
+ * @param oz Orientation z component (quaternion).
+ * @param ow Orientation w component (quaternion).
+ * @return geometry_msgs::msg::Pose Constructed pose.
+ */
 geometry_msgs::msg::Pose createPose(
   double x, double y, double z,
   double ox, double oy, double oz, double ow) {
@@ -12,10 +24,22 @@ geometry_msgs::msg::Pose createPose(
   pose.orientation.y = oy;
   pose.orientation.z = oz;
   pose.orientation.w = ow;
-  
+
   return pose;
 }
 
+
+/**
+ * @brief Create a MoveIt collision box object.
+ *
+ * @param frame_id Reference frame ID.
+ * @param object_id Identifier of the collision object.
+ * @param pose Pose of the collision box.
+ * @param size_x Box dimension along X axis.
+ * @param size_y Box dimension along Y axis.
+ * @param size_z Box dimension along Z axis.
+ * @return moveit_msgs::msg::CollisionObject Constructed collision box.
+ */
 moveit_msgs::msg::CollisionObject createCollisionBox(
   const std::string &frame_id,
   std::string object_id,geometry_msgs::msg::Pose pose,
@@ -39,7 +63,17 @@ moveit_msgs::msg::CollisionObject createCollisionBox(
   return collision_object;
 }
 
-
+/**
+ * @brief Plan and execute a motion to a target pose.
+ *
+ * This function sets a target pose for the MoveGroupInterface, plans a motion,
+ * and executes it if planning succeeds.
+ *
+ * @param move_group_interface Reference to MoveGroupInterface controlling the robot.
+ * @param target_pose Target pose for the robot end-effector.
+ * @param logger ROS 2 logger for error messages.
+ * @return execution success.
+ */
 bool planAndExecutePose(
   moveit::planning_interface::MoveGroupInterface &move_group_interface,
   const geometry_msgs::msg::Pose &target_pose,

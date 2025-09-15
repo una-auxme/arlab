@@ -1,7 +1,9 @@
 #include "arlab_manipulation_cpp/utils.hpp"
 
-geometry_msgs::msg::Pose createPose(double x, double y, double z,
-                                    double ox, double oy, double oz, double ow) {
+geometry_msgs::msg::Pose createPose(
+  double x, double y, double z,
+  double ox, double oy, double oz, double ow) {
+
   geometry_msgs::msg::Pose pose;
   pose.position.x = x;
   pose.position.y = y;
@@ -10,10 +12,15 @@ geometry_msgs::msg::Pose createPose(double x, double y, double z,
   pose.orientation.y = oy;
   pose.orientation.z = oz;
   pose.orientation.w = ow;
+  
   return pose;
 }
 
-moveit_msgs::msg::CollisionObject createCollisionBox(const std::string &frame_id, std::string object_id,geometry_msgs::msg::Pose pose, double size_x, double size_y, double size_z) {
+moveit_msgs::msg::CollisionObject createCollisionBox(
+  const std::string &frame_id,
+  std::string object_id,geometry_msgs::msg::Pose pose,
+  double size_x, double size_y, double size_z) {
+
   moveit_msgs::msg::CollisionObject collision_object;
   collision_object.header.frame_id = frame_id;
   collision_object.id = object_id;
@@ -33,17 +40,11 @@ moveit_msgs::msg::CollisionObject createCollisionBox(const std::string &frame_id
 }
 
 
-// bool planAndExecutePose(
-//   moveit::planning_interface::MoveGroupInterface &move_group_interface,
-//   const geometry_msgs::msg::Pose &target_pose,
-//   moveit_visual_tools::MoveItVisualTools &visual_tools,
-//   const rclcpp::Logger &logger
-// ) {
-  bool planAndExecutePose(
+bool planAndExecutePose(
   moveit::planning_interface::MoveGroupInterface &move_group_interface,
   const geometry_msgs::msg::Pose &target_pose,
-  const rclcpp::Logger &logger
-) {
+  const rclcpp::Logger &logger) {
+
   // Set target pose
   move_group_interface.setPoseTarget(target_pose);
 
@@ -53,23 +54,14 @@ moveit_msgs::msg::CollisionObject createCollisionBox(const std::string &frame_id
     pose.translation().z() = 1.0;
     return pose;
   }();
-  // visual_tools.publishText(text_pose, "Planning", rviz_visual_tools::WHITE, rviz_visual_tools::XLARGE);
-  // visual_tools.prompt("Press 'Next' in the RvizVisualToolsGui window to plan");
-  // visual_tools.trigger();
 
   // Plan trajectory
   moveit::planning_interface::MoveGroupInterface::Plan plan;
   bool success = static_cast<bool>(move_group_interface.plan(plan));
 
   if (success) {
-    // visual_tools.publishTrajectoryLine(plan.trajectory, move_group_interface.getRobotModel()->getJointModelGroup(move_group_interface.getName()));
-    // visual_tools.publishText(text_pose, "Executing", rviz_visual_tools::WHITE, rviz_visual_tools::XLARGE);
-    // visual_tools.trigger();
-
     move_group_interface.execute(plan);
   } else {
-    // visual_tools.publishText(text_pose, "Planning Failed!", rviz_visual_tools::RED, rviz_visual_tools::XLARGE);
-    // visual_tools.trigger();
     RCLCPP_ERROR(logger, "Planning failed!");
   }
 

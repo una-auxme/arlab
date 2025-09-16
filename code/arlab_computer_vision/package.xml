@@ -4,7 +4,8 @@
   <name>arlab_computer_vision</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
-  <maintainer email="aleksander.michalak@web.de">Aleksander Michalak</maintainer>
+  <maintainer email="aleksander1.michalak@uni-a.de">Aleksander Michalak</maintainer>
+  <maintainer email="m.yugarajah@gmail.com">Meruna Yugarajah</maintainer>
   <license>MIT</license>
 
   <test_depend>python3-pytest</test_depend>

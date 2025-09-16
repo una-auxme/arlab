@@ -1,0 +1,12 @@
+# ===== Request =====
+# Type of entities to retrieve
+EntityType entity_type
+---
+# ===== Response =====
+# IDs of entities with the specified type
+# Sorted by time stamp in descending order ("freshest" entity first)
+int64[] entities
+# Result of the get operation (success/failure with error code)
+Result result
+# Time stamp of the "freshest" entity
+builtin_interfaces/Time stamp

@@ -1,11 +1,13 @@
-# ------------------------------------------------------------
-# Filename: lidar_pubsub.py
-# Description: A ROS 2 Node that subscribes to LIDAR data and relays it.
-# Maintainer: Meruna Yugarajah <m.yugarajah@gmail.com>
-# Created: 2025-07-10
-# Last Modified: 2025-08-14
-# License: MIT
-# ------------------------------------------------------------
+
+"""
+Relay of LIDAR LaserScan messages using ROS 2.
+
+This module defines a ROS 2 node that subscribes to ``/scan`` and republishes
+incoming ``sensor_msgs.msg.LaserScan`` messages unchanged to ``/relay_scan``.
+
+Maintainer:
+    Meruna Yugarajah <m.yugarajah@gmail.com>
+"""
 
 import rclpy
 from rclpy.node import Node
@@ -14,58 +16,56 @@ from sensor_msgs.msg import LaserScan
 
 class LidarPubSub(Node):
     """
-    ROS 2 Node that subscribes to LIDAR data from the /scan topic and relays
-    the received data unchanged to the /relay_scan topic.
+    ROS 2 node that forwards LIDAR scans without modification.
+
+    The node subscribes to ``/scan`` and publishes identical messages on
+    ``/relay_scan``. No filtering or transformations are applied.
+
+    Attributes:
+        lidar_sub (rclpy.subscription.Subscription): Subscription to ``/scan``
+            for ``LaserScan`` messages.
+        lidar_pub (rclpy.publisher.Publisher): Publisher to ``/relay_scan`` for
+            ``LaserScan`` messages.
     """
 
     def __init__(self):
         """
-        Initializes the LidarPubSub Node and creates the subscription
-        to the /scan topic and the publisher for the /relay_scan topic.
+        Initialize node, subscription, and publisher.
+
+        Creates a subscription to ``/scan`` and a publisher to ``/relay_scan``.
+        Uses the default QoS with queue depth 10.
         """
-        # Initialize the ROS 2 Node with the class name as the node name
+
         super().__init__(type(self).__name__)
 
-        # Subscribe to the "/scan" topic (LIDAR data) and set the callback function
         self.lidar_sub = self.create_subscription(
-            LaserScan,  # Message type: LaserScan
-            "/scan",  # Topic: /scan (LIDAR scanner data)
-            self.lidar_callback,  # Callback function when new data is received
-            10,  # Queue size for subscription
+            LaserScan,
+            "/scan",
+            self.lidar_callback,
+            10, # queue depth
         )
 
-        # Publisher for the "/relay_scan" topic to forward the received data
-        # Keeps a reference to prevent garbage collection
+        # Keep a reference so the publisher isn't garbage-collected.
         self.lidar_pub = self.create_publisher(LaserScan, "/relay_scan", 10)
 
     def lidar_callback(self, msg: LaserScan):
         """
-        Callback function that is triggered when a new LaserScan message is received.
-        Currently, this function simply relays the received LIDAR data unchanged.
-        However, it is designed to be extended in the future to allow for data
-        filtering, ensuring that the original data is preserved and not modified.
+        Republish an incoming ``LaserScan`` message unchanged.
+
+        Args:
+            msg (LaserScan): The received LIDAR scan (header, angle/range
+                metadata, ranges, and intensities), forwarded as-is.
         """
-        # Publish the received LIDAR data to the /relay_scan topic
+        
         self.lidar_pub.publish(msg)
 
 
 def main(args=None):
-    """
-    Initializes ROS 2, starts the node, and waits for incoming messages.
-    """
-    # Initialize the ROS 2 client library
     rclpy.init(args=args)
-
-    # Create an instance of the LidarPubSub Node
     lidar_node = LidarPubSub()
-
-    # Start the node and wait for incoming messages
     rclpy.spin(lidar_node)
-
-    # Shutdown ROS 2 when the node finishes
     rclpy.shutdown()
 
 
 if __name__ == "__main__":
-    # Execute the main function if the script is run directly
     main()

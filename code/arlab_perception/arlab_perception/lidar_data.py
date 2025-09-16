@@ -27,10 +27,10 @@ class LidarPubSub(Node):
 
     Notes:
         - Uses the default QoS profile with depth=10 (other QoS settings remain
-          the ROS 2 defaults for rclpy).
+        the ROS 2 defaults for rclpy).
         - No filtering, throttling, or frame transforms are applied.
         - If you later add filtering, publish a *new* message instance before
-          mutating any fields to avoid side effects for other subscribers.
+        mutating any fields to avoid side effects for other subscribers.
 
     Attributes:
         lidar_sub: Subscription handle for ``/scan``.

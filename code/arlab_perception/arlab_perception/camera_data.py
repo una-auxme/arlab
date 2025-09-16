@@ -34,7 +34,7 @@ class KinectAzurePublisher(Node):
         config (PyK4A): Azure Kinect device handle configured for color capture.
         running (bool): Loop control flag for the capture thread.
         capture_thread (threading.Thread): Background thread acquiring frames.
-    
+        
     Notes:
         - Color frames from Azure Kinect are BGRA; the alpha channel is stripped
           to BGR before conversion to a ROS ``Image`` with encoding ``bgr8``.
@@ -95,16 +95,12 @@ class KinectAzurePublisher(Node):
         while self.running and rclpy.ok():
             try:
                 capture = self.config.get_capture()
-                if capture.color is not None:
-                    
+                if capture.color is not None:  
                     frame = capture.color[:, :, :3]
-
                     msg = self.bridge.cv2_to_imgmsg(frame, encoding="bgr8")
-
                     msg.header = Header()
                     msg.header.stamp = self.get_clock().now().to_msg()
                     msg.header.frame_id = "azure_kinect"
-
                     self.kinect_pub.publish(msg)
                 else:
                     self.get_logger().warn("No color frame available")
@@ -124,7 +120,6 @@ class KinectAzurePublisher(Node):
         self.capture_thread.join()
         self.config.stop()
         self.get_logger().info("Azure Kinect stopped")
-
 
 def main(args=None):
     rclpy.init(args=args)

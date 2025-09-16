@@ -51,9 +51,7 @@ class LidarPubSub(Node):
             msg (LaserScan): The received LIDAR scan (header, angle/range
                 metadata, ranges, and intensities), forwarded as-is.
         """
-        
         self.lidar_pub.publish(msg)
-
 
 def main(args=None):
     rclpy.init(args=args)

@@ -58,14 +58,13 @@ class ObjectDetection(Node):
     def __init__(self) -> None:
         """Initialize the node, parameters, subscriptions, and service clients."""
         super().__init__(type(self).__name__)
-        
+
         # Declare configurable parameters.
         self.declare_parameter("yolo_weights", "yolo_weights/yolo11n-seg.pt")
         self.declare_parameter("rgb_topic", "/camera/image_raw")
         self.declare_parameter(
             "camera_info_topic",
             "/camera/aligned_depth_to_color/camera_info",
-
         )
         self.declare_parameter("visualize", True)
 
@@ -73,11 +72,10 @@ class ObjectDetection(Node):
         yolo_weights = (
             self.get_parameter("yolo_weights").get_parameter_value().string_value
         )
-        
+
         rgb_topic = self.get_parameter("rgb_topic").get_parameter_value().string_value
         camera_info_topic = (
             self.get_parameter("camera_info_topic").get_parameter_value().string_value
-
         )
         self.visualize = (
             self.get_parameter("visualize").get_parameter_value().bool_value
@@ -111,7 +109,6 @@ class ObjectDetection(Node):
             AddEntity,
             f"{self.prefix}/add_entity",
             callback_group=self.service_client_group,
-
         )
 
         # Subscribe to camera info (async; sets intrinsics once available).
@@ -153,7 +150,6 @@ class ObjectDetection(Node):
         """
         if self.camera_intrinsics is None:
             return
-
 
         self.get_logger().info("Processing image...")
 
@@ -207,7 +203,7 @@ class ObjectDetection(Node):
             )
             add_resp = await self.client_add_entities.call_async(add_entity_req)
             self.get_logger().info(f"AddEntity response received: {add_resp}")
-            
+
 
 def pose_from_point2d(point2d: Point2D) -> Pose:
     """Convert a 2D point to a 3D pose with fixed orientation.

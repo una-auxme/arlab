@@ -9,7 +9,6 @@ from pyk4a import PyK4A, Config, ColorResolution, DepthMode
 
 
 class KinectAzurePublisher(Node):
-
     def __init__(self):
         super().__init__(type(self).__name__)
         self.kinect_pub = self.create_publisher(Image, "/camera/image_raw", 10)

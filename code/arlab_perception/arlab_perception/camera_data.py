@@ -7,6 +7,7 @@ on a dedicated thread to avoid blocking the ROS 2 executor.
 Maintainer:
     Meruna Yugarajah <m.yugarajah@gmail.com>
 """
+
 import threading
 
 import rclpy

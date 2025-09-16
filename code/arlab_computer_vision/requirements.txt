@@ -1,0 +1,4 @@
+ultralytics
+cv_bridge
+torch==2.1.0a0+41361538.nv23.6
+torchvision==0.16.1+fdea156

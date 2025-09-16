@@ -4,10 +4,12 @@ from rclpy.node import Node
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from std_msgs.mgs import Header
+
 from pyk4a import PyK4A, Config, ColorResolution, DepthMode
 
 
 class KinectAzurePublisher(Node):
+
     def __init__(self):
         super().__init__(type(self).__name__)
         self.kinect_pub = self.create_publisher(Image, "/camera/image_raw", 10)
@@ -54,6 +56,7 @@ def main(args=None):
     my_ros2_node = KinectAzurePublisher()
     rclpy.spin(my_ros2_node)
     my_ros2_node.config.stop()
+
     rclpy.shutdown()
 
 

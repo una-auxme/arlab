@@ -1,6 +1,4 @@
-
-"""
-Relay of LIDAR LaserScan messages using ROS 2.
+"""Relay of LIDAR LaserScan messages using ROS 2.
 
 This module defines a ROS 2 node that subscribes to ``/scan`` and republishes
 incoming ``sensor_msgs.msg.LaserScan`` messages unchanged to ``/relay_scan``.
@@ -15,8 +13,7 @@ from sensor_msgs.msg import LaserScan
 
 
 class LidarPubSub(Node):
-    """
-    ROS 2 node that forwards LIDAR scans without modification.
+    """ROS 2 node that forwards LIDAR scans without modification.
 
     The node subscribes to ``/scan`` and publishes identical messages on
     ``/relay_scan``. No filtering or transformations are applied.
@@ -29,8 +26,7 @@ class LidarPubSub(Node):
     """
 
     def __init__(self):
-        """
-        Initialize node, subscription, and publisher.
+        """Initialize node, subscription, and publisher.
 
         Creates a subscription to ``/scan`` and a publisher to ``/relay_scan``.
         Uses the default QoS with queue depth 10.
@@ -49,8 +45,7 @@ class LidarPubSub(Node):
         self.lidar_pub = self.create_publisher(LaserScan, "/relay_scan", 10)
 
     def lidar_callback(self, msg: LaserScan):
-        """
-        Republish an incoming ``LaserScan`` message unchanged.
+        """Republish an incoming ``LaserScan`` message unchanged.
 
         Args:
             msg (LaserScan): The received LIDAR scan (header, angle/range

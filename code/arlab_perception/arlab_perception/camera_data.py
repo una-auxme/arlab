@@ -7,13 +7,14 @@ on a dedicated thread to avoid blocking the ROS 2 executor.
 Maintainer:
     Meruna Yugarajah <m.yugarajah@gmail.com>
 """
+import threading
+
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image
 from std_msgs.msg import Header
 from cv_bridge import CvBridge
 from pyk4a import PyK4A, Config, ColorResolution, DepthMode
-import threading
 
 
 class KinectAzurePublisher(Node):
@@ -26,7 +27,7 @@ class KinectAzurePublisher(Node):
 
     Topic Interface:
     * **Output** ``/camera/image_raw`` – ``sensor_msgs.msg.Image``
-    
+
     Attributes:
         kinect_pub (rclpy.publisher.Publisher): Publisher for ``Image`` messages
         on ``/camera/image_raw``.
@@ -34,7 +35,7 @@ class KinectAzurePublisher(Node):
         config (PyK4A): Azure Kinect device handle configured for color capture.
         running (bool): Loop control flag for the capture thread.
         capture_thread (threading.Thread): Background thread acquiring frames.
-        
+
     Notes:
         - Color frames from Azure Kinect are BGRA; the alpha channel is stripped
           to BGR before conversion to a ROS ``Image`` with encoding ``bgr8``.
@@ -44,7 +45,7 @@ class KinectAzurePublisher(Node):
     """
 
     def __init__(self):
-         """Initialize the node, the Azure Kinect, and the capture thread.
+        """Initialize the node, the Azure Kinect, and the capture thread.
 
         Creates the publisher and CvBridge instance, configures and starts the
         Azure Kinect device, and launches a background thread that acquires and
@@ -59,7 +60,6 @@ class KinectAzurePublisher(Node):
         super().__init__(type(self).__name__)
 
         self.kinect_pub = self.create_publisher(Image, "/camera/image_raw", 10)
-
         self.bridge = CvBridge()
 
         self.config = PyK4A(
@@ -74,11 +74,11 @@ class KinectAzurePublisher(Node):
 
         # Start the image capture loop in a separate thread to avoid blocking
         self.running = True
-        self.capture_thread = threading.Thread(target=self.capture_loop)
+        self.capture_thread = threading.Thread(target=self.capture_loop, daemon=True)
         self.capture_thread.start()
 
     def capture_loop(self):
-         """Continuously capture color frames and publish them.
+        """Continuously capture color frames and publish them.
 
         Grabs frames from the Azure Kinect while the node is running and ROS 2
         is active. Converts each frame to a ROS ``Image`` and publishes it on
@@ -95,7 +95,8 @@ class KinectAzurePublisher(Node):
         while self.running and rclpy.ok():
             try:
                 capture = self.config.get_capture()
-                if capture.color is not None:  
+                if capture.color is not None:
+                    # Azure Kinect color is BGRA; drop alpha → BGR
                     frame = capture.color[:, :, :3]
                     msg = self.bridge.cv2_to_imgmsg(frame, encoding="bgr8")
                     msg.header = Header()
@@ -103,29 +104,24 @@ class KinectAzurePublisher(Node):
                     msg.header.frame_id = "azure_kinect"
                     self.kinect_pub.publish(msg)
                 else:
-                    self.get_logger().warn("No color frame available")
+                    self.get_logger().warning("No color frame available")
             except Exception as e:
-                self.get_logger().warn(f"Error capturing frame: {e}")
+                self.get_logger().warning(f"Error capturing frame: {e}")
 
     def stop(self):
-        """Stop capture and release device resources.
-
-        Signals the capture loop to exit, waits for the background thread to
-        finish, and stops the Azure Kinect device.
-
-        Side Effects:
-            Joins the capture thread and closes the device handle.
-        """
+        """Stop capture and release device resources."""
         self.running = False
-        self.capture_thread.join()
+        if self.capture_thread.is_alive():
+            self.capture_thread.join()
         self.config.stop()
         self.get_logger().info("Azure Kinect stopped")
 
+
 def main(args=None):
     rclpy.init(args=args)
-    my_ros2_node = KinectAzurePublisher()
-    rclpy.spin(my_ros2_node)
-    my_ros2_node.stop()
+    node = KinectAzurePublisher()
+    rclpy.spin(node)
+    node.stop()
     rclpy.shutdown()
 
 

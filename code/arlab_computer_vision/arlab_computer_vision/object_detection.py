@@ -10,7 +10,7 @@ TODO:
       entries in the knowledge base instead of re-adding them each frame.
 
 Maintainers:
-    Aleksander Michalak <aleksander.michalak@web.de>
+    Aleksander Michalak <aleksander.michalak@uni-a.de>
 """
 
 import numpy as np

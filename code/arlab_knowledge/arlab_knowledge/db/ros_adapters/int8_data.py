@@ -1,10 +1,16 @@
+"""Db adapter for byte arrays
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-augsburg.de>
+"""
+
 import array
 
 from sqlalchemy import LargeBinary, TypeDecorator
 
 
 class DBInt8Data(TypeDecorator):
-    """Represents a ros message as a db json string
+    """Represents byte array as a db json string
 
     Usage::
 

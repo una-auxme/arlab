@@ -1,3 +1,13 @@
+"""Contains the Entity class
+
+The Entity is the base class for all objects surrounding the robot
+
+More documentation in the corresponding ros definitions: Entity.msg
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-augsburg.de>
+"""
+
 from typing import Any, Dict, Optional
 
 import rclpy.logging

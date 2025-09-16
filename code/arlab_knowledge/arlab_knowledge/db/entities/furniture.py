@@ -1,3 +1,13 @@
+"""Contains the Furniture class and subclasses
+
+A Furniture is an Entity that can contain Pickables
+
+More documentation in the corresponding ros definitions: EntityFurniture.msg
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-augsburg.de>
+"""
+
 from typing import Dict, List
 
 from arlab_knowledge_interfaces import msg
@@ -8,6 +18,10 @@ from .entity import Entity
 
 
 class Furniture(Entity):
+    """
+    A Furniture is an Entity that can contain Pickables
+    """
+
     __tablename__ = "entity_furniture"
     id: Mapped[int] = mapped_column(
         ForeignKey("entity.id", ondelete="CASCADE"), primary_key=True
@@ -37,6 +51,10 @@ class Furniture(Entity):
 
 
 class Cupboard(Furniture):
+    """
+    A Cupboard with shelves
+    """
+
     __tablename__ = "entity_furniture_cupboard"
     id: Mapped[int] = mapped_column(
         ForeignKey("entity_furniture.id", ondelete="CASCADE"), primary_key=True
@@ -76,6 +94,10 @@ class Cupboard(Furniture):
 
 
 class Door(Furniture):
+    """
+    A door.
+    """
+
     __tablename__ = "entity_furniture_door"
     id: Mapped[int] = mapped_column(
         ForeignKey("entity_furniture.id", ondelete="CASCADE"), primary_key=True
@@ -105,6 +127,10 @@ class Door(Furniture):
 
 
 class Shelf(Furniture):
+    """
+    A shelf that is part of a cupboard
+    """
+
     __tablename__ = "entity_furniture_shelf"
     id: Mapped[int] = mapped_column(
         ForeignKey("entity_furniture.id", ondelete="CASCADE"), primary_key=True
@@ -144,6 +170,10 @@ class Shelf(Furniture):
 
 
 class Table(Furniture):
+    """
+    A table.
+    """
+
     __tablename__ = "entity_furniture_table"
     id: Mapped[int] = mapped_column(
         ForeignKey("entity_furniture.id", ondelete="CASCADE"), primary_key=True

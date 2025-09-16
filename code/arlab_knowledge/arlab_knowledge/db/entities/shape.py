@@ -1,3 +1,13 @@
+"""Contains the Shape class
+
+A Shape contains the shape of an entity
+
+More documentation in the corresponding ros definitions: Shape.msg
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-augsburg.de>
+"""
+
 import array
 from typing import Optional
 
@@ -15,6 +25,12 @@ from ..ros_adapters.pose import Pose2DData
 
 
 class Shape(Base):
+    """
+    Shape of an entity.
+
+    Used for obstacle avoidance and analyzing the entity (e.g. for gripping points)
+    """
+
     __tablename__ = "shape"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -23,15 +39,18 @@ class Shape(Base):
         ForeignKey("entity.id", ondelete="CASCADE"), unique=True
     )
     entity: Mapped["Entity"] = relationship(back_populates="shape", single_parent=True)  # type: ignore # noqa: F821
+    """Entity this shape belongs to"""
 
     boundingbox2d: Mapped[Optional["BoundingBox2D"]] = relationship(
         back_populates="shape", cascade="all, delete-orphan"
     )
+    """2D Camera bounding box"""
 
     pointcloud2: Mapped[Optional["PointCloud2"]] = relationship(
         back_populates="shape",
         cascade="all, delete-orphan",
     )
+    """3D pointcloud"""
 
     @classmethod
     def from_ros_msg(cls, m: msg.Shape) -> "Shape":
@@ -55,6 +74,8 @@ class Shape(Base):
 
 
 class BoundingBox2D(Base):
+    """ROS BoundingBox2D message as db table/schema"""
+
     __tablename__ = "boundingbox2d"
 
     id: Mapped[int] = mapped_column(
@@ -88,6 +109,8 @@ class BoundingBox2D(Base):
 
 
 class PointCloud2(Base):
+    """ROS PointCloud2 message as db table/schema"""
+
     __tablename__ = "pointcloud2"
 
     id: Mapped[int] = mapped_column(

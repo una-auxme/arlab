@@ -1,3 +1,9 @@
+"""Db adapter for generic ros messages to json
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-augsburg.de>
+"""
+
 import json
 from collections.abc import Iterable
 from typing import Any, Dict, List, Type

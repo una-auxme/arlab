@@ -1,3 +1,13 @@
+"""Contains the Pickable class
+
+A Pickable is an object that can by manipulated by the manipulator
+
+More documentation in the corresponding ros definitions: EntityPickable.msg
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-augsburg.de>
+"""
+
 from typing import Dict, Optional
 
 from arlab_knowledge_interfaces import msg
@@ -8,6 +18,10 @@ from .entity import Entity
 
 
 class Pickable(Entity):
+    """
+    An object that can by manipulated by the manipulator
+    """
+
     __tablename__ = "entity_pickable"
     id: Mapped[int] = mapped_column(
         ForeignKey("entity.id", ondelete="CASCADE"), primary_key=True

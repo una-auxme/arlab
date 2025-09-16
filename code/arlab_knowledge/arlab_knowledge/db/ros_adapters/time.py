@@ -1,3 +1,9 @@
+"""Db adapter the Time ros message
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-augsburg.de>
+"""
+
 from typing import Tuple
 
 from builtin_interfaces.msg import Time

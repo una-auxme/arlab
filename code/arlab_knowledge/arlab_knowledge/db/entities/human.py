@@ -1,3 +1,11 @@
+"""Contains the Human class
+
+More documentation in the corresponding ros definitions: EntityHuman.msg
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-augsburg.de>
+"""
+
 from typing import Dict
 
 from arlab_knowledge_interfaces import msg
@@ -8,6 +16,10 @@ from .entity import Entity
 
 
 class Human(Entity):
+    """
+    A human.
+    """
+
     __tablename__ = "entity_human"
     id: Mapped[int] = mapped_column(
         ForeignKey("entity.id", ondelete="CASCADE"), primary_key=True

@@ -1,6 +1,9 @@
 {
   "[python]": {
-    "editor.defaultFormatter": "charliermarsh.ruff"
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.codeActionsOnSave": {
+      "source.organizeImports.ruff": "explicit"
+    }
   },
   "[markdown]": {
     "editor.defaultFormatter": "DavidAnson.vscode-markdownlint"
@@ -11,13 +14,4 @@
   "cmake.configureOnEdit": false,
   "cmake.configureOnOpen": false,
   "flake8.enabled": false,
-  "python.autoComplete.extraPaths": [
-    "/workspace/install/robot_localization/lib/python3.12/site-packages",
-    "/opt/ros/jazzy/lib/python3.12/site-packages"
-  ],
-  "python.analysis.extraPaths": [
-    "/workspace/install/robot_localization/lib/python3.12/site-packages",
-    "/opt/ros/jazzy/lib/python3.12/site-packages"
-  ],
-  "ros.distro": "jazzy",
 }

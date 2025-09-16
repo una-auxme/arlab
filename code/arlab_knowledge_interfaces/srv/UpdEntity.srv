@@ -1,0 +1,9 @@
+# ===== Request =====
+# ID of the entity to update
+int64 entityid
+# Updated entity data
+Entity data
+---
+# ===== Response =====
+# Result of the update operation (success/failure with error code)
+Result result

@@ -1,0 +1,9 @@
+# ===== Request =====
+# ID of the entity to retrieve
+int64 entityid
+---
+# ===== Response =====
+# Retrieved entity data
+Entity data
+# Result of the get operation (success/failure with error code)
+Result result

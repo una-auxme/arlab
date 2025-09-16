@@ -1,0 +1,9 @@
+# ===== Request =====
+# Robot status event to be added
+RobotStatusEvent event
+---
+# ===== Response =====
+# ID of the newly added event
+int64 eventid
+# Result of the add operation (success/failure with error code)
+Result result

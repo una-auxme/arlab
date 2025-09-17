@@ -9,6 +9,19 @@
 #include "arlab_common_interfaces/msg/orchestrator_data.hpp"
 #include "arlab_manipulation_cpp/utils.hpp"
 
+/**
+job_runner.cpp
+---------------------
+
+Function that manages witch jobs to run depending on the recived
+command from the orchestrator subscriber.
+
+
+Author: Leonie Schmidt
+Date: 2025-08-24
+
+*/
+
 
 /**
  * @brief Open the robot gripper.

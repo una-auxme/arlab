@@ -5,6 +5,18 @@
 #include "arlab_common_interfaces/msg/orchestrator_data.hpp"
 #include "arlab_manipulation_cpp/job_runner.hpp"
 
+/**
+OrchestratorSubscriber.cpp
+---------------------
+
+ROS 2 Node that subscribes to the orchestrator of the manipulator.
+Receives data and calls the job runner.
+
+
+Author: Leonie Schmidt
+Date: 2025-08-24
+
+*/
 
 /**
  * @brief Node that subscribes to orchestrator data and logs pose, gripping force and job command information.

@@ -4,6 +4,7 @@ from rclpy.node import Node
 from std_msgs.msg import Bool
 import subprocess
 import signal
+import os
 
 
 class NavigationStackManager(Node):

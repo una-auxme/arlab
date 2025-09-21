@@ -10,7 +10,7 @@ Date: 2025-08-24
 
 """
 
-from setuptools import find_packages, setup
+from setuptools import setup #,find_packages
 from glob import glob
 
 package_name = "arlab_manipulation"

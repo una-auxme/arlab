@@ -31,6 +31,15 @@ find_package(std_msgs REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GrippingForce.srv"
   "msg/OrchestratorData.msg"
+
+  "msg/Destination.msg"
+  "msg/ActionResponse.msg"
+
+  "msg/MovementCommand.msg"
+  "msg/ManipulationCommand.msg"
+
+  "action/MovementAction.action"
+  "action/ManipulationAction.action"
   DEPENDENCIES
     geometry_msgs
     std_msgs

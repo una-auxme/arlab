@@ -29,9 +29,11 @@ All code documentation can be found in the respective source code files.
 
 *coming soon.*
 
+Please use the documentation from the [arlab_docker](https://git.rz.uni-augsburg.de/imech-m/autonomous_robotics_lab/arlab_docker) repository to get started.
+
 ## Docker
 
-*coming soon.*
+The [arlab_docker](https://git.rz.uni-augsburg.de/imech-m/autonomous_robotics_lab/arlab_docker) repository contains the docker configuration to execute this project.
 
 ## Start-Up Guide
 

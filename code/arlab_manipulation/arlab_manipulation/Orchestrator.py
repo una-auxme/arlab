@@ -5,7 +5,8 @@ Orchestrator.py
 ---------------
 
 ROS2 Node 'Orchestrator' that subscribes to object, point cloud, and bounding box data,
-queries the gripping force service, computes gripping poses, and publishes orchestrator data.
+queries the gripping force service, computes gripping poses, and publishes orchestrator
+data.
 
 Author: Sofia Öttl
 Date: 2025-08-24
@@ -15,16 +16,16 @@ Date: 2025-08-24
 import rclpy
 from rclpy.node import Node
 
-from geometry_msgs.msg import PoseStamped, PointStamped, Pose
+from geometry_msgs.msg import PointStamped, Pose #,PoseStamped
 from std_msgs.msg import Float64, String
 from sensor_msgs.msg import PointCloud2
 from vision_msgs.msg import BoundingBox2D
 import sensor_msgs_py.point_cloud2 as pc2
-import cv2
+#import cv2
 import numpy as np
 import rclpy.time
 import tf2_ros
-import tf2_geometry_msgs
+#import tf2_geometry_msgs
 
 from arlab_common_interfaces.srv import GrippingForce
 from arlab_common_interfaces.msg import OrchestratorData
@@ -52,7 +53,8 @@ class Orchestrator(Node):
 
 
     def __init__(self):
-        """Initialize the Orchestrator node, publishers, subscribers, service client, and TF2."""
+        """Initialize the Orchestrator node, publishers, subscribers, service client,
+        and TF2."""
         super().__init__('Orchestrator')
 
         # Publisher for C++ (MoveItNode)
@@ -60,7 +62,8 @@ class Orchestrator(Node):
         #self.gripforce_pub = self.create_publisher(Float64, '/gripforce', 10)
         #self.cmd_pub = self.create_publisher(String, '/cmd', 10)
 
-        self.data_publisher = self.create_publisher(OrchestratorData, '/orchestrator_data', 10)
+        self.data_publisher = self.create_publisher(
+            OrchestratorData, '/orchestrator_data', 10)
 
         # Action Server for ManipulationCommand
         # ---- string                       command_type
@@ -83,9 +86,12 @@ class Orchestrator(Node):
         # ---- EntityPickable               pickable
 
         # Dummy-subscribtion for object, pointcloud & boundingbox
-        self.test_sub = self.create_subscription(String, '/testdata', self.test_callback, 10) #pickable & command_tpye
-        self.pointcloud_sub = self.create_subscription(PointCloud2, '/pointcloud', self.pointcloud_callback, 10)
-        self.boundingbox_sub = self.create_subscription(BoundingBox2D, '/boundingbox2d', self.bbox_callback, 10)
+        self.test_sub = self.create_subscription(
+            String, '/testdata', self.test_callback, 10) #pickable & command_tpye
+        self.pointcloud_sub = self.create_subscription(
+            PointCloud2, '/pointcloud', self.pointcloud_callback, 10)
+        self.boundingbox_sub = self.create_subscription(
+            BoundingBox2D, '/boundingbox2d', self.bbox_callback, 10)
 
         # Service client for gripping force
         self.client = self.create_client(GrippingForce, 'GetGrippingForce')
@@ -106,7 +112,7 @@ class Orchestrator(Node):
     def test_callback(self, msg: String):
         """Handle incoming test command messages.
 
-        Parses messages of the form 'command:object' and calls the GrippingForce service.
+        Parses messages of the form 'command:object' and calls the GrippingForce service
 
         Args:
             msg (String): Incoming ROS String message containing the command and object.
@@ -174,9 +180,11 @@ class Orchestrator(Node):
                 base_frame,
                 timeout=rclpy.duration.Duration(seconds=0.5)
             )
-            points_base.append([point_base.point.x, point_base.point.y, point_base.point.z])
+            points_base.append(
+                [point_base.point.x, point_base.point.y, point_base.point.z])
 
-        self.get_logger().info(f"Transformed pointcloud from '{cam_frame}' to '{base_frame}'")
+        self.get_logger().info(
+            f"Transformed pointcloud from '{cam_frame}' to '{base_frame}'")
 
         # Gripping position
         self.gripping_point_pos = np.mean(points_base, axis=0)
@@ -185,7 +193,8 @@ class Orchestrator(Node):
         self.gripping_point_orient = self.bounding_box_orientation #([0, 0, 0, 1])
 
         # Gripping pose (position&orientation)
-        self.gripping_pose = np.concatenate([self.gripping_point_pos, self.gripping_point_orient])
+        self.gripping_pose = np.concatenate(
+            [self.gripping_point_pos, self.gripping_point_orient])
 
 
     def handle_service_response(self, future):
@@ -199,7 +208,8 @@ class Orchestrator(Node):
         try:
             response = future.result()
             self.force = response.gripforce
-            self.get_logger().info(f"Grip force for '{self.objectname}': {self.force:.1f} N")
+            self.get_logger().info(
+                f"Grip force for '{self.objectname}': {self.force:.1f} N")
         except Exception as e:
             self.get_logger().error(f"Service call failed: {e}")
             self.force = 5.0
@@ -218,7 +228,7 @@ class Orchestrator(Node):
         #gripping_pose.orientation.z = self.gripping_point[5]
         #gripping_pose.orientation.w = self.gripping_point[6]
         #self.goal_pub.publish(gripping_pose)
-        
+
         # Testdata
         gripping_pose = Pose()
         gripping_pose.position.x = 0.372
@@ -239,10 +249,10 @@ class Orchestrator(Node):
         self.data_publisher.publish(msg)
 
         pos = gripping_pose.position
-        orient = gripping_pose.orientation
+        ori = gripping_pose.orientation
         self.get_logger().info(
-            f"Published gripper goal: Position x={pos.x:.3f}, y={pos.y:.3f}, z={pos.z:.3f} | "
-            f"Orientation ox={orient.x:.3f}, oy={orient.y:.3f}, oz={orient.z:.3f}, ow={orient.w:.3f} | "
+            f"Published gripper goal: Pos x={pos.x:.3f}, y={pos.y:.3f}, z={pos.z:.3f}| "
+            f"Orient ox={ori.x:.3f}, oy={ori.y:.3f}, oz={ori.z:.3f}, ow={ori.w:.3f} | "
             f"Grip force: {self.force:.1f} N | Command: {self.cmd}"
         )
 

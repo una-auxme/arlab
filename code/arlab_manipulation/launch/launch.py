@@ -24,7 +24,7 @@ def generate_launch_description():
     """
     ld = LaunchDescription()
 
-    # Service node for providing gripping force recommendations 
+    # Service node for providing gripping force recommendations
     GetGrippingForce = Node(
         package="arlab_manipulation",
         executable="GetGrippingForce",

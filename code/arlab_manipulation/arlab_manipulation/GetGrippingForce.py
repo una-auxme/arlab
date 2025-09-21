@@ -4,7 +4,7 @@
 GetGrippingForce.py
 ---------------------
 
-ROS2 Node 'GetGrippingForce' providing a service to return recommended gripping 
+ROS2 Node 'GetGrippingForce' providing a service to return recommended gripping
 forces for different objects.
 
 Author: Sofia Öttl
@@ -27,13 +27,15 @@ class GetGrippingForce(Node):
 
     Attributes:
         srv (rclpy.Service): ROS2 service for getting gripping force.
-        object_force_table (dict): Mapping from object names (str) to gripping forces (float, N).
+        object_force_table (dict): Mapping from object names (str) to gripping forces
+        (float, N).
         default_force (float): Default gripping force for unknown objects.
     """
 
 
     def __init__(self):
-        """Initialize the GetGrippingForce node, create the service and define the object_force_table"""
+        """Initialize the GetGrippingForce node, create the service and define the
+        object_force_table"""
         super().__init__('GetGrippingForce')
         self.srv = self.create_service(GrippingForce, 'GetGrippingForce', self.callback)
 
@@ -57,8 +59,10 @@ class GetGrippingForce(Node):
         """Service callback that computes the gripping force for a requested object.
 
         Args:
-            request (GrippingForce.Request): The service request containing the object name.
-            response (GrippingForce.Response): The service response where the gripping force is stored.
+            request (GrippingForce.Request): The service request containing the object
+            name.
+            response (GrippingForce.Response): The service response where the gripping
+            force is stored.
 
         Returns:
             GrippingForce.Response: The response containing the computed gripping force.

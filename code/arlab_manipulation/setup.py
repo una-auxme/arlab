@@ -10,20 +10,19 @@ Date: 2025-08-24
 
 """
 
-from setuptools import setup #,find_packages
+from setuptools import setup  # ,find_packages
 from glob import glob
 
 package_name = "arlab_manipulation"
 
 setup(
     name=package_name,
-    version='0.0.0',
+    version="0.0.0",
     packages=[package_name],
     data_files=[
-        ('share/ament_index/resource_index/packages',
-            ['resource/' + package_name]),
-        ('share/' + package_name, ['package.xml']),
-        ('share/' + package_name + '/launch', glob('launch/*.py')),
+        ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
+        ("share/" + package_name, ["package.xml"]),
+        ("share/" + package_name + "/launch", glob("launch/*.py")),
     ],
     install_requires=["setuptools"],
     zip_safe=True,

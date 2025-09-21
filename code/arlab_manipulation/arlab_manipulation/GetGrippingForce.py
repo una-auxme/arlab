@@ -17,6 +17,7 @@ from rclpy.node import Node
 
 from arlab_common_interfaces.srv import GrippingForce
 
+
 class GetGrippingForce(Node):
     """ROS2 Node for providing gripping force for different objects.
 
@@ -32,12 +33,11 @@ class GetGrippingForce(Node):
         default_force (float): Default gripping force for unknown objects.
     """
 
-
     def __init__(self):
         """Initialize the GetGrippingForce node, create the service and define the
         object_force_table"""
-        super().__init__('GetGrippingForce')
-        self.srv = self.create_service(GrippingForce, 'GetGrippingForce', self.callback)
+        super().__init__("GetGrippingForce")
+        self.srv = self.create_service(GrippingForce, "GetGrippingForce", self.callback)
 
         # Example object-gripping-force table --> need to be more detailed
         self.object_force_table = {
@@ -50,7 +50,7 @@ class GetGrippingForce(Node):
             "chipscan": 3.0,
             "chipsbag": 2.0,
             "cereals": 2.0,
-            "shoppingbag": 7.0
+            "shoppingbag": 7.0,
         }
 
         self.default_force = 5.0
@@ -76,6 +76,7 @@ class GetGrippingForce(Node):
         response.gripforce = gripforce
         return response
 
+
 def main(args=None):
     """Main function to initialize and spin the GetGrippingForce node.
 
@@ -87,5 +88,6 @@ def main(args=None):
     rclpy.spin(node)
     rclpy.shutdown()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

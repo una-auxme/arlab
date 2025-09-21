@@ -1,4 +1,3 @@
-
 """launch.py
 
 Launch file for the ARLab Manipulation orchestrator system.
@@ -16,6 +15,7 @@ Date: 2025-08-24
 from launch import LaunchDescription
 from launch_ros.actions import Node
 
+
 def generate_launch_description():
     """Generate a ROS2 launch description for orchestrator nodes.
 
@@ -31,15 +31,11 @@ def generate_launch_description():
     )
 
     # Python orchestrator node that handles perception and planning
-    Orchestrator = Node(
-        package="arlab_manipulation",
-        executable="Orchestrator"
-    )
+    Orchestrator = Node(package="arlab_manipulation", executable="Orchestrator")
 
     # C++ subscriber node for orchestrator data (for MoveIt or robot control)
     OrchestratorSubscriber = Node(
-        package="arlab_manipulation_cpp",
-        executable="OrchestratorSubscriber"
+        package="arlab_manipulation_cpp", executable="OrchestratorSubscriber"
     )
 
     # Add nodes to the launch description

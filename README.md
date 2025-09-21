@@ -1,5 +1,14 @@
 # Autonomous Robotics Lab - Team Zirbi
 
+- [Autonomous Robotics Lab - Team Zirbi](#autonomous-robotics-lab---team-zirbi)
+  - [Documentation](#documentation)
+  - [Getting Started](#getting-started)
+  - [Docker](#docker)
+  - [Start-Up Guide](#start-up-guide)
+  - [Error Handling](#error-handling)
+  - [Contributing](#contributing)
+  - [Authors and acknowledgment](#authors-and-acknowledgment)
+
 This is the code repository for the home-assistant robot of team Zirbi developed in Autonomous Robotics Lab
 
 This Project aims to develop an fully automatic @Home League robot for the [RoboCup](https://athome.robocup.org/).
@@ -11,27 +20,28 @@ Goals of this Robot are:
 - learn new tasks from visibel demonstration or verbal instructions
 - bring joy to users and developers
 
-- [Autonomous Robotics Lab - Team Zirbi](#autonomous-robotics-lab---team-zirbi)
-  - [Getting Started](#getting-started)
-  - [Docker](#docker)
-  - [Start-Up Guide](#start-up-guide)
-  - [Error Handling](#error-handling)
+## Documentation
+
+The [`doc`](./doc/) folder contains the [general project documentation](./doc/00.%20Documentation%20Overview.md).
+All code documentation can be found in the respective source code files.
 
 ## Getting Started
 
-coming soon
+*coming soon.*
 
 ## Docker
 
-coming soon
+*coming soon.*
 
 ## Start-Up Guide
 
-coming soon
+*coming soon.*
+
+Currently no general startup routine exists
 
 ## Error Handling
 
-coming soon
+*coming soon.*
 
 ## Contributing
 

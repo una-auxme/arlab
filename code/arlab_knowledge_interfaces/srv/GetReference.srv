@@ -1,0 +1,11 @@
+# ===== Request =====
+# ID of the entity to retrieve related entities for
+int64 entityid
+---
+# ===== Response =====
+# IDs of related entities
+int64[] entities
+# Result of the get operation (success/failure with error code)
+Result result
+# Time stamp when the entity was last updated
+builtin_interfaces/Time stamp

@@ -40,7 +40,9 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 
   "action/MovementAction.action"
   "action/ManipulationAction.action"
-  DEPENDENCIES # Add packages that above messages depend on
+  DEPENDENCIES
+    geometry_msgs
+    std_msgs
 )
 
 ament_package()

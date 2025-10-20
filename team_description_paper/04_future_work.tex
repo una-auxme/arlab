@@ -1,0 +1,8 @@
+\section{Conclusions and future work}
+In the future, we plan to extend the manipulation parts of the system in several directions. First, all functions will be tested in a fully functional simulation and on the hardware, to ensure robust performance under varying conditions. Second, we aim to develop a placing point algorithm to realize precise object placement. Finally, the perception pipeline will be integrated to enable real-time collision avoidance, allowing the manipulator to operate safely and efficiently in dynamic and cluttered environments. Together, these advancements will increase the manipulator's autonomy, adaptability, and applicability to real-world scenarios.
+
+The movement and navigation part has to harmonize it's inputs for the leg tracking function with computer vision. By this, and the combination with the leg tracking algorithm and extensive testing a robust human tracking should be made possible. Next to this, the hardware integration with the drivetrain and finetuning of the safety features have to be executed.
+
+On the perception side, we will explore the integration of additional sensors to broaden coverage and improve robustness, and we will introduce principled preprocessing of sensor data—such as filtering, outlier handling, and temporal smoothing—to increase signal quality without altering the overall system architecture.
+
+For computer vision, we plan to implement IoU-based tracking to maintain persistent identities across frames and to update existing entries in the Knowledge Base rather than re-adding them each frame. In addition, we will integrate depth-image handling where available to strengthen 3D localization, scale estimation, and occlusion reasoning, thereby improving downstream planning and interaction.

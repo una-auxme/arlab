@@ -1,0 +1,60 @@
+[submodule "at-home-league/RuleBook"]
+	path = at-home-league/RuleBook
+	url = https://github.com/RoboCupAtHome/RuleBook.git
+[submodule "at-home-league/TDPTemplate"]
+	path = at-home-league/TDPTemplate
+	url = https://github.com/RoboCupAtHome/TDPTemplate.git
+[submodule "CAD/OpenSCAD_Library/dotSCAD"]
+	path = CAD/OpenSCAD_Library/dotSCAD
+	url = https://github.com/JustinSDK/dotSCAD
+[submodule "CAD/OpenSCAD_Library/NopSCADlib"]
+	path = CAD/OpenSCAD_Library/NopSCADlib
+	url = https://github.com/nophead/NopSCADlib.git
+[submodule "CAD/OpenSCAD_Library/UB"]
+	path = CAD/OpenSCAD_Library/UB
+	url = https://github.com/UBaer21/UB.scad.git
+[submodule "CAD/OpenSCAD_Library/BOSL"]
+	path = CAD/OpenSCAD_Library/BOSL
+	url = https://github.com/revarbat/BOSL
+[submodule "CAD/OpenSCAD_Library/A2D"]
+	path = CAD/OpenSCAD_Library/A2D
+	url = https://github.com/ridercz/A2D.git
+[submodule "CAD/OpenSCAD_Library/pathbuilder"]
+	path = CAD/OpenSCAD_Library/pathbuilder
+	url = https://github.com/dinther/pathbuilder.git
+[submodule "CAD/OpenSCAD_Library/catchnhole"]
+	path = CAD/OpenSCAD_Library/catchnhole
+	url = https://github.com/mmalecki/catchnhole.git
+[submodule "CAD/OpenSCAD_Library/closepoints"]
+	path = CAD/OpenSCAD_Library/closepoints
+	url = https://github.com/rcolyer/closepoints.git
+[submodule "CAD/OpenSCAD_Library/smooth-prim"]
+	path = CAD/OpenSCAD_Library/smooth-prim
+	url = https://github.com/rcolyer/smooth-prim.git
+[submodule "threads-scad"]
+	path = threads-scad
+	url = https://github.com/rcolyer/threads-scad.git
+[submodule "CAD/OpenSCAD_Library/threads-scad.git"]
+	path = CAD/OpenSCAD_Library/threads-scad.git
+	url = https://github.com/rcolyer/threads-scad.git
+[submodule "CAD/OpenSCAD_Library/round-anything"]
+	path = CAD/OpenSCAD_Library/round-anything
+	url = https://github.com/Irev-Dev/Round-Anything.git
+[submodule "CAD/OpenSCAD_Library/threads-scad"]
+	path = CAD/OpenSCAD_Library/threads-scad
+	url = https://github.com/rcolyer/threads-scad.git
+[submodule "CAD/OpenSCAD_Library/boltsparts"]
+	path = CAD/OpenSCAD_Library/boltsparts
+	url = https://github.com/boltsparts/boltsparts.git
+[submodule "CAD/OpenSCAD_Library/constructive"]
+	path = CAD/OpenSCAD_Library/constructive
+	url = https://github.com/solidboredom/constructive.git
+[submodule "CAD/OpenSCAD_Library/text-on"]
+	path = CAD/OpenSCAD_Library/text-on
+	url = https://github.com/brodykenrick/text_on_OpenSCAD.git
+[submodule "AtHomeRuleBook"]
+	path = AtHomeRuleBook
+	url = https://github.com/RoboCupAtHome/RuleBook
+[submodule "AtHomeTDPTemplate"]
+	path = AtHomeTDPTemplate
+	url = https://github.com/RoboCupAtHome/TDPTemplate

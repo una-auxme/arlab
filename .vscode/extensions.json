@@ -14,7 +14,8 @@
 		"tamasfe.even-better-toml",
 		"esbenp.prettier-vscode",
 		"ms-vscode.cmake-tools",
-		"yzhang.markdown-all-in-one"
+		"yzhang.markdown-all-in-one",
+		"james-yu.latex-workshop"
 	],
 	"unwantedRecommendations": [
 		"ms-python.flake8",

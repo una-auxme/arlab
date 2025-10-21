@@ -20,5 +20,6 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": ["database_node = arlab_knowledge.database_node:main"],
+        "console_scripts": ["knowledge_visualization = arlab_knowledge.knowledge_visualization:main"],
     },
 )

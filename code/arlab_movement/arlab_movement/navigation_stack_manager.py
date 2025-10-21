@@ -34,7 +34,27 @@ class NavigationStackManager(Node):
             Popen: handle that represents the subprocess
         """
         self.get_logger().info(f"Starting {name} with command: {' '.join(cmd)}")
-        return subprocess.Popen(cmd, preexec_fn=os.setsid)
+        env = os.environ.copy()
+        process = subprocess.Popen(
+            cmd,
+            preexec_fn=os.setsid,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+
+        # Read a bit of output after a short delay
+        #rclpy.get_default_context().create_timer(1.0, lambda: self.read_process_logs(process, name))
+        return process
+
+    def read_process_logs(self, process, name):
+        if process.poll() is not None:  # process exited
+            out, err = process.communicate()
+            if out:
+                self.get_logger().info(f"{name} stdout:\n{out}")
+            if err:
+                self.get_logger().error(f"{name} stderr:\n{err}")
 
     def stop_process(self, process, name):
         """Stops a subprocess
@@ -76,10 +96,10 @@ class NavigationStackManager(Node):
             msg (Bool): message from topic
         """
         if msg.data:
-            if self.slam_process is None:
-                # TODO: replace subprocess start with launchfile to configure SLAM
+            if self.slam_process is None or self.slam_process.poll() is not None:
                 self.slam_process = self.start_process(
-                    ["ros2", "run", "slam_toolbox", "sync_slam_toolbox_node"], "SLAM Toolbox"
+                    #["ros2", "run", "slam_toolbox", "sync_slam_toolbox_node"], "SLAM Toolbox" # old start command without using launchfile
+                    ["ros2", "launch", "arlab_movement", "slam_launch.py"], "SLAM Toolbox"
                 )
             else:
                 self.get_logger().info("SLAM already running.")

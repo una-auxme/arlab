@@ -14,6 +14,7 @@ from contextlib import asynccontextmanager
 import rclpy
 import sqlalchemy
 from arlab_asyncio_executor.executors import AsyncIOExecutor
+from arlab_common.exceptions import emsg_with_trace
 from arlab_knowledge_interfaces.msg import Result
 from arlab_knowledge_interfaces.srv import (
     AddEntity,
@@ -285,14 +286,25 @@ class DatabaseNode(Node):
         except DBAPIError as e:
             response.result.error = str(e)
             response.result.result_type = Result.ERROR_DBAPI
+            self.get_logger().error(
+                f"Error in database service: \n{emsg_with_trace(e)}",
+                throttle_duration_sec=2,
+            )
         except SQLAlchemyError as e:
             response.result.error = str(e)
             response.result.result_type = Result.ERROR_SQL
+            self.get_logger().error(
+                f"Error in database service: \n{emsg_with_trace(e)}",
+                throttle_duration_sec=2,
+            )
         if (
             response.result.result_type == Result.ERROR_ID_NOT_FOUND
             and not response.result.error
         ):
             response.result.error = "Id not found"
+            self.get_logger().info(
+                "Client tried to access non-existing id", throttle_duration_sec=2
+            )
 
     async def get_entities_callback(
         self, request: GetEntities.Request, response: GetEntities.Response

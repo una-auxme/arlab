@@ -13,21 +13,20 @@ Maintainers:
     Aleksander Michalak <aleksander1.michalak@uni-a.de>
 """
 
-import numpy as np
-import torch
 import cv2
-
+import numpy as np
+import rclpy
+import torch
+from arlab_knowledge_interfaces.msg import Entity, EntityType
+from arlab_knowledge_interfaces.srv import AddEntity, DelEntities, GetEntities
 from cv_bridge import CvBridge
+from geometry_msgs.msg import Point, Pose, Quaternion
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.node import Node
 from sensor_msgs.msg import CameraInfo, Image
+from std_msgs.msg import String  # <-- needed for 'name' field in entities
 from ultralytics import YOLO
 from vision_msgs.msg import Point2D
-from geometry_msgs.msg import Pose, Point, Quaternion
-from std_msgs.msg import String  # <-- needed for 'name' field in entities
-
-from arlab_knowledge_interfaces.msg import Entity, EntityType
-from arlab_knowledge_interfaces.srv import AddEntity, DelEntities, GetEntities
 
 
 class ObjectDetection(Node):
@@ -146,8 +145,10 @@ class ObjectDetection(Node):
             - Depth handling is currently a TODO.
             - Uses async service calls for KB operations.
         """
-        if self.camera_intrinsics is None:
-            return
+
+        # comment in for real camera usage
+        # if self.camera_intrinsics is None:
+        #     return
 
         self.get_logger().info("Processing image...")
 
@@ -283,3 +284,17 @@ def generate_entities_from_yolo_result(
         cv2.waitKey(1)
 
     return entities
+
+
+def main(args=None):
+    rclpy.init(args=args)
+
+    Object_Detection_node = ObjectDetection()
+
+    rclpy.spin(Object_Detection_node)
+
+    rclpy.shutdown()
+
+
+if __name__ == "__main__":
+    main()

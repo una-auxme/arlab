@@ -18,6 +18,8 @@ setup(
     license="MIT",
     tests_require=["pytest"],
     entry_points={
-        "console_scripts": ["dummy = arlab_computer_vision.dummy:main"],
+        "console_scripts": [
+            "object_detection = arlab_computer_vision.object_detection:main"
+        ],
     },
 )

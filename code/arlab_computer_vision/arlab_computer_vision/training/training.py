@@ -2,11 +2,11 @@
 # -*- coding: utf-8 -*-
 
 """
-Trainingsskript für YOLO11 (Ultralytics) – Detection ODER Segmentation.
+Training script for YOLO11 (Ultralytics) – Detection OR Segmentation.
 
-Dieses Skript wurde für das arlab_computer_vision ROS2-Package angepasst.
+This script has been adapted for the arlab_computer_vision ROS2 package.
 
-Beispiel:
+Example:
 from arlab_computer_vision.training import train_yolo
 
 # Segmentation
@@ -31,38 +31,38 @@ import torch
 from ultralytics import YOLO
 
 # ============================================================================
-# FESTE PFADE - Hier können Sie die Pfade anpassen
+# FIXED PATHS - You can adjust the paths here
 # ============================================================================
 
-# Pfad zu den Modell-Gewichten (Pre-trained Weights)
-# Bitte ändern Sie diesen Pfad zu Ihrem gewünschten Verzeichnis
+# Path to model weights (Pre-trained Weights)
+# Please change this path to your desired directory
 base_path = Path(__file__).parent.parent.parent
 WEIGHTS_DIR = base_path / "yolo_weights"
 
-# Pfad für die Training-Outputs (wo die trainierten Modelle gespeichert werden)
-# Bitte ändern Sie diesen Pfad zu Ihrem gewünschten Verzeichnis
+# Path for training outputs (where trained models are saved)
+# Please change this path to your desired directory
 OUTPUT_PROJECT_DIR = base_path / "runs"
 
 
 def get_package_root() -> Path:
-    """Gibt den festen Output-Pfad zurück."""
+    """Returns the fixed output path."""
     return OUTPUT_PROJECT_DIR
 
 
 def build_default_weights(task: str, size: str, package_root: Path) -> str:
-    """Erstelle Standardgewichtspfad basierend auf Task und Größe.
+    """Create default weights path based on task and size.
 
     Args:
-        task: 'segment' oder 'detect'
+        task: 'segment' or 'detect'
         size: 'n', 's', 'm', 'l', 'x'
-        package_root: Wird hier nicht verwendet, aber für API-Kompatibilität
+        package_root: Not used here, but for API compatibility
 
     Returns:
-        Pfad zu den Gewichten
+        Path to weights
     """
     size = size.lower()
 
-    # Nutze den festen WEIGHTS_DIR
+    # Use the fixed WEIGHTS_DIR
     if WEIGHTS_DIR.exists():
         if task == "segment":
             weight_file = WEIGHTS_DIR / f"yolo11{size}-seg.pt"
@@ -73,19 +73,19 @@ def build_default_weights(task: str, size: str, package_root: Path) -> str:
             if weight_file.exists():
                 return str(weight_file)
 
-    # Fallback auf Ultralytics-Download
+    # Fallback to Ultralytics download
     if task == "segment":
         return f"yolo11{size}-seg.pt"
     elif task == "detect":
         return f"yolo11{size}.pt"
     else:
-        raise ValueError("task muss 'segment' oder 'detect' sein")
+        raise ValueError("task must be 'segment' or 'detect'")
 
 
 def ensure_yaml(data_yaml: str, names_csv: str | None):
-    """Optional: Wenn die YAML fehlt, eine Minimal-YAML erzeugen.
+    """Optional: Generate a minimal YAML if it's missing.
 
-    Erwartet Ordnerstruktur im YOLO-Format:
+    Expects folder structure in YOLO format:
       images/train, images/val, images/test (optional)
     """
     p = Path(data_yaml)
@@ -93,12 +93,12 @@ def ensure_yaml(data_yaml: str, names_csv: str | None):
         return
     if names_csv is None:
         msg = (
-            f"{data_yaml} existiert nicht. "
-            "Entweder YAML angeben oder --names 'class1,class2,...' nutzen."
+            f"{data_yaml} does not exist. "
+            "Either specify YAML or use --names 'class1,class2,...'."
         )
         raise FileNotFoundError(msg)
     root = p.parent
-    # Heuristik: Ordner relativ zur YAML
+    # Heuristic: folders relative to YAML
     images_train = "images/train"
     images_val = "images/val"
     images_test = "images/test"
@@ -114,13 +114,13 @@ def ensure_yaml(data_yaml: str, names_csv: str | None):
     for i, n in enumerate(names):
         text.append(f"  {i}: {n}")
     p.write_text("\n".join(text), encoding="utf-8")
-    print(f"[INFO] YAML erzeugt: {p}")
+    print(f"[INFO] YAML created: {p}")
 
 
 def maybe_convert_masks_to_yolo_seg(masks_dir: str, images_dir: str, labels_out: str):
-    """Optional: Instanzmasken -> YOLO-Seg-Polygone (.txt)
+    """Optional: Instance masks -> YOLO-Seg polygons (.txt)
 
-    Erwartet binäre/instanzweise Masken je Bild (*_0.png, *_1.png, ...).
+    Expects binary/instance masks per image (*_0.png, *_1.png, ...).
     """
     from ultralytics.data.converter import convert_segment_masks_to_yolo_seg
 
@@ -128,23 +128,23 @@ def maybe_convert_masks_to_yolo_seg(masks_dir: str, images_dir: str, labels_out:
     convert_segment_masks_to_yolo_seg(
         masks_dir=masks_dir, output_dir=labels_out, images_dir=images_dir
     )
-    print(f"[INFO] Masken -> YOLO-Seg Labels konvertiert nach: {labels_out}")
+    print(f"[INFO] Masks -> YOLO-Seg labels converted to: {labels_out}")
 
 
 def detect_device():
-    """Automatische GPU-Erkennung."""
+    """Automatic GPU detection."""
     try:
         import torch  # noqa: F401
 
         if torch.cuda.is_available():
-            device = "0"  # Erste GPU
-            print(f"[INFO] GPU gefunden: {torch.cuda.get_device_name(0)}")
+            device = "0"  # First GPU
+            print(f"[INFO] GPU found: {torch.cuda.get_device_name(0)}")
             return device
         else:
-            print("[INFO] Keine GPU gefunden, verwende CPU.")
+            print("[INFO] No GPU found, using CPU.")
             return "cpu"
     except ImportError:
-        print("[INFO] PyTorch nicht installiert, verwende CPU.")
+        print("[INFO] PyTorch not installed, using CPU.")
         return "cpu"
 
 
@@ -168,46 +168,46 @@ def train_yolo(
     freeze: int = 0,
     **kwargs,
 ):
-    """Trainiere ein YOLO11-Modell.
+    """Train a YOLO11 model.
 
     Args:
-        task: 'segment' oder 'detect'
-        data_path: Pfad zur data.yaml
-        epochs: Anzahl der Epochen
-        imgsz: Bildgröße
-        batch: Batch-Größe
-        model_size: Modellgröße ('n', 's', 'm', 'l', 'x')
-        project: Projektordner
-        name: Run-Name
-        weights: Pfad zu vorab trainierten Gewichten
+        task: 'segment' or 'detect'
+        data_path: Path to data.yaml
+        epochs: Number of epochs
+        imgsz: Image size
+        batch: Batch size
+        model_size: Model size ('n', 's', 'm', 'l', 'x')
+        project: Project folder
+        name: Run name
+        weights: Path to pre-trained weights
         device: Device ('0', 'cpu', etc.)
-        workers: Anzahl Worker-Threads
+        workers: Number of worker threads
         patience: Early stopping patience
-        resume: Training fortsetzen
+        resume: Resume training
         seed: Random seed
         cos_lr: Cosine LR Scheduler
-        lr0: Initiale Lernrate
-        freeze: Anzahl Layer einfrieren
-        **kwargs: Weitere Ultralytics-Parameter
+        lr0: Initial learning rate
+        freeze: Number of layers to freeze
+        **kwargs: Additional Ultralytics parameters
 
     Returns:
-        Training-Ergebnisse
+        Training results
     """
     package_root = get_package_root()
 
-    # Default-Gewichte mit Package-Integration
+    # Default weights with package integration
     weights = weights or build_default_weights(task, model_size, package_root)
-    print(f"[INFO] Verwende Gewichte: {weights}")
+    print(f"[INFO] Using weights: {weights}")
 
-    # Device-Automatik
+    # Device auto-detection
     device = device or detect_device()
     print(f"[INFO] Device: {device}")
 
-    # Modell laden
-    print(f"[INFO] Lade Modell: {weights}")
+    # Load model
+    print(f"[INFO] Loading model: {weights}")
     model = YOLO(weights)
 
-    # Train-Task zusammensetzen
+    # Assemble training task
     train_kwargs = dict(
         data=data_path,
         epochs=epochs,
@@ -223,23 +223,23 @@ def train_yolo(
         cos_lr=cos_lr,
         lr0=lr0,
         freeze=freeze,
-        # Sinnvolle Augment-Defaults für arlab
+        # Sensible augmentation defaults for arlab
         hsv_h=0.015,
         hsv_s=0.7,
         hsv_v=0.4,
         mosaic=1.0,
-        # Weitere sinnvolle Einstellungen
+        # Additional sensible settings
         dropout=0.0,
         amp=True,  # Mixed precision training
         **kwargs,
     )
 
-    # Train starten
+    # Start training
     print("\n" + "=" * 60)
-    print("[INFO] Starte Training:")
+    print("[INFO] Starting training:")
     print(f"  Task:        {task}")
-    print(f"  Gewichte:    {weights}")
-    print(f"  Daten:       {data_path}")
+    print(f"  Weights:     {weights}")
+    print(f"  Data:        {data_path}")
     print(f"  Model-Size:  {model_size}")
     print(f"  Device:      {device}")
     print(f"  Epochs:      {epochs}")
@@ -249,40 +249,37 @@ def train_yolo(
 
     results = model.train(**train_kwargs)
 
-    # Val (optional, meist im Training bereits enthalten)
-    print("\n[INFO] Finale Evaluierung...")
+    # Val (optional, usually already included in training)
+    print("\n[INFO] Final evaluation...")
     model.val(data=data_path, imgsz=imgsz, device=device)
 
-    print("\n[INFO] Bestes Modell:")
+    print("\n[INFO] Best model:")
     if hasattr(results, "best") and results.best is not None:
-        print(f"  Pfad: {results.best}")
+        print(f"  Path: {results.best}")
 
-    # Export (ONNX als Beispiel)
+    # Export (ONNX as example)
     if results.best:
-        print("\n[INFO] Exportiere bestes Modell nach ONNX...")
+        print("\n[INFO] Exporting best model to ONNX...")
         try:
             model_best = YOLO(str(results.best))
             model_best.export(format="onnx", opset=12, simplify=True)
-            print("[OK] ONNX-Export erfolgreich.")
+            print("[OK] ONNX export successful.")
         except Exception as e:
-            print(f"[WARN] ONNX-Export fehlgeschlagen: {e}")
+            print(f"[WARN] ONNX export failed: {e}")
 
-    print(
-        f"\n[DONE] Training abgeschlossen. "
-        f"Siehe: {OUTPUT_PROJECT_DIR}/{name or 'train'}"
-    )
+    print(f"\n[DONE] Training completed. See: {OUTPUT_PROJECT_DIR}/{name or 'train'}")
 
     return results
 
 
-# Für direkten Aufruf als Skript
+# For direct script execution
 if __name__ == "__main__":
-    # Beispiel-Aufruf
+    # Example usage
     import sys
 
     if len(sys.argv) < 2:
-        print("Benutze: train_yolo(data_path='/path/to/data.yaml', ...)")
-        print("\nBeispiel:")
+        print("Usage: train_yolo(data_path='/path/to/data.yaml', ...)")
+        print("\nExample:")
         print("train_yolo(")
         print("    task='segment',")
         print("    data_path='/path/to/data.yaml',")
@@ -292,7 +289,7 @@ if __name__ == "__main__":
         print(")")
         sys.exit(1)
 
-    # Für einfache Nutzung: Pfad zur data.yaml als erstes Argument
+    # For simple usage: path to data.yaml as first argument
     data_path = sys.argv[1]
 
     train_yolo(

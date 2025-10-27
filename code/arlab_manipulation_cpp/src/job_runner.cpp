@@ -79,7 +79,7 @@ void job_move2pose(
   const geometry_msgs::msg::Pose &target_pose,
   const rclcpp::Logger &logger) {
 
-  auto success = planAndExecutePose(move_group_interface,target_pose,moveit_visual_tools,logger);
+  planAndExecutePose(move_group_interface,target_pose,logger);
 
 }
 
@@ -98,7 +98,7 @@ void job_move2home(
 
   // 1. Is in Home Pos?
   // -> False: Move to Home Pos
-  auto success = planAndExecutePose(move_group_interface,home_pose,moveit_visual_tools,logger);
+  planAndExecutePose(move_group_interface,home_pose,logger);
 
 }
 
@@ -123,31 +123,31 @@ void job_pick(
   // Set a target Pose
   auto home_pose = createPose(-0.12,0.5,0.6,0.996,0.041,0.009,0.076);
   auto table_pose = createPose(0.372,0.124,0.3,0.999,0.041,0.006,0.004);
-  auto standup_pose = createPose(0.3,0.233,0.7,-0.5,0.5,0.5,0.5);
+  //auto standup_pose = createPose(0.3,0.233,0.7,-0.5,0.5,0.5,0.5);
 
   // 1. Is in Home Pos?
   // -> False: Move to Home Pos
-  auto success = planAndExecutePose(move_group_interface,home_pose,logger);
+  planAndExecutePose(move_group_interface,home_pose,logger);
   // if (!success) {
   //   planAndExecutePose(move_group_interface,standup_pose,logger);
   //   planAndExecutePose(move_group_interface,home_pose,logger);
   // }
 
   // 2. Move to Table Pose
-  auto success2 = planAndExecutePose(move_group_interface,table_pose,logger);
+  planAndExecutePose(move_group_interface,table_pose,logger);
   // if (!success2) {
   //   planAndExecutePose(move_group_interface,standup_pose,logger);
   //   planAndExecutePose(move_group_interface,table_pose,logger);
   // }
 
   // 3. Move to Target Pos
-
+  planAndExecutePose(move_group_interface,target_pose,logger);
   // 4. Close Gripper
 
   // 5. Move to Table Pose
 
   // 6. Move to Home Pos
-  auto success3 = planAndExecutePose(move_group_interface,home_pose,logger);
+  planAndExecutePose(move_group_interface,home_pose,logger);
   // if (!success3) {
   //   planAndExecutePose(move_group_interface,standup_pose,logger);
   //   planAndExecutePose(move_group_interface,home_pose,logger);
@@ -205,7 +205,7 @@ int run_job(
   // ---------------- Job Execution ----------------
 
   // Later received from subscriber
-  std::string cmd = "pick";
+  std::string cmd = msg.cmd.data.c_str();
   auto target_pose = createPose(0.1,0.233,0.98,-0.5,0.5,0.5,0.5);
 
   if (cmd == "pick") {

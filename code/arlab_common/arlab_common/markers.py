@@ -7,7 +7,7 @@ Overview of the main components:
 """
 
 from collections.abc import Sequence
-from typing import Any, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import arlab_knowledge.db.entities.entity
 import arlab_knowledge.db.entities.shape

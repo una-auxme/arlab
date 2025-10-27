@@ -1,4 +1,3 @@
-import sys
 from typing import List, Optional
 
 import rclpy
@@ -6,7 +5,7 @@ from arlab_common.exceptions import emsg_with_trace
 from arlab_common.markers import debug_marker_array
 from arlab_common.parameters import update_attributes
 from arlab_knowledge_interfaces.msg import Result
-from arlab_knowledge_interfaces.srv import GetEntities, GetEntity, GetShape
+from arlab_knowledge_interfaces.srv import GetEntities, GetEntity
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.node import Node
 from rclpy.parameter import Parameter

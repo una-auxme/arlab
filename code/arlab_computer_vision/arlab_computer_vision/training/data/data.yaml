@@ -1,0 +1,27 @@
+# YOLO Dataset Konfiguration für arlab_computer_vision
+# Training Dataset: 2 Klassen Beispiel
+
+# Pfad zum Stammverzeichnis des Datasets
+# Relativ zur YAML-Datei (. = training/data/)
+path: .
+
+# Pfade zu Trainings- und Validierungssets
+# Relativ zum 'path' definiert
+train: train/images
+val: validation/images
+
+# Anzahl der Klassen
+nc: 2 # TODO: Anzahl der Klassen anpassen
+
+# Klassen-Namen (Mapping: ID → Name)
+# WICHTIG: Die Reihenfolge hier definiert die Klassen-IDs!
+names:
+  0: object_1  # Erste Klasse (ID: 0) - Labels mit "0" beziehen sich darauf
+  1: object_2  # Zweite Klasse (ID: 1) - Labels mit "1" beziehen sich darauf
+
+# Optional: Download-Information
+# download: "https://example.com/dataset.zip"
+
+# Optional: Lizenz-Information
+# license: "MIT License"
+

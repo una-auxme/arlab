@@ -1,0 +1,13 @@
+# Klassen für YOLO Training
+# Jede Zeile repräsentiert eine Klasse
+
+object_1  # Klasse 0
+object_2  # Klasse 1
+
+# Weitere Beispiele (Kommentar entfernen):
+# banana
+# apple
+# bottle
+# cup
+# spoon
+

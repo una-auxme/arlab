@@ -39,7 +39,7 @@ from rclpy.node import Node
 from sqlalchemy import and_, delete, desc, or_, select
 from sqlalchemy.exc import DBAPIError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, with_polymorphic
 
 import arlab_knowledge.db.entities as entities
 import arlab_knowledge.db.status as status
@@ -104,7 +104,7 @@ class DatabaseNode(Node):
             database=database_name,
         )
 
-        self.db_engine = create_async_engine(self.db_url, echo=True)
+        self.db_engine = create_async_engine(self.db_url, echo=False)
         self.db_sessionmaker = async_sessionmaker(
             self.db_engine, expire_on_commit=False
         )
@@ -386,7 +386,12 @@ class DatabaseNode(Node):
             response: Response object to populate with result/error data
         """
         async with self.Session(response) as session:
-            entity = await session.get(Entity, request.entityid)
+            # Make sure to join ALL subclasses here
+            # otherwise the to_ros_msg call will fail
+            alias_class = with_polymorphic(Entity, "*")
+            stmt = select(alias_class).where(Entity.id == request.entityid)
+            result = await session.execute(stmt)
+            entity = result.scalar_one_or_none()
             if entity is None:
                 response.result.result_type = Result.ERROR_ID_NOT_FOUND
                 return response

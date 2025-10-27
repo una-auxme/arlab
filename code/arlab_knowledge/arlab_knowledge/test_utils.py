@@ -71,6 +71,20 @@ def create_pose2():
     )
 
 
+def create_pose3():
+    return Pose(
+        position=Point(x=3.0, y=2.0, z=0.5),
+        orientation=Quaternion(x=0.0, y=0.0, z=0.0, w=1.0),
+    )
+
+
+def create_pose4():
+    return Pose(
+        position=Point(x=1.0, y=5.0, z=2.0),
+        orientation=Quaternion(x=0.0, y=0.0, z=0.0, w=1.0),
+    )
+
+
 def create_stamp():
     return Time(sec=12345, nsec=99886)
 

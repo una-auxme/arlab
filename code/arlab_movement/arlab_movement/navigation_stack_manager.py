@@ -35,8 +35,10 @@ class NavigationStackManager(Node):
         """
         self.get_logger().info(f"Starting {name} with command: {' '.join(cmd)}")
         env = os.environ.copy()
+        workspace_setup = "/workspace/install/setup.bash"
+        sourced_cmd = ["bash", "-c", f"source {workspace_setup} && {' '.join(cmd)}"]
         process = subprocess.Popen(
-            cmd,
+            sourced_cmd,
             preexec_fn=os.setsid,
             env=env,
             stdout=subprocess.PIPE,
@@ -99,7 +101,8 @@ class NavigationStackManager(Node):
             if self.slam_process is None or self.slam_process.poll() is not None:
                 self.slam_process = self.start_process(
                     #["ros2", "run", "slam_toolbox", "sync_slam_toolbox_node"], "SLAM Toolbox" # old start command without using launchfile
-                    ["ros2", "launch", "arlab_movement", "slam_launch.py"], "SLAM Toolbox"
+                    #["ros2", "launch", "arlab_movement", "slam_launch.py"], "SLAM Toolbox"
+                    ["ros2", "launch", "slam_toolbox", "online_sync_launch.py", "--ros-args", "-p", "use_pose_graph_slam:=true"], "SLAM Toolbox"
                 )
             else:
                 self.get_logger().info("SLAM already running.")

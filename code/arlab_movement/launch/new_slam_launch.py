@@ -4,18 +4,18 @@ from ament_index_python.packages import get_package_share_directory
 import os
 
 def generate_launch_description():
-    slam_params = os.path.join(
-        get_package_share_directory('arlab_movement'),
-        'params',
-        'slam_params.yaml'
+    config_file = os.path.join(
+        get_package_share_directory('your_package_name'),
+        'config',
+        'custom_online_sync.yaml'
     )
-
+    
     return LaunchDescription([
         Node(
             package='slam_toolbox',
             executable='sync_slam_toolbox_node',
             name='slam_toolbox',
             output='screen',
-            parameters=[slam_params, {'use_sim_time': True}],
-        ),
+            parameters=[config_file]
+        )
     ])

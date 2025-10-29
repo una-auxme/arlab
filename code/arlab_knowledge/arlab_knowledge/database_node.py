@@ -10,11 +10,13 @@ Maintainers:
 import asyncio
 import os
 from contextlib import asynccontextmanager
+from typing import List
 
 import rclpy
 import sqlalchemy
 from arlab_asyncio_executor.executors import AsyncIOExecutor
 from arlab_common.exceptions import emsg_with_trace
+from arlab_common.parameters import update_attributes
 from arlab_knowledge_interfaces.msg import Result
 from arlab_knowledge_interfaces.srv import (
     AddEntity,
@@ -36,6 +38,7 @@ from arlab_knowledge_interfaces.srv import (
 )
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.node import Node
+from rclpy.parameter import Parameter
 from sqlalchemy import and_, delete, desc, or_, select
 from sqlalchemy.exc import DBAPIError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -104,12 +107,24 @@ class DatabaseNode(Node):
             database=database_name,
         )
 
-        self.db_engine = create_async_engine(self.db_url, echo=False)
+        self.echo = (
+            self.declare_parameter("echo", False).get_parameter_value().bool_value
+        )
+        self.add_on_set_parameters_callback(self._set_parameters_callback)
+        self.db_engine = create_async_engine(self.db_url, echo=self.echo)
         self.db_sessionmaker = async_sessionmaker(
             self.db_engine, expire_on_commit=False
         )
 
         self.reentrant_callback_group = ReentrantCallbackGroup()
+
+    def _set_parameters_callback(self, params: List[Parameter]):
+        """Callback for parameter updates."""
+        old_echo = self.echo
+        result = update_attributes(self, params)
+        if old_echo != self.echo:
+            self.db_engine.echo = self.echo
+        return result
 
     async def async_init(self):
         """Async init function

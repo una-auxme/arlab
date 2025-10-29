@@ -11,12 +11,12 @@ def generate_launch_description():
             package='arlab_knowledge',
             namespace='arlab_knowledge',
             executable='knowledge_visualization',
-            name='sim'
+            name='knowledge_visualization'
         ),
         Node(
             package='arlab_knowledge',
             namespace='arlab_knowledge',
             executable='database_node',
-            name='sim'
+            name='database_node'
         ),
     ])

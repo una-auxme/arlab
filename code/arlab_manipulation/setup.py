@@ -34,7 +34,8 @@ setup(
     entry_points={
         "console_scripts": [
             "Orchestrator = arlab_manipulation.Orchestrator:main",
-            "GetGrippingForce = arlab_manipulation.GetGrippingForce:main",
+            "GetGrippingForce = arlab_manipulation.GetGrippingParameter:main",
+            "Tests = arlab_manipulation.Tests:main",
         ],
     },
 )

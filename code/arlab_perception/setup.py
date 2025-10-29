@@ -18,6 +18,10 @@ setup(
     license="MIT",
     tests_require=["pytest"],
     entry_points={
-        "console_scripts": ["dummy = arlab_perception.dummy:main"],
+        "console_scripts": [
+            "video_node = arlab_perception.video_node:main",
+            "camera_data = arlab_perception.camera:main",
+            "lidar_data = arlab_perception.lidar:main",
+        ],
     },
 )

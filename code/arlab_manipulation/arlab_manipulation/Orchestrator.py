@@ -1,266 +1,266 @@
 #!/usr/bin/env python3
-
 """
 Orchestrator.py
 ---------------
 
-ROS2 Node 'Orchestrator' that subscribes to object, point cloud, and bounding box data,
-queries the gripping force service, computes gripping poses, and publishes orchestrator
-data.
+ROS2 Node 'Orchestrator' that subscribes to manipulation commands via Action,
+queries the gripping force service, computes gripping poses, and publishes orchestrator data.
 
 Author: Sofia Öttl
-Date: 2025-08-24
-
+Date: 2025-10-22
 """
 
 import rclpy
 from rclpy.node import Node
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
+from rclpy.action import ActionServer
+import rclpy.duration
 
-from geometry_msgs.msg import PointStamped, Pose  # ,PoseStamped
+from geometry_msgs.msg import Pose, PointStamped
+from geometry_msgs.msg import Quaternion
 from std_msgs.msg import Float64, String
-from sensor_msgs.msg import PointCloud2
-from vision_msgs.msg import BoundingBox2D
+
 import sensor_msgs_py.point_cloud2 as pc2
-
-# import cv2
 import numpy as np
-import rclpy.time
 import tf2_ros
-# import tf2_geometry_msgs
 
-from arlab_common_interfaces.srv import GrippingForce
-from arlab_common_interfaces.msg import OrchestratorData
+from arlab_knowledge_interfaces.srv import GetEntity, GetShape
+from arlab_common_interfaces.srv import GrippingParameter
+from arlab_common_interfaces.msg import OrchestratorData, ActionResponse
+from arlab_common_interfaces.action import ManipulationAction
 
 
 class Orchestrator(Node):
-    """ROS2 Node for orchestrating robotic manipulation.
-
-    Subscribes to test commands, point cloud data, and bounding box data.
-    Calls a GrippingForce service to obtain recommended gripping forces.
-    Computes gripping poses and publishes OrchestratorData messages.
-
-    Attributes:
-        data_publisher (rclpy.Publisher): Publisher for OrchestratorData messages.
-        test_sub (rclpy.Subscription): Subscription to test command strings.
-        pointcloud_sub (rclpy.Subscription): Subscription to point cloud data.
-        boundingbox_sub (rclpy.Subscription): Subscription to bounding box data.
-        client (rclpy.ServiceClient): Client for GrippingForce service.
-        tf_buffer (tf2_ros.Buffer): TF2 buffer for frame transformations.
-        tf_listener (tf2_ros.TransformListener): TF2 listener for transforms.
-        req (GrippingForce.Request): Service request object.
-        force (float): Current gripping force in Newtons.
-        objectname (str): Current object name.
-        cmd (str): Current command type (pick, place, etc.).
-    """
+    """ROS2 Node for orchestrating robotic manipulation."""
 
     def __init__(self):
-        """Initialize the Orchestrator node, publishers, subscribers, service client,
-        and TF2."""
         super().__init__("Orchestrator")
 
-        # Publisher for C++ (MoveItNode)
-        # self.goal_pub = self.create_publisher(Pose, '/goalpose', 10)
-        # self.gripforce_pub = self.create_publisher(Float64, '/gripforce', 10)
-        # self.cmd_pub = self.create_publisher(String, '/cmd', 10)
-
+        # Publisher for OrchestratorData
         self.data_publisher = self.create_publisher(
             OrchestratorData, "/orchestrator_data", 10
         )
 
-        # Action Server for ManipulationCommand
-        # ---- string                       command_type
-        # ---- int64                        target_entityid
-        # ---- geometry_msgs/Pose           target_pose
-
-        # Service client for getShape
-        # ---- bool                         has_pointcloud
-        # ---- sensor_msgs/PointCloud2      pointcloud
-        # ---- bool                         has_boundingbox2d
-        # ---- vision_msgs/BoundingBox2D    boundingbox2d
-
-        # Service client for getEntity
-        # ---- builtin_interfaces/Time      stamp
-        # ---- string                       description
-        # ---- geometry_msgs/Pose           pose
-        # ---- string                       pose_reference_frame
-        # ---- EntityFurniture              furniture
-        # ---- EntityHuman                  human
-        # ---- EntityPickable               pickable
-
-        # Dummy-subscribtion for object, pointcloud & boundingbox
-        self.test_sub = self.create_subscription(
-            String, "/testdata", self.test_callback, 10
-        )  # pickable & command_tpye
-        self.pointcloud_sub = self.create_subscription(
-            PointCloud2, "/pointcloud", self.pointcloud_callback, 10
-        )
-        self.boundingbox_sub = self.create_subscription(
-            BoundingBox2D, "/boundingbox2d", self.bbox_callback, 10
+        # Action Server for ManipulationAction
+        self._action_server = ActionServer(
+            self,
+            ManipulationAction,
+            '/manipulation_action',
+            execute_callback=self.execute_callback,
+            goal_callback=self.goal_callback,
+            callback_group=MutuallyExclusiveCallbackGroup()
         )
 
-        # Service client for gripping force
-        self.client = self.create_client(GrippingForce, "GetGrippingForce")
-        while not self.client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info("Waiting for GrippingForce service...")
+        # Service clients
+        self.service_group = MutuallyExclusiveCallbackGroup()
+        prefix = "/arlab/knowledge"
 
-        # TF2
+        self.client_get_entity = self.create_client(
+            GetEntity, f"{prefix}/get_entity", callback_group=self.service_group
+        )
+        self.client_get_shape = self.create_client(
+            GetShape, f"{prefix}/get_shape", callback_group=self.service_group
+        )
+        self.client_gripping_parameter = self.create_client(
+            GrippingParameter, "GetGrippingParameter", callback_group=self.service_group
+        )
+
+        # Wait for services
+        for client, name in [
+            (self.client_get_entity, "GetEntity"),
+            (self.client_get_shape, "GetShape"),
+            (self.client_gripping_parameter, "GrippingParameter")
+        ]:
+            while not client.wait_for_service(timeout_sec=1.0):
+                self.get_logger().info(f"Waiting for {name} service...")
+
+        # TF2 for transforms
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
 
-        # Inits
-        self.req = GrippingForce.Request()
-        self.force = 5.0
+        # Requests
+        self.req_get_entity = GetEntity.Request()
+        self.req_get_shape = GetShape.Request()
+        self.req_gripping_parameter = GrippingParameter.Request()
+
+        # Internal state
+        self.entity_id = None
+        self.command_type = "home"
         self.objectname = "default"
-        self.cmd = "home"
+        self.pickable = False
+        self.ref_frame = "camera_link"
+        self.shape_pointcloud = None
+        self.shape_boundingbox = None
+        self.force = 5.0
+        self.gripping_point_pos = [0.0, 0.0, 0.0]
+        self.gripping_point_orient = [0.0, 0.0, 0.0, 1.0]
 
-    def test_callback(self, msg: String):
-        """Handle incoming test command messages.
-
-        Parses messages of the form 'command:object' and calls the GrippingForce service
-
-        Args:
-            msg (String): Incoming ROS String message containing the command and object.
-        """
-        data = msg.data.strip()
-
-        if ":" in data:
-            cmd, obj = data.split(":", 1)
-            self.cmd = cmd.lower().strip()
-            self.objectname = obj.strip()
-            self.get_logger().info(f"Object: {self.objectname} | Command: {cmd}")
-        else:
-            self.get_logger().warn(f"Invalid message: {data}")
-
-        self.req.objectname = self.objectname
-        future = self.client.call_async(self.req)
-        future.add_done_callback(self.handle_service_response)
-
-    def bbox_callback(self, msg: BoundingBox2D):
-        """Handle incoming BoundingBox2D messages and compute orientation.
-
-        Determines the main orientation based on the longer side of the bounding box.
-
-        Args:
-            msg (BoundingBox2D): Incoming bounding box message.
-        """
-        # Determine angle from bounding box dimensions
-        if msg.size_x >= msg.size_y:
-            angle = 0.0  # horicontal bbox
-        else:
-            angle = np.pi / 2  # vertical bbox
-
-        # Orientation in quaternion (rotation around Z-axis)
-        qz = np.sin(angle / 2.0)
-        qw = np.cos(angle / 2.0)
-        self.bounding_box_orientation = [0.0, 0.0, qz, qw]
-
-    def pointcloud_callback(self, msg: PointCloud2):
-        """Handle incoming PointCloud2 messages and compute gripping pose.
-
-        Transforms all points to the base frame, calculates the mean position,
-        and combines with bounding box orientation to define the gripping pose.
-
-        Args:
-            msg (PointCloud2): Incoming point cloud message.
-        """
-        base_frame = "base_link"
-        cam_frame = "camera_link"  # Change in world frame when slam is working
-
-        points_base = []
-
-        for p in pc2.read_points(msg, field_names=("x", "y", "z"), skip_nans=True):
-            point_cam = PointStamped()
-            point_cam.header.stamp = msg.header.stamp
-            point_cam.header.frame_id = cam_frame
-            point_cam.point.x = p[0]
-            point_cam.point.y = p[1]
-            point_cam.point.z = p[2]
-
-            # Transform points to base frame
-            point_base = self.tf_buffer.transform(
-                point_cam, base_frame, timeout=rclpy.duration.Duration(seconds=0.5)
-            )
-            points_base.append(
-                [point_base.point.x, point_base.point.y, point_base.point.z]
-            )
-
+    # Action Goal Callback
+    def goal_callback(self, goal_request):
         self.get_logger().info(
-            f"Transformed pointcloud from '{cam_frame}' to '{base_frame}'"
+            f"Received goal: {goal_request.command.command_type}, entity_id={goal_request.command.target_entityid}"
         )
+        return rclpy.action.GoalResponse.ACCEPT
 
-        # Gripping position
-        self.gripping_point_pos = np.mean(points_base, axis=0)
+    # Action Execute Callback
+    def execute_callback(self, goal_handle):
+        """Execute the manipulation command action."""
+        goal_command = goal_handle.request.command
+        self.command_type = goal_command.command_type
+        self.entity_id = goal_command.target_entityid
+        self.target_pose = getattr(goal_command, 'target_pose', None)
 
-        # Gripping orientation
-        self.gripping_point_orient = self.bounding_box_orientation  # ([0, 0, 0, 1])
+        self.get_logger().info(f"Executing command {self.command_type} for entity {self.entity_id}")
 
-        # Gripping pose (position&orientation)
-        self.gripping_pose = np.concatenate(
-            [self.gripping_point_pos, self.gripping_point_orient]
-        )
+        # Start processing the command asynchronously
+        if self.command_type != "move":
+            self.req_get_entity.entityid = self.entity_id
+            future_entity = self.client_get_entity.call_async(self.req_get_entity)
+            future_entity.add_done_callback(self.handle_get_entity_response)
+        else:
+            self.publish_goal()
 
-    def handle_service_response(self, future):
-        """Handle the response from the GrippingForce service.
+        # Prepare Action Result
+        result = ManipulationAction.Result()
+        result.response = ActionResponse()
+        result.response.message = "Goal accepted and processing"
+        return result
 
-        Updates the internal gripping force and publishes the goal.
-
-        Args:
-            future (rclpy.task.Future): Future object returned by service call.
-        """
+    # GetEntity Response
+    def handle_get_entity_response(self, future):
         try:
             response = future.result()
-            self.force = response.gripforce
-            self.get_logger().info(
-                f"Grip force for '{self.objectname}': {self.force:.1f} N"
-            )
+            entity = response.data
+            self.get_logger().info(f"Entity received: {entity.description}")
+
+            if 2 == entity.entity_type.PICKABLE: #entity.entity_type.id == entity.entity_type.PICKABLE:
+                self.pickable = True
+                self.objectname = entity.pickable.picking_tag
+                self.objectgroup = "fruits" # entity.pickable.category
+                self.pose = entity.pose
+            else:
+                self.pickable = False
+                self.objectname = "noName"
+                self.objectgroup = "default"
+
+            self.ref_frame = entity.pose_reference_frame
+
+            # Call GetShape
+            self.req_get_shape.entityid = self.entity_id
+            future_shape = self.client_get_shape.call_async(self.req_get_shape)
+            future_shape.add_done_callback(self.handle_get_shape_response)
+
         except Exception as e:
-            self.get_logger().error(f"Service call failed: {e}")
+            self.get_logger().error(f"GetEntity failed: {e}")
+            self.pickable = False
+
+    # GetShape Response
+    def handle_get_shape_response(self, future):
+        try:
+            response = future.result()
+            shape = response.shape
+            if shape.has_pointcloud:
+                self.shape_pointcloud = shape.pointcloud
+            else:
+                self.shape_pointcloud = None
+                self.get_logger().warn("No valid pointcloud.")
+
+            if shape.has_boundingbox2d:
+                self.shape_boundingbox = shape.boundingbox2d
+            else:
+                self.shape_boundingbox = None
+                self.get_logger().warn("No valid boundingbox.")
+
+            # Call GrippingForce
+            if self.pickable:
+                self.req_gripping_parameter.objectgroup = self.objectgroup
+                future_parameter = self.client_gripping_parameter.call_async(self.req_gripping_parameter)
+                future_parameter.add_done_callback(self.handle_gripping_parameter_response)
+            else:
+                self.get_logger().warn(f"Entity '{self.objectname}' not pickable. Skipping gripping force.")
+                self.force = 0.0
+                self.compute_gripping_pose()
+
+        except Exception as e:
+            self.get_logger().error(f"GetShape failed: {e}")
+
+    # GrippingForce Response
+    def handle_gripping_parameter_response(self, future):
+        try:
+            response = future.result()
+            self.gripforce = response.gripforce
+            self.grippos_mode = response.grippos_mode
+            self.griporient_mode = response.griporient_mode
+            self.get_logger().info(f"Grip force for '{self.objectgroup}': Gripping force = {self.gripforce}N, Gripping position mode = {self.grippos_mode}, Gripping orientation mode = {self.griporient_mode}")
+        except Exception as e:
+            self.get_logger().error(f"GetGrippingParameter failed: {e}")
             self.force = 5.0
+
+        # Call Compute Pose
+        self.compute_gripping_pose()
+
+    # Compute Gripping Pose
+    def compute_gripping_pose(self):
+
+        # Compute position
+        if self.grippos_mode == 0: # gripping in the middle of the object (position from knowledgebase)
+            self.gripping_point_pos = self.pose.position
+
+        if self.grippos_mode == 1: # gripping on the thickest/thinnest place or calculate center of gravity
+            # TODO: implement logic in future
+            pass
+
+        # Compute orientation
+        if self.griporient_mode == 0: # dont calculate orientation
+            self.gripping_point_orient = Quaternion(x=0.0, y=0.0, z=0.0, w=1.0)
+        elif self.griporient_mode == 1: # calculate orientation from bounding box
+            if self.shape_boundingbox:
+                self.gripping_point_orient = self.compute_orientation(self.shape_boundingbox)
+            else:
+                self.gripping_point_orient = Quaternion(x=0.0, y=0.0, z=0.0, w=1.0)
+        elif self.griporient_mode == 2: # calculate orientation from pointcloud (future)
+            # TODO: implement logic in future
+            pass
 
         self.publish_goal()
 
-    def publish_goal(self):
-        """Publish the gripping pose, force, and command as OrchestratorData."""
-        # gripping_pose = Pose()
-        # gripping_pose.position.x = self.gripping_point[0]
-        # gripping_pose.position.y = self.gripping_point[1]
-        # gripping_pose.position.z = self.gripping_point[2]
-        # gripping_pose.orientation.x = self.gripping_point[3]
-        # gripping_pose.orientation.y = self.gripping_point[4]
-        # gripping_pose.orientation.z = self.gripping_point[5]
-        # gripping_pose.orientation.w = self.gripping_point[6]
-        # self.goal_pub.publish(gripping_pose)
+    # Determine angle from bounding box dimensions
+    def compute_orientation(self, bbox):
+        if bbox.size_x >= bbox.size_y:
+            angle = 0.0             # horicontal bbox
+        else:
+            angle = np.pi / 2       # vertical bbox
+            
+        qz = np.sin(angle / 2.0)
+        qw = np.cos(angle / 2.0)
+        return Quaternion(x=0.0, y=0.0, z=qz, w=qw)
 
-        # Testdata
-        gripping_pose = Pose()
-        gripping_pose.position.x = 0.372
-        gripping_pose.position.y = 0.124
-        gripping_pose.position.z = 0.621
-        gripping_pose.orientation.x = 0.999
-        gripping_pose.orientation.y = 0.041
-        gripping_pose.orientation.z = 0.006
-        gripping_pose.orientation.w = 0.004
+    # Publish OrchestratorData
+    def publish_goal(self):
+        if self.command_type != "move":
+            gripping_pose = Pose()
+            gripping_pose.position = self.gripping_point_pos
+            gripping_pose.orientation = self.gripping_point_orient
+        else:
+            gripping_pose = self.target_pose
 
         msg = OrchestratorData()
         msg.pose = gripping_pose
         msg.grip_force = Float64()
         msg.grip_force.data = self.force
         msg.cmd = String()
-        msg.cmd.data = self.cmd  # pick, place, open, close, move, home
+        msg.cmd.data = self.command_type
 
         self.data_publisher.publish(msg)
 
-        pos = gripping_pose.position
-        ori = gripping_pose.orientation
         self.get_logger().info(
-            f"Published gripper goal: Pos x={pos.x:.3f}, y={pos.y:.3f}, z={pos.z:.3f}| "
-            f"Orient ox={ori.x:.3f}, oy={ori.y:.3f}, oz={ori.z:.3f}, ow={ori.w:.3f} | "
-            f"Grip force: {self.force:.1f} N | Command: {self.cmd}"
+            f"Published gripper goal: Pos=({gripping_pose.position}) "
+            f"Orient=({gripping_pose.orientation}) "
+            f"Force={self.force:.1f}N Cmd={self.command_type}"
         )
 
 
 def main(args=None):
-    """Initialize the Orchestrator node and spin."""
     rclpy.init(args=args)
     node = Orchestrator()
     rclpy.spin(node)
@@ -270,3 +270,5 @@ def main(args=None):
 
 if __name__ == "__main__":
     main()
+
+

@@ -29,7 +29,7 @@ find_package(std_msgs REQUIRED)
 
 # Add all your interface files here:
 rosidl_generate_interfaces(${PROJECT_NAME}
-  "srv/GrippingForce.srv"
+  "srv/GrippingParameter.srv"
   "msg/OrchestratorData.msg"
 
   "msg/Destination.msg"

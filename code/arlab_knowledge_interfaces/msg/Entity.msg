@@ -14,3 +14,4 @@ EntityFurniture furniture
 EntityHuman human
 # Pickable object attributes (valid if entity_type == pickable)
 EntityPickable pickable
+

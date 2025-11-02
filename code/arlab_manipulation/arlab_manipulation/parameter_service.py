@@ -18,8 +18,8 @@ from rclpy.node import Node
 from arlab_common_interfaces.srv import GrippingParameter
 
 
-class GetGrippingParameter(Node):
-    """ROS2 Node for providing gripping parameter for different objects."""
+class parameter_service(Node):
+    """ROS2 Node for providing gripping/placing parameter for different objects."""
 
     def __init__(self):
         """Initialize the GetGrippingParameter node, create the service and define the
@@ -59,7 +59,7 @@ def main(args=None):
         args (list, optional): Command line arguments. Defaults to None.
     """
     rclpy.init(args=args)
-    node = GetGrippingParameter()
+    node = parameter_service()
     rclpy.spin(node)
     rclpy.shutdown()
 

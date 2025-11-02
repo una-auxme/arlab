@@ -4,7 +4,7 @@ from rclpy.node import Node
 from rclpy.action import ActionClient
 from arlab_common_interfaces.action import ManipulationAction
 
-class Test(Node):
+class test(Node):
     def __init__(self):
         super().__init__('test')
         self._client = ActionClient(self, ManipulationAction, '/manipulation_action')
@@ -36,7 +36,7 @@ class Test(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = Test()
+    node = test()
     node.send_test_goal()
     rclpy.spin(node)
 

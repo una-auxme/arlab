@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Orchestrator.py
+orchestrator.py
 ---------------
 
-ROS2 Node 'Orchestrator' that subscribes to manipulation commands via Action,
+ROS2 Node 'orchestrator' that subscribes to manipulation commands via Action,
 queries the gripping force service, computes gripping poses, and publishes orchestrator
 data.
 
@@ -21,6 +21,60 @@ from geometry_msgs.msg import Pose, Point
 from geometry_msgs.msg import Quaternion
 from std_msgs.msg import Float64, String
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import sensor_msgs_py.point_cloud2 as pc2
 import numpy as np
 import tf2_ros
@@ -32,11 +86,11 @@ from arlab_common_interfaces.msg import OrchestratorData, ActionResponse
 from arlab_common_interfaces.action import ManipulationAction
 
 
-class Orchestrator(Node):
+class orchestrator(Node):
     """ROS2 Node for orchestrating robotic manipulation."""
 
     def __init__(self):
-        super().__init__("Orchestrator")
+        super().__init__("orchestrator")
 
         # Publisher for OrchestratorData
         self.data_publisher = self.create_publisher(
@@ -372,7 +426,7 @@ class Orchestrator(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = Orchestrator()
+    node = orchestrator()
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()

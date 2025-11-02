@@ -23,7 +23,6 @@ setup(
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
         ("share/" + package_name, ["package.xml"]),
         ("share/" + package_name + "/launch", glob("launch/*.py")),
-        ("share/" + package_name + "/Testlaunch", glob("Testlaunch/*.py")),
     ],
     install_requires=["setuptools"],
     zip_safe=True,
@@ -34,9 +33,9 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
-            "Orchestrator = arlab_manipulation.Orchestrator:main",
-            "GetGrippingForce = arlab_manipulation.GetGrippingParameter:main",
-            "Tests = arlab_manipulation.Tests:main",
+            "orchestrator = arlab_manipulation.orchestrator:main",
+            "parameter_service = arlab_manipulation.parameter_service:main",
+            "test = arlab_manipulation.test:main",
         ],
     },
 )

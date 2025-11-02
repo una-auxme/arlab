@@ -4,7 +4,8 @@ Orchestrator.py
 ---------------
 
 ROS2 Node 'Orchestrator' that subscribes to manipulation commands via Action,
-queries the gripping force service, computes gripping poses, and publishes orchestrator data.
+queries the gripping force service, computes gripping poses, and publishes orchestrator
+data.
 
 Author: Sofia Öttl
 Date: 2025-10-22
@@ -98,7 +99,10 @@ class Orchestrator(Node):
     # Action Goal Callback
     def goal_callback(self, goal_request):
         self.get_logger().info(
-            f"Data from Decision Making: cmd={goal_request.command.command_type}, entity_id={goal_request.command.target_entityid}"
+            (
+            f"Data from Decision Making: cmd={goal_request.command.command_type}, "
+            f"entity_id={goal_request.command.target_entityid}"
+            )
         )
         return rclpy.action.GoalResponse.ACCEPT
 
@@ -131,9 +135,16 @@ class Orchestrator(Node):
         try:
             response = future.result()
             entity = response.data
-            self.get_logger().info(f"Entity info received from knowledgebase: name={entity.pickable.picking_tag}, group={""}, pose={entity.pose}") #group={entity.pickable.category},
+            self.get_logger().info(
+            (
+                f"Entity info received from knowledgebase: "
+                f"name={entity.pickable.picking_tag}, "
+                # f"group={entity.pickable.category}, "
+                f"pose={entity.pose}"
+            )
+)
 
-            if 2 == entity.entity_type.PICKABLE: #entity.entity_type.id == entity.entity_type.PICKABLE:
+            if 2 == entity.entity_type.PICKABLE: #entity.entity_type.id instead of 2
                 self.pickable = True
                 self.objectname = "bottle" # entity.pickable.picking_tag
                 self.objectgroup = "fruits" # entity.pickable.category
@@ -177,10 +188,16 @@ class Orchestrator(Node):
             # Call GrippingForce
             if self.pickable:
                 self.req_gripping_parameter.objectgroup = self.objectgroup
-                future_parameter = self.client_gripping_parameter.call_async(self.req_gripping_parameter)
+                client = self.client_gripping_parameter
+                future_parameter = client.call_async(self.req_gripping_parameter)
                 future_parameter.add_done_callback(self.handle_gripping_parameter_response)
             else:
-                self.get_logger().warn(f"Entity '{self.objectname}' not pickable. Skipping gripping force.")
+                self.get_logger().warn(
+                    (
+                        f"Entity '{self.objectname}' not pickable. "
+                        "Skipping gripping force."
+                    )
+                )
                 self.force = 0.0
                 self.compute_gripping_pose()
 
@@ -194,7 +211,14 @@ class Orchestrator(Node):
             self.gripforce = response.gripforce
             self.grippos_mode = response.grippos_mode
             self.griporient_mode = response.griporient_mode
-            self.get_logger().info(f"Gripping parameter received for '{self.objectgroup}': Gripping force = {self.gripforce}N, Gripping position mode = {self.grippos_mode}, Gripping orientation mode = {self.griporient_mode}")
+            self.get_logger().info(
+                (
+                    f"Gripping parameter received for '{self.objectgroup}': "
+                    f"Gripping force = {self.gripforce}N, "
+                    f"Gripping position mode = {self.grippos_mode}, "
+                    f"Gripping orientation mode = {self.griporient_mode}"
+                )
+            )
         except Exception as e:
             self.get_logger().error(f"GetGrippingParameter failed: {e}")
             self.force = 5.0
@@ -206,10 +230,10 @@ class Orchestrator(Node):
     def compute_gripping_pose(self):
 
         # Compute position
-        if self.grippos_mode == 0: # gripping in the middle of the object (position from knowledgebase)
+        if self.grippos_mode == 0: # gripping in the middle of the object
             self.gripping_point_pos = self.pose.position
 
-        if self.grippos_mode == 1: # gripping on the thickest/thinnest place or calculate center of gravity
+        if self.grippos_mode == 1: # thickest/thinnest place or center of gravity
             # TODO: implement logic in future
             pass
 

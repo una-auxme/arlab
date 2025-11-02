@@ -98,7 +98,7 @@ class Orchestrator(Node):
     # Action Goal Callback
     def goal_callback(self, goal_request):
         self.get_logger().info(
-            f"Received goal: {goal_request.command.command_type}, entity_id={goal_request.command.target_entityid}"
+            f"Data from Decision Making: cmd={goal_request.command.command_type}, entity_id={goal_request.command.target_entityid}"
         )
         return rclpy.action.GoalResponse.ACCEPT
 
@@ -110,9 +110,7 @@ class Orchestrator(Node):
         self.entity_id = goal_command.target_entityid
         self.target_pose = getattr(goal_command, 'target_pose', None)
 
-        self.get_logger().info(f"Executing command {self.command_type} for entity {self.entity_id}")
-
-        # Start processing the command asynchronously
+        # Call GetShape
         if self.command_type != "move":
             self.req_get_entity.entityid = self.entity_id
             future_entity = self.client_get_entity.call_async(self.req_get_entity)
@@ -124,6 +122,8 @@ class Orchestrator(Node):
         result = ManipulationAction.Result()
         result.response = ActionResponse()
         result.response.message = "Goal accepted and processing"
+
+        goal_handle.succeed()
         return result
 
     # GetEntity Response
@@ -131,11 +131,11 @@ class Orchestrator(Node):
         try:
             response = future.result()
             entity = response.data
-            self.get_logger().info(f"Entity received: {entity.description}")
+            self.get_logger().info(f"Entity info received from knowledgebase: name={entity.pickable.picking_tag}, group={""}, pose={entity.pose}") #group={entity.pickable.category},
 
             if 2 == entity.entity_type.PICKABLE: #entity.entity_type.id == entity.entity_type.PICKABLE:
                 self.pickable = True
-                self.objectname = entity.pickable.picking_tag
+                self.objectname = "bottle" # entity.pickable.picking_tag
                 self.objectgroup = "fruits" # entity.pickable.category
                 self.pose = entity.pose
             else:
@@ -160,16 +160,19 @@ class Orchestrator(Node):
             response = future.result()
             shape = response.shape
             if shape.has_pointcloud:
-                self.shape_pointcloud = shape.pointcloud
+                self.pointcloud = shape.pointcloud
+                self.get_logger().info("Pointcloud received from knowledgebase.")
+
             else:
-                self.shape_pointcloud = None
-                self.get_logger().warn("No valid pointcloud.")
+                self.pointcloud = None
+                self.get_logger().warn("No pointcloud received from knowledgebase.")
 
             if shape.has_boundingbox2d:
-                self.shape_boundingbox = shape.boundingbox2d
+                self.boundingbox = shape.boundingbox2d
+                self.get_logger().info("Boundingbox received from knowledgebase.")
             else:
-                self.shape_boundingbox = None
-                self.get_logger().warn("No valid boundingbox.")
+                self.boundingbox = None
+                self.get_logger().warn("No boundingbox received from knowledgebase.")
 
             # Call GrippingForce
             if self.pickable:
@@ -191,7 +194,7 @@ class Orchestrator(Node):
             self.gripforce = response.gripforce
             self.grippos_mode = response.grippos_mode
             self.griporient_mode = response.griporient_mode
-            self.get_logger().info(f"Grip force for '{self.objectgroup}': Gripping force = {self.gripforce}N, Gripping position mode = {self.grippos_mode}, Gripping orientation mode = {self.griporient_mode}")
+            self.get_logger().info(f"Gripping parameter received for '{self.objectgroup}': Gripping force = {self.gripforce}N, Gripping position mode = {self.grippos_mode}, Gripping orientation mode = {self.griporient_mode}")
         except Exception as e:
             self.get_logger().error(f"GetGrippingParameter failed: {e}")
             self.force = 5.0
@@ -214,8 +217,8 @@ class Orchestrator(Node):
         if self.griporient_mode == 0: # dont calculate orientation
             self.gripping_point_orient = Quaternion(x=0.0, y=0.0, z=0.0, w=1.0)
         elif self.griporient_mode == 1: # calculate orientation from bounding box
-            if self.shape_boundingbox:
-                self.gripping_point_orient = self.compute_orientation(self.shape_boundingbox)
+            if self.boundingbox:
+                self.gripping_point_orient = self.compute_orientation(self.boundingbox)
             else:
                 self.gripping_point_orient = Quaternion(x=0.0, y=0.0, z=0.0, w=1.0)
         elif self.griporient_mode == 2: # calculate orientation from pointcloud (future)
@@ -230,7 +233,7 @@ class Orchestrator(Node):
             angle = 0.0             # horicontal bbox
         else:
             angle = np.pi / 2       # vertical bbox
-            
+
         qz = np.sin(angle / 2.0)
         qw = np.cos(angle / 2.0)
         return Quaternion(x=0.0, y=0.0, z=qz, w=qw)

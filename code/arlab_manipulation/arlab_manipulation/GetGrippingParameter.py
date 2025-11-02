@@ -42,7 +42,7 @@ class GetGrippingParameter(Node):
         gripforce, grippos_mode, griporient_mode = grip_parameter
 
         self.get_logger().info(
-            f"Objectname='{request.objectgroup}' → Gripping force = {gripforce}N, Gripping position mode = {grippos_mode}, Gripping orientation mode = {griporient_mode}"
+            f"Send parameter for '{request.objectgroup}' → Gripping force = {gripforce}N, Gripping position mode = {grippos_mode}, Gripping orientation mode = {griporient_mode}"
         )
 
         response.gripforce = gripforce

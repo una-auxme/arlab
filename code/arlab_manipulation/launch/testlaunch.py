@@ -46,7 +46,7 @@ def generate_launch_description():
     KnowledgeBase = Node(package="arlab_knowledge", executable="database_node")
 
     # Video node from perception
-    ComputerVision = Node(package="arlab_computer_vision", executable="object_detection")
+    CompVision = Node(package="arlab_computer_vision", executable="object_detection")
 
     # Add nodes to the launch description
     ld.add_action(GetGrippingForce)
@@ -54,6 +54,6 @@ def generate_launch_description():
     ld.add_action(OrchestratorSubscriber)
     ld.add_action(Perception)
     ld.add_action(KnowledgeBase)
-    ld.add_action(ComputerVision)
+    ld.add_action(CompVision)
 
     return ld

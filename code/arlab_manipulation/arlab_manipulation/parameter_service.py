@@ -25,7 +25,10 @@ class parameter_service(Node):
         """Initialize the GetGrippingParameter node, create the service and define the
         object_parameter_table"""
         super().__init__("GetGrippingParameter")
-        self.srv = self.create_service(GrippingParameter, "GetGrippingParameter", self.callback)
+        self.srv = self.create_service(
+            GrippingParameter, "GetGrippingParameter",
+            self.callback
+            )
 
         # Example objectgroup-gripping-parameter table --> need to be more detailed
         self.object_parameter_table = {
@@ -37,12 +40,18 @@ class parameter_service(Node):
     def callback(self, request, response):
         """Service callback that computes the gripping force for a requested object."""
 
-        grip_parameter = self.object_parameter_table.get(request.objectgroup, self.object_parameter_table["default"])
+        grip_parameter = self.object_parameter_table.get(
+            request.objectgroup,
+            self.object_parameter_table["default"]
+            )
 
         gripforce, grippos_mode, griporient_mode = grip_parameter
 
         self.get_logger().info(
-            f"Send parameter for '{request.objectgroup}' → Gripping force = {gripforce}N, Gripping position mode = {grippos_mode}, Gripping orientation mode = {griporient_mode}"
+            f"Send parameter for '{request.objectgroup}' → "
+            f"Gripping force = {gripforce}N, "
+            f"Gripping position mode = {grippos_mode}, "
+            f"Gripping orientation mode = {griporient_mode}"
         )
 
         response.gripforce = gripforce

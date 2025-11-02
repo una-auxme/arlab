@@ -21,7 +21,6 @@ from geometry_msgs.msg import Pose, Point
 from geometry_msgs.msg import Quaternion
 from std_msgs.msg import Float64, String
 
-import sensor_msgs_py.point_cloud2 as pc2
 import numpy as np
 import tf2_ros
 import matplotlib.pyplot as plt
@@ -384,5 +383,3 @@ def main(args=None):
 
 if __name__ == "__main__":
     main()
-
-

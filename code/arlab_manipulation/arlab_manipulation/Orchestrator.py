@@ -87,7 +87,8 @@ class Orchestrator(Node):
         # Internal state
         self.entity_id = None
         self.command_type = "home"
-        self.objectname = "default"
+        self.object_name = "default"
+        self.object_group = "default"
         self.pickable = False
         self.ref_frame = "camera_link"
         self.shape_pointcloud = None
@@ -146,13 +147,13 @@ class Orchestrator(Node):
 
             if 2 == entity.entity_type.PICKABLE: #entity.entity_type.id instead of 2
                 self.pickable = True
-                self.objectname = "bottle" # entity.pickable.picking_tag
-                self.objectgroup = "fruits" # entity.pickable.category
+                self.object_name = "bottle" # entity.pickable.picking_tag
+                self.object_group = "fruits" # entity.pickable.category
                 self.pose = entity.pose
             else:
                 self.pickable = False
-                self.objectname = "noName"
-                self.objectgroup = "default"
+                self.object_name = "noName"
+                self.object_group = "default"
 
             self.ref_frame = entity.pose_reference_frame
 
@@ -171,19 +172,19 @@ class Orchestrator(Node):
             response = future.result()
             shape = response.shape
             if shape.has_pointcloud:
-                self.pointcloud = shape.pointcloud
-                self.get_logger().info("Pointcloud received from knowledgebase.")
+                self.point_cloud = shape.pointcloud
+                self.get_logger().info("Pointcloud received from Knowledgebase.")
 
             else:
-                self.pointcloud = None
-                self.get_logger().warn("No pointcloud received from knowledgebase.")
+                self.point_cloud = None
+                self.get_logger().warn("No pointcloud received from Knowledgebase.")
 
             if shape.has_boundingbox2d:
-                self.boundingbox = shape.boundingbox2d
-                self.get_logger().info("Boundingbox received from knowledgebase.")
+                self.bounding_box = shape.boundingbox2d
+                self.get_logger().info("Boundingbox received from Knowledgebase.")
             else:
-                self.boundingbox = None
-                self.get_logger().warn("No boundingbox received from knowledgebase.")
+                self.bounding_box = None
+                self.get_logger().warn("No boundingbox received from Knowledgebase.")
 
             # Call GrippingForce
             if self.pickable:
@@ -208,15 +209,15 @@ class Orchestrator(Node):
     def handle_gripping_parameter_response(self, future):
         try:
             response = future.result()
-            self.gripforce = response.gripforce
-            self.grippos_mode = response.grippos_mode
-            self.griporient_mode = response.griporient_mode
+            self.grip_force = response.gripforce
+            self.grip_pos_mode = response.grippos_mode
+            self.grip_orient_mode = response.griporient_mode
             self.get_logger().info(
                 (
                     f"Gripping parameter received for '{self.objectgroup}': "
-                    f"Gripping force = {self.gripforce}N, "
-                    f"Gripping position mode = {self.grippos_mode}, "
-                    f"Gripping orientation mode = {self.griporient_mode}"
+                    f"Gripping force = {self.grip_force}N, "
+                    f"Gripping position mode = {self.grip_pos_mode}, "
+                    f"Gripping orientation mode = {self.grip_orient_mode}"
                 )
             )
         except Exception as e:
@@ -230,22 +231,22 @@ class Orchestrator(Node):
     def compute_gripping_pose(self):
 
         # Compute position
-        if self.grippos_mode == 0: # gripping in the middle of the object
+        if self.grip_pos_mode == 0: # gripping in the middle of the object
             self.gripping_point_pos = self.pose.position
 
-        if self.grippos_mode == 1: # thickest/thinnest place or center of gravity
+        if self.grip_pos_mode == 1: # thickest/thinnest place or center of gravity
             # TODO: implement logic in future
             pass
 
         # Compute orientation
-        if self.griporient_mode == 0: # dont calculate orientation
+        if self.grip_orient_mode == 0: # dont calculate orientation
             self.gripping_point_orient = Quaternion(x=0.0, y=0.0, z=0.0, w=1.0)
-        elif self.griporient_mode == 1: # calculate orientation from bounding box
-            if self.boundingbox:
-                self.gripping_point_orient = self.compute_orientation(self.boundingbox)
+        elif self.grip_orient_mode == 1: # calculate orientation from bounding box
+            if self.bounding_box:
+                self.gripping_point_orient = self.compute_orientation(self.bounding_box)
             else:
                 self.gripping_point_orient = Quaternion(x=0.0, y=0.0, z=0.0, w=1.0)
-        elif self.griporient_mode == 2: # calculate orientation from pointcloud (future)
+        elif self.grip_orient_mode == 2: # calculate orientation from pointcloud (future)
             # TODO: implement logic in future
             pass
 
@@ -254,7 +255,7 @@ class Orchestrator(Node):
     # Determine angle from bounding box dimensions
     def compute_orientation(self, bbox):
         if bbox.size_x >= bbox.size_y:
-            angle = 0.0             # horicontal bbox
+            angle = 0.0             # horizontal bbox
         else:
             angle = np.pi / 2       # vertical bbox
 

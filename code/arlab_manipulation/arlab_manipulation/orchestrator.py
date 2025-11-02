@@ -21,60 +21,6 @@ from geometry_msgs.msg import Pose, Point
 from geometry_msgs.msg import Quaternion
 from std_msgs.msg import Float64, String
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 import sensor_msgs_py.point_cloud2 as pc2
 import numpy as np
 import tf2_ros
@@ -309,7 +255,7 @@ class orchestrator(Node):
                 self.gripping_point_orient = Quaternion(x=0.0, y=0.0, z=0.0, w=1.0)
             elif self.grip_orient_mode == 1: # calculate orientation from bounding box
                 if self.bounding_box:
-                    self.gripping_point_orient = self.compute_orientation(self.bounding_box)
+                    self.gripping_point_orient = self.compute_orient(self.bounding_box)
                 else:
                     self.gripping_point_orient = Quaternion(x=0.0, y=0.0, z=0.0, w=1.0)
             elif self.grip_orient_mode == 2: # calculate orientation from pointcloud
@@ -321,7 +267,11 @@ class orchestrator(Node):
         elif self.command_type == "place":
             if self.voxel_map is not None:
                 pos_list = self.find_placing_point(self.voxel_map)
-                self.placing_point_pos = Point(x=pos_list[0], y=pos_list[1], z=pos_list[2])
+                self.placing_point_pos = Point(
+                    x=pos_list[0],
+                    y=pos_list[1],
+                    z=pos_list[2]
+                    )
             else:
                 self.get_logger().warn("Voxel map not available, using default.")
                 self.placing_point_pos = Point(x=0.0, y=0.0, z=0.0)
@@ -330,7 +280,7 @@ class orchestrator(Node):
             self.publish_goal()
 
     # Determine angle from bounding box dimensions
-    def compute_orientation(self, bbox):
+    def compute_orient(self, bbox):
         if bbox.size_x >= bbox.size_y:
             angle = 0.0             # horizontal bbox
         else:

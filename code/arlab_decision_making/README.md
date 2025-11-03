@@ -92,3 +92,5 @@ The **ErrorSelector** is a subclass of Selector with the following modifications
 - It always has memory -> Persistently stays in a running error handler
 - The memory is reset if one of the error handlers returns SUCCESS -> Runs the *Action* again in the next tick
 - If all children return FAILURE, it returns FAILURE as usual
+
+The implementation can be found in the separate package *py_trees_error_selector*.

@@ -1,0 +1,104 @@
+object_name,shelf_category,subcategory,yolo_class,notes,yolo_id
+001_chips_can,Vorratsschrank,Konserven,pantry_can,Dose (Snacks),0
+002_master_chef_can,Vorratsschrank,Konserven,pantry_can,Dose (Konserve),0
+005_tomato_soup_can,Vorratsschrank,Konserven,pantry_can,Dose (Suppe),0
+007_tuna_fish_can,Vorratsschrank,Konserven,pantry_can,Dose (Fisch),0
+010_potted_meat_can,Vorratsschrank,Konserven,pantry_can,Dose (Fleisch),0
+003_cracker_box,Vorratsschrank,Trockenvorräte/Boxen,pantry_box,Cracker/Kekse,1
+004_sugar_box,Vorratsschrank,Trockenvorräte/Boxen,pantry_box,Zucker,1
+008_pudding_box,Vorratsschrank,Trockenvorräte/Boxen,pantry_box,Pudding,1
+009_gelatin_box,Vorratsschrank,Trockenvorräte/Boxen,pantry_box,Gelatine,1
+006_mustard_bottle,Vorratsschrank,Saucen/Flaschen (Lebensmittel),pantry_bottle_food,Senfflasche,2
+021_bleach_cleanser,Putzmittel,Reiniger/Flaschen,cleaning_bottle,Reiniger (Bleichmittel),3
+022_windex_bottle,Putzmittel,Reiniger/Flaschen,cleaning_bottle,Fensterreiniger,3
+011_banana,Obstschale,Obst,fruit,Banane,4
+012_strawberry,Obstschale,Obst,fruit,Erdbeere,4
+013_apple,Obstschale,Obst,fruit,Apfel,4
+014_lemon,Obstschale,Obst,fruit,Zitrone,4
+015_peach,Obstschale,Obst,fruit,Pfirsich,4
+016_pear,Obstschale,Obst,fruit,Birne,4
+017_orange,Obstschale,Obst,fruit,Orange,4
+018_plum,Obstschale,Obst,fruit,Pflaume,4
+023_wine_glass,Geschirr,Trinkgeschirr,drinkware_glass,Weinglas,5
+025_mug,Geschirr,Trinkgeschirr,drinkware_mug,Becher/Tasse,6
+065-a_cups,Geschirr,Trinkgeschirr (Becher),drinkware_cup,Becher (a),7
+065-b_cups,Geschirr,Trinkgeschirr (Becher),drinkware_cup,Becher (b),7
+065-c_cups,Geschirr,Trinkgeschirr (Becher),drinkware_cup,Becher (c),7
+065-d_cups,Geschirr,Trinkgeschirr (Becher),drinkware_cup,Becher (d),7
+065-e_cups,Geschirr,Trinkgeschirr (Becher),drinkware_cup,Becher (e),7
+065-f_cups,Geschirr,Trinkgeschirr (Becher),drinkware_cup,Becher (f),7
+065-g_cups,Geschirr,Trinkgeschirr (Becher),drinkware_cup,Becher (g),7
+065-h_cups,Geschirr,Trinkgeschirr (Becher),drinkware_cup,Becher (h),7
+065-i_cups,Geschirr,Trinkgeschirr (Becher),drinkware_cup,Becher (i),7
+065-j_cups,Geschirr,Trinkgeschirr (Becher),drinkware_cup,Becher (j),7
+024_bowl,Geschirr,Schalen & Teller,dish_bowl,Schale,8
+029_plate,Geschirr,Schalen & Teller,dish_plate,Teller,9
+019_pitcher_base,Geschirr,Kannen/Karaffen,dish_pitcher,Karaffe/Kanne,10
+030_fork,Küche,Besteck & Kochutensilien,kitchen_utensil,Gabel,11
+031_spoon,Küche,Besteck & Kochutensilien,kitchen_utensil,Löffel,11
+032_knife,Küche,Besteck & Kochutensilien,kitchen_utensil,Messer,11
+033_spatula,Küche,Besteck & Kochutensilien,kitchen_utensil,Pfannenwender,11
+027-skillet,Küche,Kochgeschirr,cookware,Pfanne,12
+028_skillet_lid,Küche,Kochgeschirr,cookware_lid,Pfannendeckel,13
+026_sponge,Küche,Reinigung,kitchen_cleaning,Schwamm,14
+076_timer,Küche,Küchenhelfer,kitchen_gadget,Timer,15
+040_large_marker,Büro,Schreibwaren,stationery_marker,Marker (groß),16
+041_small_marker,Büro,Schreibwaren,stationery_marker,Marker (klein),16
+035_power_drill,Werkzeugkiste,Elektrowerkzeug,tool_power,Akkuschrauber/Bohrmaschine,17
+037_scissors,Werkzeugkiste,Handwerkzeuge,tool_hand,Schere,18
+042_adjustable_wrench,Werkzeugkiste,Handwerkzeuge,tool_hand,Rollgabelschlüssel,18
+043_phillips_screwdriver,Werkzeugkiste,Handwerkzeuge,tool_hand,Kreuzschlitz-Schraubendreher,18
+044_flat_screwdriver,Werkzeugkiste,Handwerkzeuge,tool_hand,Schlitz-Schraubendreher,18
+048_hammer,Werkzeugkiste,Handwerkzeuge,tool_hand,Hammer,18
+049_small_clamp,Werkzeugkiste,Spannwerkzeuge,tool_clamp,Klemme (S),19
+050_medium_clamp,Werkzeugkiste,Spannwerkzeuge,tool_clamp,Klemme (M),19
+051_large_clamp,Werkzeugkiste,Spannwerkzeuge,tool_clamp,Klemme (L),19
+052_extra_large_clamp,Werkzeugkiste,Spannwerkzeuge,tool_clamp,Klemme (XL),19
+046_plastic_bolt,Werkzeugkiste,Kleinteile/Hardware,tool_hardware,Kunststoff-Schraube,20
+047_plastic_nut,Werkzeugkiste,Kleinteile/Hardware,tool_hardware,Kunststoff-Mutter,20
+038_padlock,Schlüssel & Sicherheit,Schlösser & Sicherung,security,Vorhängeschloss,21
+039_key,Schlüssel & Sicherheit,Schlüssel,security_key,Schlüssel,22
+059_chain,Schlüssel & Sicherheit,Ketten & Sicherung,security_chain,Kette,23
+053_mini_soccer_ball,Sport & Spiel,Bälle,sport_ball,Mini-Fußball,24
+054_softball,Sport & Spiel,Bälle,sport_ball,Softball,24
+055_baseball,Sport & Spiel,Bälle,sport_ball,Baseball,24
+056_tennis_ball,Sport & Spiel,Bälle,sport_ball,Tennisball,24
+057_racquetball,Sport & Spiel,Bälle,sport_ball,Racquetball,24
+058_golf_ball,Sport & Spiel,Bälle,sport_ball,Golfball,24
+062_dice,Sport & Spiel,Spiele & Puzzles,game_piece,Würfel,25
+063-a_marbles,Sport & Spiel,Spiele & Puzzles,game_piece,Murmeln (a),25
+063-b_marbles,Sport & Spiel,Spiele & Puzzles,game_piece,Murmeln (b),25
+063-c_marbles,Sport & Spiel,Spiele & Puzzles,game_piece,Murmeln (c),25
+063-d_marbles,Sport & Spiel,Spiele & Puzzles,game_piece,Murmeln (d),25
+063-e_marbles,Sport & Spiel,Spiele & Puzzles,game_piece,Murmeln (e),25
+063-f_marbles,Sport & Spiel,Spiele & Puzzles,game_piece,Murmeln (f),25
+071_nine_hole_peg_test,Sport & Spiel,Spiele & Puzzles,game_board,Steckspiel (9-Loch),26
+077_rubiks_cube,Sport & Spiel,Spiele & Puzzles,game_board,Zauberwürfel,26
+036_wood_block,Sport & Spiel,Bauklötze,toy_block,Holzklotz,27
+061_foam_brick,Sport & Spiel,Bauklötze,toy_block,Schaumstoff-Ziegel,27
+070-a_colored_wood_blocks,Sport & Spiel,Bauklötze,toy_block,Bunte Holzklötze (a),27
+070-b_colored_wood_blocks,Sport & Spiel,Bauklötze,toy_block,Bunte Holzklötze (b),27
+073-a_lego_duplo,Sport & Spiel,Konstruktionsspielzeug,toy_construction,Duplo (a),28
+073-b_lego_duplo,Sport & Spiel,Konstruktionsspielzeug,toy_construction,Duplo (b),28
+073-c_lego_duplo,Sport & Spiel,Konstruktionsspielzeug,toy_construction,Duplo (c),28
+073-d_lego_duplo,Sport & Spiel,Konstruktionsspielzeug,toy_construction,Duplo (d),28
+073-e_lego_duplo,Sport & Spiel,Konstruktionsspielzeug,toy_construction,Duplo (e),28
+073-f_lego_duplo,Sport & Spiel,Konstruktionsspielzeug,toy_construction,Duplo (f),28
+073-g_lego_duplo,Sport & Spiel,Konstruktionsspielzeug,toy_construction,Duplo (g),28
+073-h_lego_duplo,Sport & Spiel,Konstruktionsspielzeug,toy_construction,Duplo (h),28
+073-i_lego_duplo,Sport & Spiel,Konstruktionsspielzeug,toy_construction,Duplo (i),28
+073-j_lego_duplo,Sport & Spiel,Konstruktionsspielzeug,toy_construction,Duplo (j),28
+073-k_lego_duplo,Sport & Spiel,Konstruktionsspielzeug,toy_construction,Duplo (k),28
+073-l_lego_duplo,Sport & Spiel,Konstruktionsspielzeug,toy_construction,Duplo (l),28
+073-m_lego_duplo,Sport & Spiel,Konstruktionsspielzeug,toy_construction,Duplo (m),28
+072-a_toy_airplane,Sport & Spiel,Fahrzeuge/Flugzeuge,toy_vehicle,Spielzeugflugzeug (a),29
+072-b_toy_airplane,Sport & Spiel,Fahrzeuge/Flugzeuge,toy_vehicle,Spielzeugflugzeug (b),29
+072-c_toy_airplane,Sport & Spiel,Fahrzeuge/Flugzeuge,toy_vehicle,Spielzeugflugzeug (c),29
+072-d_toy_airplane,Sport & Spiel,Fahrzeuge/Flugzeuge,toy_vehicle,Spielzeugflugzeug (d),29
+072-e_toy_airplane,Sport & Spiel,Fahrzeuge/Flugzeuge,toy_vehicle,Spielzeugflugzeug (e),29
+072-f_toy_airplane,Sport & Spiel,Fahrzeuge/Flugzeuge,toy_vehicle,Spielzeugflugzeug (f),29
+072-g_toy_airplane,Sport & Spiel,Fahrzeuge/Flugzeuge,toy_vehicle,Spielzeugflugzeug (g),29
+072-h_toy_airplane,Sport & Spiel,Fahrzeuge/Flugzeuge,toy_vehicle,Spielzeugflugzeug (h),29
+072-i_toy_airplane,Sport & Spiel,Fahrzeuge/Flugzeuge,toy_vehicle,Spielzeugflugzeug (i),29
+072-j_toy_airplane,Sport & Spiel,Fahrzeuge/Flugzeuge,toy_vehicle,Spielzeugflugzeug (j),29
+072-k_toy_airplane,Sport & Spiel,Fahrzeuge/Flugzeuge,toy_vehicle,Spielzeugflugzeug (k),29

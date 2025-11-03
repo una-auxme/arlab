@@ -7,6 +7,7 @@ from py_trees.composites import Sequence
 from rclpy.node import Node
 
 from .behaviours import check_safety, task1, task2
+from .behaviours.test_trees import test_manipulation_home
 
 
 def get_tree(task: str) -> Behaviour:
@@ -15,6 +16,8 @@ def get_tree(task: str) -> Behaviour:
         chosen_task = task1
     elif task == "task2":
         chosen_task = task2
+    elif task == "test_manipulation_home":
+        chosen_task = test_manipulation_home
     else:
         raise ValueError(f"Unknown task: {task}")
 

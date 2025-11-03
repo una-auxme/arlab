@@ -14,5 +14,9 @@
   "cmake.configureOnEdit": false,
   "cmake.configureOnOpen": false,
   "flake8.enabled": false,
-  "cSpell.words": ["Behaviour"]
+  "cSpell.words": [
+    "Behaviour",
+    "behaviours",
+    "rclpy"
+  ]
 }

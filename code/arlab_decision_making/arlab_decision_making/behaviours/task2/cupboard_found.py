@@ -7,7 +7,7 @@ def get_tree() -> Behaviour:
 
 
 class CupboardFound(Behaviour):
-    def __init__(self, name: str = "CupboardFound"):
+    def __init__(self):
         super().__init__(name=type(self).__name__)
 
     def update(self):

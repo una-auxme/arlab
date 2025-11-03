@@ -3,10 +3,10 @@ from py_trees.common import Status
 
 
 def get_tree() -> Behaviour:
-    return MoveToStartingPosition()
+    return CheckSafety()
 
 
-class MoveToStartingPosition(Behaviour):
+class CheckSafety(Behaviour):
     def __init__(self):
         super().__init__(name=type(self).__name__)
 

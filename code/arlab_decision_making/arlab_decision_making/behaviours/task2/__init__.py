@@ -1,5 +1,5 @@
 from py_trees.behaviour import Behaviour
-from py_trees.common import Selector, Sequence
+from py_trees.composites import Selector, Sequence
 
 from . import (
     cupboard_found,
@@ -19,13 +19,12 @@ def get_tree() -> Behaviour:
             wait_for_task_start.get_tree(),
             Selector(
                 name="MainTask2Selector",
-                memory=True,
+                memory=False,
                 children=[
                     task_done.get_tree(),
-                    store_grocery.get_tree(),
                     Sequence(
-                        name="SearchForFurnitureSequence",
-                        memory=True,
+                        name="StoreGrocerySequence",
+                        memory=False,
                         children=[
                             cupboard_found.get_tree(),
                             table_found.get_tree(),

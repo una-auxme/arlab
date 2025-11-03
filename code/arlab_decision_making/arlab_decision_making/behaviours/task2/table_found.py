@@ -7,7 +7,7 @@ def get_tree() -> Behaviour:
 
 
 class TableFound(Behaviour):
-    def __init__(self, name: str = "TableFound"):
+    def __init__(self):
         super().__init__(name=type(self).__name__)
 
     def update(self):

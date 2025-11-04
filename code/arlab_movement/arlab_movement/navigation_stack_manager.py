@@ -17,9 +17,11 @@ class NavigationStackManager(Node):
 
         self.create_subscription(Bool, 'localization_bool', self.localization_callback, 10)
         self.create_subscription(Bool, 'mapping_bool', self.mapping_callback, 10)
+        self.create_subscription(Bool, 'nav_bool', self.nav_callback, 10)
 
         self.amcl_process = None
         self.slam_process = None
+        self.nav_process = None
 
         self.get_logger().info("Navigation Stack Manager 2 (subprocess mode) started.")
 
@@ -109,11 +111,25 @@ class NavigationStackManager(Node):
         else:
             self.slam_process = self.stop_process(self.slam_process, "SLAM Toolbox")
 
+    def nav_callback(self, msg):
+        """Starts/stops the Nav2 navigation stack based on /nav_bool messages."""
+        if msg.data:
+            if self.nav_process is None or self.nav_process.poll() is not None:
+                self.nav_process = self.start_process(
+                    ["ros2", "launch", "arlab_movement", "nav_stack_launch.py"],
+                    "Nav2 Stack"
+                )
+            else:
+                self.get_logger().info("Nav2 already running.")
+        else:
+            self.nav_process = self.stop_process(self.nav_process, "Nav2 Stack")
+
     def destroy_node(self):
         """cleanup to properly stop all subprocesses
         """
         self.amcl_process = self.stop_process(self.amcl_process, "AMCL")
         self.slam_process = self.stop_process(self.slam_process, "SLAM Toolbox")
+        self.nav_process = self.stop_process(self.nav_process, "Nav2 Stack")
         super().destroy_node()
 
 

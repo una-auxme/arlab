@@ -1,0 +1,3 @@
+- goalpose doesnt work, gazebo bridge expects twiststamp type, but on cmd_vel, only twist is published.
+    -> implement in yaml that twist is expected
+

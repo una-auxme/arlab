@@ -104,7 +104,8 @@ class NavigationStackManager(Node):
                 self.slam_process = self.start_process(
                     #["ros2", "run", "slam_toolbox", "sync_slam_toolbox_node"], "SLAM Toolbox" # old start command without using launchfile
                     #["ros2", "launch", "arlab_movement", "slam_launch.py"], "SLAM Toolbox"
-                    ["ros2", "launch", "slam_toolbox", "online_sync_launch.py", "--ros-args", "-p", "use_pose_graph_slam:=true"], "SLAM Toolbox"
+                    #["ros2", "launch", "slam_toolbox", "online_sync_launch.py", "--ros-args", "-p", "use_pose_graph_slam:=true"], "SLAM Toolbox"
+                    ["ros2", "launch", "slam_toolbox", "online_async_launch.py"], "SLAM Toolbox"
                 )
             else:
                 self.get_logger().info("SLAM already running.")
@@ -116,8 +117,8 @@ class NavigationStackManager(Node):
         if msg.data:
             if self.nav_process is None or self.nav_process.poll() is not None:
                 self.nav_process = self.start_process(
-                    ["ros2", "launch", "arlab_movement", "nav_stack_launch.py"],
-                    "Nav2 Stack"
+                    #["ros2", "launch", "arlab_movement", "nav_stack_launch.py"], "Nav2 Stack"
+                    ["ros2", "run", "nav2_bringup", "navigation_launch.py"], "Nav2 Stack"
                 )
             else:
                 self.get_logger().info("Nav2 already running.")

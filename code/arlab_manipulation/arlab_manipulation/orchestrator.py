@@ -119,7 +119,7 @@ class orchestrator(Node):
         self.target_pose = getattr(goal_command, 'target_pose', None)
 
         # Call GetShape
-        if self.command_type != "move":
+        if self.command_type == "pick" or self.command_type == "place":
             self.req_get_entity.entityid = self.entity_id
             future_entity = self.client_get_entity.call_async(self.req_get_entity)
             future_entity.add_done_callback(self.handle_get_entity_response)
@@ -244,8 +244,10 @@ class orchestrator(Node):
             # Compute position
             if self.grip_pos_mode == 0: # gripping in the middle of the object
                 self.gripping_point_pos = self.pose.position
-
-            if self.grip_pos_mode == 1: # thickest/thinnest place or center of gravity
+            elif self.grip_pos_mode == 1: # thickest/thinnest place
+                # TODO: implement logic in future
+                pass
+            elif self.grip_pos_mode == 1: # center of gravity
                 # TODO: implement logic in future
                 pass
 
@@ -345,15 +347,14 @@ class orchestrator(Node):
 
     # Publish OrchestratorData
     def publish_goal(self):
-        if self.command_type != "move":
-            if self.command_type == "pick":
-                goal_pose = Pose()
-                goal_pose.position = self.gripping_point_pos
-                goal_pose.orientation = self.gripping_point_orient
-            elif self.command_type == "place":
-                goal_pose = Pose()
-                goal_pose.position = self.placing_point_pos
-                goal_pose.orientation = self.placing_point_orient
+        if self.command_type == "pick":
+            goal_pose = Pose()
+            goal_pose.position = self.gripping_point_pos
+            goal_pose.orientation = self.gripping_point_orient
+        elif self.command_type == "place":
+            goal_pose = Pose()
+            goal_pose.position = self.placing_point_pos
+            goal_pose.orientation = self.placing_point_orient
         else:
             goal_pose = self.target_pose or Pose()
 

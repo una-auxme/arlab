@@ -2,7 +2,7 @@ string objectgroup
 ---
 # force for gripping the object
 float64 gripforce
-# 0 = gripping in the middle of the object (position from knowledgebase), 1 = gripping on the thickest/thinnest place or calculate center of gravity (future)
-int32 grippos_mode 
+# 0 = gripping in the middle of the object (position from knowledgebase), 1 = gripping on the thickest/thinnest place, 2 = calculate center of gravity (future)
+int32 grippos_mode
 # 0 = dont calculate orientation, 1 = calculate orientation from bounding box, 2 = calculate orientation from pointcloud (future)
 int32 griporient_mode

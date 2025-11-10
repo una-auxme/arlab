@@ -1,17 +1,23 @@
 #pragma once
 
 #include <rclcpp/rclcpp.hpp>
-
+#include <geometry_msgs/msg/pose.hpp>
 #include "arlab_common_interfaces/msg/orchestrator_data.hpp"
 
-/**
- * @brief Run a job based on an OrchestratorData message.
- *
- * Supported commands are: "pick", "place", "open", "close", "move", "home".
- *
- * @param msg OrchestratorData message containing job command information.
- * @param node Shared pointer to the ROS 2 node.
- * @return int Exit code
- */
-int run_job(const arlab_common_interfaces::msg::OrchestratorData &msg,std::shared_ptr<rclcpp::Node> node);
+class ArmMotion;
+class HandMotion;
+
+class JobRunner {
+public:
+  JobRunner(rclcpp::Node& node, ArmMotion& arm, HandMotion& hand);
+
+  void run(const arlab_common_interfaces::msg::OrchestratorData& msg);
+
+private:
+  rclcpp::Logger logger_;
+  ArmMotion& arm_;
+  HandMotion& hand_;
+
+  geometry_msgs::msg::Pose createPose(double x,double y,double z,double qx,double qy,double qz,double qw) const;
+};
 

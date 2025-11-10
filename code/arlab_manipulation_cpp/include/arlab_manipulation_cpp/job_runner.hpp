@@ -19,5 +19,10 @@ private:
   HandMotion& hand_;
 
   geometry_msgs::msg::Pose createPose(double x,double y,double z,double qx,double qy,double qz,double qw) const;
+
+  std::map<std::string, double> createJointPos(
+    double shoulder_pan_joint,double shoulder_lift_joint,double elbow_joint,
+    double wrist_1_joint,double wrist_2_joint,double wrist_3_joint);
+
 };
 

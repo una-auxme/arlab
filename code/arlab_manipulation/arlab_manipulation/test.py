@@ -11,7 +11,7 @@ class test(Node):
 
     def send_test_goal(self):
         goal_msg = ManipulationAction.Goal()
-        goal_msg.command.command_type = 'home'
+        goal_msg.command.command_type = 'pick'
         goal_msg.command.target_entityid = 2
         self._client.wait_for_server()
         self.get_logger().info('Sending goal...')

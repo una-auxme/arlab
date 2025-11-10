@@ -12,6 +12,22 @@ geometry_msgs::msg::Pose JobRunner::createPose(double x,double y,double z,double
   return p;
 }
 
+std::map<std::string, double> JobRunner::createJointPos(
+    double shoulder_pan_joint,double shoulder_lift_joint,double elbow_joint,
+    double wrist_1_joint,double wrist_2_joint,double wrist_3_joint) {
+
+  return {
+    {"shoulder_pan_joint", shoulder_pan_joint},
+    {"shoulder_lift_joint", shoulder_lift_joint},
+    {"elbow_joint", elbow_joint},
+    {"wrist_1_joint", wrist_1_joint},
+    {"wrist_2_joint", wrist_2_joint},
+    {"wrist_3_joint", wrist_3_joint}
+    };
+
+}
+
+
 void JobRunner::run(const arlab_common_interfaces::msg::OrchestratorData& msg) {
   const std::string cmd = msg.cmd.data;
   RCLCPP_INFO(logger_, "JobRunner received cmd='%s'", cmd.c_str());
@@ -33,7 +49,6 @@ void JobRunner::run(const arlab_common_interfaces::msg::OrchestratorData& msg) {
     return;
   }
   if (cmd == "move") {
-    // Beispielziel; oder nimm msg.pose direkt:
     (void)arm_.moveToPose(msg.pose);
     return;
   }
@@ -41,9 +56,15 @@ void JobRunner::run(const arlab_common_interfaces::msg::OrchestratorData& msg) {
     // einfache Sequenz
     hand_.open();
     (void)arm_.moveToHome();
-    (void)arm_.moveToPose(createPose(0.372,0.124,0.3,0.999,0.041,0.006,0.004));
-    (void)arm_.moveToPose(msg.pose);
+    (void)arm_.moveToJointPos(createJointPos(0.0, -1.5707, 0.0, 0.0, 0.0, 0.0));
+    //kurz vor Pose fahren:
+    (void)arm_.moveToPose(createPose(0.1, 0.0, 0.2, 0.0, 0.0, 0.0, 1.0));
+    // zur Pose fahren:
+    (void)arm_.moveToPose(createPose(0.3, 0.0, 0.2, 0.0, 0.0, 0.0, 1.0));
+    //(void)arm_.moveToPose(msg.pose);
     hand_.close();
+    //von Pose weg fahren:
+    (void)arm_.moveToPose(createPose(0.3, 0.0, 0.4, 0.0, 0.0, 0.0, 1.0));
     (void)arm_.moveToHome();
     return;
   }

@@ -14,6 +14,7 @@ setup(
         ('share/' + package_name + '/launch', ['launch/arlab_movement.launch.py']),
         ('share/' + package_name + '/launch', ['launch/arlab_simulation.launch.py']),
         ('share/' + package_name + '/launch', ['launch/slam_launch.py']),
+        ('share/' + package_name + '/launch', ['launch/turtlebot3_spawn_launch.py']),
         # entries for arlab_simulation
         (os.path.join('share', package_name, 'launch'), glob('launch/*.launch.py')),
         (os.path.join('share', package_name, 'worlds'), glob('worlds/*.sdf')),

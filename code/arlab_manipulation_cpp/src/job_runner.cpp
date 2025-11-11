@@ -57,14 +57,15 @@ void JobRunner::run(const arlab_common_interfaces::msg::OrchestratorData& msg) {
     hand_.open();
     (void)arm_.moveToHome();
     (void)arm_.moveToJointPos(createJointPos(0.0, -1.5707, 0.0, 0.0, 0.0, 0.0));
+    (void)arm_.moveToJointPos(createJointPos(0.0, -1.7104, 1.2915, 0.4188, 1.5358, -1.5708));
     //kurz vor Pose fahren:
-    (void)arm_.moveToPose(createPose(0.1, 0.0, 0.2, 0.0, 0.0, 0.0, 1.0));
+    //(void)arm_.moveToPose(createPose(0.1, 0.0, 0.2, 0.0, 0.0, 0.0, 1.0));
     // zur Pose fahren:
-    (void)arm_.moveToPose(createPose(0.3, 0.0, 0.2, 0.0, 0.0, 0.0, 1.0));
+    //(void)arm_.moveToPose(createPose(0.3, 0.0, 0.2, 0.0, 0.0, 0.0, 1.0));
     //(void)arm_.moveToPose(msg.pose);
     hand_.close();
     //von Pose weg fahren:
-    (void)arm_.moveToPose(createPose(0.3, 0.0, 0.4, 0.0, 0.0, 0.0, 1.0));
+    //(void)arm_.moveToPose(createPose(0.3, 0.0, 0.4, 0.0, 0.0, 0.0, 1.0));
     (void)arm_.moveToHome();
     return;
   }

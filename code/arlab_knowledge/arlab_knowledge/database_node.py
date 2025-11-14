@@ -81,6 +81,8 @@ class DatabaseNode(Node):
 
     def __init__(self):
         super().__init__(type(self).__name__)
+        self.get_logger().info(f"{type(self).__name__} node initializing...")
+
         database_host = os.getenv("KNOWLEDGE_BASE_POSTGRES_HOST")
         database_name = os.getenv("KNOWLEDGE_BASE_POSTGRES_DB")
         database_user = os.getenv("KNOWLEDGE_BASE_POSTGRES_USER")
@@ -117,6 +119,8 @@ class DatabaseNode(Node):
         )
 
         self.reentrant_callback_group = ReentrantCallbackGroup()
+
+        self.get_logger().info(f"{type(self).__name__} node initialized.")
 
     def _set_parameters_callback(self, params: List[Parameter]):
         """Callback for parameter updates."""
@@ -932,7 +936,7 @@ def main(args=None):
     executor = AsyncIOExecutor(async_init=database_node.async_init())
     executor.add_node(database_node)
 
-    database_node.get_logger().info("Beginning database_node, shut down with CTRL-C")
+    database_node.get_logger().info("Spinning database_node, shut down with CTRL-C...")
     executor.spin()
 
 

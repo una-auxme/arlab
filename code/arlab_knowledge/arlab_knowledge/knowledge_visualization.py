@@ -166,7 +166,7 @@ class KnowledgeVisualization(Node):
             timestamp=self.get_clock().now().to_msg(),
         )
         self.marker_publisher.publish(marker_array)
-        self.get_logger().info("Published marker array")
+        self.get_logger().debug("Published marker array")
 
 
 def main(args=None):

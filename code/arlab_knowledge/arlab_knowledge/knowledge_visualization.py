@@ -1,3 +1,12 @@
+"""Knowledge Visualization Node
+
+This node visualizes knowledge entities as markers in RViz.
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-augsburg.de>
+    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+"""
+
 from typing import List, Optional
 
 import rclpy
@@ -20,13 +29,20 @@ prefix = "/arlab/knowledge"
 
 
 class KnowledgeVisualization(Node):
-    """This nodes calls a service from a timer
+    """Node that visualizes entities saved int the knowledge base as markers in RViz.
 
-    It demonstrates the importance of Callback groups
-    when using blocking service requests.
+    It periodically:
+        - retrieves all entities from the knowledge base
+        - converts them to markers
+        - publishes the markers as a MarkerArray message to RViz
 
-    Blocking in this async case means: blocks the further
-    execution of the async callback.
+    Attributes:
+        update_timer_period (float): Timer period for updating markers.
+        marker_publisher (Publisher): Publisher for MarkerArray messages.
+        service_cb (MutuallyExclusiveCallbackGroup): Callback group for services.
+        get_entities_client: Client for GetEntities service.
+        get_entity_client: Client for GetEntity service.
+        timer: Timer for periodic updates.
     """
 
     def __init__(self):
@@ -61,7 +77,16 @@ class KnowledgeVisualization(Node):
         self.get_logger().info(f"{type(self).__name__} node initialized.")
 
     def _set_parameters_callback(self, params: List[Parameter]):
-        """Callback for parameter updates."""
+        """Handles parameter updates.
+
+        This callback checks if the update_timer_period parameter has changed. If it has,
+        the existing timer is canceled and a new timer is created with the updated period
+
+        Args:
+            params (List[Parameter]): List of parameters to update.
+        Returns:
+            SetParametersResult: Result of the parameter update.
+        """
         old_update_timer_period = self.update_timer_period
         result = update_attributes(self, params)
         if old_update_timer_period != self.update_timer_period:
@@ -74,12 +99,27 @@ class KnowledgeVisualization(Node):
         return result
 
     async def timer_callback(self):
+        """Timer callback to update markers periodically."""
         try:
             await self.update_markers()
         except Exception as e:
             self.get_logger().fatal(emsg_with_trace(e), throttle_duration_sec=2)
 
     async def get_markers(self) -> List[Marker]:
+        """Retrieve all entities from the knowledge base and convert them to markers.
+
+        Workflow:
+            1. Call GetEntities service to get all entity IDs.
+            2. For each entity ID, call GetEntity service to get entity data.
+            3. Convert each entity to markers and collect them.
+
+        Returns:
+            List[Marker]: List of markers representing the entities.
+
+        Error Handling:
+            - Logs an error if the service response is None or unsuccessful.
+        """
+        # Step 1: Get all entity IDs
         req = GetEntities.Request()
         result: Optional[
             GetEntities.Response
@@ -93,6 +133,7 @@ class KnowledgeVisualization(Node):
             return []
 
         markers = []
+        # Step 2: Get each entity and convert to markers
         for entity_id in result.entities:
             req = GetEntity.Request(entityid=entity_id)
             entity_rsp: Optional[
@@ -107,12 +148,17 @@ class KnowledgeVisualization(Node):
                     f"Service call unsuccessful: {entity_rsp.result.error}"
                 )
                 continue
+            # Step 3: Convert entity to markers
             entity = Entity.from_ros_msg(entity_rsp.data)
             markers += entity.get_all_markers()
 
         return markers
 
     async def update_markers(self):
+        """Update and publish markers to RViz.
+        Retrieves markers from the knowledge base and publishes them as a
+        MarkerArray message.
+        """
         marker_array = debug_marker_array(
             namespace="knowledge",
             markers=await self.get_markers(),

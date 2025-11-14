@@ -9,6 +9,7 @@
 
   <test_depend>python3-pytest</test_depend>
 
+  <depend>navigation2</depend>
   <depend>nav2_bringup</depend>
   <depend>nav2_msgs</depend>
   <depend>nav2_amcl</depend>
@@ -23,10 +24,14 @@
   <depend>geometry_msgs</depend> 
   <depend>tf2_ros</depend> 
 
+  <depend>turtlebot3</depend>
   <depend>turtlebot3_navigation2</depend>
   <depend>turtlebot3_msgs</depend>
   <depend>turtlebot3_description</depend>
   <depend>turtlebot3_gazebo</depend>
+  <depend>turtlebot3_cartographer</depend>
+  <depend>turtlebot3_node</depend>
+  <depend>turtlebot3_teleop</depend>
   <depend>xacro</depend>
 
   <exec_depend>ros_gz_sim</exec_depend>

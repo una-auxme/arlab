@@ -1,3 +1,5 @@
-- goalpose doesnt work, gazebo bridge expects twiststamp type, but on cmd_vel, only twist is published.
-    -> implement in yaml that twist is expected
+nav2 publishes twist to cmdvel, but turtlebot only respons to twiststamped.
 
+wrote code for node that transforms twist to twiststamped on cmdvel, but it crashes
+
+change nav2.launch.py to use the new params file in the params dir

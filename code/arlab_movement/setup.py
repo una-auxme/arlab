@@ -33,7 +33,8 @@ setup(
         "console_scripts": ["dummy = arlab_movement.dummy:main",
             "arlab_movement_test = arlab_movement.arlab_movement_test:main",
             "arlab_movement_orchestrator = arlab_movement.arlab_movement_orchestrator:main",
-            "navigation_stack_manager = arlab_movement.navigation_stack_manager:main"
+            "navigation_stack_manager = arlab_movement.navigation_stack_manager:main",
+            "twist_to_twiststamped_converter = arlab_movement.twist_to_twiststamped_converter:main"
         ],
     },
 )

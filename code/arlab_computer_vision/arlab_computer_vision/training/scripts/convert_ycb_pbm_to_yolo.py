@@ -1,5 +1,6 @@
 """
-Konvertiert eine YCB-ähnliche Struktur mit JPG-Bildern + PBM-Masken in YOLOv8/11 Segmentation-Format.
+Konvertiert eine YCB-ähnliche Struktur mit JPG-Bildern + PBM-Masken
+in YOLOv8/11 Segmentation-Format.
 
 Ordnerstruktur (Eingabe):
 ycb/
@@ -24,7 +25,9 @@ dataset/
 """
 
 from pathlib import Path
-import argparse, random, math
+import argparse
+import random
+import math
 from collections import defaultdict
 import cv2
 import numpy as np
@@ -116,12 +119,28 @@ def stratified_split(items, labels, train_ratio=0.8, seed=0):
 # ---------- Hauptprogramm ----------
 
 def main():
-    ap = argparse.ArgumentParser(description="JPG + PBM (schwarzes Objekt) → YOLO Segmentation")
-    ap.add_argument("--ycb-root", required=True, type=Path, help="Root-Ordner mit Klassenordnern (wie 001_chips_can/)")
+    ap = argparse.ArgumentParser(
+        description="JPG + PBM (schwarzes Objekt) → YOLO Segmentation"
+    )
+    ap.add_argument(
+        "--ycb-root",
+        required=True,
+        type=Path,
+        help="Root-Ordner mit Klassenordnern (wie 001_chips_can/)",
+    )
     ap.add_argument("--out", required=True, type=Path, help="Zielordner (dataset)")
-    ap.add_argument("--approx", type=float, default=0.002, help="Polygon-Vereinfachung (Anteil Umfang)")
-    ap.add_argument("--min-area", type=int, default=20, help="Minimale Konturfläche in Pixeln")
-    ap.add_argument("--train-ratio", type=float, default=0.8, help="Train/Val-Verhältnis")
+    ap.add_argument(
+        "--approx",
+        type=float,
+        default=0.002,
+        help="Polygon-Vereinfachung (Anteil Umfang)",
+    )
+    ap.add_argument(
+        "--min-area", type=int, default=20, help="Minimale Konturfläche in Pixeln"
+    )
+    ap.add_argument(
+        "--train-ratio", type=float, default=0.8, help="Train/Val-Verhältnis"
+    )
     ap.add_argument("--seed", type=int, default=0, help="Zufallssaat für Split")
     args = ap.parse_args()
 
@@ -147,7 +166,9 @@ def main():
     if not pairs:
         raise SystemExit("Keine Bild/Masken-Paare gefunden (prüfe *_mask.pbm).")
 
-    train_items, val_items = stratified_split(pairs, cls_labels, args.train_ratio, args.seed)
+    train_items, val_items = stratified_split(
+        pairs, cls_labels, args.train_ratio, args.seed
+    )
 
     def process(items, subset):
         for cname, img, msk in items:
@@ -176,7 +197,10 @@ def main():
     ])
     (args.out / "data.yaml").write_text(yaml_text, encoding="utf-8")
 
-    print(f"Fertig. train={len(train_items)} | val={len(val_items)} | total={len(pairs)}")
+    print(
+        f"Fertig. train={len(train_items)} | "
+        f"val={len(val_items)} | total={len(pairs)}"
+    )
     print(f"data.yaml → {args.out/'data.yaml'}")
     print("Klassen (index:name):")
     for i, n in enumerate(classes):

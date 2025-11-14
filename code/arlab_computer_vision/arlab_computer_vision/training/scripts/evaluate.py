@@ -81,7 +81,9 @@ def iter_images(root: Path) -> Iterable[Path]:
             yield path
 
 
-def evaluate_single_image(model: YOLO, image_path: Path, output_path: Path, conf: float = 0.1):
+def evaluate_single_image(
+    model: YOLO, image_path: Path, output_path: Path, conf: float = 0.1
+):
     """Evaluate model on a single image."""
     frame_bgr = cv2.imread(str(image_path))
     if frame_bgr is None:

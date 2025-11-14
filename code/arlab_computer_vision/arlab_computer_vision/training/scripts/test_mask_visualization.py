@@ -20,7 +20,9 @@ mask_path = training_dir / "data/raw/ycb/001_chips_can/masks/NP1_0_mask.pbm"
 if not mask_path.exists():
     # Try alternative locations
     alt_paths = [
-        training_dir / "data/datasets/YCB_at_home24/../raw/ycb/001_chips_can/masks/NP1_0_mask.pbm",
+        training_dir
+        / "data/datasets/YCB_at_home24/../raw/ycb/001_chips_can/masks/"
+        / "NP1_0_mask.pbm",
     ]
     for alt in alt_paths:
         if alt.exists():

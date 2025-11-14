@@ -79,8 +79,9 @@ class KnowledgeVisualization(Node):
     def _set_parameters_callback(self, params: List[Parameter]):
         """Handles parameter updates.
 
-        This callback checks if the update_timer_period parameter has changed. If it has,
-        the existing timer is canceled and a new timer is created with the updated period
+        This callback checks if the update_timer_period parameter has changed.
+        If it has, the existing timer is canceled and a new timer is created with the
+        updated period
 
         Args:
             params (List[Parameter]): List of parameters to update.

@@ -1,5 +1,6 @@
 """Training utilities for YOLO11 models in arlab_computer_vision."""
 
-from .training import train_yolo
+# Training scripts are located in the scripts/ subdirectory
+# Use them directly: python scripts/train.py, python scripts/evaluate.py, etc.
 
-__all__ = ["train_yolo"]
+__all__ = []

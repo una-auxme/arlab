@@ -13,21 +13,22 @@ Maintainers:
     Aleksander Michalak <aleksander1.michalak@uni-a.de>
 """
 
-import numpy as np
-import torch
-import cv2
+import os
 
+import cv2
+import numpy as np
+import rclpy
+import torch
+from arlab_knowledge_interfaces.msg import Entity, EntityType
+from arlab_knowledge_interfaces.srv import AddEntity, DelEntities, GetEntities
 from cv_bridge import CvBridge
+from geometry_msgs.msg import Point, Pose, Quaternion
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.node import Node
 from sensor_msgs.msg import CameraInfo, Image
+from std_msgs.msg import String  # <-- needed for 'name' field in entities
 from ultralytics import YOLO
 from vision_msgs.msg import Point2D
-from geometry_msgs.msg import Pose, Point, Quaternion
-from std_msgs.msg import String  # <-- needed for 'name' field in entities
-
-from arlab_knowledge_interfaces.msg import Entity, EntityType
-from arlab_knowledge_interfaces.srv import AddEntity, DelEntities, GetEntities
 
 
 class ObjectDetection(Node):
@@ -59,26 +60,34 @@ class ObjectDetection(Node):
         """Initialize the node, parameters, subscriptions, and service clients."""
         super().__init__(type(self).__name__)
 
-        # Declare configurable parameters.
-        self.declare_parameter("yolo_weights", "yolo_weights/yolo11n-seg.pt")
-        self.declare_parameter("rgb_topic", "/camera/image_raw")
-        self.declare_parameter(
-            "camera_info_topic",
-            "/camera/aligned_depth_to_color/camera_info",
+        self.debug_mode = True
+
+        default_yolo_weights = os.path.join(
+            "/workspace/src/arlab/code/arlab_computer_vision/yolo_weights",
+            # "yolo11n-seg.pt",
+            # "yolo11n-seg-trained-freiburg.pt",
+            # "yolo11n-seg-trained-atHome24.pt",
+            "yolo11n-seg-Robocup-Home-24-dataset.pt",
         )
+
+        # Declare configurable parameters.
+        self.declare_parameter("yolo_weights", default_yolo_weights)
         self.declare_parameter("visualize", True)
 
         # Load parameters.
         yolo_weights = (
             self.get_parameter("yolo_weights").get_parameter_value().string_value
         )
-        rgb_topic = self.get_parameter("rgb_topic").get_parameter_value().string_value
-        camera_info_topic = (
-            self.get_parameter("camera_info_topic").get_parameter_value().string_value
-        )
         self.visualize = (
             self.get_parameter("visualize").get_parameter_value().bool_value
         )
+
+        # Check if using segmentation model based on filename
+        self.use_segmentation = "-seg.pt" in yolo_weights
+        if self.use_segmentation:
+            self.get_logger().info("Using YOLO segmentation model.")
+        else:
+            self.get_logger().info("Using YOLO detection model.")
 
         # Init CV bridge and YOLO model.
         self.bridge = CvBridge()
@@ -112,13 +121,13 @@ class ObjectDetection(Node):
         # Subscribe to camera info (async; sets intrinsics once available).
         self.create_subscription(
             CameraInfo,
-            camera_info_topic,
+            "camera_info",
             self.camera_info_callback,
             qos_profile=10,
         )
 
         # Subscribe to RGB image stream.
-        self.create_subscription(Image, rgb_topic, self.process_data, 10)
+        self.create_subscription(Image, "camera_color_image", self.process_data, 10)
 
     def camera_info_callback(self, msg: CameraInfo) -> None:
         """Extract camera intrinsics from CameraInfo message.
@@ -126,7 +135,7 @@ class ObjectDetection(Node):
         Args:
             msg: CameraInfo message with intrinsic matrix K.
         """
-        K = np.array(msg.K, dtype=float).reshape(3, 3)
+        K = np.array(msg.k, dtype=float).reshape(3, 3)
         self.camera_intrinsics = {
             "fx": K[0, 0],
             "fy": K[1, 1],
@@ -151,12 +160,12 @@ class ObjectDetection(Node):
 
         self.get_logger().info("Processing image...")
 
-        # Convert ROS image to RGB numpy array.
-        rgb_image_bgr = self.bridge.imgmsg_to_cv2(
+        # Convert ROS image (BGR) to numpy array and then to RGB for YOLO.
+        image_bgr = self.bridge.imgmsg_to_cv2(
             rgb_msg,
             desired_encoding="bgr8",
         )
-        rgb_image = cv2.cvtColor(rgb_image_bgr, cv2.COLOR_BGR2RGB)
+        rgb_image = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
 
         # TODO: Integrate depth image handling if available.
 
@@ -169,8 +178,17 @@ class ObjectDetection(Node):
             result=result,
             class_names=self.model.names,
             frame=rgb_image if self.visualize else None,
+            use_segmentation=self.use_segmentation,
         )
 
+        # Debug: Zeige, wie viele Objekte erkannt wurden
+        detected_labels = [entity["name"].data for entity in entities_cv]
+        self.get_logger().info(
+            f"Detected {len(entities_cv)} objects: {detected_labels}"
+        )
+
+        if self.debug_mode:
+            return
         # Ensure services are available.
         if not self.client_get_entities.wait_for_service(timeout_sec=2.0):
             self.get_logger().error("Service /get_entities not available.")
@@ -219,67 +237,80 @@ def pose_from_point2d(point2d: Point2D) -> Pose:
 
 
 def generate_entities_from_yolo_result(
-    result, class_names, frame: np.ndarray | None = None
+    result,
+    class_names,
+    frame: np.ndarray | None = None,
+    use_segmentation: bool = False,
 ) -> list[dict]:
-    """Convert a YOLO result into a list of entity dicts.
-
-    Builds minimal entities used by this node:
-        - `name` (std_msgs/String)
-        - `pose` (geometry_msgs/Pose from bbox center)
-
-    Args:
-        result: Ultralytics YOLO result for one image.
-        class_names: Mapping from class indices to names (list or dict).
-        rgb_header: Header from the input RGB image (unused here).
-        clock: ROS clock used for timestamps (unused here).
-        frame: Optional RGB frame for visualization overlay.
-
-    Returns:
-        list[dict]: Each dict has keys `name` and `pose`.
-    """
     boxes = getattr(result, "boxes", None)
     if boxes is None or len(boxes) == 0:
         return []
 
-    # Class ids and boxes.
+    xywh_all = boxes.xywh.detach().cpu().numpy()
     class_ids = boxes.cls.detach().cpu().numpy().astype(int)
+    masks = (
+        result.masks.data.cpu().numpy()
+        if use_segmentation and getattr(result, "masks", None) is not None
+        else None
+    )
+
     entities: list[dict] = []
 
     for i in range(len(boxes)):
-        xywh = boxes[i].xywh[0].detach().cpu().tolist()
-        cx, cy, w, h = map(float, xywh)
-
+        cx, cy, w, h = xywh_all[i]
         label = str(class_names[class_ids[i]])
         name_msg = String(data=label)
+        pose_msg = pose_from_point2d(Point2D(x=float(cx), y=float(cy)))
 
-        pose_msg = pose_from_point2d(Point2D(x=cx, y=cy))
+        entities.append({"name": name_msg, "pose": pose_msg})
 
-        entities.append(
-            {
-                "name": name_msg,
-                "pose": pose_msg,
-            }
-        )
+        if frame is None:
+            continue
 
-        # Optional visualization.
-        if frame is not None:
-            x1 = int(cx - w / 2.0)
-            y1 = int(cy - h / 2.0)
-            x2 = int(cx + w / 2.0)
-            y2 = int(cy + h / 2.0)
-            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            cv2.putText(
-                frame,
-                label,
-                (x1, max(0, y1 - 8)),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.6,
-                (0, 255, 0),
-                2,
+        x1 = int(cx - w / 2.0)
+        y1 = int(cy - h / 2.0)
+        x2 = int(cx + w / 2.0)
+        y2 = int(cy + h / 2.0)
+        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+        if masks is not None:
+            mask = masks[i]
+            mask_resized = cv2.resize(
+                mask, (frame.shape[1], frame.shape[0]), interpolation=cv2.INTER_NEAREST
+            )
+            overlay = np.zeros_like(frame)
+            overlay[:] = (0, 255, 0)
+            alpha = 0.4
+            mask_indices = mask_resized > 0.5
+            frame[mask_indices] = cv2.addWeighted(
+                frame[mask_indices], 1 - alpha, overlay[mask_indices], alpha, 0
             )
 
+        cv2.putText(
+            frame,
+            label,
+            (x1, max(0, y1 - 8)),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.6,
+            (0, 255, 0),
+            2,
+        )
+
     if frame is not None:
-        cv2.imshow("YOLO Detections", frame)
+        cv2.imshow("YOLO Detections", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
         cv2.waitKey(1)
 
     return entities
+
+
+def main(args=None):
+    """Entry point for the object_detection node."""
+    rclpy.init(args=args)
+    node = ObjectDetection()
+    rclpy.spin(node)
+    node.destroy_node()
+    rclpy.shutdown()
+
+
+if __name__ == "__main__":
+    main()

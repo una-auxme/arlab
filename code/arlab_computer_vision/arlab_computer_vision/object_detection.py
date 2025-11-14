@@ -14,7 +14,6 @@ Maintainers:
 """
 
 import os
-from re import T
 
 import cv2
 import numpy as np
@@ -182,9 +181,8 @@ class ObjectDetection(Node):
         )
 
         # Debug: Zeige, wie viele Objekte erkannt wurden
-        self.get_logger().info(
-            f"Detected {len(entities_cv)} objects: {[e['name'].data for e in entities_cv]}"
-        )
+        object_names = [e["name"].data for e in entities_cv]
+        self.get_logger().info(f"Detected {len(entities_cv)} objects: {object_names}")
 
         if self.debug_mode:
             return

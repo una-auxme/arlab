@@ -4,7 +4,7 @@ This directory contains all scripts, data, and results related to YOLO model tra
 
 ## Directory Structure
 
-```
+```text
 training/
 ├── scripts/                    # Training and evaluation scripts
 │   ├── train.py               # Main training script
@@ -41,11 +41,13 @@ training/
 ### Training
 
 **`scripts/train.py`**
+
 - Trains a YOLO segmentation model
 - Edit the script to change model, dataset, epochs, etc.
 - Saves best model to `../../yolo_weights/`
 
 Example:
+
 ```bash
 cd training
 python scripts/train.py
@@ -54,20 +56,24 @@ python scripts/train.py
 ### Evaluation
 
 **`scripts/evaluate.py`**
+
 - Evaluates a trained model on images
 - Supports single image or batch mode
 
 Single image (banner):
+
 ```bash
 python scripts/evaluate.py --model yolo11n-seg-YCB --mode single
 ```
 
 Batch evaluation (all test images):
+
 ```bash
 python scripts/evaluate.py --model yolo11n-seg-YCB --mode batch
 ```
 
 With custom image:
+
 ```bash
 python scripts/evaluate.py --model yolo11n-seg-YCB --mode single --image path/to/image.jpg
 ```
@@ -75,9 +81,11 @@ python scripts/evaluate.py --model yolo11n-seg-YCB --mode single --image path/to
 ### Data Conversion
 
 **`scripts/convert_ycb_pbm_to_yolo.py`**
+
 - Converts YCB dataset format (JPG + PBM masks) to YOLO segmentation format
 
 Usage:
+
 ```bash
 python scripts/convert_ycb_pbm_to_yolo.py \
   --ycb-root /path/to/ycb/data \
@@ -95,6 +103,7 @@ python scripts/convert_ycb_pbm_to_yolo.py \
 4. **YCB_converted**: Converted YCB dataset
 
 Each dataset contains:
+
 - `data.yaml`: Dataset configuration
 - `train/`: Training images and labels
 - `val/` or `valid/`: Validation images and labels
@@ -111,6 +120,7 @@ Models are saved to `../../yolo_weights/` after training:
 ## Evaluation Results
 
 Evaluation results are stored in `evaluation/results/<model_name>/`:
+
 - Predictions for each test image
 - Banner prediction images (`*_prediction.png`)
 
@@ -119,4 +129,3 @@ Evaluation results are stored in `evaluation/results/<model_name>/`:
 - Training outputs (metrics, plots, weights) are automatically saved to `runs/segment/` by YOLO
 - Test images are in `evaluation/test_data/`
 - Model weights are stored in `../../yolo_weights/` (parent directory)
-

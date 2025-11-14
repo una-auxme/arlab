@@ -18,5 +18,6 @@
     "Behaviour",
     "behaviours",
     "rclpy"
-  ]
+  ],
+  "files.insertFinalNewline": true
 }

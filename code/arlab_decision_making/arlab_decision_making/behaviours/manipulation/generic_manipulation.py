@@ -61,4 +61,3 @@ class GenericManipulation(RosActionBehaviour):
             key=key,
             result_output_key=result_output_key,
         )
-

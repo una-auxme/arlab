@@ -2,6 +2,19 @@
 # License: BSD
 #   https://raw.githubusercontent.com/splintered-reality/py_trees/devel/LICENSE
 #
+"""Error Selector Composite for Behavior Trees.
+The ErrorSelector is a subclass of Selector with the following modifications:
+
+- It only returns SUCCESS if the first child (Action) returns SUCCESS
+- It always has memory -> Persistently stays in a running error handler
+- The memory is reset if one of the error handlers returns SUCCESS ->
+    Runs the *Action* again in the next tick
+- If all children return FAILURE, it returns FAILURE as usual
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-augsburg.de>
+    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+"""
 
 import itertools
 import typing
@@ -12,6 +25,18 @@ from py_trees.composites import Selector
 
 
 class ErrorSelector(Selector):
+    """Error Selector Composite for Behavior Trees.
+    Args:
+        name (str): Name of the behaviour node.
+        children (typing.List[Behaviour], optional): List of child behaviours.
+            Defaults to None.
+    Attributes:
+        current_child (Behaviour): The currently active child behaviour.
+    Notes:
+        - This class overrides the `tick` method of the Selector to implement
+          the custom success and memory behavior.
+    """
+
     def __init__(self, name: str, children=None):
         super().__init__(name, memory=True, children=children)
 

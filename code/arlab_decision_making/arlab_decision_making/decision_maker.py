@@ -1,3 +1,13 @@
+"""Decision Maker Node orchestrating Behavior Tree for Task Execution
+This node builds and runs a behavior tree to manage high-level decision-making
+and task execution for the robot. It supports the safety check and different
+tasks that can be selected via parameters.
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-augsburg.de>
+    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+"""
+
 import py_trees_ros
 import rclpy
 import rclpy.callback_groups
@@ -11,6 +21,21 @@ from .behaviours.test_trees import test_manipulation_home
 
 
 def get_tree(task: str) -> Behaviour:
+    """Construct the behavior tree based on the selected task.
+
+    Args:
+        task (str): Name of the requested task.
+            Supported tasks:
+            - "task1": Execute Task 1 behavior tree.
+            - "task2": Execute Task 2 behavior tree.
+            - "test_manipulation_home": Execute manipulation home test tree.
+
+    Raises:
+        ValueError: If an unknown task name is provided.
+
+    Returns:
+        Behaviour: Behavior tree root node.
+    """
     task = task.lower()
     if task == "task1":
         chosen_task = task1
@@ -32,7 +57,19 @@ def get_tree(task: str) -> Behaviour:
 
 
 class DecisionMaker(Node):
+    """Decision Maker Node orchestrating Behavior Tree for Task Execution.
+    This node builds and runs a behavior tree to manage high-level decision-making
+    and task execution for the robot. It supports the safety check and different
+    tasks that can be selected via parameters.
+
+    Attributes:
+        update_rate (float): Frequency (Hz) at which the behavior tree is ticked.
+        task (str): Name of the selected task to execute.
+        behavior_tree (py_trees_ros.trees.BehaviourTree): The constructed behavior tree.
+    """
+
     def __init__(self):
+        """Initialize the Decision Maker node and behavior tree."""
         super().__init__(type(self).__name__)
         self.get_logger().info(f"{type(self).__name__} node initializing...")
 
@@ -65,11 +102,16 @@ class DecisionMaker(Node):
             rclpy.callback_groups.MutuallyExclusiveCallbackGroup()
         )
         self.loop_timer = self.create_timer(
-            1.0 / self.update_rate, self.tick_tree_handler
+            1.0 / self.update_rate,
+            self.tick_tree_handler,
+            callback_group=self.timer_callback_group,
         )
         self.get_logger().info(f"{type(self).__name__} node initialized.")
 
     def tick_tree_handler(self):
+        """Timer callback to tick the behavior tree.
+        Handles exceptions during the tick process and logs fatal errors.
+        """
         try:
             self.tick_tree()
         except Exception as e:
@@ -77,9 +119,11 @@ class DecisionMaker(Node):
             # self.get_logger().fatal(emsg_with_trace(e), throttle_duration_sec=2)
 
     def tick_tree(self):
+        """Tick the behavior tree once."""
         self.behavior_tree.tick()
 
     def shutdown(self):
+        """Shutdown the behavior tree and clean up resources."""
         self.behavior_tree.interrupt()
         self.behavior_tree.shutdown()
 

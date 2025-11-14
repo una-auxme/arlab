@@ -3,6 +3,7 @@ Test script for visualizing mask contours.
 
 This is a simple test script. Update the path to point to your YCB dataset.
 """
+
 from pathlib import Path
 
 import cv2
@@ -21,8 +22,7 @@ if not mask_path.exists():
     # Try alternative locations
     alt_paths = [
         training_dir
-        / "data/datasets/YCB_at_home24/../raw/ycb/001_chips_can/masks/"
-        / "NP1_0_mask.pbm",
+        / "data/datasets/YCB_at_home24/../raw/ycb/001_chips_can/masks/NP1_0_mask.pbm",
     ]
     for alt in alt_paths:
         if alt.exists():

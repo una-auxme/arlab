@@ -2,7 +2,8 @@
 
 Provides a wrapper around 'py_tree_ros.action_clients.FromBlackboard' to:
     - configure a ROS2 action client for a given action type and name
-    - write the action result on the py_tree blackboard under the key 'result_output_key'
+    - write the action result on the py_tree blackboard under the key
+        'result_output_key'
 
 Maintainers:
     Peter Viechter <peter.viechter@uni-augsburg.de>

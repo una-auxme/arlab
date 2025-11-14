@@ -24,16 +24,18 @@ dataset/
   data.yaml
 """
 
-from pathlib import Path
 import argparse
-import random
 import math
+import random
+import shutil
 from collections import defaultdict
+from pathlib import Path
+
 import cv2
 import numpy as np
-import shutil
 
 # ---------- Funktionen ----------
+
 
 def load_mask_binary(p: Path, invert="yes"):
     """Liest PBM-Maske und invertiert sie (weil Objekt schwarz, Hintergrund weiß)."""
@@ -110,13 +112,14 @@ def stratified_split(items, labels, train_ratio=0.8, seed=0):
         rng.shuffle(arr)
         n_tr = int(math.floor(len(arr) * train_ratio))
         train += arr[:n_tr]
-        val   += arr[n_tr:]
+        val += arr[n_tr:]
     rng.shuffle(train)
     rng.shuffle(val)
     return train, val
 
 
 # ---------- Hauptprogramm ----------
+
 
 def main():
     ap = argparse.ArgumentParser(
@@ -186,22 +189,23 @@ def main():
             write_yolo_seg(dst_lbl, cnts, w, h, cls_id, args.approx)
 
     process(train_items, "train")
-    process(val_items,   "val")
+    process(val_items, "val")
 
     # data.yaml schreiben
-    yaml_text = "\n".join([
-        f"path: {args.out}",
-        "train: images/train",
-        "val: images/val",
-        "names: [" + ", ".join(classes) + "]"
-    ])
+    yaml_text = "\n".join(
+        [
+            f"path: {args.out}",
+            "train: images/train",
+            "val: images/val",
+            "names: [" + ", ".join(classes) + "]",
+        ]
+    )
     (args.out / "data.yaml").write_text(yaml_text, encoding="utf-8")
 
     print(
-        f"Fertig. train={len(train_items)} | "
-        f"val={len(val_items)} | total={len(pairs)}"
+        f"Fertig. train={len(train_items)} | val={len(val_items)} | total={len(pairs)}"
     )
-    print(f"data.yaml → {args.out/'data.yaml'}")
+    print(f"data.yaml → {args.out / 'data.yaml'}")
     print("Klassen (index:name):")
     for i, n in enumerate(classes):
         print(f"  {i}: {n}")

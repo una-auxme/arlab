@@ -32,7 +32,7 @@ def pointcloud_to_voxel_map(tf_buffer, pointcloud, voxel_size=0.01):
     return voxel_map, min_coords, voxel_size
 
 # Find a placing point using the voxel map
-def find_placing_area(self, voxel_map, bbox, gripper_margin=0.02): #gripper_margin is the extra space for the gripper
+def find_placing_area(self, voxel_map, bbox, gripper_margin=0.02):
     """
     Find a free area in the voxel_map where the object + gripper fits.
     Returns the voxel coordinates (x,y,z) of the bottom-left corner, or [0,0,0] if none.
@@ -55,7 +55,7 @@ def find_placing_area(self, voxel_map, bbox, gripper_margin=0.02): #gripper_marg
                     return [x, y, z]
 
     # fallback
-    self.get_logger().warn("No free area found for object + gripper, defaulting to origin")
+    self.get_logger().warn("No free area found for object + gripper")
     return [0, 0, 0]
 
 # Show Voxel Map

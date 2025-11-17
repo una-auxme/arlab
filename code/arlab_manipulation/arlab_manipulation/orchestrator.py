@@ -17,7 +17,7 @@ from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.action.server import ActionServer, GoalResponse
 import rclpy.duration
 
-from geometry_msgs.msg import Pose, Point, Quaternion, PoseStamped, PointStamped
+from geometry_msgs.msg import Pose, Point, Quaternion
 from std_msgs.msg import Float64, String
 
 import numpy as np
@@ -28,7 +28,7 @@ from arlab_common_interfaces.srv import GrippingParameter
 from arlab_common_interfaces.msg import OrchestratorData, ActionResponse
 from arlab_common_interfaces.action import ManipulationAction
 
-from .transform_utils import transform_data
+from .transform_utils import transform_pose, transform_pointCloud, transform_bBox
 from .voxel_utils import pointcloud_to_voxel_map, find_placing_area, visualize_voxel_map
 
 
@@ -78,6 +78,7 @@ class orchestrator(Node):
 
         # TF2 for transforms
         self.tf_buffer = tf2_ros.Buffer()
+        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
 
         # Requests
         self.req_get_entity = GetEntity.Request()
@@ -161,7 +162,8 @@ class orchestrator(Node):
             self.stamp = entity.stamp
 
             # Transform to base_frame
-            self.pose = transform_data(self.tf_buffer, self.pose, self.ref_frame, self.stamp)
+            self.pose = transform_pose(self.tf_buffer, self.pose, self.stamp,
+                                       self.ref_frame)
 
             # Call GetShape
             self.req_get_shape.entityid = self.entity_id
@@ -190,12 +192,17 @@ class orchestrator(Node):
             )
 
             # Transform to base_frame
-            self.point_cloud = transform_data(self.tf_buffer, self.point_cloud, self.ref_frame, self.stamp)
-            self.bounding_box = transform_data(self.tf_buffer, self.bounding_box, self.ref_frame, self.stamp)
+            if self.point_cloud is not None:
+                self.point_cloud = transform_pointCloud(self.tf_buffer, self.point_cloud,
+                                                        self.stamp,  self.ref_frame)
+            if self.bounding_box is not None:
+                self.bounding_box = transform_bBox(self.tf_buffer, self.bounding_box,
+                                                   self.stamp, self.ref_frame)
 
             # Create VoxelMap
             if self.command_type == "place":
-                voxel_map_result = pointcloud_to_voxel_map(self.tf_buffer, self.point_cloud)
+                voxel_map_result = pointcloud_to_voxel_map(self.tf_buffer,
+                                                           self.point_cloud)
                 if voxel_map_result is not None:
                     self.get_logger().warn("Voxel map creation successful.")
                     self.voxel_map, self.voxel_orig, self.voxel_size = voxel_map_result
@@ -274,7 +281,8 @@ class orchestrator(Node):
 
         elif self.command_type == "place":
             if self.voxel_map is not None:
-                pos_list = find_placing_area(self.tf_buffer, self.voxel_map, self.bounding_box)
+                pos_list = find_placing_area(self.tf_buffer, self.voxel_map,
+                                             self.bounding_box)
                 self.placing_point_pos = Point(
                     x=pos_list[0],
                     y=pos_list[1],
@@ -325,7 +333,6 @@ class orchestrator(Node):
             f"Orient=({goal_pose.orientation}) "
             f"Force={self.force:.1f}N Cmd={self.command_type}"
         )
-
 
 def main(args=None):
     rclpy.init(args=args)

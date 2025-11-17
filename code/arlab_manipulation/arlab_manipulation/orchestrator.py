@@ -17,18 +17,19 @@ from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.action.server import ActionServer, GoalResponse
 import rclpy.duration
 
-from geometry_msgs.msg import Pose, Point
-from geometry_msgs.msg import Quaternion
+from geometry_msgs.msg import Pose, Point, Quaternion, PoseStamped, PointStamped
 from std_msgs.msg import Float64, String
 
 import numpy as np
 import tf2_ros
-import matplotlib.pyplot as plt
 
 from arlab_knowledge_interfaces.srv import GetEntity, GetShape
 from arlab_common_interfaces.srv import GrippingParameter
 from arlab_common_interfaces.msg import OrchestratorData, ActionResponse
 from arlab_common_interfaces.action import ManipulationAction
+
+from .transform_utils import transform_data
+from .voxel_utils import pointcloud_to_voxel_map, find_placing_area, visualize_voxel_map
 
 
 class orchestrator(Node):
@@ -77,7 +78,6 @@ class orchestrator(Node):
 
         # TF2 for transforms
         self.tf_buffer = tf2_ros.Buffer()
-        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
 
         # Requests
         self.req_get_entity = GetEntity.Request()
@@ -158,6 +158,10 @@ class orchestrator(Node):
                 self.object_group = "default"
 
             self.ref_frame = entity.pose_reference_frame
+            self.stamp = entity.stamp
+
+            # Transform to base_frame
+            self.pose = transform_data(self.tf_buffer, self.pose, self.ref_frame, self.stamp)
 
             # Call GetShape
             self.req_get_shape.entityid = self.entity_id
@@ -185,16 +189,19 @@ class orchestrator(Node):
                 else "No boundingbox received."
             )
 
+            # Transform to base_frame
+            self.point_cloud = transform_data(self.tf_buffer, self.point_cloud, self.ref_frame, self.stamp)
+            self.bounding_box = transform_data(self.tf_buffer, self.bounding_box, self.ref_frame, self.stamp)
+
             # Create VoxelMap
             if self.command_type == "place":
-                voxel_map_result = self.pointcloud_to_voxel_map(self.point_cloud)
+                voxel_map_result = pointcloud_to_voxel_map(self.tf_buffer, self.point_cloud)
                 if voxel_map_result is not None:
                     self.get_logger().warn("Voxel map creation successful.")
                     self.voxel_map, self.voxel_orig, self.voxel_size = voxel_map_result
-                    self.visualize_voxel_map(self.voxel_map)
+                    visualize_voxel_map(self.tf_buffer, self.voxel_map)
                 else:
                     self.get_logger().warn("Voxel map creation failed.")
-
 
             # Call GrippingForce
             if self.pickable:
@@ -267,7 +274,7 @@ class orchestrator(Node):
 
         elif self.command_type == "place":
             if self.voxel_map is not None:
-                pos_list = self.find_placing_point(self.voxel_map)
+                pos_list = find_placing_area(self.tf_buffer, self.voxel_map, self.bounding_box)
                 self.placing_point_pos = Point(
                     x=pos_list[0],
                     y=pos_list[1],
@@ -290,60 +297,6 @@ class orchestrator(Node):
         qz = np.sin(angle / 2.0)
         qw = np.cos(angle / 2.0)
         return Quaternion(x=0.0, y=0.0, z=qz, w=qw)
-
-    # Transfer pointcloud into voxel map
-    def pointcloud_to_voxel_map(self, pointcloud, voxel_size=0.01):
-
-        if pointcloud is None or len(pointcloud) == 0:
-            self.get_logger().warn("Empty pointcloud, cannot create voxel map.")
-            return None
-
-        # Move Pointcloud in positive Area
-        min_coords = np.min(pointcloud, axis=0)
-        shifted = pointcloud - min_coords
-
-        # Dimension of Voxelmap
-        dims = np.ceil(np.max(shifted, axis=0) / voxel_size).astype(int)
-        voxel_map = np.zeros(dims, dtype=np.uint8)
-
-        # Calculate Indices
-        indices = np.floor(shifted / voxel_size).astype(int)
-        voxel_map[indices[:,0], indices[:,1], indices[:,2]] = 1
-
-        return voxel_map, min_coords, voxel_size
-
-    # Find a placing point using the voxel map
-    def find_placing_point(self, voxel_map):
-        """
-        Find a free voxel suitable for placing the current object.
-        Returns the voxel coordinates (as list) or [0,0,0] if none available.
-        """
-        free_indices = np.argwhere(voxel_map == 0)
-        if free_indices.size == 0:
-            self.get_logger().warn("No free voxels found, defaulting to origin")
-            return [0.0, 0.0, 0.0]
-
-        # Choose the highest free level (Z) at first
-        highest_voxel = free_indices[np.argmax(free_indices[:, 2])]
-        return highest_voxel.tolist()
-
-    # Show Voxel Map
-    def visualize_voxel_map(self, voxel_map):
-        """
-        Visualizes the voxel map using matplotlib 3D scatter plot.
-        """
-        filled = np.argwhere(voxel_map == 1)
-        if filled.size == 0:
-            print("Voxelmap is empty.")
-            return
-
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        ax.scatter(filled[:,0], filled[:,1], filled[:,2], c='blue', marker='s', s=10)
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
-        ax.set_zlabel('Z')
-        plt.show()
 
     # Publish OrchestratorData
     def publish_goal(self):

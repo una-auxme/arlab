@@ -61,8 +61,6 @@ class ObjectDetection(Node):
         """Initialize the node, parameters, subscriptions, and service clients."""
         super().__init__(type(self).__name__)
 
-        self.debug_mode = True
-
         package_share_dir = get_package_share_directory("arlab_computer_vision")
         default_yolo_weights = os.path.join(
             package_share_dir,
@@ -184,8 +182,6 @@ class ObjectDetection(Node):
         object_names = [e["name"].data for e in entities_cv]
         self.get_logger().info(f"Detected {len(entities_cv)} objects: {object_names}")
 
-        if self.debug_mode:
-            return
         # Ensure services are available.
         if not self.client_get_entities.wait_for_service(timeout_sec=2.0):
             self.get_logger().error("Service /get_entities not available.")

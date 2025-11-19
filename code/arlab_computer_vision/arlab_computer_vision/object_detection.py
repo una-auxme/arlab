@@ -59,8 +59,6 @@ class ObjectDetection(Node):
     def __init__(self) -> None:
         """Initialize the node, parameters, subscriptions, and service clients."""
         super().__init__(type(self).__name__)
-
-        package_share_dir = get_package_share_directory("arlab_computer_vision")
         default_yolo_weights = os.path.join(
             "/workspace/src/arlab/code/arlab_computer_vision/yolo_weights",
             # "yolo11n-seg.pt",

@@ -290,7 +290,8 @@ class DatabaseServiceTester(Node):
         req.data.description = "Updated Pickable"
         req.data.pose = utils.create_pose3()
         req.data.pose_reference_frame = "map"
-        req.data.pickable.picking_tag = EntityPickable.TAG_MILK
+        req.data.pickable.object_name = EntityPickable.OBJECT_NAME_MILK
+        req.data.pickable.object_category = EntityPickable.OBJECT_CATEGORY_CUBE
         req.data.stamp = self.create_stamp()
         await self.generic_test_update_entity(req)
 

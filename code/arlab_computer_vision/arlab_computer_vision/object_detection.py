@@ -13,10 +13,13 @@ Maintainers:
     Aleksander Michalak <aleksander1.michalak@uni-a.de>
 """
 
+import os
+
 import cv2
 import numpy as np
 import rclpy
 import torch
+from ament_index_python.packages import get_package_share_directory
 from arlab_knowledge_interfaces.msg import Entity, EntityType
 from arlab_knowledge_interfaces.srv import AddEntity, DelEntities, GetEntities
 from cv_bridge import CvBridge
@@ -58,26 +61,31 @@ class ObjectDetection(Node):
         """Initialize the node, parameters, subscriptions, and service clients."""
         super().__init__(type(self).__name__)
 
-        # Declare configurable parameters.
-        self.declare_parameter("yolo_weights", "yolo_weights/yolo11n-seg.pt")
-        self.declare_parameter("rgb_topic", "/camera/image_raw")
-        self.declare_parameter(
-            "camera_info_topic",
-            "/camera/aligned_depth_to_color/camera_info",
+        package_share_dir = get_package_share_directory("arlab_computer_vision")
+        default_yolo_weights = os.path.join(
+            package_share_dir,
+            "yolo_weights",
+            "yolo11n-seg.pt",  # 'yolo11n-trained.pt' for detection model
         )
+
+        # Declare configurable parameters.
+        self.declare_parameter("yolo_weights", default_yolo_weights)
         self.declare_parameter("visualize", True)
 
         # Load parameters.
         yolo_weights = (
             self.get_parameter("yolo_weights").get_parameter_value().string_value
         )
-        rgb_topic = self.get_parameter("rgb_topic").get_parameter_value().string_value
-        camera_info_topic = (
-            self.get_parameter("camera_info_topic").get_parameter_value().string_value
-        )
         self.visualize = (
             self.get_parameter("visualize").get_parameter_value().bool_value
         )
+
+        # Check if using segmentation model based on filename
+        self.use_segmentation = "-seg.pt" in yolo_weights
+        if self.use_segmentation:
+            self.get_logger().info("Using YOLO segmentation model.")
+        else:
+            self.get_logger().info("Using YOLO detection model.")
 
         # Init CV bridge and YOLO model.
         self.bridge = CvBridge()
@@ -111,13 +119,13 @@ class ObjectDetection(Node):
         # Subscribe to camera info (async; sets intrinsics once available).
         self.create_subscription(
             CameraInfo,
-            camera_info_topic,
+            "camera_info",
             self.camera_info_callback,
             qos_profile=10,
         )
 
         # Subscribe to RGB image stream.
-        self.create_subscription(Image, rgb_topic, self.process_data, 10)
+        self.create_subscription(Image, "camera_color_image", self.process_data, 10)
 
     def camera_info_callback(self, msg: CameraInfo) -> None:
         """Extract camera intrinsics from CameraInfo message.
@@ -125,7 +133,7 @@ class ObjectDetection(Node):
         Args:
             msg: CameraInfo message with intrinsic matrix K.
         """
-        K = np.array(msg.K, dtype=float).reshape(3, 3)
+        K = np.array(msg.k, dtype=float).reshape(3, 3)
         self.camera_intrinsics = {
             "fx": K[0, 0],
             "fy": K[1, 1],
@@ -153,11 +161,10 @@ class ObjectDetection(Node):
         self.get_logger().info("Processing image...")
 
         # Convert ROS image to RGB numpy array.
-        rgb_image_bgr = self.bridge.imgmsg_to_cv2(
+        rgb_image = self.bridge.imgmsg_to_cv2(
             rgb_msg,
             desired_encoding="bgr8",
         )
-        rgb_image = cv2.cvtColor(rgb_image_bgr, cv2.COLOR_BGR2RGB)
 
         # TODO: Integrate depth image handling if available.
 
@@ -170,7 +177,12 @@ class ObjectDetection(Node):
             result=result,
             class_names=self.model.names,
             frame=rgb_image if self.visualize else None,
+            use_segmentation=self.use_segmentation,
         )
+
+        # Debug: Zeige, wie viele Objekte erkannt wurden
+        object_names = [e["name"].data for e in entities_cv]
+        self.get_logger().info(f"Detected {len(entities_cv)} objects: {object_names}")
 
         # Ensure services are available.
         if not self.client_get_entities.wait_for_service(timeout_sec=2.0):
@@ -220,7 +232,7 @@ def pose_from_point2d(point2d: Point2D) -> Pose:
 
 
 def generate_entities_from_yolo_result(
-    result, class_names, frame: np.ndarray | None = None
+    result, class_names, frame: np.ndarray | None = None, use_segmentation: bool = False
 ) -> list[dict]:
     """Convert a YOLO result into a list of entity dicts.
 
@@ -231,9 +243,8 @@ def generate_entities_from_yolo_result(
     Args:
         result: Ultralytics YOLO result for one image.
         class_names: Mapping from class indices to names (list or dict).
-        rgb_header: Header from the input RGB image (unused here).
-        clock: ROS clock used for timestamps (unused here).
         frame: Optional RGB frame for visualization overlay.
+        use_segmentation: Whether the model is a segmentation model.
 
     Returns:
         list[dict]: Each dict has keys `name` and `pose`.
@@ -242,18 +253,23 @@ def generate_entities_from_yolo_result(
     if boxes is None or len(boxes) == 0:
         return []
 
-    # Class ids and boxes.
-    class_ids = boxes.cls.detach().cpu().numpy().astype(int)
+    # Get all boxes at once - works for both detection and segmentation
+    xywh_all = boxes.xywh.detach().cpu().numpy()  # Shape: [N, 4]
+    class_ids = boxes.cls.detach().cpu().numpy().astype(int)  # Shape: [N]
     entities: list[dict] = []
 
+    # For segmentation models, we can optionally access masks
+    masks = None
+    if use_segmentation:
+        masks = getattr(result, "masks", None)
+
     for i in range(len(boxes)):
-        xywh = boxes[i].xywh[0].detach().cpu().tolist()
-        cx, cy, w, h = map(float, xywh)
+        cx, cy, w, h = xywh_all[i]
 
         label = str(class_names[class_ids[i]])
         name_msg = String(data=label)
 
-        pose_msg = pose_from_point2d(Point2D(x=cx, y=cy))
+        pose_msg = pose_from_point2d(Point2D(x=float(cx), y=float(cy)))
 
         entities.append(
             {
@@ -269,6 +285,12 @@ def generate_entities_from_yolo_result(
             x2 = int(cx + w / 2.0)
             y2 = int(cy + h / 2.0)
             cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+            # For segmentation, optionally draw mask overlay
+            if use_segmentation and masks is not None:
+                # Masks can be accessed via masks.data[i] if needed in the future
+                pass
+
             cv2.putText(
                 frame,
                 label,
@@ -287,12 +309,11 @@ def generate_entities_from_yolo_result(
 
 
 def main(args=None):
+    """Entry point for the object_detection node."""
     rclpy.init(args=args)
-
-    Object_Detection_node = ObjectDetection()
-
-    rclpy.spin(Object_Detection_node)
-
+    node = ObjectDetection()
+    rclpy.spin(node)
+    node.destroy_node()
     rclpy.shutdown()
 
 

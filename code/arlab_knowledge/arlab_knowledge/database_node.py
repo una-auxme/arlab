@@ -10,10 +10,13 @@ Maintainers:
 import asyncio
 import os
 from contextlib import asynccontextmanager
+from typing import List
 
 import rclpy
 import sqlalchemy
 from arlab_asyncio_executor.executors import AsyncIOExecutor
+from arlab_common.exceptions import emsg_with_trace
+from arlab_common.parameters import update_attributes
 from arlab_knowledge_interfaces.msg import Result
 from arlab_knowledge_interfaces.srv import (
     AddEntity,
@@ -35,10 +38,11 @@ from arlab_knowledge_interfaces.srv import (
 )
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.node import Node
+from rclpy.parameter import Parameter
 from sqlalchemy import and_, delete, desc, or_, select
 from sqlalchemy.exc import DBAPIError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, with_polymorphic
 
 import arlab_knowledge.db.entities as entities
 import arlab_knowledge.db.status as status
@@ -77,6 +81,8 @@ class DatabaseNode(Node):
 
     def __init__(self):
         super().__init__(type(self).__name__)
+        self.get_logger().info(f"{type(self).__name__} node initializing...")
+
         database_host = os.getenv("KNOWLEDGE_BASE_POSTGRES_HOST")
         database_name = os.getenv("KNOWLEDGE_BASE_POSTGRES_DB")
         database_user = os.getenv("KNOWLEDGE_BASE_POSTGRES_USER")
@@ -103,12 +109,26 @@ class DatabaseNode(Node):
             database=database_name,
         )
 
-        self.db_engine = create_async_engine(self.db_url, echo=True)
+        self.echo = (
+            self.declare_parameter("echo", False).get_parameter_value().bool_value
+        )
+        self.add_on_set_parameters_callback(self._set_parameters_callback)
+        self.db_engine = create_async_engine(self.db_url, echo=self.echo)
         self.db_sessionmaker = async_sessionmaker(
             self.db_engine, expire_on_commit=False
         )
 
         self.reentrant_callback_group = ReentrantCallbackGroup()
+
+        self.get_logger().info(f"{type(self).__name__} node initialized.")
+
+    def _set_parameters_callback(self, params: List[Parameter]):
+        """Callback for parameter updates."""
+        old_echo = self.echo
+        result = update_attributes(self, params)
+        if old_echo != self.echo:
+            self.db_engine.echo = self.echo
+        return result
 
     async def async_init(self):
         """Async init function
@@ -285,14 +305,25 @@ class DatabaseNode(Node):
         except DBAPIError as e:
             response.result.error = str(e)
             response.result.result_type = Result.ERROR_DBAPI
+            self.get_logger().error(
+                f"Error in database service: \n{emsg_with_trace(e)}",
+                throttle_duration_sec=2,
+            )
         except SQLAlchemyError as e:
             response.result.error = str(e)
             response.result.result_type = Result.ERROR_SQL
+            self.get_logger().error(
+                f"Error in database service: \n{emsg_with_trace(e)}",
+                throttle_duration_sec=2,
+            )
         if (
             response.result.result_type == Result.ERROR_ID_NOT_FOUND
             and not response.result.error
         ):
             response.result.error = "Id not found"
+            self.get_logger().info(
+                "Client tried to access non-existing id", throttle_duration_sec=2
+            )
 
     async def get_entities_callback(
         self, request: GetEntities.Request, response: GetEntities.Response
@@ -374,7 +405,12 @@ class DatabaseNode(Node):
             response: Response object to populate with result/error data
         """
         async with self.Session(response) as session:
-            entity = await session.get(Entity, request.entityid)
+            # Make sure to join ALL subclasses here
+            # otherwise the to_ros_msg call will fail
+            alias_class = with_polymorphic(Entity, "*")
+            stmt = select(alias_class).where(Entity.id == request.entityid)
+            result = await session.execute(stmt)
+            entity = result.scalar_one_or_none()
             if entity is None:
                 response.result.result_type = Result.ERROR_ID_NOT_FOUND
                 return response
@@ -900,7 +936,7 @@ def main(args=None):
     executor = AsyncIOExecutor(async_init=database_node.async_init())
     executor.add_node(database_node)
 
-    database_node.get_logger().info("Beginning database_node, shut down with CTRL-C")
+    database_node.get_logger().info("Spinning database_node, shut down with CTRL-C...")
     executor.spin()
 
 

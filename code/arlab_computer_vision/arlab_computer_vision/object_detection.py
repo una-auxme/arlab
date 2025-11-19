@@ -60,8 +60,7 @@ class ObjectDetection(Node):
         """Initialize the node, parameters, subscriptions, and service clients."""
         super().__init__(type(self).__name__)
 
-        self.debug_mode = True
-
+        package_share_dir = get_package_share_directory("arlab_computer_vision")
         default_yolo_weights = os.path.join(
             "/workspace/src/arlab/code/arlab_computer_vision/yolo_weights",
             # "yolo11n-seg.pt",
@@ -155,8 +154,10 @@ class ObjectDetection(Node):
             - Depth handling is currently a TODO.
             - Uses async service calls for KB operations.
         """
-        if self.camera_intrinsics is None:
-            return
+
+        # comment in for real camera usage
+        # if self.camera_intrinsics is None:
+        #     return
 
         self.get_logger().info("Processing image...")
 
@@ -187,8 +188,6 @@ class ObjectDetection(Node):
             f"Detected {len(entities_cv)} objects: {detected_labels}"
         )
 
-        if self.debug_mode:
-            return
         # Ensure services are available.
         if not self.client_get_entities.wait_for_service(timeout_sec=2.0):
             self.get_logger().error("Service /get_entities not available.")

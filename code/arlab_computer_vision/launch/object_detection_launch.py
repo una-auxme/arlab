@@ -15,8 +15,8 @@ def generate_launch_description():
     """Generate a ROS2 launch description for the object detection node.
 
     Returns:
-        LaunchDescription: LaunchDescription object containing
-            the object_detection node.
+        LaunchDescription: LaunchDescription object containing the
+            object_detection node.
     """
     ld = LaunchDescription()
 

@@ -1,10 +1,10 @@
+import cv2
 import numpy as np
 import rclpy
+from cv_bridge import CvBridge
 from rclpy.node import Node
 from sensor_msgs.msg import Image
-from cv_bridge import CvBridge
 from std_msgs.msg import Header
-import cv2
 
 
 class VideoPublisher(Node):
@@ -24,7 +24,7 @@ class VideoPublisher(Node):
             return
 
         # Timer ruft `timer_callback` alle 0.033 Sekunden auf (ca. 30 FPS)
-        self.timer = self.create_timer(1.0 / 30.0, self.timer_callback)
+        self.timer = self.create_timer(1.0, self.timer_callback)
         self.get_logger().info("VideoPublisher gestartet")
         # self.timer_callback()
 

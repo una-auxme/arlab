@@ -47,7 +47,7 @@ class orchestrator(Node):
         self._action_server = ActionServer(
             self,
             ManipulationAction,
-            '/manipulation_action',
+            '/manipulation/action',
             execute_callback=self.execute_callback,
             goal_callback=self.goal_callback,
             callback_group=MutuallyExclusiveCallbackGroup()
@@ -112,7 +112,7 @@ class orchestrator(Node):
         return GoalResponse.ACCEPT
 
     # Action Execute Callback
-    def execute_callback(self, goal_handle):
+    async def execute_callback(self, goal_handle):
         """Execute the manipulation command action."""
         goal_command = goal_handle.request.command
         self.command_type = goal_command.command_type
@@ -130,7 +130,7 @@ class orchestrator(Node):
         # Prepare Action Result
         result = ManipulationAction.Result()
         result.response = ActionResponse()
-        result.response.message = "Goal accepted and processing"
+        result.response.message = "Goal accepted and processing" #done, error
 
         goal_handle.succeed()
         return result

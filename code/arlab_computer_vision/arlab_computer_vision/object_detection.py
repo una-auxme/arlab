@@ -209,6 +209,7 @@ class ObjectDetection(Node):
                 pose=entity_cv["pose"],
                 pose_reference_frame=rgb_msg.header.frame_id,
                 stamp=self.get_clock().now().to_msg(),
+                reference_frame="camera_link",
             )
             add_resp = await self.client_add_entities.call_async(add_entity_req)
             self.get_logger().info(f"AddEntity response received: {add_resp}")

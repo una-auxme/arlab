@@ -153,8 +153,10 @@ class ObjectDetection(Node):
             - Depth handling is currently a TODO.
             - Uses async service calls for KB operations.
         """
-        if self.camera_intrinsics is None:
-            return
+
+        # comment in for real camera usage
+        # if self.camera_intrinsics is None:
+        #     return
 
         self.get_logger().info("Processing image...")
 

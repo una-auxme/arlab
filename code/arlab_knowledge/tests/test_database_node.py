@@ -245,7 +245,7 @@ class DatabaseServiceTester(Node):
         req.entityid = self.cupboard_id
         req.data.entity_type.id = EntityType.CUPBOARD
         req.data.description = "Updated Cupboard"
-        req.data.pose = utils.create_pose2()
+        req.data.pose = utils.create_pose3()
         req.data.pose_reference_frame = "map"
         req.data.furniture.cupboard.height = 2.0
         req.data.furniture.cupboard.width = 0.7
@@ -268,7 +268,7 @@ class DatabaseServiceTester(Node):
         req.entityid = self.furniture_id
         req.data.entity_type.id = EntityType.FURNITURE
         req.data.description = "Updated Furniture"
-        req.data.pose = utils.create_pose2()
+        req.data.pose = utils.create_pose4()
         req.data.pose_reference_frame = "map"
         req.data.stamp = self.create_stamp()
         await self.generic_test_update_entity(req)
@@ -278,7 +278,7 @@ class DatabaseServiceTester(Node):
         req.entityid = self.human_id
         req.data.entity_type.id = EntityType.HUMAN
         req.data.description = "Updated Human"
-        req.data.pose = utils.create_pose2()
+        req.data.pose = utils.create_pose()
         req.data.pose_reference_frame = "map"
         req.data.stamp = self.create_stamp()
         await self.generic_test_update_entity(req)
@@ -288,7 +288,7 @@ class DatabaseServiceTester(Node):
         req.entityid = self.pickable_id
         req.data.entity_type.id = EntityType.PICKABLE
         req.data.description = "Updated Pickable"
-        req.data.pose = utils.create_pose2()
+        req.data.pose = utils.create_pose3()
         req.data.pose_reference_frame = "map"
         req.data.pickable.object_name = EntityPickable.OBJECT_NAME_MILK
         req.data.pickable.object_category = EntityPickable.OBJECT_CATEGORY_CUBE
@@ -321,7 +321,7 @@ class DatabaseServiceTester(Node):
     async def test_update_pose(self):
         req = UpdPose.Request()
         req.entityid = self.entity_id
-        req.pose = utils.create_pose2()
+        req.pose = utils.create_pose()
         req.pose_reference_frame = "map"
         req.stamp = self.create_stamp()
         res = await self.call_service(UpdPose, f"{self.prefix}/upd_pose", req)

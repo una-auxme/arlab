@@ -2,40 +2,44 @@
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist, TwistStamped
-from std_msgs.msg import Header
 
-class TwistConverter(Node):
+class FixedConverter(Node):
     def __init__(self):
-        super().__init__('twist_converter')
+        super().__init__('fixed_converter')
         
-        # Subscribe to Twist messages from Nav2
+        # Use absolute topic names with leading slash
+        input_topic = '/cmd_vel'
+        output_topic = '/cmd_vel'
+        
+        self.get_logger().info(f"Subscribing to: {input_topic}")
+        self.get_logger().info(f"Publishing to: {output_topic}")
+        
         self.subscription = self.create_subscription(
             Twist,
-            '/cmd_vel',  # From Nav2
+            input_topic,
             self.twist_callback,
             10)
         
-        # Publish TwistStamped messages for the bridge
         self.publisher = self.create_publisher(
             TwistStamped,
-            '/cmd_vel_stamped',  # Same topic - we'll handle the conflict
+            output_topic,
             10)
         
-        self.get_logger().info('Twist converter started')
+        self.get_logger().info('Fixed converter started successfully!')
         
     def twist_callback(self, msg):
-        # Convert Twist to TwistStamped
+        self.get_logger().info('Received Twist, converting to TwistStamped')
         stamped_msg = TwistStamped()
         stamped_msg.header.stamp = self.get_clock().now().to_msg()
-        stamped_msg.header.frame_id = 'base_link'  # Important for the bridge
-        stamped_msg.twist = msg  # Copy the twist data
+        stamped_msg.header.frame_id = 'base_link'
+        stamped_msg.twist = msg
         
         self.publisher.publish(stamped_msg)
-        self.get_logger().info('Converted Twist to TwistStamped')
+        self.get_logger().info('Published TwistStamped')
 
 def main():
     rclpy.init()
-    node = TwistConverter()
+    node = FixedConverter()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:

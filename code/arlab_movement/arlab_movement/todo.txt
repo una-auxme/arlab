@@ -1,5 +1,7 @@
-nav2 publishes twist to cmdvel, but turtlebot only respons to twiststamped.
+need to get gazebo bridge to listen to cmd_vel_stamped, instead of cmd_vel 
 
-wrote code for node that transforms twist to twiststamped on cmdvel, but it crashes
+OR manage to get the twist converter to publish to /cmd_vel
 
-change nav2.launch.py to use the new params file in the params dir
+the issue is in that the bridge expects TwistStamped, but nav2 only publishes twist
+
+maybe also try to make nav2 publish TwistStamped

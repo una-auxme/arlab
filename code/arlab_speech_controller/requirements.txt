@@ -1,0 +1,6 @@
+PyAudio==0.2.14
+
+# For TTS:
+moshi==0.2.11
+sphn
+sounddevice

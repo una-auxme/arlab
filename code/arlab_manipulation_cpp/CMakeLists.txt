@@ -24,6 +24,7 @@ ament_target_dependencies(
   Manipulation_CPP
   moveit_ros_planning_interface
   rclcpp
+  rclcpp_action
   geometry_msgs
   std_msgs
   arlab_common_interfaces

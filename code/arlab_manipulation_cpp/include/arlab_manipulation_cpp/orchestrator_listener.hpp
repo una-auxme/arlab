@@ -1,23 +1,36 @@
 #pragma once
 #include <rclcpp/rclcpp.hpp>
+#include <rclcpp_action/rclcpp_action.hpp>
 #include "arlab_common_interfaces/msg/orchestrator_data.hpp"
+#include "arlab_common_interfaces/action/orchestrator_action.hpp"
 
-class JobRunner;
+//class JobRunner;
 
-class OrchestratorListener : public rclcpp::Node {
+class OrchestratorActionServer : public rclcpp::Node {
 public:
-  explicit OrchestratorListener(const rclcpp::NodeOptions& options = rclcpp::NodeOptions());
+
+  using OrchestratorAction = arlab_common_interfaces::action::OrchestratorAction;
+  using GoalHandleOrchestrator = rclcpp_action::ServerGoalHandle<OrchestratorAction>;
+
+  explicit OrchestratorActionServer(const rclcpp::NodeOptions& options = rclcpp::NodeOptions());
 
   void init();
-  
+
+
 private:
 
-  void onMsg(const arlab_common_interfaces::msg::OrchestratorData::SharedPtr msg);
+  // Action-Server Callbacks
+  rclcpp_action::GoalResponse handleGoal(const rclcpp_action::GoalUUID & uuid,std::shared_ptr<const OrchestratorAction::Goal> goal);
+  rclcpp_action::CancelResponse handleCancel(const std::shared_ptr<GoalHandleOrchestrator> goal_handle);
+  void handleAccepted(const std::shared_ptr<GoalHandleOrchestrator> goal_handle);
+  void execute(const std::shared_ptr<GoalHandleOrchestrator> goal_handle);
 
-  rclcpp::Subscription<arlab_common_interfaces::msg::OrchestratorData>::SharedPtr sub_;
+  // Action-Server
+  rclcpp_action::Server<OrchestratorAction>::SharedPtr action_server_;
 
   // Owned capabilities
   std::unique_ptr<class ArmMotion> arm_;
   std::unique_ptr<class HandMotion> hand_;
-  std::unique_ptr<JobRunner> runner_;
+  std::unique_ptr<class JobRunner> runner_;
+
 };

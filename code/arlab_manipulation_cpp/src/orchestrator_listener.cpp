@@ -4,40 +4,114 @@
 #include "arlab_manipulation_cpp/job_runner.hpp"
 
 #include <geometry_msgs/msg/pose.hpp>
+#include <thread>
 
-OrchestratorListener::OrchestratorListener(const rclcpp::NodeOptions& options)
-: rclcpp::Node("OrchestratorListener", options)
+OrchestratorActionServer::OrchestratorActionServer(const rclcpp::NodeOptions& options)
+: rclcpp::Node("OrchestratorActionServer", options)
 {
 
 }
 
-void OrchestratorListener::init()
+void OrchestratorActionServer::init()
 {
   // Capabilities initialisieren
   arm_  = std::make_unique<ArmMotion>(shared_from_this(), "ur_manipulator");
   hand_ = std::make_unique<HandMotion>(*this);
   runner_ = std::make_unique<JobRunner>(*this, *arm_, *hand_);
 
-  // Subscriber
-  sub_ = create_subscription<arlab_common_interfaces::msg::OrchestratorData>(
-      "/orchestrator_data", rclcpp::QoS(10),
-      std::bind(&OrchestratorListener::onMsg, this, std::placeholders::_1));
+  using std::placeholders::_1;
+  using std::placeholders::_2;
 
-  RCLCPP_INFO(get_logger(), "--- OrchestratorListener initialized ---");
+  // ---- Action-Server ----
+  action_server_ = rclcpp_action::create_server<OrchestratorAction>(
+    shared_from_this(),
+    "/orchestrator_action",
+    std::bind(&OrchestratorListener::handle_goal, this, _1, _2),
+    std::bind(&OrchestratorListener::handle_cancel, this, _1),
+    std::bind(&OrchestratorListener::handle_accepted, this, _1));
+
+
+  RCLCPP_INFO(get_logger(), "--- OrchestratorActionServer initialized ---");
 }
 
-void OrchestratorListener::onMsg(
-    const arlab_common_interfaces::msg::OrchestratorData::SharedPtr msg)
+// void OrchestratorActionServer::onMsg(
+//     const arlab_common_interfaces::msg::OrchestratorData::SharedPtr msg)
+// {
+//   RCLCPP_INFO(get_logger(), "orchestrator_data received (cmd=%s)", msg->cmd.data.c_str());
+//   runner_->run(*msg);
+// }
+
+// Gets called when a new Goal is received from a client
+rclcpp_action::GoalResponse OrchestratorActionServer::handleGoal(
+  const rclcpp_action::GoalUUID &,
+  std::shared_ptr<const OrchestratorAction::Goal> goal)
 {
-  RCLCPP_INFO(get_logger(), "orchestrator_data received (cmd=%s)", msg->cmd.data.c_str());
-  runner_->run(*msg);
+
+  RCLCPP_INFO(get_logger(), "OrchestratorAction Goal received (cmd=%s)", goal->cmd.c_str());
+
+  if (goal->cmd.empty()) {
+    RCLCPP_WARN(get_logger(), "OrchestratorAction Goal has empty cmd, rejecting.");
+    return rclcpp_action::GoalResponse::REJECT;
+  }
+
+  return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
 }
 
-// main
+// Gets called when a Cancel-Request is received from a client
+rclcpp_action::CancelResponse OrchestratorActionServer::handleCancel(
+  const std::shared_ptr<GoalHandleOrchestrator> goal_handle)
+{
+  RCLCPP_INFO(get_logger(), "Cancel-Request erhalten");
+  RCLCPP_INFO(get_logger(), "Canceling not supported, rejecting.");
+
+  return rclcpp_action::CancelResponse::REJECT;
+}
+
+// Gets called when a Goal was accepted
+void OrchestratorActionServer::handleAccepted(
+  const std::shared_ptr<GoalHandleOrchestrator> goal_handle)
+{
+  // Job execution starts in its own threat to not block callbacks
+  std::thread{std::bind(&OrchestratorActionServer::execute, this, goal_handle)}.detach();
+}
+
+void OrchestratorActionServer::execute(
+  const std::shared_ptr<GoalHandleOrchestrator> goal_handle)
+{
+  RCLCPP_INFO(get_logger(), "Start JobRunner execution");
+
+  const auto goal = goal_handle->get_goal();
+  const auto & data_msg = goal->job;
+
+  try {
+
+    runner_->run(data_msg);
+
+  } catch (const std::exception & e) {
+
+    RCLCPP_ERROR(get_logger(), "JobRunner exception: %s", e.what());
+
+    auto result = std::make_shared<OrchestratorAction::Result>();
+    result->success = false;
+    result->message = "Error during job execution";
+    goal_handle->abort(result);
+
+    return;
+
+  }
+
+  auto result = std::make_shared<OrchestratorAction::Result>();
+  result->success = true;
+  result->message = "Job completed";
+  goal_handle->succeed(result);
+
+  RCLCPP_INFO(get_logger(), "JobRunner done, Result send back to Client");
+}
+
 int main(int argc, char** argv)
 {
   rclcpp::init(argc, argv);
-  auto node = std::make_shared<OrchestratorListener>();
+  auto node = std::make_shared<OrchestratorActionServer>();
   node->init();
   rclcpp::spin(node);
   rclcpp::shutdown();

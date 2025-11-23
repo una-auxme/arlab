@@ -94,7 +94,7 @@ void OrchestratorActionServer::execute(
 
     auto result = std::make_shared<OrchestratorAction::Result>();
     //result->success = false;
-    result->response.message = "Error during job execution";
+    result->response.message = "error";
     goal_handle->abort(result);
 
     return;
@@ -103,7 +103,7 @@ void OrchestratorActionServer::execute(
 
   auto result = std::make_shared<OrchestratorAction::Result>();
   //result->success = true;
-  result->response.message = "Job completed";
+  result->response.message = "done";
   goal_handle->succeed(result);
 
   RCLCPP_INFO(get_logger(), "JobRunner done, Result send back to Client");

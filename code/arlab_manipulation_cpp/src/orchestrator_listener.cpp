@@ -26,9 +26,9 @@ void OrchestratorActionServer::init()
   action_server_ = rclcpp_action::create_server<OrchestratorAction>(
     shared_from_this(),
     "/orchestrator_action",
-    std::bind(&OrchestratorListener::handle_goal, this, _1, _2),
-    std::bind(&OrchestratorListener::handle_cancel, this, _1),
-    std::bind(&OrchestratorListener::handle_accepted, this, _1));
+    std::bind(&OrchestratorActionServer::handleGoal, this, _1, _2),
+    std::bind(&OrchestratorActionServer::handleCancel, this, _1),
+    std::bind(&OrchestratorActionServer::handleAccepted, this, _1));
 
 
   RCLCPP_INFO(get_logger(), "--- OrchestratorActionServer initialized ---");
@@ -47,9 +47,10 @@ rclcpp_action::GoalResponse OrchestratorActionServer::handleGoal(
   std::shared_ptr<const OrchestratorAction::Goal> goal)
 {
 
-  RCLCPP_INFO(get_logger(), "OrchestratorAction Goal received (cmd=%s)", goal->cmd.c_str());
+  const auto & data_msg = goal->data;
+  RCLCPP_INFO(get_logger(), "OrchestratorAction Goal received (cmd=%s)", data_msg.cmd.data.c_str());
 
-  if (goal->cmd.empty()) {
+  if (data_msg.cmd.data.empty()) {
     RCLCPP_WARN(get_logger(), "OrchestratorAction Goal has empty cmd, rejecting.");
     return rclcpp_action::GoalResponse::REJECT;
   }
@@ -59,7 +60,7 @@ rclcpp_action::GoalResponse OrchestratorActionServer::handleGoal(
 
 // Gets called when a Cancel-Request is received from a client
 rclcpp_action::CancelResponse OrchestratorActionServer::handleCancel(
-  const std::shared_ptr<GoalHandleOrchestrator> goal_handle)
+  std::shared_ptr<GoalHandleOrchestrator> goal_handle)
 {
   RCLCPP_INFO(get_logger(), "Cancel-Request erhalten");
   RCLCPP_INFO(get_logger(), "Canceling not supported, rejecting.");
@@ -81,7 +82,7 @@ void OrchestratorActionServer::execute(
   RCLCPP_INFO(get_logger(), "Start JobRunner execution");
 
   const auto goal = goal_handle->get_goal();
-  const auto & data_msg = goal->job;
+  const auto & data_msg = goal->data;
 
   try {
 
@@ -92,8 +93,8 @@ void OrchestratorActionServer::execute(
     RCLCPP_ERROR(get_logger(), "JobRunner exception: %s", e.what());
 
     auto result = std::make_shared<OrchestratorAction::Result>();
-    result->success = false;
-    result->message = "Error during job execution";
+    //result->success = false;
+    result->response.message = "Error during job execution";
     goal_handle->abort(result);
 
     return;
@@ -101,8 +102,8 @@ void OrchestratorActionServer::execute(
   }
 
   auto result = std::make_shared<OrchestratorAction::Result>();
-  result->success = true;
-  result->message = "Job completed";
+  //result->success = true;
+  result->response.message = "Job completed";
   goal_handle->succeed(result);
 
   RCLCPP_INFO(get_logger(), "JobRunner done, Result send back to Client");

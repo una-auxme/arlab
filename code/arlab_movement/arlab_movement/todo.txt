@@ -4,4 +4,4 @@ OR manage to get the twist converter to publish to /cmd_vel
 
 the issue is in that the bridge expects TwistStamped, but nav2 only publishes twist
 
-maybe also try to make nav2 publish TwistStamped
+maybe also try to make nav2 publish TwistStamped <- doesnt work, Twist is hardcoded into Nav2

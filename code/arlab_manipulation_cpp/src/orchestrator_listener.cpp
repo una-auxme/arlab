@@ -25,7 +25,7 @@ void OrchestratorActionServer::init()
   // ---- Action-Server ----
   action_server_ = rclcpp_action::create_server<OrchestratorAction>(
     shared_from_this(),
-    "/orchestrator_action",
+    "/orchestrator/action",
     std::bind(&OrchestratorActionServer::handleGoal, this, _1, _2),
     std::bind(&OrchestratorActionServer::handleCancel, this, _1),
     std::bind(&OrchestratorActionServer::handleAccepted, this, _1));

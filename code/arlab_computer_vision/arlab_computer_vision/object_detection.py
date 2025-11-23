@@ -150,7 +150,7 @@ class ObjectDetection(Node):
         # if self.camera_intrinsics is None:
         #     return
 
-        self.get_logger().info("Processing image...")
+        #self.get_logger().info("Processing image...")
 
         # Convert ROS image to RGB numpy array.
         rgb_image_bgr = self.bridge.imgmsg_to_cv2(
@@ -174,13 +174,13 @@ class ObjectDetection(Node):
 
         # Ensure services are available.
         if not self.client_get_entities.wait_for_service(timeout_sec=2.0):
-            self.get_logger().error("Service /get_entities not available.")
+            #self.get_logger().error("Service /get_entities not available.")
             return
         if not self.client_add_entities.wait_for_service(timeout_sec=2.0):
-            self.get_logger().error("Service /add_entity not available.")
+            #self.get_logger().error("Service /add_entity not available.")
             return
         if not self.client_del_entities.wait_for_service(timeout_sec=2.0):
-            self.get_logger().error("Service /del_entities not available.")
+            #self.get_logger().error("Service /del_entities not available.")
             return
 
         # Retrieve existing entities from KB (optional, currently unused).

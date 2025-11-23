@@ -30,6 +30,7 @@ class SetupManipulationHome(Behaviour):
     def update(self):
         goal = ManipulationAction.Goal()
         goal.command.command_type = ManipulationCommand.COMMAND_HOME
+        goal.command.target_entityid = 1
         self.blackboard.manipulation.home_goal = goal
         return Status.SUCCESS
 

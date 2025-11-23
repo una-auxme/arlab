@@ -13,9 +13,9 @@ Date: 2025-10-22
 
 import rclpy
 from rclpy.node import Node
-from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
 from rclpy.action.server import ActionServer, GoalResponse
-import rclpy.duration
+from rclpy.action.client import ActionClient
 
 from geometry_msgs.msg import Pose, Point, Quaternion
 from std_msgs.msg import Float64, String
@@ -25,8 +25,7 @@ import tf2_ros
 
 from arlab_knowledge_interfaces.srv import GetEntity, GetShape
 from arlab_common_interfaces.srv import GrippingParameter
-from arlab_common_interfaces.msg import OrchestratorData, ActionResponse
-from arlab_common_interfaces.action import ManipulationAction
+from arlab_common_interfaces.action import ManipulationAction, OrchestratorAction
 
 from .transform_utils import transform_pose, transform_pointCloud, transform_bBox
 from .voxel_utils import pointcloud_to_voxel_map, find_placing_area, visualize_voxel_map
@@ -38,22 +37,18 @@ class orchestrator(Node):
     def __init__(self):
         super().__init__("orchestrator")
 
-        # Publisher for OrchestratorData
-        self.data_publisher = self.create_publisher(
-            OrchestratorData, "/orchestrator_data", 10
-        )
+        self._orchestrator_client = ActionClient(self, OrchestratorAction,
+                                                 '/orchestrator/action')
 
-        # Action Server for ManipulationAction
         self._action_server = ActionServer(
             self,
             ManipulationAction,
             '/manipulation/action',
             execute_callback=self.execute_callback,
             goal_callback=self.goal_callback,
-            callback_group=MutuallyExclusiveCallbackGroup()
+            callback_group=ReentrantCallbackGroup()
         )
 
-        # Service clients
         self.service_group = MutuallyExclusiveCallbackGroup()
         prefix = "/arlab/knowledge"
 
@@ -67,91 +62,68 @@ class orchestrator(Node):
             GrippingParameter, "GetGrippingParameter", callback_group=self.service_group
         )
 
-        # Wait for services
-        for client, name in [
-            (self.client_get_entity, "GetEntity"),
-            (self.client_get_shape, "GetShape"),
-            (self.client_gripping_parameter, "GrippingParameter")
-        ]:
-            while not client.wait_for_service(timeout_sec=1.0):
-                self.get_logger().info(f"Waiting for {name} service...")
-
-        # TF2 for transforms
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
 
-        # Requests
-        self.req_get_entity = GetEntity.Request()
-        self.req_get_shape = GetShape.Request()
-        self.req_gripping_parameter = GrippingParameter.Request()
-
-        # Internal state
         self.entity_id = None
         self.command_type = "home"
         self.object_name = "default"
         self.object_group = "default"
         self.pickable = False
         self.ref_frame = "camera_link"
-        self.shape_pointcloud = None
-        self.shape_boundingbox = None
         self.force = 5.0
-        self.gripping_point_pos = Point(x=0.0, y=0.0, z=0.0)
-        self.gripping_point_orient = Quaternion(x=0.0, y=0.0, z=0.0, w=1.0)
-        self.placing_point_pos = Point(x=0.0, y=0.0, z=0.0)
-        self.placing_point_orient = Quaternion(x=0.0, y=0.0, z=0.0, w=1.0)
+        self.gripping_point_pos = Point()
+        self.gripping_point_orient = Quaternion(w=1.0)
+        self.placing_point_pos = Point()
+        self.placing_point_orient = Quaternion(w=1.0)
         self.voxel_map = None
+        self.action_result = None
 
-    # Action Goal Callback
     def goal_callback(self, goal_request):
         self.get_logger().info(
-            (
             f"Data from Decision Making: cmd={goal_request.command.command_type}, "
             f"entity_id={goal_request.command.target_entityid}"
-            )
         )
         return GoalResponse.ACCEPT
 
-    # Action Execute Callback
-    async def execute_callback(self, goal_handle):
+    def execute_callback(self, goal_handle):
         """Execute the manipulation command action."""
+
+        self.action_result = ManipulationAction.Result()
+        self.goal_handle = goal_handle
+
         goal_command = goal_handle.request.command
         self.command_type = goal_command.command_type
         self.entity_id = goal_command.target_entityid
-        self.target_pose = getattr(goal_command, 'target_pose', None)
+        self.target_pose = getattr(goal_command, "target_pose", None)
 
-        # Call GetShape
-        if self.command_type == "pick" or self.command_type == "place":
+        if self.command_type in ["pick", "place"]:
+            self.req_get_entity = GetEntity.Request()
             self.req_get_entity.entityid = self.entity_id
             future_entity = self.client_get_entity.call_async(self.req_get_entity)
             future_entity.add_done_callback(self.handle_get_entity_response)
         else:
             self.publish_goal()
+            goal_handle.succeed()
+            return self.action_result
 
-        # Prepare Action Result
-        result = ManipulationAction.Result()
-        result.response = ActionResponse()
-        result.response.message = "Goal accepted and processing" #done, error
+        return self.action_result
 
-        goal_handle.succeed()
-        return result
-
-    # GetEntity Response
     def handle_get_entity_response(self, future):
         try:
             response = future.result()
             entity = response.data
             self.get_logger().info(
-            (
-                f"Entity info received from knowledgebase: "
-                f"name={entity.pickable.picking_tag}, "
-                # f"group={entity.pickable.category}, "
-                f"pose={entity.pose}"
+                (
+                    f"Entity info received: name={entity.pickable.picking_tag},\n"
+                    f"pose={entity.pose}"
+                )
             )
-)
-            if 2 == entity.entity_type.PICKABLE: #entity.entity_type.id instead of 2
+
+            if entity.entity_type.PICKABLE == 2:
                 self.pickable = True
-                self.object_name = "bottle" # entity.pickable.picking_tag
-                self.object_group = "fruits" # entity.pickable.category
+                self.object_name = entity.pickable.picking_tag
+                self.object_group = entity.pickable.category
                 self.pose = entity.pose
             else:
                 self.pickable = False
@@ -161,11 +133,10 @@ class orchestrator(Node):
             self.ref_frame = entity.pose_reference_frame
             self.stamp = entity.stamp
 
-            # Transform to base_frame
             self.pose = transform_pose(self.tf_buffer, self.pose, self.stamp,
                                        self.ref_frame)
 
-            # Call GetShape
+            self.req_get_shape = GetShape.Request()
             self.req_get_shape.entityid = self.entity_id
             future_shape = self.client_get_shape.call_async(self.req_get_shape)
             future_shape.add_done_callback(self.handle_get_shape_response)
@@ -173,140 +144,75 @@ class orchestrator(Node):
         except Exception as e:
             self.get_logger().error(f"GetEntity failed: {e}")
             self.pickable = False
+            self.publish_goal()
 
-    # GetShape Response
     def handle_get_shape_response(self, future):
         try:
             response = future.result()
             shape = response.shape
             self.point_cloud = shape.pointcloud if shape.has_pointcloud else None
-            self.get_logger().info(
-                "Pointcloud received." if self.point_cloud is not None
-                else "No pointcloud received."
-            )
-
             self.bounding_box = shape.boundingbox2d if shape.has_boundingbox2d else None
-            self.get_logger().info(
-                "Boundingbox received." if self.bounding_box is not None
-                else "No boundingbox received."
-            )
 
-            # Transform to base_frame
-            if self.point_cloud is not None:
-                self.point_cloud = transform_pointCloud(self.tf_buffer, self.point_cloud,
-                                                        self.stamp,  self.ref_frame)
-            if self.bounding_box is not None:
-                self.bounding_box = transform_bBox(self.tf_buffer, self.bounding_box,
-                                                   self.stamp, self.ref_frame)
+            if self.point_cloud:
+                self.point_cloud = transform_pointCloud(self.tf_buffer,
+                                                        self.point_cloud,
+                                                        self.stamp,
+                                                        self.ref_frame)
+            if self.bounding_box:
+                self.bounding_box = transform_bBox(self.tf_buffer,
+                                                   self.bounding_box,
+                                                   self.stamp,
+                                                   self.ref_frame)
 
-            # Create VoxelMap
-            if self.command_type == "place":
+            if self.command_type == "place" and self.point_cloud:
                 voxel_map_result = pointcloud_to_voxel_map(self.tf_buffer,
                                                            self.point_cloud)
-                if voxel_map_result is not None:
-                    self.get_logger().warn("Voxel map creation successful.")
+                if voxel_map_result:
                     self.voxel_map, self.voxel_orig, self.voxel_size = voxel_map_result
                     visualize_voxel_map(self.tf_buffer, self.voxel_map)
-                else:
-                    self.get_logger().warn("Voxel map creation failed.")
 
-            # Call GrippingForce
             if self.pickable:
+                self.req_gripping_parameter = GrippingParameter.Request()
                 self.req_gripping_parameter.objectgroup = self.object_group
-                client = self.client_gripping_parameter
-                future_parameter = client.call_async(self.req_gripping_parameter)
-                future_parameter.add_done_callback(self.handle_gripping_parameter_response)
+                future_param = self.client_gripping_parameter.call_async(
+                    self.req_gripping_parameter)
+                future_param.add_done_callback(self.handle_gripping_parameter_response)
             else:
-                self.get_logger().warn(
-                    (
-                        f"Entity '{self.object_name}' not pickable. "
-                        "Skipping gripping force."
-                    )
-                )
                 self.force = 0.0
                 self.compute_goal_pose()
 
         except Exception as e:
             self.get_logger().error(f"GetShape failed: {e}")
+            self.compute_goal_pose()
 
-    # GrippingForce Response
     def handle_gripping_parameter_response(self, future):
         try:
             response = future.result()
-            self.grip_force = response.gripforce
+            self.force = response.gripforce
             self.grip_pos_mode = response.grippos_mode
             self.grip_orient_mode = response.griporient_mode
-            self.get_logger().info(
-                (
-                    f"Gripping parameter received for '{self.object_group}': "
-                    f"Gripping force = {self.grip_force}N, "
-                    f"Gripping position mode = {self.grip_pos_mode}, "
-                    f"Gripping orientation mode = {self.grip_orient_mode}"
-                )
-            )
         except Exception as e:
             self.get_logger().error(f"GetGrippingParameter failed: {e}")
             self.force = 5.0
 
-        # Call Compute Goal Pose
         self.compute_goal_pose()
 
-    # Compute Goal Pose
     def compute_goal_pose(self):
-
         if self.command_type == "pick":
-            # Compute position
-            if self.grip_pos_mode == 0: # gripping in the middle of the object
-                self.gripping_point_pos = self.pose.position
-            elif self.grip_pos_mode == 1: # thickest/thinnest place
-                # TODO: implement logic in future
-                pass
-            elif self.grip_pos_mode == 1: # center of gravity
-                # TODO: implement logic in future
-                pass
-
-            # Compute orientation
-            if self.grip_orient_mode == 0: # dont calculate orientation
-                self.gripping_point_orient = Quaternion(x=0.0, y=0.0, z=0.0, w=1.0)
-            elif self.grip_orient_mode == 1: # calculate orientation from bounding box
-                if self.bounding_box:
-                    self.gripping_point_orient = self.compute_orient(self.bounding_box)
-                else:
-                    self.gripping_point_orient = Quaternion(x=0.0, y=0.0, z=0.0, w=1.0)
-            elif self.grip_orient_mode == 2: # calculate orientation from pointcloud
-                # TODO: implement logic in future
-                pass
-
-            self.publish_goal()
-
+            self.gripping_point_pos = self.pose.position
+            self.gripping_point_orient = Quaternion(w=1.0)
         elif self.command_type == "place":
-            if self.voxel_map is not None:
-                pos_list = find_placing_area(self.tf_buffer, self.voxel_map,
+            if self.voxel_map:
+                pos_list = find_placing_area(self.tf_buffer,
+                                             self.voxel_map,
                                              self.bounding_box)
-                self.placing_point_pos = Point(
-                    x=pos_list[0],
-                    y=pos_list[1],
-                    z=pos_list[2]
-                    )
-            else:
-                self.get_logger().warn("Voxel map not available, using default.")
-                self.placing_point_pos = Point(x=0.0, y=0.0, z=0.0)
-
+                self.placing_point_pos = Point(x=pos_list[0],
+                                               y=pos_list[1],
+                                               z=pos_list[2])
             self.placing_point_orient = self.gripping_point_orient
-            self.publish_goal()
 
-    # Determine angle from bounding box dimensions
-    def compute_orient(self, bbox):
-        if bbox.size_x >= bbox.size_y:
-            angle = 0.0             # horizontal bbox
-        else:
-            angle = np.pi / 2       # vertical bbox
+        self.publish_goal()
 
-        qz = np.sin(angle / 2.0)
-        qw = np.cos(angle / 2.0)
-        return Quaternion(x=0.0, y=0.0, z=qz, w=qw)
-
-    # Publish OrchestratorData
     def publish_goal(self):
         if self.command_type == "pick":
             goal_pose = Pose()
@@ -319,20 +225,48 @@ class orchestrator(Node):
         else:
             goal_pose = self.target_pose or Pose()
 
-        msg = OrchestratorData()
-        msg.pose = goal_pose
-        msg.grip_force = Float64()
-        msg.grip_force.data = self.force
-        msg.cmd = String()
-        msg.cmd.data = self.command_type
+        msg = OrchestratorAction.Goal()
+        msg.data.pose = goal_pose
+        msg.data.grip_force = Float64(data=self.force)
+        msg.data.cmd = String(data=self.command_type)
 
-        self.data_publisher.publish(msg)
+        if not self._orchestrator_client.wait_for_server(timeout_sec=5.0):
+            self.get_logger().error("OrchestratorAction server not available")
+            return
 
-        self.get_logger().info(
-            f"Published gripper goal: Pos=({goal_pose.position}) "
-            f"Orient=({goal_pose.orientation}) "
-            f"Force={self.force:.1f}N Cmd={self.command_type}"
-        )
+        send_future = self._orchestrator_client.send_goal_async(msg)
+        send_future.add_done_callback(self.handle_orchestrator_response)
+
+    def handle_orchestrator_response(self, future):
+        try:
+            goal_handle = future.result()
+            if not goal_handle.accepted:
+                self.get_logger().error("Orchestrator goal rejected")
+                self.finish_action("failed")
+                return
+            self.get_logger().info("Orchestrator goal accepted")
+            result_future = goal_handle.get_result_async()
+            result_future.add_done_callback(self.handle_orchestrator_result)
+        except Exception as e:
+            self.get_logger().error(f"Failed to send orchestrator goal: {e}")
+            self.finish_action("failed")
+
+    def handle_orchestrator_result(self, future):
+        try:
+            result = future.result().result
+            self.get_logger().info(
+                f"Orchestrator action completed: "
+                f"{result.response.message}"
+            )
+            self.finish_action(result.response.message)
+        except Exception as e:
+            self.get_logger().error(f"Orchestrator action failed: {e}")
+            self.finish_action("failed")
+
+    def finish_action(self, message: str):
+        self.action_result.response.message = message
+        self.goal_handle.succeed()
+
 
 def main(args=None):
     rclpy.init(args=args)

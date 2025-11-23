@@ -47,7 +47,7 @@ def generate_launch_description():
     #)
 
     # Service node for providing gripping force recommendations
-    GetGrippingForce = Node(
+    GetParameter = Node(
         package="arlab_manipulation",
         executable="parameter_service",
     )
@@ -56,9 +56,9 @@ def generate_launch_description():
     Orchestrator = Node(package="arlab_manipulation", executable="orchestrator")
 
     # C++ subscriber node for orchestrator data (for MoveIt or robot control)
-    Manipulation_CPP = Node(
-        package="arlab_manipulation_cpp", executable="Manipulation_CPP"
-    )
+    # Manipulation_CPP = Node(
+    #     package="arlab_manipulation_cpp", executable="Manipulation_CPP"
+    # )
 
     # Video node from perception
     #Perception = Node(package="arlab_perception", executable="video_node")
@@ -67,15 +67,15 @@ def generate_launch_description():
     KnowledgeBase = Node(package="arlab_knowledge", executable="database_node")
 
     # Video node from perception
-    CompVision = Node(package="arlab_computer_vision", executable="object_detection")
+    # CompVision = Node(package="arlab_computer_vision", executable="object_detection")
 
     # Add nodes to the launch description
     #ld.add_action(sim_include)
-    ld.add_action(GetGrippingForce)
+    ld.add_action(GetParameter)
     ld.add_action(Orchestrator)
-    ld.add_action(Manipulation_CPP)
+    # ld.add_action(Manipulation_CPP)
     #ld.add_action(Perception)
     ld.add_action(KnowledgeBase)
-    ld.add_action(CompVision)
+    # ld.add_action(CompVision)
 
     return ld

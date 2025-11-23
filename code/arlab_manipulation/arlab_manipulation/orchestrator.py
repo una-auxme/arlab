@@ -79,6 +79,7 @@ class orchestrator(Node):
         self.voxel_map = None
         self.action_result = None
 
+    # Accept Goal from ManipulationAction
     def goal_callback(self, goal_request):
         self.get_logger().info(
             f"Data from Decision Making: cmd={goal_request.command.command_type}, "
@@ -86,6 +87,7 @@ class orchestrator(Node):
         )
         return GoalResponse.ACCEPT
 
+    # Get data from ManipulationAction
     def execute_callback(self, goal_handle):
         """Execute the manipulation command action."""
 
@@ -103,10 +105,11 @@ class orchestrator(Node):
             future_entity = self.client_get_entity.call_async(self.req_get_entity)
             future_entity.add_done_callback(self.handle_get_entity_response)
         else:
-            self.publish_goal()
+            self.send_goal()
 
         return self.action_result
 
+    # GetEntity Response
     def handle_get_entity_response(self, future):
         try:
             response = future.result()
@@ -142,8 +145,9 @@ class orchestrator(Node):
         except Exception as e:
             self.get_logger().error(f"GetEntity failed: {e}")
             self.pickable = False
-            self.publish_goal()
+            self.send_goal()
 
+    # GetShape Response
     def handle_get_shape_response(self, future):
         try:
             response = future.result()
@@ -183,6 +187,7 @@ class orchestrator(Node):
             self.get_logger().error(f"GetShape failed: {e}")
             self.compute_goal_pose()
 
+    # GetGrippingParameter Response
     def handle_gripping_parameter_response(self, future):
         try:
             response = future.result()
@@ -196,6 +201,7 @@ class orchestrator(Node):
 
         self.compute_goal_pose()
 
+    # Compute Goal Pose for MoveIt Node
     def compute_goal_pose(self):
         if self.command_type == "pick":
             self.gripping_point_pos = self.pose.position
@@ -210,9 +216,10 @@ class orchestrator(Node):
                                                z=pos_list[2])
             self.placing_point_orient = self.gripping_point_orient
 
-        self.publish_goal()
+        self.send_goal()
 
-    def publish_goal(self):
+    # Publish Goal Pose with ActionClient
+    def send_goal(self):
         if self.command_type == "pick":
             goal_pose = Pose()
             goal_pose.position = self.gripping_point_pos
@@ -237,7 +244,7 @@ class orchestrator(Node):
         send_future = self._orchestrator_client.send_goal_async(msg)
         send_future.add_done_callback(self.handle_orchestrator_response)
 
-
+    # OrchestratorAction Response
     def handle_orchestrator_response(self, future):
         try:
             self.goal_handle_orchestrator = future.result()
@@ -252,7 +259,7 @@ class orchestrator(Node):
             self.get_logger().error(f"Failed to send orchestrator goal: {e}")
             self.finish_action("failed", success=False)
 
-
+    # OrchestratorAction Result
     def handle_orchestrator_result(self, future):
         try:
             msg = future.result().result.response.message
@@ -263,18 +270,17 @@ class orchestrator(Node):
             self.get_logger().error(f"Orchestrator action failed: {e}")
             self.finish_action(message="failed", success=False)
 
-
+    # Finish ManipulationAction --> send Result
     def finish_action(self, message: str, success: bool):
         if not self.goal_handle_desisionmaker.is_active:
             return
 
-        self.action_result.response.message = message
+        self.action_result.resonse.message = message
         if success:
             self.goal_handle_desisionmaker.succeed()
         else:
             self.goal_handle_desisionmaker.abort()
         self.goal_handle_desisionmaker.set_result(self.action_result)
-
 
 
 def main(args=None):
@@ -283,7 +289,6 @@ def main(args=None):
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()
-
 
 if __name__ == "__main__":
     main()

@@ -34,8 +34,7 @@ setup(
     entry_points={
         "console_scripts": [
             "orchestrator = arlab_manipulation.orchestrator:main",
-            "parameter_service = arlab_manipulation.parameter_service:main",
-            "test = arlab_manipulation.test:main",
+            "gripping_parameter = arlab_manipulation.gripping_parameter:main",
         ],
     },
 )

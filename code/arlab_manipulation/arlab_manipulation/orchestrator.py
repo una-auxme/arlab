@@ -90,12 +90,12 @@ class orchestrator(Node):
         """Execute the manipulation command action."""
 
         self.action_result = ManipulationAction.Result()
-        self.goal_handle = goal_handle
+        self.goal_handle_desisionmaker = goal_handle
 
-        goal_command = goal_handle.request.command
-        self.command_type = goal_command.command_type
-        self.entity_id = goal_command.target_entityid
-        self.target_pose = getattr(goal_command, "target_pose", None)
+        goal_command_desisionmaker = self.goal_handle_desisionmaker.request.command
+        self.command_type = goal_command_desisionmaker.command_type
+        self.entity_id = goal_command_desisionmaker.target_entityid
+        self.target_pose = getattr(goal_command_desisionmaker, "target_pose", None)
 
         if self.command_type in ["pick", "place"]:
             self.req_get_entity = GetEntity.Request()
@@ -104,8 +104,6 @@ class orchestrator(Node):
             future_entity.add_done_callback(self.handle_get_entity_response)
         else:
             self.publish_goal()
-            goal_handle.succeed()
-            return self.action_result
 
         return self.action_result
 
@@ -194,6 +192,7 @@ class orchestrator(Node):
         except Exception as e:
             self.get_logger().error(f"GetGrippingParameter failed: {e}")
             self.force = 5.0
+            self.grip_pos_mode = self.grip_orient_mode = 0
 
         self.compute_goal_pose()
 
@@ -232,40 +231,50 @@ class orchestrator(Node):
 
         if not self._orchestrator_client.wait_for_server(timeout_sec=5.0):
             self.get_logger().error("OrchestratorAction server not available")
+            self.finish_action("failed", success=False)
             return
 
         send_future = self._orchestrator_client.send_goal_async(msg)
         send_future.add_done_callback(self.handle_orchestrator_response)
 
+
     def handle_orchestrator_response(self, future):
         try:
-            goal_handle = future.result()
-            if not goal_handle.accepted:
+            self.goal_handle_orchestrator = future.result()
+            if not self.goal_handle_orchestrator.accepted:
                 self.get_logger().error("Orchestrator goal rejected")
-                self.finish_action("failed")
-                return
+                return self.finish_action("failed", success=False)
+
             self.get_logger().info("Orchestrator goal accepted")
-            result_future = goal_handle.get_result_async()
-            result_future.add_done_callback(self.handle_orchestrator_result)
+            self.goal_handle_orchestrator.get_result_async().add_done_callback(self.handle_orchestrator_result)
+
         except Exception as e:
             self.get_logger().error(f"Failed to send orchestrator goal: {e}")
-            self.finish_action("failed")
+            self.finish_action("failed", success=False)
+
 
     def handle_orchestrator_result(self, future):
         try:
-            result = future.result().result
-            self.get_logger().info(
-                f"Orchestrator action completed: "
-                f"{result.response.message}"
-            )
-            self.finish_action(result.response.message)
+            msg = future.result().result.response.message
+            self.get_logger().info(f"Orchestrator action completed: {msg}")
+            self.finish_action(message=msg, success=True)
+
         except Exception as e:
             self.get_logger().error(f"Orchestrator action failed: {e}")
-            self.finish_action("failed")
+            self.finish_action(message="failed", success=False)
 
-    def finish_action(self, message: str):
+
+    def finish_action(self, message: str, success: bool):
+        if not self.goal_handle_desisionmaker.is_active:
+            return
+
         self.action_result.response.message = message
-        self.goal_handle.succeed()
+        if success:
+            self.goal_handle_desisionmaker.succeed()
+        else:
+            self.goal_handle_desisionmaker.abort()
+        self.goal_handle_desisionmaker.set_result(self.action_result)
+
 
 
 def main(args=None):

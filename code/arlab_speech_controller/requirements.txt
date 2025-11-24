@@ -2,5 +2,6 @@ PyAudio==0.2.14
 
 # For TTS:
 moshi==0.2.11
+git+https://github.com/bitsandbytes-foundation/bitsandbytes.git@0.45.5
 sphn
 sounddevice

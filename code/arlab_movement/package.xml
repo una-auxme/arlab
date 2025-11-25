@@ -11,6 +11,7 @@
 
   <depend>navigation2</depend>
   <depend>nav2_bringup</depend>
+  <depend>nav2_common</depend>
   <depend>nav2_msgs</depend>
   <depend>nav2_amcl</depend>
   <depend>nav2_planner</depend>

@@ -13,8 +13,9 @@ setup(
         ("share/" + package_name, ["package.xml"]),
         ('share/' + package_name + '/launch', ['launch/arlab_movement.launch.py']),
         ('share/' + package_name + '/launch', ['launch/arlab_simulation.launch.py']),
-        ('share/' + package_name + '/launch', ['launch/slam_launch.py']),
-        ('share/' + package_name + '/launch', ['launch/turtlebot3_spawn_launch.py']),
+        ('share/' + package_name + '/launch', ['launch/custom_spawn_turtlebot3.launch.py']),
+        ('share/' + package_name + '/launch', ['launch/nav2.launch.py']),
+        ('share/' + package_name + '/launch', ['launch/slam_async.launch.py']),
         # entries for arlab_simulation
         (os.path.join('share', package_name, 'launch'), glob('launch/*.launch.py')),
         (os.path.join('share', package_name, 'worlds'), glob('worlds/*.sdf')),
@@ -34,8 +35,6 @@ setup(
             "arlab_movement_test = arlab_movement.arlab_movement_test:main",
             "arlab_movement_orchestrator = arlab_movement.arlab_movement_orchestrator:main",
             "navigation_stack_manager = arlab_movement.navigation_stack_manager:main",
-            "twist_to_twiststamped_converter = arlab_movement.twist_to_twiststamped_converter:main",
-            "fixed_converter = arlab_movement.fixed_converter:main",
         ],
     },
 )

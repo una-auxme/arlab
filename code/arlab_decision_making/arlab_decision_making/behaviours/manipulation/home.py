@@ -45,6 +45,6 @@ class CheckManipulationHome(Behaviour):
 
     def update(self):
         result: ManipulationAction.Result = self.blackboard.manipulation.home_result
-        print(result.response.message)
+        # print(result.response.message)
         # TODO: Check message and arm position
-        return Status.SUCCESS
+        return Status.RUNNING

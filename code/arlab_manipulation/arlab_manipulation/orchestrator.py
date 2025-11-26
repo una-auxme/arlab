@@ -55,7 +55,6 @@ class orchestrator(Node):
 
         self.action_done_event = Event()
 
-
         prefix = "/arlab/knowledge"
 
         self.client_get_entity = self.create_client(
@@ -98,12 +97,11 @@ class orchestrator(Node):
         """Execute the manipulation command action."""
 
         self.action_result = ManipulationAction.Result()
-        self.goal_handle_desisionmaker = goal_handle
 
-        goal_command_desisionmaker = self.goal_handle_desisionmaker.request.command
-        self.command_type = goal_command_desisionmaker.command_type
-        self.entity_id = goal_command_desisionmaker.target_entityid
-        self.target_pose = getattr(goal_command_desisionmaker, "target_pose", None)
+        goal_command = goal_handle.request.command
+        self.command_type = goal_command.command_type
+        self.entity_id = goal_command.target_entityid
+        self.target_pose = getattr(goal_command, "target_pose", None)
 
         if self.command_type in ["pick", "place"]:
             self.req_get_entity = GetEntity.Request()
@@ -115,12 +113,16 @@ class orchestrator(Node):
 
         self.action_done_event.wait()
 
-        if not self.goal_handle_desisionmaker.is_active:
+        if not goal_handle.is_active:
             return
 
         self.get_logger().info("Action response send to desicion maker")
-        self.action_result.response.message = self.msg
-        self.goal_handle_desisionmaker.set_result(self.action_result)
+        if self.msg == "done": 
+            self.action_result.response.message = "SUCCESS"
+        else:
+            self.action_result.response.message = "ERROR"
+        
+        goal_handle.succeed()
 
         return self.action_result
 
@@ -263,14 +265,14 @@ class orchestrator(Node):
     # OrchestratorAction Response
     def handle_orchestrator_response(self, future):
         try:
-            self.goal_handle_orchestrator = future.result()
-            if not self.goal_handle_orchestrator.accepted:
+            self.goal_handle = future.result()
+            if not self.goal_handle.accepted:
                 self.get_logger().error("Orchestrator goal rejected")
                 self.msg = "error"
                 self.finish_action()
 
             self.get_logger().info("Orchestrator goal accepted")
-            self.goal_handle_orchestrator.get_result_async().add_done_callback(self.handle_orchestrator_result)
+            self.goal_handle.get_result_async().add_done_callback(self.handle_orchestrator_result)
 
         except Exception as e:
             self.get_logger().error(f"Failed to send orchestrator goal: {e}")

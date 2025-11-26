@@ -119,7 +119,7 @@ class orchestrator(Node):
             return
 
         self.get_logger().info("Action response send to desicion maker")
-        self.action_result.resonse.message = self.msg
+        self.action_result.response.message = self.msg
         self.goal_handle_desisionmaker.set_result(self.action_result)
 
         return self.action_result
@@ -253,6 +253,7 @@ class orchestrator(Node):
 
         if not self._orchestrator_client.wait_for_server(timeout_sec=5.0):
             self.get_logger().error("OrchestratorAction server not available")
+            self.msg = "error"
             self.finish_action()
             return
 
@@ -265,6 +266,7 @@ class orchestrator(Node):
             self.goal_handle_orchestrator = future.result()
             if not self.goal_handle_orchestrator.accepted:
                 self.get_logger().error("Orchestrator goal rejected")
+                self.msg = "error"
                 self.finish_action()
 
             self.get_logger().info("Orchestrator goal accepted")
@@ -272,6 +274,7 @@ class orchestrator(Node):
 
         except Exception as e:
             self.get_logger().error(f"Failed to send orchestrator goal: {e}")
+            self.msg = "error"
             self.finish_action()
 
     # OrchestratorAction Result
@@ -283,6 +286,7 @@ class orchestrator(Node):
 
         except Exception as e:
             self.get_logger().error(f"Orchestrator action failed: {e}")
+            self.msg = "error"
             self.finish_action()
 
     # Finish ManipulationAction --> send Result

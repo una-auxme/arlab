@@ -55,7 +55,7 @@ class orchestrator(Node):
 
         self.action_done_event = Event()
 
-        
+
         prefix = "/arlab/knowledge"
 
         self.client_get_entity = self.create_client(
@@ -291,6 +291,7 @@ class orchestrator(Node):
 
 
 def main(args=None):
+    rclpy.init(args=args)
     executor = rclpy.executors.MultiThreadedExecutor(num_threads=2)
 
     try:

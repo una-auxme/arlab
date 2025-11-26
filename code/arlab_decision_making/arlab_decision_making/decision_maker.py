@@ -50,7 +50,7 @@ def get_tree(task: str) -> Behaviour:
         name="DecisionMaker",
         memory=False,
         children=[
-            check_safety.get_tree(),
+            #check_safety.get_tree(),
             chosen_task.get_tree(),
         ],
     )

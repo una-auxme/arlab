@@ -16,6 +16,7 @@ from rclpy.node import Node
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
 from rclpy.action.server import ActionServer, GoalResponse
 from rclpy.action.client import ActionClient
+import rclpy.executors
 
 from geometry_msgs.msg import Pose, Point, Quaternion
 from std_msgs.msg import Float64, String
@@ -30,15 +31,19 @@ from arlab_common_interfaces.action import ManipulationAction, OrchestratorActio
 from .transform_utils import transform_pose, transform_pointCloud, transform_bBox
 from .voxel_utils import pointcloud_to_voxel_map, find_placing_area, visualize_voxel_map
 
+from time import sleep
+from threading import Event
+
 
 class orchestrator(Node):
     """ROS2 Node for orchestrating robotic manipulation."""
 
     def __init__(self):
         super().__init__("orchestrator")
+        self.service_group = MutuallyExclusiveCallbackGroup()
 
         self._orchestrator_client = ActionClient(self, OrchestratorAction,
-                                                 '/orchestrator/action')
+                                                 '/orchestrator/action', callback_group=self.service_group)
 
         self._action_server = ActionServer(
             self,
@@ -46,10 +51,11 @@ class orchestrator(Node):
             '/manipulation/action',
             execute_callback=self.execute_callback,
             goal_callback=self.goal_callback,
-            callback_group=ReentrantCallbackGroup()
         )
 
-        self.service_group = MutuallyExclusiveCallbackGroup()
+        self.action_done_event = Event()
+
+        
         prefix = "/arlab/knowledge"
 
         self.client_get_entity = self.create_client(
@@ -106,6 +112,15 @@ class orchestrator(Node):
             future_entity.add_done_callback(self.handle_get_entity_response)
         else:
             self.send_goal()
+
+        self.action_done_event.wait()
+
+        if not self.goal_handle_desisionmaker.is_active:
+            return
+
+        self.get_logger().info("Action response send to desicion maker")
+        self.action_result.resonse.message = self.msg
+        self.goal_handle_desisionmaker.set_result(self.action_result)
 
         return self.action_result
 
@@ -238,7 +253,7 @@ class orchestrator(Node):
 
         if not self._orchestrator_client.wait_for_server(timeout_sec=5.0):
             self.get_logger().error("OrchestratorAction server not available")
-            self.finish_action("failed", success=False)
+            self.finish_action()
             return
 
         send_future = self._orchestrator_client.send_goal_async(msg)
@@ -250,45 +265,40 @@ class orchestrator(Node):
             self.goal_handle_orchestrator = future.result()
             if not self.goal_handle_orchestrator.accepted:
                 self.get_logger().error("Orchestrator goal rejected")
-                return self.finish_action("failed", success=False)
+                self.finish_action()
 
             self.get_logger().info("Orchestrator goal accepted")
             self.goal_handle_orchestrator.get_result_async().add_done_callback(self.handle_orchestrator_result)
 
         except Exception as e:
             self.get_logger().error(f"Failed to send orchestrator goal: {e}")
-            self.finish_action("failed", success=False)
+            self.finish_action()
 
     # OrchestratorAction Result
     def handle_orchestrator_result(self, future):
         try:
-            msg = future.result().result.response.message
-            self.get_logger().info(f"Orchestrator action completed: {msg}")
-            self.finish_action(message=msg, success=True)
+            self.msg = future.result().result.response.message
+            self.get_logger().info(f"Orchestrator action completed: {self.msg}")
+            self.finish_action()
 
         except Exception as e:
             self.get_logger().error(f"Orchestrator action failed: {e}")
-            self.finish_action(message="failed", success=False)
+            self.finish_action()
 
     # Finish ManipulationAction --> send Result
-    def finish_action(self, message: str, success: bool):
-        if not self.goal_handle_desisionmaker.is_active:
-            return
-
-        self.action_result.resonse.message = message
-        if success:
-            self.goal_handle_desisionmaker.succeed()
-        else:
-            self.goal_handle_desisionmaker.abort()
-        self.goal_handle_desisionmaker.set_result(self.action_result)
+    def finish_action(self):
+        self.action_done_event.set()
 
 
 def main(args=None):
-    rclpy.init(args=args)
-    node = orchestrator()
-    rclpy.spin(node)
-    node.destroy_node()
-    rclpy.shutdown()
+    executor = rclpy.executors.MultiThreadedExecutor(num_threads=2)
+
+    try:
+        node = orchestrator()
+        executor.add_node(node)
+        executor.spin()
+    except KeyboardInterrupt:
+        pass
 
 if __name__ == "__main__":
     main()

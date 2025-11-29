@@ -95,7 +95,7 @@ void OrchestratorActionServer::execute(
     auto result = std::make_shared<OrchestratorAction::Result>();
     //result->success = false;
     result->response.message = "error";
-    goal_handle->abort(result);
+    goal_handle->succeed(result);
 
     return;
 

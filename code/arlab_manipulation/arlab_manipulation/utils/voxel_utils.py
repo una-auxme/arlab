@@ -10,27 +10,6 @@ Date: 2025-10-22
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Transfer pointcloud into voxel map
-def pointcloud_to_voxel_map(tf_buffer, pointcloud, voxel_size=0.01):
-
-    if pointcloud is None or len(pointcloud) == 0:
-        tf_buffer.get_logger().warn("Empty pointcloud, cannot create voxel map.")
-        return None
-
-    # Move Pointcloud in positive Area
-    min_coords = np.min(pointcloud, axis=0)
-    shifted = pointcloud - min_coords
-
-    # Dimension of Voxelmap
-    dims = np.ceil(np.max(shifted, axis=0) / voxel_size).astype(int)
-    voxel_map = np.zeros(dims, dtype=np.uint8)
-
-    # Calculate Indices
-    indices = np.floor(shifted / voxel_size).astype(int)
-    voxel_map[indices[:,0], indices[:,1], indices[:,2]] = 1
-
-    return voxel_map, min_coords, voxel_size
-
 # Find a placing point using the voxel map
 def find_placing_area(self, voxel_map, bbox, gripper_margin=0.02):
     """

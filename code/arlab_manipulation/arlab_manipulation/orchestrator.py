@@ -28,8 +28,8 @@ from arlab_knowledge_interfaces.srv import GetEntity, GetShape
 from arlab_common_interfaces.srv import GrippingParameter
 from arlab_common_interfaces.action import ManipulationAction, OrchestratorAction
 
-from .transform_utils import transform_pose, transform_pointCloud, transform_bBox
-from .voxel_utils import pointcloud_to_voxel_map, find_placing_area, visualize_voxel_map
+from .utils.transform_utils import transform_pose, transform_pointCloud, transform_bBox
+from .utils.voxel_utils import pointcloud_to_voxel_map, find_placing_area, visualize_voxel_map
 
 from time import sleep
 from threading import Event
@@ -119,7 +119,7 @@ class orchestrator(Node):
             return
 
         self.get_logger().info("Action response send to desicion maker")
-        self.action_result.resonse.message = self.msg
+        self.action_result.response.message = self.msg
         self.goal_handle_desisionmaker.set_result(self.action_result)
 
         return self.action_result

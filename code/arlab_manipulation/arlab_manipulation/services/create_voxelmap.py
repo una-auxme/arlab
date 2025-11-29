@@ -1,11 +1,6 @@
 #!/usr/bin/env python3
 
 """
-GetGrippingParameter.py
----------------------
-
-ROS2 Node 'GetGrippingParameter' providing a service to return recommended gripping
-forces for different objects.
 
 Author: Sofia Öttl
 Date: 2025-08-24
@@ -49,7 +44,7 @@ class create_voxelmap(Node):
         indices = np.floor(shifted / voxel_size).astype(int)
         voxel_map[indices[:,0], indices[:,1], indices[:,2]] = 1
 
-        return voxel_map, min_coords, voxel_size
+        return voxel_map
 
 
 def main(args=None):

@@ -30,18 +30,18 @@ find_package(std_msgs REQUIRED)
 # Add all your interface files here:
 rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GrippingParameter.srv"
-  "msg/OrchestratorData.msg"
+  "src/CreateVoxelmap.srv"
 
+  "msg/OrchestratorData.msg"
   "msg/Destination.msg"
   "msg/ActionResponse.msg"
-
   "msg/MovementCommand.msg"
   "msg/ManipulationCommand.msg"
 
   "action/MovementAction.action"
   "action/ManipulationAction.action"
   "action/OrchestratorAction.action"
-  
+
   DEPENDENCIES
     geometry_msgs
     std_msgs

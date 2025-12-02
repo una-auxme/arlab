@@ -24,16 +24,16 @@ import rclpy
 import torch
 from ament_index_python.packages import get_package_share_directory
 from arlab_asyncio_executor.executors import AsyncIOExecutor
-from arlab_knowledge_interfaces.msg import Entity, EntityType
-from arlab_knowledge_interfaces.srv import AddEntity, DelEntities, GetEntities
+from arlab_knowledge_interfaces.msg import Entity, EntityType, Shape
+from arlab_knowledge_interfaces.srv import AddEntity, DelEntities, GetEntities, UpdShape
 from cv_bridge import CvBridge
 from geometry_msgs.msg import Point, Pose, Quaternion
 from message_filters import ApproximateTimeSynchronizer, Subscriber
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.node import Node
-from sensor_msgs.msg import CameraInfo, Image
+from sensor_msgs.msg import CameraInfo, Image, PointCloud2, PointField
 from sklearn.cluster import DBSCAN
-from std_msgs.msg import String  # <-- needed for 'name' field in entities
+from std_msgs.msg import Header, String  # <-- needed for 'name' field in entities
 from ultralytics import YOLO
 from vision_msgs.msg import Point2D
 
@@ -114,9 +114,16 @@ class ObjectDetection(Node):
         self.sync_tolerance = (
             self.get_parameter("sync_tolerance").get_parameter_value().double_value
         )
-        self.use_clustering = (
-            self.get_parameter("use_clustering").get_parameter_value().bool_value
-        )
+        use_clustering_param = self.get_parameter(
+            "use_clustering"
+        ).get_parameter_value()
+        # Handle both bool and string values (ROS2 parameter parsing issue)
+        if isinstance(use_clustering_param.bool_value, bool):
+            self.use_clustering = use_clustering_param.bool_value
+        else:
+            # Try to parse as string (workaround for ROS2 parameter parsing)
+            param_str = str(use_clustering_param.bool_value).lower()
+            self.use_clustering = param_str in ("true", "1", "yes", "on")
         if self.use_depth and self.use_clustering:
             self.get_logger().info("Depth clustering enabled")
         elif self.use_depth and not self.use_clustering:
@@ -187,6 +194,11 @@ class ObjectDetection(Node):
         self.client_add_entities = self.create_client(
             AddEntity,
             f"{self.prefix}/add_entity",
+            callback_group=self.service_client_group,
+        )
+        self.client_upd_shape = self.create_client(
+            UpdShape,
+            f"{self.prefix}/upd_shape",
             callback_group=self.service_client_group,
         )
 
@@ -1084,6 +1096,8 @@ class ObjectDetection(Node):
                 frame=None,  # Don't visualize during entity conversion
                 use_segmentation=self.use_segmentation,
                 cluster_associations=associations if associations else None,
+                frame_id=rgb_msg.header.frame_id,
+                timestamp=rgb_msg.header.stamp,
             )
             self.get_logger().debug(f"Generated {len(entities_cv)} entities")
 
@@ -1153,10 +1167,44 @@ class ObjectDetection(Node):
                     )
                     tasks.append(self.client_add_entities.call_async(add_entity_req))
                 # Execute all service calls in parallel
-                await asyncio.gather(*tasks)
+                add_responses = await asyncio.gather(*tasks)
                 self.get_logger().debug(
                     f"Added {len(entities_cv)} entities to knowledge base in parallel"
                 )
+
+                # Phase 7: Update entities with point clouds (if available)
+                shape_tasks = []
+                for i, entity_cv in enumerate(entities_cv):
+                    if entity_cv.get("pointcloud") is not None:
+                        # Get entity ID from AddEntity response
+                        entity_id = add_responses[i].entityid
+
+                        # Create Shape message
+                        shape_msg = Shape()
+                        shape_msg.has_pointcloud = True
+                        shape_msg.pointcloud = entity_cv["pointcloud"]
+                        shape_msg.has_boundingbox2d = False
+
+                        # Create update request
+                        upd_shape_req = UpdShape.Request()
+                        upd_shape_req.entityid = entity_id
+                        upd_shape_req.shape = shape_msg
+                        upd_shape_req.stamp = now
+
+                        shape_tasks.append(
+                            self.client_upd_shape.call_async(upd_shape_req)
+                        )
+                        self.get_logger().debug(
+                            f"Updating entity {entity_id} with point cloud "
+                            f"({entity_cv['pointcloud'].width} points)"
+                        )
+
+                # Execute shape updates in parallel
+                if shape_tasks:
+                    await asyncio.gather(*shape_tasks)
+                    self.get_logger().info(
+                        f"Updated {len(shape_tasks)} entities with point clouds"
+                    )
         finally:
             self._processing_frame = False
 
@@ -1284,6 +1332,78 @@ class ObjectDetection(Node):
         return colors[class_id % len(colors)]
 
 
+def numpy_to_pointcloud2(
+    points: np.ndarray,  # Shape: [N, 3] - x, y, z coordinates
+    frame_id: str,
+    timestamp=None,
+) -> PointCloud2:
+    """Convert numpy point cloud array to sensor_msgs/PointCloud2.
+
+    Args:
+        points: numpy array of shape [N, 3] with x, y, z coordinates.
+        frame_id: Reference frame for the point cloud.
+        timestamp: Optional timestamp (builtin_interfaces/Time). If None,
+            uses current time.
+
+    Returns:
+        sensor_msgs/PointCloud2 message.
+    """
+    if len(points) == 0:
+        # Return empty point cloud
+        pc2 = PointCloud2()
+        pc2.header = Header()
+        pc2.header.frame_id = frame_id
+        if timestamp:
+            pc2.header.stamp = timestamp
+        pc2.height = 1
+        pc2.width = 0
+        pc2.fields = [
+            PointField(name="x", offset=0, datatype=PointField.FLOAT32, count=1),
+            PointField(name="y", offset=4, datatype=PointField.FLOAT32, count=1),
+            PointField(name="z", offset=8, datatype=PointField.FLOAT32, count=1),
+        ]
+        pc2.point_step = 12
+        pc2.row_step = 0
+        pc2.data = bytes()
+        pc2.is_bigendian = False
+        pc2.is_dense = True
+        return pc2
+
+    # Create PointCloud2 message
+    pc2 = PointCloud2()
+
+    # Set header
+    pc2.header = Header()
+    pc2.header.frame_id = frame_id
+    if timestamp:
+        pc2.header.stamp = timestamp
+
+    # Set dimensions
+    pc2.height = 1  # Unorganized point cloud
+    pc2.width = len(points)
+
+    # Define point fields (x, y, z)
+    pc2.fields = [
+        PointField(name="x", offset=0, datatype=PointField.FLOAT32, count=1),
+        PointField(name="y", offset=4, datatype=PointField.FLOAT32, count=1),
+        PointField(name="z", offset=8, datatype=PointField.FLOAT32, count=1),
+    ]
+
+    # Set point step (12 bytes: 3 floats * 4 bytes each)
+    pc2.point_step = 12
+    pc2.row_step = pc2.point_step * pc2.width
+
+    # Convert numpy array to bytes
+    points_float32 = points.astype(np.float32)
+    pc2.data = points_float32.tobytes()
+
+    # Set flags
+    pc2.is_bigendian = False
+    pc2.is_dense = True  # Assume no invalid points
+
+    return pc2
+
+
 def pose_from_point2d(point2d: Point2D) -> Pose:
     """Convert a 2D point to a 3D pose with fixed orientation.
 
@@ -1322,6 +1442,8 @@ def generate_entities_from_yolo_result(
     frame: np.ndarray | None = None,
     use_segmentation: bool = False,
     cluster_associations: list[dict[str, Any]] | None = None,
+    frame_id: str | None = None,
+    timestamp=None,
 ) -> list[dict]:
     """Convert a YOLO result into a list of entity dicts.
 
@@ -1329,6 +1451,7 @@ def generate_entities_from_yolo_result(
         - `name` (std_msgs/String)
         - `pose` (geometry_msgs/Pose from cluster centroid if available,
                   otherwise from bbox center)
+        - `pointcloud` (Optional sensor_msgs/PointCloud2 if cluster available)
 
     Args:
         result: Ultralytics YOLO result for one image.
@@ -1339,10 +1462,12 @@ def generate_entities_from_yolo_result(
             _match_clusters_to_detections(). Each dict contains:
             - 'detection_idx': index of YOLO detection
             - 'cluster_idx': index of matched cluster (or None)
-            - 'cluster': matched cluster dict with 'centroid' (or None)
+            - 'cluster': matched cluster dict with 'centroid' and 'points' (or None)
+        frame_id: Optional frame ID for point cloud header.
+        timestamp: Optional timestamp for point cloud header.
 
     Returns:
-        list[dict]: Each dict has keys `name` and `pose`.
+        list[dict]: Each dict has keys `name`, `pose`, and optionally `pointcloud`.
     """
     boxes = getattr(result, "boxes", None)
     if boxes is None or len(boxes) == 0:
@@ -1360,20 +1485,20 @@ def generate_entities_from_yolo_result(
         name_msg = String(data=label)
 
         # Use cluster centroid if available, otherwise fallback to BB center
+        pointcloud = None
         if cluster_associations and i < len(cluster_associations):
             assoc = cluster_associations[i]
             if assoc.get("cluster") is not None:
+                cluster = assoc["cluster"]
                 # Use 3D cluster centroid for pose
-                centroid = assoc["cluster"]["centroid"]  # numpy array [x, y, z]
+                centroid = cluster["centroid"]  # numpy array [x, y, z]
                 pose_msg = pose_from_point3d(centroid)
-                # Log 3D pose for debugging
-                if __debug__:
-                    import logging
 
-                    logger = logging.getLogger("ObjectDetection")
-                    logger.debug(
-                        f"Entity '{label}' using 3D cluster centroid: "
-                        f"({centroid[0]:.3f}, {centroid[1]:.3f}, {centroid[2]:.3f})"
+                # Extract point cloud if available
+                points = cluster.get("points")  # numpy array [N, 3]
+                if points is not None and len(points) > 0 and frame_id:
+                    pointcloud = numpy_to_pointcloud2(
+                        points, frame_id=frame_id, timestamp=timestamp
                     )
             else:
                 # Fallback to 2D bounding box center
@@ -1382,12 +1507,14 @@ def generate_entities_from_yolo_result(
             # No associations available, use 2D bounding box center
             pose_msg = pose_from_point2d(Point2D(x=float(cx), y=float(cy)))
 
-        entities.append(
-            {
-                "name": name_msg,
-                "pose": pose_msg,
-            }
-        )
+        entity_dict: dict[str, Any] = {
+            "name": name_msg,
+            "pose": pose_msg,
+        }
+        if pointcloud is not None:
+            entity_dict["pointcloud"] = pointcloud
+
+        entities.append(entity_dict)
 
     return entities
 

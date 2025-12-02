@@ -1035,30 +1035,7 @@ class ObjectDetection(Node):
                 self.get_logger().error(f"Processing failed: {e}", exc_info=True)
                 return
 
-            # Convert YOLO results to entity dicts.
-            self.get_logger().debug("Converting YOLO results to entities...")
-            entities_cv = generate_entities_from_yolo_result(
-                result=result,
-                class_names=self.model.names,
-                frame=None,  # Don't visualize during entity conversion
-                use_segmentation=self.use_segmentation,
-            )
-            self.get_logger().debug(f"Generated {len(entities_cv)} entities")
-
-            # Visualize separately if needed (non-blocking)
-            if self.visualize and bgr_image_for_viz is not None:
-                self._visualize_detections(bgr_image_for_viz, result, self.model.names)
-
-            # Log detected objects
-            if len(entities_cv) > 0:
-                object_names = [e["name"].data for e in entities_cv]
-                self.get_logger().info(
-                    f"Detected {len(entities_cv)} object(s): {', '.join(object_names)}"
-                )
-            else:
-                self.get_logger().debug("No objects detected in this frame")
-
-            # Phase 5: Match clusters to detections
+            # Phase 5: Match clusters to detections (before entity generation)
             associations = []
             if (
                 depth_msg is not None
@@ -1098,8 +1075,30 @@ class ObjectDetection(Node):
                     "Clustering disabled, skipping cluster-to-detection matching"
                 )
 
-            # Store associations for Phase 6 (3D Pose from Cluster)
-            # For now, entities are still created with BB center pose
+            # Phase 6: Convert YOLO results to entity dicts with cluster associations
+            # Uses cluster centroid for pose if available, otherwise falls back to BB
+            self.get_logger().debug("Converting YOLO results to entities...")
+            entities_cv = generate_entities_from_yolo_result(
+                result=result,
+                class_names=self.model.names,
+                frame=None,  # Don't visualize during entity conversion
+                use_segmentation=self.use_segmentation,
+                cluster_associations=associations if associations else None,
+            )
+            self.get_logger().debug(f"Generated {len(entities_cv)} entities")
+
+            # Visualize separately if needed (non-blocking)
+            if self.visualize and bgr_image_for_viz is not None:
+                self._visualize_detections(bgr_image_for_viz, result, self.model.names)
+
+            # Log detected objects
+            if len(entities_cv) > 0:
+                object_names = [e["name"].data for e in entities_cv]
+                self.get_logger().info(
+                    f"Detected {len(entities_cv)} object(s): {', '.join(object_names)}"
+                )
+            else:
+                self.get_logger().debug("No objects detected in this frame")
 
             # Check if KB services are available (flag set in init/periodic check)
             if not self._kb_services_available:
@@ -1136,10 +1135,18 @@ class ObjectDetection(Node):
                 now = self.get_clock().now().to_msg()
                 tasks = []
                 for entity_cv in entities_cv:
+                    pose = entity_cv["pose"]
+                    # Log pose values for debugging (INFO level to verify Phase 6)
+                    frame_id = rgb_msg.header.frame_id
+                    self.get_logger().info(
+                        f"Adding entity '{entity_cv['name'].data}' with pose: "
+                        f"x={pose.position.x:.3f}, y={pose.position.y:.3f}, "
+                        f"z={pose.position.z:.3f} (ref_frame: {frame_id})"
+                    )
                     add_entity_req = AddEntity.Request()
                     add_entity_req.data = Entity(
                         description=f"Detected: {entity_cv['name'].data}",
-                        pose=entity_cv["pose"],
+                        pose=pose,
                         pose_reference_frame=rgb_msg.header.frame_id,
                         stamp=now,
                         reference_frame="camera_link",
@@ -1292,20 +1299,47 @@ def pose_from_point2d(point2d: Point2D) -> Pose:
     )
 
 
+def pose_from_point3d(point_3d: np.ndarray) -> Pose:
+    """Convert a 3D point (cluster centroid) to a Pose.
+
+    Args:
+        point_3d: numpy array [x, y, z] in camera frame.
+
+    Returns:
+        Pose: Pose with position from centroid and identity orientation.
+    """
+    return Pose(
+        position=Point(
+            x=float(point_3d[0]), y=float(point_3d[1]), z=float(point_3d[2])
+        ),
+        orientation=Quaternion(x=0.0, y=0.0, z=0.0, w=1.0),
+    )
+
+
 def generate_entities_from_yolo_result(
-    result, class_names, frame: np.ndarray | None = None, use_segmentation: bool = False
+    result,
+    class_names,
+    frame: np.ndarray | None = None,
+    use_segmentation: bool = False,
+    cluster_associations: list[dict[str, Any]] | None = None,
 ) -> list[dict]:
     """Convert a YOLO result into a list of entity dicts.
 
     Builds minimal entities used by this node:
         - `name` (std_msgs/String)
-        - `pose` (geometry_msgs/Pose from bbox center)
+        - `pose` (geometry_msgs/Pose from cluster centroid if available,
+                  otherwise from bbox center)
 
     Args:
         result: Ultralytics YOLO result for one image.
         class_names: Mapping from class indices to names (list or dict).
         frame: Optional RGB frame for visualization overlay.
         use_segmentation: Whether the model is a segmentation model.
+        cluster_associations: Optional list of cluster associations from
+            _match_clusters_to_detections(). Each dict contains:
+            - 'detection_idx': index of YOLO detection
+            - 'cluster_idx': index of matched cluster (or None)
+            - 'cluster': matched cluster dict with 'centroid' (or None)
 
     Returns:
         list[dict]: Each dict has keys `name` and `pose`.
@@ -1325,7 +1359,28 @@ def generate_entities_from_yolo_result(
         label = str(class_names[class_ids[i]])
         name_msg = String(data=label)
 
-        pose_msg = pose_from_point2d(Point2D(x=float(cx), y=float(cy)))
+        # Use cluster centroid if available, otherwise fallback to BB center
+        if cluster_associations and i < len(cluster_associations):
+            assoc = cluster_associations[i]
+            if assoc.get("cluster") is not None:
+                # Use 3D cluster centroid for pose
+                centroid = assoc["cluster"]["centroid"]  # numpy array [x, y, z]
+                pose_msg = pose_from_point3d(centroid)
+                # Log 3D pose for debugging
+                if __debug__:
+                    import logging
+
+                    logger = logging.getLogger("ObjectDetection")
+                    logger.debug(
+                        f"Entity '{label}' using 3D cluster centroid: "
+                        f"({centroid[0]:.3f}, {centroid[1]:.3f}, {centroid[2]:.3f})"
+                    )
+            else:
+                # Fallback to 2D bounding box center
+                pose_msg = pose_from_point2d(Point2D(x=float(cx), y=float(cy)))
+        else:
+            # No associations available, use 2D bounding box center
+            pose_msg = pose_from_point2d(Point2D(x=float(cx), y=float(cy)))
 
         entities.append(
             {

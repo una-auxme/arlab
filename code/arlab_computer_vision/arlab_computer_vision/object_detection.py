@@ -164,6 +164,11 @@ class ObjectDetection(Node):
 
         self.camera_intrinsics: dict[str, float] | None = None
         self._camera_intrinsics_set = False
+        # Cached intrinsics values for faster access
+        self._fx: float | None = None
+        self._fy: float | None = None
+        self._cx: float | None = None
+        self._cy: float | None = None
 
         # Service clients.
         self.service_client_group = MutuallyExclusiveCallbackGroup()
@@ -314,7 +319,7 @@ class ObjectDetection(Node):
             rgb_msg: Incoming RGB `sensor_msgs/Image`.
             depth_msg: Optional incoming depth `sensor_msgs/Image`.
         """
-        self.get_logger().info(
+        self.get_logger().debug(
             f"_process_data_sync called: RGB {rgb_msg.width}x{rgb_msg.height}, "
             f"Depth: {'present' if depth_msg is not None else 'missing'}"
         )
@@ -345,6 +350,11 @@ class ObjectDetection(Node):
         if not self._camera_intrinsics_set:
             self.camera_intrinsics = new_intrinsics
             self._camera_intrinsics_set = True
+            # Cache intrinsics values for faster access
+            self._fx = new_intrinsics["fx"]
+            self._fy = new_intrinsics["fy"]
+            self._cx = new_intrinsics["cx"]
+            self._cy = new_intrinsics["cy"]
             self.get_logger().info(
                 f"Camera intrinsics set: {msg.width}x{msg.height}, "
                 f"fx={K[0, 0]:.1f}, fy={K[1, 1]:.1f}"
@@ -352,17 +362,11 @@ class ObjectDetection(Node):
         else:
             # Update silently (intrinsics shouldn't change, but update just in case)
             self.camera_intrinsics = new_intrinsics
-
-    def _depth_image_callback(self, depth_msg: Image) -> None:
-        """Callback for depth image messages.
-
-        Args:
-            depth_msg: Incoming depth `sensor_msgs/Image`.
-        """
-        self.get_logger().debug(
-            f"Received depth image: {depth_msg.width}x{depth_msg.height}, "
-            f"encoding: {depth_msg.encoding}"
-        )
+            # Update cached values
+            self._fx = new_intrinsics["fx"]
+            self._fy = new_intrinsics["fy"]
+            self._cx = new_intrinsics["cx"]
+            self._cy = new_intrinsics["cy"]
 
     def _depth_to_point_cloud(
         self, depth_image: np.ndarray, intrinsics: dict[str, float]
@@ -485,6 +489,366 @@ class ObjectDetection(Node):
 
         return clusters
 
+    def _project_3d_to_2d(
+        self, point_3d: np.ndarray, intrinsics: dict[str, float] | None = None
+    ) -> tuple[float, float]:
+        """Project a 3D point to 2D image coordinates.
+
+        Args:
+            point_3d: 3D point as numpy array [x, y, z] in camera frame.
+            intrinsics: Optional camera intrinsics dict. If None, uses cached values.
+
+        Returns:
+            Tuple of (u, v) pixel coordinates in image space.
+        """
+        x, y, z = point_3d
+
+        # Use cached values if available, otherwise use provided intrinsics
+        if intrinsics is None:
+            if self._fx is None:
+                raise ValueError("Camera intrinsics not set")
+            fx, fy, cx, cy = self._fx, self._fy, self._cx, self._cy
+        else:
+            fx = intrinsics["fx"]
+            fy = intrinsics["fy"]
+            cx = intrinsics["cx"]
+            cy = intrinsics["cy"]
+
+        # Project to image plane: u = fx * x / z + cx, v = fy * y / z + cy
+        if z <= 0:
+            return (-1, -1)  # Invalid (behind camera)
+
+        u = fx * x / z + cx
+        v = fy * y / z + cy
+
+        return (float(u), float(v))
+
+    def _calculate_cluster_bbox_2d(
+        self, cluster: dict[str, Any], intrinsics: dict[str, float] | None = None
+    ) -> tuple[float, float, float, float] | None:
+        """Calculate 2D bounding box for a cluster in image space (vectorized).
+
+        Args:
+            cluster: Cluster dictionary with 'points' (N x 3) and 'bbox_3d'.
+            intrinsics: Optional camera intrinsics dict. If None, uses cached values.
+
+        Returns:
+            Tuple of (min_u, min_v, max_u, max_v) in image coordinates,
+            or None if projection fails.
+        """
+        points_3d = cluster["points"]  # Shape: [N, 3]
+        if len(points_3d) == 0:
+            return None
+
+        # Use cached values if available
+        if intrinsics is None:
+            if self._fx is None:
+                return None
+            fx, fy, cx, cy = self._fx, self._fy, self._cx, self._cy
+        else:
+            fx = intrinsics["fx"]
+            fy = intrinsics["fy"]
+            cx = intrinsics["cx"]
+            cy = intrinsics["cy"]
+
+        # Vectorized projection: [N, 3] -> [N, 2]
+        x, y, z = points_3d[:, 0], points_3d[:, 1], points_3d[:, 2]
+
+        # Filter valid points (z > 0)
+        valid_mask = z > 0
+        if not np.any(valid_mask):
+            return None
+
+        # Project valid points
+        u = fx * x[valid_mask] / z[valid_mask] + cx
+        v = fy * y[valid_mask] / z[valid_mask] + cy
+
+        # Filter points with valid projections (u >= 0, v >= 0)
+        valid_2d = (u >= 0) & (v >= 0)
+        if not np.any(valid_2d):
+            return None
+
+        u_valid = u[valid_2d]
+        v_valid = v[valid_2d]
+
+        return (
+            float(np.min(u_valid)),
+            float(np.min(v_valid)),
+            float(np.max(u_valid)),
+            float(np.max(v_valid)),
+        )
+
+    def _calculate_iou(
+        self,
+        bbox1: tuple[float, float, float, float],
+        bbox2: tuple[float, float, float, float],
+    ) -> float:
+        """Calculate Intersection over Union (IoU) between two bounding boxes.
+
+        Args:
+            bbox1: Bounding box as (min_u, min_v, max_u, max_v).
+            bbox2: Bounding box as (min_u, min_v, max_u, max_v).
+
+        Returns:
+            IoU value between 0 and 1.
+        """
+        min_u1, min_v1, max_u1, max_v1 = bbox1
+        min_u2, min_v2, max_u2, max_v2 = bbox2
+
+        # Calculate intersection
+        inter_min_u = max(min_u1, min_u2)
+        inter_min_v = max(min_v1, min_v2)
+        inter_max_u = min(max_u1, max_u2)
+        inter_max_v = min(max_v1, max_v2)
+
+        if inter_max_u <= inter_min_u or inter_max_v <= inter_min_v:
+            return 0.0  # No intersection
+
+        inter_area = (inter_max_u - inter_min_u) * (inter_max_v - inter_min_v)
+
+        # Calculate union
+        area1 = (max_u1 - min_u1) * (max_v1 - min_v1)
+        area2 = (max_u2 - min_u2) * (max_v2 - min_v2)
+        union_area = area1 + area2 - inter_area
+
+        if union_area <= 0:
+            return 0.0
+
+        return inter_area / union_area
+
+    def _create_cluster_mask(
+        self,
+        cluster: dict[str, Any],
+        intrinsics: dict[str, float] | None = None,
+        image_width: int | None = None,
+        image_height: int | None = None,
+    ) -> np.ndarray | None:
+        """Create binary mask from cluster points in image space (vectorized).
+
+        Args:
+            cluster: Cluster dictionary with 'points' (N x 3).
+            intrinsics: Optional camera intrinsics dict. If None, uses cached values.
+            image_width: Width of the image.
+            image_height: Height of the image.
+
+        Returns:
+            Binary mask as numpy array (H x W) with 1s where cluster points are,
+            or None if projection fails.
+        """
+        points_3d = cluster["points"]  # Shape: [N, 3]
+        if len(points_3d) == 0:
+            return None
+
+        # Use cached values if available
+        if intrinsics is None:
+            if self._fx is None:
+                return None
+            fx, fy, cx, cy = self._fx, self._fy, self._cx, self._cy
+        else:
+            fx = intrinsics["fx"]
+            fy = intrinsics["fy"]
+            cx = intrinsics["cx"]
+            cy = intrinsics["cy"]
+
+        # Vectorized projection: [N, 3] -> [N, 2]
+        x, y, z = points_3d[:, 0], points_3d[:, 1], points_3d[:, 2]
+
+        # Filter valid points (z > 0)
+        valid_mask = z > 0
+        if not np.any(valid_mask):
+            return None
+
+        # Project valid points
+        u = (fx * x[valid_mask] / z[valid_mask] + cx).astype(int)
+        v = (fy * y[valid_mask] / z[valid_mask] + cy).astype(int)
+
+        # Filter points within image bounds
+        if image_width is not None and image_height is not None:
+            in_bounds = (u >= 0) & (u < image_width) & (v >= 0) & (v < image_height)
+            if not np.any(in_bounds):
+                return None
+            u_valid = u[in_bounds]
+            v_valid = v[in_bounds]
+        else:
+            # If no image dimensions provided, use all valid projections
+            u_valid = u
+            v_valid = v
+
+        # Create mask using advanced indexing
+        if image_width is None or image_height is None:
+            # If dimensions not provided, determine from valid points
+            if len(u_valid) == 0:
+                return None
+            max_u = int(np.max(u_valid)) + 1
+            max_v = int(np.max(v_valid)) + 1
+            image_width = max_u
+            image_height = max_v
+
+        mask = np.zeros((image_height, image_width), dtype=np.uint8)
+        mask[v_valid, u_valid] = 1
+
+        return mask
+
+    def _calculate_mask_iou(self, mask1: np.ndarray, mask2: np.ndarray) -> float:
+        """Calculate Intersection over Union (IoU) between two binary masks.
+
+        Args:
+            mask1: Binary mask as numpy array (H x W).
+            mask2: Binary mask as numpy array (H x W).
+
+        Returns:
+            IoU value between 0 and 1.
+        """
+        if mask1.shape != mask2.shape:
+            return 0.0
+
+        # Calculate intersection (logical AND)
+        intersection = np.logical_and(mask1, mask2).sum()
+
+        # Calculate union (logical OR)
+        union = np.logical_or(mask1, mask2).sum()
+
+        if union == 0:
+            return 0.0
+
+        return float(intersection) / float(union)
+
+    def _match_clusters_to_detections(
+        self,
+        yolo_result,
+        clusters: list[dict[str, Any]],
+        intrinsics: dict[str, float] | None,
+        image_width: int,
+        image_height: int,
+        iou_threshold: float = 0.1,
+    ) -> list[dict[str, Any]]:
+        """Match depth clusters to YOLO detections using mask-based IoU.
+
+        Uses segmentation masks if available, falls back to bounding boxes.
+
+        Args:
+            yolo_result: YOLO result object (with boxes and optionally masks).
+            clusters: List of cluster dictionaries.
+            intrinsics: Camera intrinsics dict.
+            image_width: Width of the image.
+            image_height: Height of the image.
+            iou_threshold: Minimum IoU for a valid match (default: 0.1).
+
+        Returns:
+            List of association dictionaries, each containing:
+                - 'detection_idx': index of YOLO detection
+                - 'cluster_idx': index of matched cluster (or None if no match)
+                - 'iou': IoU value (or 0.0 if no match)
+                - 'cluster': matched cluster dict (or None)
+        """
+        if len(clusters) == 0:
+            return []
+
+        yolo_boxes = yolo_result.boxes
+        num_detections = len(yolo_boxes)
+
+        # Initialize variables for both code paths
+        yolo_masks = None
+        xywh_all = None
+        cluster_bboxes_2d = None
+
+        # Check if segmentation masks are available
+        has_masks = (
+            hasattr(yolo_result, "masks")
+            and yolo_result.masks is not None
+            and len(yolo_result.masks) > 0
+        )
+
+        if has_masks:
+            self.get_logger().debug("Using segmentation masks for matching")
+            # Get YOLO masks: shape [N, H, W] where N is number of detections
+            yolo_masks = yolo_result.masks.data.detach().cpu().numpy()
+            # Resize masks to image dimensions if needed
+            if (
+                yolo_masks.shape[1] != image_height
+                or yolo_masks.shape[2] != image_width
+            ):
+                resized_masks = []
+                for mask in yolo_masks:
+                    mask_resized = cv2.resize(
+                        mask.astype(np.float32),
+                        (image_width, image_height),
+                        interpolation=cv2.INTER_NEAREST,
+                    )
+                    resized_masks.append(mask_resized > 0.5)  # Binarize
+                yolo_masks = np.array(resized_masks, dtype=np.uint8)
+            else:
+                yolo_masks = (yolo_masks > 0.5).astype(np.uint8)
+        else:
+            self.get_logger().debug(
+                "Masks not available, falling back to bounding boxes"
+            )
+            # Fallback to bounding boxes
+            xywh_all = yolo_boxes.xywh.detach().cpu().numpy()
+            cluster_bboxes_2d = []
+            for cluster in clusters:
+                bbox_2d = self._calculate_cluster_bbox_2d(cluster, None)  # Use cached
+                cluster_bboxes_2d.append(bbox_2d)
+
+        # Create cluster masks for all clusters
+        cluster_masks = []
+        for cluster in clusters:
+            cluster_mask = self._create_cluster_mask(
+                cluster, intrinsics, image_width, image_height
+            )
+            cluster_masks.append(cluster_mask)
+
+        associations = []
+
+        # For each YOLO detection, find best matching cluster
+        for det_idx in range(num_detections):
+            best_iou = 0.0
+            best_cluster_idx = None
+            best_cluster = None
+
+            if has_masks and yolo_masks is not None:
+                # Use mask-based IoU
+                yolo_mask = yolo_masks[det_idx]
+
+                for cluster_idx, cluster_mask in enumerate(cluster_masks):
+                    if cluster_mask is None:
+                        continue
+
+                    iou = self._calculate_mask_iou(yolo_mask, cluster_mask)
+                    if iou > best_iou and iou >= iou_threshold:
+                        best_iou = iou
+                        best_cluster_idx = cluster_idx
+                        best_cluster = clusters[cluster_idx]
+            elif xywh_all is not None and cluster_bboxes_2d is not None:
+                # Fallback to bounding box IoU
+                cx, cy, w, h = xywh_all[det_idx]
+                det_min_u = cx - w / 2
+                det_min_v = cy - h / 2
+                det_max_u = cx + w / 2
+                det_max_v = cy + h / 2
+                det_bbox = (det_min_u, det_min_v, det_max_u, det_max_v)
+
+                for cluster_idx, cluster_bbox_2d in enumerate(cluster_bboxes_2d):
+                    if cluster_bbox_2d is None:
+                        continue
+
+                    iou = self._calculate_iou(det_bbox, cluster_bbox_2d)
+                    if iou > best_iou and iou >= iou_threshold:
+                        best_iou = iou
+                        best_cluster_idx = cluster_idx
+                        best_cluster = clusters[cluster_idx]
+
+            associations.append(
+                {
+                    "detection_idx": det_idx,
+                    "cluster_idx": best_cluster_idx,
+                    "iou": best_iou,
+                    "cluster": best_cluster,
+                }
+            )
+
+        return associations
+
     def _process_depth_image(
         self, depth_msg: Image
     ) -> tuple[np.ndarray, list[dict[str, Any]]]:
@@ -512,7 +876,7 @@ class ObjectDetection(Node):
             depth_image = self.bridge.imgmsg_to_cv2(
                 depth_msg, desired_encoding="passthrough"
             )
-            self.get_logger().info(
+            self.get_logger().debug(
                 f"Depth image converted: {depth_image.shape}, dtype={depth_image.dtype}"
             )
         except Exception as e:
@@ -528,7 +892,7 @@ class ObjectDetection(Node):
 
         # Convert to point cloud
         point_cloud = self._depth_to_point_cloud(depth_image, self.camera_intrinsics)
-        self.get_logger().info(f"Point cloud generated: {len(point_cloud)} points")
+        self.get_logger().debug(f"Point cloud generated: {len(point_cloud)} points")
 
         # Cluster points only if clustering is enabled
         if self.use_clustering:
@@ -587,7 +951,7 @@ class ObjectDetection(Node):
             - Depth processing will be implemented in later phases.
             - Uses async service calls for KB operations.
         """
-        self.get_logger().info(
+        self.get_logger().debug(
             f"process_data called: RGB {rgb_msg.width}x{rgb_msg.height}, "
             f"Depth: {'present' if depth_msg is not None else 'missing'}"
         )
@@ -639,7 +1003,7 @@ class ObjectDetection(Node):
             # Wait for both tasks to complete (or just YOLO if no depth)
             try:
                 if depth_task is not None:
-                    self.get_logger().info("Waiting for YOLO and depth processing...")
+                    self.get_logger().debug("Waiting for YOLO and depth processing...")
                     (results, (point_cloud, clusters)) = await asyncio.gather(
                         yolo_task, depth_task
                     )
@@ -694,16 +1058,48 @@ class ObjectDetection(Node):
             else:
                 self.get_logger().debug("No objects detected in this frame")
 
-            # Store depth processing results for later use (Phase 4: association)
-            # For now, just log them
-            if depth_msg is not None and self.use_depth and clusters:
+            # Phase 5: Match clusters to detections
+            associations = []
+            if (
+                depth_msg is not None
+                and self.use_depth
+                and clusters
+                and num_detections > 0
+                and self.use_clustering
+                and self.camera_intrinsics is not None
+            ):
                 self.get_logger().debug(
-                    f"Depth clusters available for association with {num_detections} "
-                    f"YOLO detections"
+                    f"Matching {len(clusters)} clusters to {num_detections} "
+                    f"detections..."
+                )
+                associations = self._match_clusters_to_detections(
+                    result,
+                    clusters,
+                    None,  # Use cached intrinsics
+                    rgb_msg.width,
+                    rgb_msg.height,
                 )
 
-            # Debug purpose - remove this return when implementing Phase 4
-            return
+                # Log association results
+                matched_count = sum(
+                    1 for a in associations if a["cluster_idx"] is not None
+                )
+                self.get_logger().info(
+                    f"Association complete: {matched_count}/{num_detections} "
+                    f"detections matched to clusters"
+                )
+                if matched_count > 0:
+                    avg_iou = np.mean(
+                        [a["iou"] for a in associations if a["cluster_idx"] is not None]
+                    )
+                    self.get_logger().debug(f"Average IoU: {avg_iou:.3f}")
+            elif depth_msg is not None and self.use_depth and not self.use_clustering:
+                self.get_logger().debug(
+                    "Clustering disabled, skipping cluster-to-detection matching"
+                )
+
+            # Store associations for Phase 6 (3D Pose from Cluster)
+            # For now, entities are still created with BB center pose
 
             # Check if KB services are available (flag set in init/periodic check)
             if not self._kb_services_available:
@@ -760,7 +1156,7 @@ class ObjectDetection(Node):
     def _visualize_detections(
         self, frame: np.ndarray, result, class_names: dict
     ) -> None:
-        """Visualize YOLO detections on frame (non-blocking).
+        """Visualize YOLO detections on frame with segmentation masks.
 
         Args:
             frame: BGR image frame to draw on.
@@ -776,28 +1172,109 @@ class ObjectDetection(Node):
         xywh_all = boxes.xywh.detach().cpu().numpy()
         class_ids = boxes.cls.detach().cpu().numpy().astype(int)
 
-        for i in range(len(boxes)):
-            cx, cy, w, h = xywh_all[i]
-            label = str(class_names[class_ids[i]])
+        # Check if segmentation masks are available
+        has_masks = (
+            hasattr(result, "masks")
+            and result.masks is not None
+            and len(result.masks) > 0
+        )
 
-            x1 = int(cx - w / 2.0)
-            y1 = int(cy - h / 2.0)
-            x2 = int(cx + w / 2.0)
-            y2 = int(cy + h / 2.0)
+        if has_masks:
+            # Get masks and resize to frame dimensions
+            masks = result.masks.data.detach().cpu().numpy()
+            frame_h, frame_w = frame.shape[:2]
 
-            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            cv2.putText(
-                frame,
-                label,
-                (x1, max(0, y1 - 8)),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.6,
-                (0, 255, 0),
-                2,
-            )
+            # Create overlay for masks
+            overlay = frame.copy()
+
+            for i in range(len(boxes)):
+                # Get mask for this detection
+                mask = masks[i]
+                if mask.shape[0] != frame_h or mask.shape[1] != frame_w:
+                    mask = cv2.resize(
+                        mask.astype(np.float32),
+                        (frame_w, frame_h),
+                        interpolation=cv2.INTER_NEAREST,
+                    )
+                mask_binary = (mask > 0.5).astype(np.uint8)
+
+                # Generate color for this detection
+                color = self._get_color_for_class(class_ids[i])
+                color_bgr = (int(color[2]), int(color[1]), int(color[0]))
+
+                # Draw mask overlay
+                overlay[mask_binary > 0] = (
+                    overlay[mask_binary > 0] * 0.6 + np.array(color_bgr) * 0.4
+                ).astype(np.uint8)
+
+                # Draw bounding box
+                cx, cy, w, h = xywh_all[i]
+                x1 = int(cx - w / 2.0)
+                y1 = int(cy - h / 2.0)
+                x2 = int(cx + w / 2.0)
+                y2 = int(cy + h / 2.0)
+
+                cv2.rectangle(overlay, (x1, y1), (x2, y2), color_bgr, 2)
+
+                # Draw label
+                label = str(class_names[class_ids[i]])
+                cv2.putText(
+                    overlay,
+                    label,
+                    (x1, max(0, y1 - 8)),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.6,
+                    color_bgr,
+                    2,
+                )
+
+            frame = overlay
+        else:
+            # Fallback to bounding boxes only
+            for i in range(len(boxes)):
+                cx, cy, w, h = xywh_all[i]
+                label = str(class_names[class_ids[i]])
+
+                x1 = int(cx - w / 2.0)
+                y1 = int(cy - h / 2.0)
+                x2 = int(cx + w / 2.0)
+                y2 = int(cy + h / 2.0)
+
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cv2.putText(
+                    frame,
+                    label,
+                    (x1, max(0, y1 - 8)),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.6,
+                    (0, 255, 0),
+                    2,
+                )
 
         cv2.imshow("YOLO Detections", frame)
         cv2.waitKey(1)
+
+    def _get_color_for_class(self, class_id: int) -> tuple[int, int, int]:
+        """Generate a consistent color for a class ID.
+
+        Args:
+            class_id: Class index.
+
+        Returns:
+            RGB color tuple.
+        """
+        # Use a color palette that provides good contrast
+        colors = [
+            (255, 0, 0),  # Red
+            (0, 255, 0),  # Green
+            (0, 0, 255),  # Blue
+            (255, 255, 0),  # Yellow
+            (255, 0, 255),  # Magenta
+            (0, 255, 255),  # Cyan
+            (128, 0, 128),  # Purple
+            (255, 165, 0),  # Orange
+        ]
+        return colors[class_id % len(colors)]
 
 
 def pose_from_point2d(point2d: Point2D) -> Pose:

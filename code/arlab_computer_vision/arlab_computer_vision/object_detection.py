@@ -27,6 +27,7 @@ from arlab_knowledge_interfaces.msg import Entity, EntityType
 from arlab_knowledge_interfaces.srv import AddEntity, DelEntities, GetEntities
 from cv_bridge import CvBridge
 from geometry_msgs.msg import Point, Pose, Quaternion
+from message_filters import ApproximateTimeSynchronizer, Subscriber
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.node import Node
 from sensor_msgs.msg import CameraInfo, Image
@@ -76,6 +77,7 @@ class ObjectDetection(Node):
         self.declare_parameter("visualize", True)
         self.declare_parameter("log_level", "INFO")
         self.declare_parameter("use_depth", True)
+        self.declare_parameter("sync_tolerance", 0.5)  # 500ms tolerance (default)
 
         # Load parameters.
         yolo_weights = (
@@ -104,6 +106,9 @@ class ObjectDetection(Node):
 
         self.use_depth = (
             self.get_parameter("use_depth").get_parameter_value().bool_value
+        )
+        self.sync_tolerance = (
+            self.get_parameter("sync_tolerance").get_parameter_value().double_value
         )
 
         # Check if using segmentation model based on filename
@@ -180,26 +185,34 @@ class ObjectDetection(Node):
         )
         self.get_logger().info("Subscribed to camera_info topic")
 
-        # Subscribe to RGB image stream.
-        self.create_subscription(
-            Image,
-            "camera_color_image",
-            self._process_data_sync,
-            qos_profile=1,  # Only keep latest frame to reduce delay
-        )
-        self.get_logger().info("Subscribed to camera_color_image topic")
-
-        # Subscribe to depth image stream (if enabled).
+        # Subscribe to RGB and depth image streams with synchronization.
         if self.use_depth:
+            # Create subscribers for message_filters
+            rgb_sub = Subscriber(self, Image, "camera_color_image")
+            depth_sub = Subscriber(self, Image, "camera_depth_image")
+
+            # Create time synchronizer
+            # queue_size=10 allows buffering of messages for better synchronization
+            # when topics have different rates
+            self.sync = ApproximateTimeSynchronizer(
+                [rgb_sub, depth_sub],
+                queue_size=10,
+                slop=self.sync_tolerance,
+            )
+            self.sync.registerCallback(self._synced_callback)
+            self.get_logger().info(
+                f"Subscribed to synchronized RGB and depth topics "
+                f"(tolerance: {self.sync_tolerance}s)"
+            )
+        else:
+            # Subscribe to RGB image stream only.
             self.create_subscription(
                 Image,
-                "camera_depth_image",
-                self._depth_image_callback,
+                "camera_color_image",
+                self._process_data_sync,
                 qos_profile=1,  # Only keep latest frame to reduce delay
             )
-            self.get_logger().info("Subscribed to camera_depth_image topic")
-        else:
-            self.get_logger().info("Depth image processing disabled")
+            self.get_logger().info("Subscribed to camera_color_image topic")
 
     async def async_init(self):
         """Async initialization for AsyncIOExecutor.
@@ -276,19 +289,27 @@ class ObjectDetection(Node):
                 self._frames_processed = 0
                 self._frames_skipped = 0
 
-    def _process_data_sync(self, rgb_msg: Image) -> None:
-        """Synchronous wrapper for async process_data callback."""
+    def _process_data_sync(
+        self, rgb_msg: Image, depth_msg: Image | None = None
+    ) -> None:
+        """Synchronous wrapper for async process_data callback.
+
+        Args:
+            rgb_msg: Incoming RGB `sensor_msgs/Image`.
+            depth_msg: Optional incoming depth `sensor_msgs/Image`.
+        """
         self.get_logger().debug(
-            f"_process_data_sync called: {rgb_msg.width}x{rgb_msg.height}"
+            f"_process_data_sync called: RGB {rgb_msg.width}x{rgb_msg.height}, "
+            f"Depth: {'present' if depth_msg is not None else 'missing'}"
         )
         try:
             asyncio.get_running_loop()
             self.get_logger().debug("Event loop found, creating task")
-            asyncio.create_task(self.process_data(rgb_msg))
+            asyncio.create_task(self.process_data(rgb_msg, depth_msg))
         except RuntimeError:
             # No event loop running, create one
             self.get_logger().warn("No event loop running, creating new one")
-            asyncio.run(self.process_data(rgb_msg))
+            asyncio.run(self.process_data(rgb_msg, depth_msg))
 
     def camera_info_callback(self, msg: CameraInfo) -> None:
         """Extract camera intrinsics from CameraInfo message.
@@ -327,19 +348,43 @@ class ObjectDetection(Node):
             f"encoding: {depth_msg.encoding}"
         )
 
-    async def process_data(self, rgb_msg: Image) -> None:
+    def _synced_callback(self, rgb_msg: Image, depth_msg: Image) -> None:
+        """Callback for synchronized RGB and depth image messages.
+
+        Args:
+            rgb_msg: Incoming RGB `sensor_msgs/Image`.
+            depth_msg: Incoming depth `sensor_msgs/Image`.
+        """
+        # Calculate timestamp difference for debugging
+        rgb_stamp = rgb_msg.header.stamp.sec + rgb_msg.header.stamp.nanosec * 1e-9
+        depth_stamp = depth_msg.header.stamp.sec + depth_msg.header.stamp.nanosec * 1e-9
+        time_diff = abs(rgb_stamp - depth_stamp)
+
+        self.get_logger().info(
+            f"Synchronized frames received: RGB {rgb_msg.width}x{rgb_msg.height}, "
+            f"Depth {depth_msg.width}x{depth_msg.height}, "
+            f"time_diff={time_diff * 1000:.1f}ms"
+        )
+        # Forward to processing with depth
+        self._process_data_sync(rgb_msg, depth_msg)
+
+    async def process_data(
+        self, rgb_msg: Image, depth_msg: Image | None = None
+    ) -> None:
         """Process incoming RGB images and sync detections with KB.
 
         Args:
             rgb_msg: Incoming RGB `sensor_msgs/Image`.
+            depth_msg: Optional incoming depth `sensor_msgs/Image`.
 
         Notes:
             - Returns early if camera intrinsics are unknown.
-            - Depth handling is currently a TODO.
+            - Depth processing will be implemented in later phases.
             - Uses async service calls for KB operations.
         """
         self.get_logger().debug(
-            f"process_data called: {rgb_msg.width}x{rgb_msg.height}"
+            f"process_data called: RGB {rgb_msg.width}x{rgb_msg.height}, "
+            f"Depth: {'present' if depth_msg is not None else 'missing'}"
         )
 
         # Skip frame if camera intrinsics not yet set (only check once)

@@ -16,6 +16,7 @@ Maintainers:
 import asyncio
 import os
 from concurrent.futures import ThreadPoolExecutor
+from typing import Any
 
 import cv2
 import numpy as np
@@ -31,6 +32,7 @@ from message_filters import ApproximateTimeSynchronizer, Subscriber
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.node import Node
 from sensor_msgs.msg import CameraInfo, Image
+from sklearn.cluster import DBSCAN
 from std_msgs.msg import String  # <-- needed for 'name' field in entities
 from ultralytics import YOLO
 from vision_msgs.msg import Point2D
@@ -78,6 +80,8 @@ class ObjectDetection(Node):
         self.declare_parameter("log_level", "INFO")
         self.declare_parameter("use_depth", True)
         self.declare_parameter("sync_tolerance", 0.5)  # 500ms tolerance (default)
+        # Enable/disable depth clustering (default: False for better performance)
+        self.declare_parameter("use_clustering", False)
 
         # Load parameters.
         yolo_weights = (
@@ -110,6 +114,13 @@ class ObjectDetection(Node):
         self.sync_tolerance = (
             self.get_parameter("sync_tolerance").get_parameter_value().double_value
         )
+        self.use_clustering = (
+            self.get_parameter("use_clustering").get_parameter_value().bool_value
+        )
+        if self.use_depth and self.use_clustering:
+            self.get_logger().info("Depth clustering enabled")
+        elif self.use_depth and not self.use_clustering:
+            self.get_logger().info("Depth clustering disabled (point cloud only)")
 
         # Check if using segmentation model based on filename
         self.use_segmentation = "-seg.pt" in yolo_weights
@@ -144,6 +155,11 @@ class ObjectDetection(Node):
         # Frame-skipping ensures we don't create multiple tasks
         self._yolo_executor = ThreadPoolExecutor(
             max_workers=1, thread_name_prefix="yolo"
+        )
+
+        # Thread pool for depth processing (clustering)
+        self._depth_executor = ThreadPoolExecutor(
+            max_workers=1, thread_name_prefix="depth"
         )
 
         self.camera_intrinsics: dict[str, float] | None = None
@@ -298,7 +314,7 @@ class ObjectDetection(Node):
             rgb_msg: Incoming RGB `sensor_msgs/Image`.
             depth_msg: Optional incoming depth `sensor_msgs/Image`.
         """
-        self.get_logger().debug(
+        self.get_logger().info(
             f"_process_data_sync called: RGB {rgb_msg.width}x{rgb_msg.height}, "
             f"Depth: {'present' if depth_msg is not None else 'missing'}"
         )
@@ -348,6 +364,195 @@ class ObjectDetection(Node):
             f"encoding: {depth_msg.encoding}"
         )
 
+    def _depth_to_point_cloud(
+        self, depth_image: np.ndarray, intrinsics: dict[str, float]
+    ) -> np.ndarray:
+        """Convert depth image to 3D point cloud using camera intrinsics.
+
+        Args:
+            depth_image: Depth image as numpy array (H x W), values in meters.
+            intrinsics: Camera intrinsics dict with keys: fx, fy, cx, cy.
+
+        Returns:
+            Point cloud as numpy array (N x 3) where each row is [x, y, z]
+            in camera frame. Invalid points (depth=0 or NaN) are filtered out.
+        """
+        height, width = depth_image.shape
+        fx = intrinsics["fx"]
+        fy = intrinsics["fy"]
+        cx = intrinsics["cx"]
+        cy = intrinsics["cy"]
+
+        # Create pixel coordinate grids
+        u, v = np.meshgrid(np.arange(width), np.arange(height))
+
+        # Convert to camera coordinates
+        # x = (u - cx) * z / fx
+        # y = (v - cy) * z / fy
+        # z = depth
+        z = depth_image.astype(np.float32)
+
+        # Filter invalid depth values (0, NaN, Inf)
+        valid_mask = (z > 0) & np.isfinite(z)
+
+        # Extract valid points
+        u_valid = u[valid_mask]
+        v_valid = v[valid_mask]
+        z_valid = z[valid_mask]
+
+        # Convert to 3D coordinates
+        x_valid = (u_valid - cx) * z_valid / fx
+        y_valid = (v_valid - cy) * z_valid / fy
+
+        # Stack into point cloud (N x 3)
+        point_cloud = np.column_stack([x_valid, y_valid, z_valid])
+
+        return point_cloud
+
+    def _cluster_depth_points(
+        self,
+        point_cloud: np.ndarray,
+        eps: float = 0.05,
+        min_samples: int = 15,
+        max_distance: float = 3.0,
+    ) -> list[dict[str, Any]]:
+        """Cluster 3D points using DBSCAN and extract cluster information.
+
+        Args:
+            point_cloud: Point cloud as numpy array (N x 3).
+            eps: DBSCAN epsilon parameter (maximum distance between points
+                in a cluster).
+            min_samples: Minimum number of points to form a cluster.
+            max_distance: Maximum distance from camera to consider (filter far points).
+
+        Returns:
+            List of cluster dictionaries, each containing:
+                - 'points': numpy array of cluster points (N x 3)
+                - 'centroid': numpy array [x, y, z] of cluster centroid
+                - 'size': number of points in cluster
+                - 'bbox_3d': bounding box in 3D (min/max x, y, z)
+        """
+        if point_cloud.shape[0] == 0:
+            return []
+
+        # Filter points by distance (remove points too far from camera)
+        distances = np.linalg.norm(point_cloud, axis=1)
+        distance_mask = distances <= max_distance
+        filtered_points = point_cloud[distance_mask]
+
+        if filtered_points.shape[0] < min_samples:
+            return []
+
+        # Apply DBSCAN clustering
+        clustering = DBSCAN(eps=eps, min_samples=min_samples).fit(filtered_points)
+        labels = clustering.labels_
+
+        # Extract clusters (exclude noise points with label=-1)
+        unique_labels = set(labels) - {-1}
+        clusters = []
+
+        for label in unique_labels:
+            cluster_mask = labels == label
+            cluster_points = filtered_points[cluster_mask]
+
+            # Skip if cluster is too small (shouldn't happen due to min_samples,
+            # but check anyway)
+            if cluster_points.shape[0] < min_samples:
+                continue
+
+            # Calculate centroid
+            centroid = np.mean(cluster_points, axis=0)
+
+            # Calculate 3D bounding box
+            bbox_3d = {
+                "min_x": np.min(cluster_points[:, 0]),
+                "max_x": np.max(cluster_points[:, 0]),
+                "min_y": np.min(cluster_points[:, 1]),
+                "max_y": np.max(cluster_points[:, 1]),
+                "min_z": np.min(cluster_points[:, 2]),
+                "max_z": np.max(cluster_points[:, 2]),
+            }
+
+            clusters.append(
+                {
+                    "points": cluster_points,
+                    "centroid": centroid,
+                    "size": cluster_points.shape[0],
+                    "bbox_3d": bbox_3d,
+                    "label": label,
+                }
+            )
+
+        return clusters
+
+    def _process_depth_image(
+        self, depth_msg: Image
+    ) -> tuple[np.ndarray, list[dict[str, Any]]]:
+        """Process depth image: convert to point cloud and cluster.
+
+        Args:
+            depth_msg: Depth image message.
+
+        Returns:
+            Tuple of (point_cloud, clusters) where:
+                - point_cloud: numpy array (N x 3) of all valid 3D points
+                - clusters: list of cluster dictionaries
+        """
+        # Check if camera intrinsics are available
+        if self.camera_intrinsics is None:
+            self.get_logger().warn(
+                "Camera intrinsics not available for depth processing"
+            )
+            return np.array([]).reshape(0, 3), []
+
+        # Convert depth image to numpy array
+        # Depth images are typically 16UC1 (uint16, millimeters) or
+        # 32FC1 (float32, meters)
+        try:
+            depth_image = self.bridge.imgmsg_to_cv2(
+                depth_msg, desired_encoding="passthrough"
+            )
+            self.get_logger().info(
+                f"Depth image converted: {depth_image.shape}, dtype={depth_image.dtype}"
+            )
+        except Exception as e:
+            self.get_logger().error(f"Failed to convert depth image: {e}")
+            return np.array([]).reshape(0, 3), []
+
+        # Handle different encodings
+        if depth_image.dtype == np.uint16:
+            # Convert from millimeters to meters
+            depth_image = depth_image.astype(np.float32) / 1000.0
+        elif depth_image.dtype != np.float32:
+            depth_image = depth_image.astype(np.float32)
+
+        # Convert to point cloud
+        point_cloud = self._depth_to_point_cloud(depth_image, self.camera_intrinsics)
+        self.get_logger().info(f"Point cloud generated: {len(point_cloud)} points")
+
+        # Cluster points only if clustering is enabled
+        if self.use_clustering:
+            # Downsample point cloud if too large (for faster clustering)
+            # Keep every Nth point to reduce computation time
+            if len(point_cloud) > 50000:
+                downsample_factor = max(1, len(point_cloud) // 50000)
+                point_cloud = point_cloud[::downsample_factor]
+                self.get_logger().info(
+                    f"Downsampled point cloud to {len(point_cloud)} points "
+                    f"(factor: {downsample_factor})"
+                )
+
+            # Cluster points
+            self.get_logger().info("Starting DBSCAN clustering...")
+            clusters = self._cluster_depth_points(point_cloud)
+            self.get_logger().info(f"Clustering complete: {len(clusters)} clusters")
+        else:
+            # Clustering disabled, return empty clusters
+            clusters = []
+            self.get_logger().debug("Clustering disabled, skipping DBSCAN")
+
+        return point_cloud, clusters
+
     def _synced_callback(self, rgb_msg: Image, depth_msg: Image) -> None:
         """Callback for synchronized RGB and depth image messages.
 
@@ -382,7 +587,7 @@ class ObjectDetection(Node):
             - Depth processing will be implemented in later phases.
             - Uses async service calls for KB operations.
         """
-        self.get_logger().debug(
+        self.get_logger().info(
             f"process_data called: RGB {rgb_msg.width}x{rgb_msg.height}, "
             f"Depth: {'present' if depth_msg is not None else 'missing'}"
         )
@@ -416,16 +621,45 @@ class ObjectDetection(Node):
             # Keep BGR copy for visualization (OpenCV imshow expects BGR)
             bgr_image_for_viz = bgr_image if self.visualize else None
 
-            # TODO: Integrate depth image handling if available.
+            # Run YOLO inference and depth processing in parallel
+            loop = asyncio.get_event_loop()
 
-            # Run YOLO inference (segmentation/detection) in thread pool.
-            # Frame-skipping ensures we don't create multiple tasks that wait.
+            # Start YOLO inference task
             self.get_logger().debug("Starting YOLO inference...")
-            try:
-                loop = asyncio.get_event_loop()
-                results = await loop.run_in_executor(
-                    self._yolo_executor, self.model, rgb_image
+            yolo_task = loop.run_in_executor(self._yolo_executor, self.model, rgb_image)
+
+            # Start depth processing task if depth data is available
+            depth_task = None
+            if depth_msg is not None and self.use_depth:
+                self.get_logger().info("Starting depth processing...")
+                depth_task = loop.run_in_executor(
+                    self._depth_executor, self._process_depth_image, depth_msg
                 )
+
+            # Wait for both tasks to complete (or just YOLO if no depth)
+            try:
+                if depth_task is not None:
+                    self.get_logger().info("Waiting for YOLO and depth processing...")
+                    (results, (point_cloud, clusters)) = await asyncio.gather(
+                        yolo_task, depth_task
+                    )
+                    self.get_logger().info(
+                        f"Depth processing complete: {len(point_cloud)} points, "
+                        f"{len(clusters)} clusters found"
+                    )
+                    if len(clusters) > 0:
+                        cluster_sizes = [c["size"] for c in clusters]
+                        self.get_logger().info(
+                            f"Found {len(clusters)} depth cluster(s) with sizes: "
+                            f"{cluster_sizes}"
+                        )
+                    else:
+                        self.get_logger().info("No depth clusters found")
+                else:
+                    results = await yolo_task
+                    point_cloud = None
+                    clusters = []
+
                 self.get_logger().debug("YOLO inference returned")
                 result = results[0]
                 num_detections = len(result.boxes) if hasattr(result, "boxes") else 0
@@ -434,7 +668,7 @@ class ObjectDetection(Node):
                     f"in {rgb_msg.width}x{rgb_msg.height} image"
                 )
             except Exception as e:
-                self.get_logger().error(f"YOLO inference failed: {e}", exc_info=True)
+                self.get_logger().error(f"Processing failed: {e}", exc_info=True)
                 return
 
             # Convert YOLO results to entity dicts.
@@ -460,7 +694,15 @@ class ObjectDetection(Node):
             else:
                 self.get_logger().debug("No objects detected in this frame")
 
-            # Debug purpose
+            # Store depth processing results for later use (Phase 4: association)
+            # For now, just log them
+            if depth_msg is not None and self.use_depth and clusters:
+                self.get_logger().debug(
+                    f"Depth clusters available for association with {num_detections} "
+                    f"YOLO detections"
+                )
+
+            # Debug purpose - remove this return when implementing Phase 4
             return
 
             # Check if KB services are available (flag set in init/periodic check)

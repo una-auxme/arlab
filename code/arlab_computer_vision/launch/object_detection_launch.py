@@ -25,8 +25,9 @@ def generate_launch_description():
         package="arlab_computer_vision",
         executable="object_detection",
         remappings=[
-            ("camera_color_image", "/camera/color/image_raw"),
-            ("camera_info", "/camera/color/camera_info"),
+            ("camera_color_image", "/color/image_raw"),
+            ("camera_info", "/color/camera_info"),
+            ("camera_depth_image", "/depth/image_raw"),
         ],
     )
 

@@ -16,6 +16,7 @@ setup(
         ('share/' + package_name + '/launch', ['launch/custom_spawn_turtlebot3.launch.py']),
         ('share/' + package_name + '/launch', ['launch/nav2.launch.py']),
         ('share/' + package_name + '/launch', ['launch/slam_async.launch.py']),
+        ('share/' + package_name + '/launch', ['launch/arlab_navigation.launch.py']),
         # entries for arlab_simulation
         (os.path.join('share', package_name, 'launch'), glob('launch/*.launch.py')),
         (os.path.join('share', package_name, 'worlds'), glob('worlds/*.sdf')),
@@ -32,6 +33,7 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": ["dummy = arlab_movement.dummy:main",
+            "map_save_publisher = arlab_movement.map_save_publisher:main",
             "arlab_movement_test = arlab_movement.arlab_movement_test:main",
             "arlab_movement_orchestrator = arlab_movement.arlab_movement_orchestrator:main",
             "navigation_stack_manager = arlab_movement.navigation_stack_manager:main",

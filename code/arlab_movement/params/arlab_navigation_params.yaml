@@ -1,0 +1,20 @@
+navigation_stack_manager:
+  ros__parameters:
+    # Map saving parameters
+    map_path: "/workspace/src/arlab/code/arlab_movement/map/my_map"
+    
+    # Adding timestamps to filename
+    use_timestamp: true
+    
+    # Optional: Additional parameters you might want
+    amcl_enabled: true
+    slam_enabled: true
+    nav_enabled: true
+
+map_save_publisher:
+  ros__parameters:
+    # Auto-save interval in seconds (0 = disabled)
+    save_interval: 5.0
+
+    # Initial delay before first auto-save
+    initial_delay: 5.0

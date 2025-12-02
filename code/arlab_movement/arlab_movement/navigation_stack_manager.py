@@ -5,6 +5,7 @@ from std_msgs.msg import Bool
 import subprocess
 import signal
 import os
+from datetime import datetime
 
 
 class NavigationStackManager(Node):
@@ -15,9 +16,16 @@ class NavigationStackManager(Node):
         """
         super().__init__('navigation_stack_manager')
 
+        self.declare_parameter('map_path', '/workspace/src/arlab/code/arlab_movement/map/my_map')
+        self.declare_parameter('use_timestamp', False)
+
+        self.map_path = self.get_parameter('map_path').value
+        self.use_timestamp = self.get_parameter('use_timestamp').value
+
         self.create_subscription(Bool, 'localization_bool', self.localization_callback, 10)
         self.create_subscription(Bool, 'mapping_bool', self.mapping_callback, 10)
         self.create_subscription(Bool, 'nav_bool', self.nav_callback, 10)
+        self.create_subscription(Bool, 'map_save', self.map_save_callback, 10)
 
         self.amcl_process = None
         self.slam_process = None
@@ -124,6 +132,49 @@ class NavigationStackManager(Node):
                 self.get_logger().info("Nav2 already running.")
         else:
             self.nav_process = self.stop_process(self.nav_process, "Nav2 Stack")
+
+    def map_save_callback(self, msg):
+        if msg.data:
+            self.get_logger().info("Received map save request")
+            self.save_map()
+        else:
+            self.get_logger().debug("Map save request with False value, ignoring")
+
+    def save_map(self):
+        try:
+            map_path = self.map_path
+
+            if self.use_timestamp:
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                map_path = f"{self.map_path}_{timestamp}"
+                self.get_logger().info(f"Using timestamped map name: {map_path}")
+            else:
+                self.get_logger().info(f"Using fixed map name: {map_path}")
+
+            self.get_logger().info(f"Saving map to: {map_path}")
+
+            cmd = ["ros2", "run", "nav2_map_server", "map_saver_cli", "-f", map_path]
+
+            env = os.environ.copy()
+            workspace_setup = "/workspace/install/setup.bash"
+            sourced_cmd = ["bash", "-c", f"source {workspace_setup} && {' '.join(cmd)}"]
+
+            result = subprocess.run(
+                sourced_cmd,
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+
+            if result.returncode == 0:
+                self.get_logger().info(f"Map saved successfully to {map_path}")
+                if result.stdout:
+                    self.get_logger().info(f"Map saver output: {result.stdout}")
+            else:
+                self.get_logger().error(f"Failed to save map. Error: {result.stderr}")
+
+        except Exception as e:
+            self.get_logger().error(f"Exception while saving map: {str(e)}")
 
     def destroy_node(self):
         """cleanup to properly stop all subprocesses

@@ -6,7 +6,6 @@ navigation_stack_manager:
     # Adding timestamps to filename
     use_timestamp: true
     
-    # Optional: Additional parameters you might want
     amcl_enabled: true
     slam_enabled: true
     nav_enabled: true

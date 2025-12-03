@@ -9,7 +9,7 @@ import os
 
 def generate_launch_description():
     # Get package directory
-    package_name = 'arlab_movement'  # Change this to your package name
+    package_name = 'arlab_movement'  
     package_dir = FindPackageShare(package=package_name)
     
     # Path to parameter file
@@ -19,7 +19,7 @@ def generate_launch_description():
     
     # Navigation Stack Manager Node
     navigation_manager = Node(
-        package='arlab_movement',  # Change this to your package name
+        package='arlab_movement',
         executable='navigation_stack_manager',
         name='navigation_stack_manager',
         output='screen',
@@ -28,7 +28,7 @@ def generate_launch_description():
     
     # Map Save Publisher Node
     map_save_publisher = Node(
-        package='arlab_movement',  # Change this to your package name
+        package='arlab_movement',  
         executable='map_save_publisher',
         name='map_save_publisher',
         output='screen',

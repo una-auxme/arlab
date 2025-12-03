@@ -99,7 +99,7 @@ class orchestrator(Node):
         if not octomap_msg.data:
             self.get_logger().warn("Octomap is empty")
             return
-        self.get_logger().info(f"Octomap received: {octomap_msg.data}")
+        self.get_logger().info(f"Octomap received")
 
     # Accept Goal from ManipulationAction
     def goal_callback(self, goal_request):

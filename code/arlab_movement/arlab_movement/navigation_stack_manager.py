@@ -7,6 +7,7 @@ import subprocess
 import signal
 import os
 from datetime import datetime
+import threading
 from arlab_knowledge_interfaces.msg import EntityPickable, EntityType, StatusType
 from arlab_knowledge_interfaces.srv import (
     AddEntity,
@@ -39,15 +40,14 @@ class NavigationStackManager(Node):
         self.declare_parameter('use_timestamp', False)
         self.declare_parameter('save_to_database', False)
         self.declare_parameter('map_topic', '/map')
-        self.declare_parameter('database_service', '/arlab/knowledge')
+        self.declare_parameter('database_service', '/arlab/knowledge/add_map')
         self.declare_parameter('database_timeout', 10.0)
-
 
         self.map_path = self.get_parameter('map_path').value
         self.use_timestamp = self.get_parameter('use_timestamp').value
         self.save_to_database = self.get_parameter('save_to_database').value
         self.map_topic = self.get_parameter('map_topic').value
-        self.database_service = self.get_paramter('database_service').value
+        self.database_service = self.get_parameter('database_service').value
         self.database_timeout = self.get_parameter('database_timeout').value
 
         self.create_subscription(Bool, 'localization_bool', self.localization_callback, 10)
@@ -68,6 +68,7 @@ class NavigationStackManager(Node):
         self.database_client = None
         if self.save_to_database:
             self.database_client = self.create_client(AddMap, self.database_service)
+            self.get_logger().info(f"Created database service client for {self.database_service}")
 
         self.amcl_process = None
         self.slam_process = None
@@ -78,6 +79,11 @@ class NavigationStackManager(Node):
         self.get_logger().info(f"Use timestamp: {self.use_timestamp}")
         self.get_logger().info(f"Save to database: {self.save_to_database}")
         self.get_logger().info(f"Map topic: {self.map_topic}")
+
+    def map_callback(self, msg):
+        """Callback for map topic - stores the latest map"""
+        self.current_map = msg
+        self.get_logger().debug(f"Received map update: {msg.header.frame_id}")
 
     def start_process(self, cmd, name):
         """Starts a subprocess through a given command
@@ -102,8 +108,6 @@ class NavigationStackManager(Node):
             text=True,
         )
 
-        # Read a bit of output after a short delay
-        #rclpy.get_default_context().create_timer(1.0, lambda: self.read_process_logs(process, name))
         return process
 
     def read_process_logs(self, process, name):
@@ -156,9 +160,6 @@ class NavigationStackManager(Node):
         if msg.data:
             if self.slam_process is None or self.slam_process.poll() is not None:
                 self.slam_process = self.start_process(
-                    #["ros2", "run", "slam_toolbox", "sync_slam_toolbox_node"], "SLAM Toolbox" # old start command without using launchfile
-                    #["ros2", "launch", "arlab_movement", "slam_launch.py"], "SLAM Toolbox"
-                    #["ros2", "launch", "slam_toolbox", "online_sync_launch.py", "--ros-args", "-p", "use_pose_graph_slam:=true"], "SLAM Toolbox"
                     ["ros2", "launch", "slam_toolbox", "online_async_launch.py"], "SLAM Toolbox"
                 )
             else:
@@ -171,7 +172,6 @@ class NavigationStackManager(Node):
         if msg.data:
             if self.nav_process is None or self.nav_process.poll() is not None:
                 self.nav_process = self.start_process(
-                    #["ros2", "launch", "arlab_movement", "nav_stack_launch.py"], "Nav2 Stack"
                     ["ros2", "run", "nav2_bringup", "navigation_launch.py"], "Nav2 Stack"
                 )
             else:
@@ -187,6 +187,16 @@ class NavigationStackManager(Node):
             self.get_logger().debug("Map save request with False value, ignoring")
 
     def save_map(self):
+        """Save map to either file or database based on configuration"""
+        # Save to file first for backup
+        self.save_map_to_file()
+        
+        # Save to db if enabled
+        if self.save_to_database:
+            self.save_map_to_database()
+
+    def save_map_to_file(self):
+        """Save map to file"""
         try:
             map_path = self.map_path
 
@@ -197,7 +207,7 @@ class NavigationStackManager(Node):
             else:
                 self.get_logger().info(f"Using fixed map name: {map_path}")
 
-            self.get_logger().info(f"Saving map to: {map_path}")
+            self.get_logger().info(f"Saving map to file: {map_path}")
 
             cmd = ["ros2", "run", "nav2_map_server", "map_saver_cli", "-f", map_path]
 
@@ -213,16 +223,17 @@ class NavigationStackManager(Node):
             )
 
             if result.returncode == 0:
-                self.get_logger().info(f"Map saved successfully to {map_path}")
+                self.get_logger().info(f"Map saved successfully to file: {map_path}")
                 if result.stdout:
-                    self.get_logger().info(f"Map saver output: {result.stdout}")
+                    self.get_logger().debug(f"Map saver output: {result.stdout}")
             else:
-                self.get_logger().error(f"Failed to save map. Error: {result.stderr}")
+                self.get_logger().error(f"Failed to save map to file. Error: {result.stderr}")
 
         except Exception as e:
-            self.get_logger().error(f"Exception while saving map: {str(e)}")
+            self.get_logger().error(f"Exception while saving map to file: {str(e)}")
 
     def save_map_to_database(self):
+        """Save map to database via service call"""
         try:
             if self.current_map is None:
                 self.get_logger().error('No map available to save. Make sure map topic is publishing correctly.')
@@ -242,14 +253,9 @@ class NavigationStackManager(Node):
             request = AddMap.Request()
             request.grid = self.current_map
             request.grid.header.stamp = self.get_clock().now().to_msg()
-
-            if self.use_timestamp:
-                timestamp = datetime.now().stftime("%Y-%m-%d %H:%M:%S")
-                request.description = f"Auto-saved map at {timestamp}"
-            else:
-                request.description = "Map saved from navigation stack manager"
-
-            self.get_logger().info(f"Sending map to database: {request.grid.header.frame_id}")
+            
+            self.get_logger().info(f"Sending map to database service: {self.database_service}")
+            self.get_logger().info(f"  Frame ID: {request.grid.header.frame_id}")
             self.get_logger().info(f"  Resolution: {request.grid.info.resolution:.3f}m")
             self.get_logger().info(f"  Dimensions: {request.grid.info.width}x{request.grid.info.height}")
             self.get_logger().info(f"  Origin: [{request.grid.info.origin.position.x:.2f}, {request.grid.info.origin.position.y:.2f}]")
@@ -265,26 +271,32 @@ class NavigationStackManager(Node):
         try:
             response = future.result()
             
-            if hasattr(response, 'result') and response.result:
-                # Success
+            if hasattr(response, 'success') and response.success:
+                self.get_logger().info(f"✅ Map successfully saved to database.")
+                if hasattr(response, 'map_id'):
+                    self.get_logger().info(f"Map ID: {response.map_id}")
+                elif hasattr(response, 'mapid'):
+                    self.get_logger().info(f"Map ID: {response.mapid}")
+            elif hasattr(response, 'result') and response.result:
+                self.get_logger().info(f"✅ Map successfully saved to database.")
                 if hasattr(response, 'mapid'):
-                    self.get_logger().info(f"✅ Map successfully saved to database. Map ID: {response.mapid}")
-                else:
-                    self.get_logger().info("✅ Map successfully saved to database.")
+                    self.get_logger().info(f"Map ID: {response.mapid}")
             else:
-                # Failed
                 error_msg = "Unknown error"
                 if hasattr(response, 'error_message'):
                     error_msg = response.error_message
+                elif hasattr(response, 'message'):
+                    error_msg = response.message
+                elif hasattr(response, 'error'):
+                    error_msg = response.error
                 self.get_logger().error(f"❌ Failed to save map to database: {error_msg}")
                 
         except Exception as e:
             self.get_logger().error(f"❌ Service call failed: {str(e)}")
 
     def get_map_once(self):
+        """Try to get the current map once"""
         try:
-            from rclpy.executors import SingleThreadedExecutor
-
             received_map = None
             event = threading.Event()
 
@@ -306,10 +318,8 @@ class NavigationStackManager(Node):
         except Exception as e:
             self.get_logger().error(f"Error getting map: {str(e)}")
 
-
     def destroy_node(self):
-        """cleanup to properly stop all subprocesses
-        """
+        """cleanup to properly stop all subprocesses"""
         self.amcl_process = self.stop_process(self.amcl_process, "AMCL")
         self.slam_process = self.stop_process(self.slam_process, "SLAM Toolbox")
         self.nav_process = self.stop_process(self.nav_process, "Nav2 Stack")
@@ -322,7 +332,7 @@ def main(args=None):
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
-        pass
+        node.get_logger().info("Shutting down navigation stack manager...")
     finally:
         node.destroy_node()
         rclpy.shutdown()

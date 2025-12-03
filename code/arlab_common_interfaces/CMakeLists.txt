@@ -28,12 +28,10 @@ find_package(geometry_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(tf2_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
-find_package(nav_msgs REQUIRED)
 
 # Add all your interface files here:
 rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GrippingParameter.srv"
-  "srv/CreateVoxelmap.srv"
 
   "msg/OrchestratorData.msg"
   "msg/Destination.msg"
@@ -50,7 +48,6 @@ rosidl_generate_interfaces(${PROJECT_NAME}
     std_msgs
     tf2_msgs
     sensor_msgs
-    nav_msgs
 )
 
 ament_package()

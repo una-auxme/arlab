@@ -22,6 +22,8 @@ from arlab_common_interfaces.action import ManipulationAction, OrchestratorActio
 from arlab_common_interfaces.srv import GrippingParameter
 from arlab_knowledge_interfaces.srv import GetEntity, GetShape
 from geometry_msgs.msg import Point, Pose, Quaternion
+from moveit_msgs.msg import PlanningScene
+from octomap_msgs.msg import Octomap, OctomapWithPose
 from rclpy.action.client import ActionClient
 from rclpy.action.server import ActionServer, GoalResponse
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
@@ -67,10 +69,12 @@ class orchestrator(Node):
         self.client_gripping_parameter = self.create_client(
             GrippingParameter, "GetGrippingParameter", callback_group=self.service_group
         )
-        self.client_create_voxelmap = self.create_client(
-            CreateVoxelmal, "CreateVoxelmap", callback_group=self.service_group
+
+        self.subscription = self.create_subscription(
+            PlanningScene, "/monitored_planning_scene", self.octomap_callback, 10
         )
 
+        # Inits
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
 
@@ -87,6 +91,15 @@ class orchestrator(Node):
         self.placing_point_orient = Quaternion(w=1.0)
         self.voxel_map = None
         self.action_result = None
+
+    # Get Octomap from MoveIt Node
+    def octomap_callback(self, msg: PlanningScene):
+        octomap_with_pose = msg.world.octomap
+        octomap_msg = octomap_with_pose.octomap
+        if not octomap_msg.data:
+            self.get_logger().warn("Octomap is empty")
+            return
+        self.get_logger().info(f"Octomap received: {octomap_msg.data}")
 
     # Accept Goal from ManipulationAction
     def goal_callback(self, goal_request):

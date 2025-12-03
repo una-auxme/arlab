@@ -1,9 +1,12 @@
 # TF frames / transforms needed to place the cloud (TF2 message)
 tf2_msgs/TFMessage tf_buffer
-# input pointcloud to voxelize
+
+# Input pointcloud to voxelize
 sensor_msgs/PointCloud2 pointcloud
-# size of each voxel in meters (e.g. 0.01)
+
+# Size of each voxel in meters
 float32 voxel_size
+
 ---
-# voxelized occupancy grid
-nav_msgs/OccupancyGrid voxel_map
+# Voxelized 3D map as Octomap
+octomap_msgs/Octomap voxel_map

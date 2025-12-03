@@ -26,11 +26,14 @@ endif()
 find_package(rosidl_default_generators REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(octomap_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(tf2_msgs REQUIRED)
 
 # Add all your interface files here:
 rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GrippingParameter.srv"
-  "src/CreateVoxelmap.srv"
+  "srv/CreateVoxelmap.srv"
 
   "msg/OrchestratorData.msg"
   "msg/Destination.msg"
@@ -45,6 +48,9 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   DEPENDENCIES
     geometry_msgs
     std_msgs
+    octomap_msgs
+    sensor_msgs
+    tf2_msgs
 )
 
 ament_package()

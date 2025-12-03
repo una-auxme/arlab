@@ -29,7 +29,7 @@ from arlab_common_interfaces.srv import GrippingParameter
 from arlab_common_interfaces.action import ManipulationAction, OrchestratorAction
 
 from .utils.transform_utils import transform_pose, transform_pointCloud, transform_bBox
-from .utils.voxel_utils import pointcloud_to_voxel_map, find_placing_area, visualize_voxel_map
+from .utils.voxel_utils import find_placing_area, visualize_voxel_map
 
 from time import sleep
 from threading import Event
@@ -65,6 +65,9 @@ class orchestrator(Node):
         )
         self.client_gripping_parameter = self.create_client(
             GrippingParameter, "GetGrippingParameter", callback_group=self.service_group
+        )
+        self.client_create_voxelmap = self.create_client(
+            CreateVoxelmal, "CreateVoxelmap", callback_group=self.service_group
         )
 
         self.tf_buffer = tf2_ros.Buffer()
@@ -123,7 +126,7 @@ class orchestrator(Node):
             self.action_result.response.message = "ERROR"
 
         goal_handle.succeed()
-        
+
         return self.action_result
 
     # GetEntity Response
@@ -213,6 +216,24 @@ class orchestrator(Node):
             self.grip_orient_mode = response.griporient_mode
         except Exception as e:
             self.get_logger().error(f"GetGrippingParameter failed: {e}")
+            self.force = 5.0
+            self.grip_pos_mode = self.grip_orient_mode = 0
+
+        future_param = self.client_gripping_parameter.call_async(
+            self.req_gripping_parameter)
+        future_param.add_done_callback(self.handle_gripping_parameter_response)
+
+        self.compute_goal_pose()
+
+    # CreateVoxelmap Response
+    def handle_create_voxelmap_response(self, future):
+        try:
+            response = future.result()
+            self.force = response.gripforce
+            self.grip_pos_mode = response.grippos_mode
+            self.grip_orient_mode = response.griporient_mode
+        except Exception as e:
+            self.get_logger().error(f"CreateVoxelmap failed: {e}")
             self.force = 5.0
             self.grip_pos_mode = self.grip_orient_mode = 0
 

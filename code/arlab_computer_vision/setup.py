@@ -23,7 +23,7 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
-            "object_detection = arlab_computer_vision.object_detection:main",
+            "object_detection = arlab_computer_vision.object_detection:main"
         ],
     },
 )

@@ -8,7 +8,7 @@ Maintainers:
     Peter Viechter <peter.viechter@uni-augsburg.de>
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import rclpy.logging
 from arlab_knowledge_interfaces import msg
@@ -19,6 +19,7 @@ from sqlalchemy.orm import (
     mapped_column,
     relationship,
 )
+from visualization_msgs.msg import Marker
 
 import arlab_knowledge.db as db
 import arlab_knowledge.db.entities as entities
@@ -77,6 +78,22 @@ class Entity(Base):
         "polymorphic_identity": "entity",
         "polymorphic_on": "type",
     }
+
+    def get_all_markers(self) -> List[Marker]:
+        return [self.get_pose_marker()]
+
+    def get_pose_marker(self) -> Marker:
+        import arlab_common.markers
+
+        return arlab_common.markers.debug_marker(
+            base=self.pose.pose,
+            frame_id=self.pose_reference_frame,
+            color=(0.5, 0.5, 0.5, 0.9),
+        )
+
+    def get_meta_markers(self) -> List[Marker]:
+        # TODO: Return attributes as text
+        return []
 
     @classmethod
     def from_ros_msg(cls, m: msg.Entity) -> "Entity":

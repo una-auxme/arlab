@@ -25,9 +25,13 @@ endif()
 
 find_package(rosidl_default_generators REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
 
 # Add all your interface files here:
 rosidl_generate_interfaces(${PROJECT_NAME}
+  "srv/GrippingForce.srv"
+  "msg/OrchestratorData.msg"
+
   "msg/Destination.msg"
   "msg/ActionResponse.msg"
 
@@ -36,8 +40,9 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 
   "action/MovementAction.action"
   "action/ManipulationAction.action"
-  DEPENDENCIES # Add packages that above messages depend on
-  geometry_msgs
+  DEPENDENCIES
+    geometry_msgs
+    std_msgs
 )
 
 ament_package()

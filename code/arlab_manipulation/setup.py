@@ -1,14 +1,28 @@
-from setuptools import find_packages, setup
+"""setup.py
+
+Setup script for the arlab_manipulation ROS2 Python package.
+
+This script defines package metadata, dependencies, launch files, and
+console scripts for ROS2 execution.
+
+Author: Sofia Öttl
+Date: 2025-08-24
+
+"""
+
+from setuptools import setup  # ,find_packages
+from glob import glob
 
 package_name = "arlab_manipulation"
 
 setup(
     name=package_name,
     version="0.0.0",
-    packages=find_packages(exclude=["test"]),
+    packages=[package_name],
     data_files=[
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
         ("share/" + package_name, ["package.xml"]),
+        ("share/" + package_name + "/launch", glob("launch/*.py")),
     ],
     install_requires=["setuptools"],
     zip_safe=True,
@@ -18,6 +32,9 @@ setup(
     license="MIT",
     tests_require=["pytest"],
     entry_points={
-        "console_scripts": ["dummy = arlab_manipulation.dummy:main"],
+        "console_scripts": [
+            "Orchestrator = arlab_manipulation.Orchestrator:main",
+            "GetGrippingForce = arlab_manipulation.GetGrippingForce:main",
+        ],
     },
 )

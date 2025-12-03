@@ -1,0 +1,13 @@
+# ===== Request =====
+# ID of the parent entity
+int64 parentid
+# ID of the child entity
+int64 childid
+# If true, delete the reference between parent and child
+bool delete_ref
+# Time stamp of the reference update
+builtin_interfaces/Time stamp
+---
+# ===== Response =====
+# Result of the update operation (success/failure with error code)
+Result result

@@ -18,6 +18,8 @@ setup(
     license="MIT",
     tests_require=["pytest"],
     entry_points={
-        "console_scripts": ["dummy = arlab_safety.dummy:main"],
+        "console_scripts": [
+            "central_safety_node = arlab_safety.central_safety_node:main",
+        ],
     },
 )

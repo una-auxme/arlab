@@ -14,11 +14,11 @@ Date: 2025-11-02
 """
 
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
-from launch_ros.substitutions import FindPackageShare
 from launch_ros.actions import Node
+from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
@@ -29,11 +29,9 @@ def generate_launch_description():
     """
     ld = LaunchDescription()
 
-    simulation_launch = PathJoinSubstitution([
-        FindPackageShare('ur_simulation_gz'),
-        'launch',
-        'ur_sim_moveit.launch.py'
-    ])
+    simulation_launch = PathJoinSubstitution(
+        [FindPackageShare("ur_simulation_gz"), "launch", "ur_sim_moveit.launch.py"]
+    )
 
     use_sim_time = LaunchConfiguration("use_sim_time")
     ld.add_action(DeclareLaunchArgument("use_sim_time", default_value="false"))
@@ -43,7 +41,7 @@ def generate_launch_description():
         # Falls die Child-Launch Argumente erwartet, hier durchreichen:
         launch_arguments={
             "use_sim_time": use_sim_time,
-        }.items()
+        }.items(),
     )
 
     # Service node for providing gripping force recommendations
@@ -70,12 +68,12 @@ def generate_launch_description():
     CompVision = Node(package="arlab_computer_vision", executable="object_detection")
 
     # Add nodes to the launch description
-    ld.add_action(sim_include)
+    # ld.add_action(sim_include)
     ld.add_action(GetParameter)
     ld.add_action(Orchestrator)
-    ld.add_action(Manipulation_CPP)
-    #ld.add_action(Perception)
+    # ld.add_action(Manipulation_CPP)
+    # ld.add_action(Perception)
     ld.add_action(KnowledgeBase)
-    #ld.add_action(CompVision)
+    # ld.add_action(CompVision)
 
     return ld

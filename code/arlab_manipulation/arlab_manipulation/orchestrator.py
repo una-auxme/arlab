@@ -11,28 +11,25 @@ Author: Sofia Öttl
 Date: 2025-10-22
 """
 
-import rclpy
-from rclpy.node import Node
-from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
-from rclpy.action.server import ActionServer, GoalResponse
-from rclpy.action.client import ActionClient
-import rclpy.executors
-
-from geometry_msgs.msg import Pose, Point, Quaternion
-from std_msgs.msg import Float64, String
+from threading import Event
+from time import sleep
 
 import numpy as np
+import rclpy
+import rclpy.executors
 import tf2_ros
-
-from arlab_knowledge_interfaces.srv import GetEntity, GetShape
-from arlab_common_interfaces.srv import GrippingParameter
 from arlab_common_interfaces.action import ManipulationAction, OrchestratorAction
+from arlab_common_interfaces.srv import GrippingParameter
+from arlab_knowledge_interfaces.srv import GetEntity, GetShape
+from geometry_msgs.msg import Point, Pose, Quaternion
+from rclpy.action.client import ActionClient
+from rclpy.action.server import ActionServer, GoalResponse
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
+from rclpy.node import Node
+from std_msgs.msg import Float64, String
 
-from .utils.transform_utils import transform_pose, transform_pointCloud, transform_bBox
+from .utils.transform_utils import transform_bBox, transform_pointCloud, transform_pose
 from .utils.voxel_utils import find_placing_area, visualize_voxel_map
-
-from time import sleep
-from threading import Event
 
 
 class orchestrator(Node):
@@ -42,13 +39,17 @@ class orchestrator(Node):
         super().__init__("orchestrator")
         self.service_group = MutuallyExclusiveCallbackGroup()
 
-        self._orchestrator_client = ActionClient(self, OrchestratorAction,
-                                                 '/orchestrator/action', callback_group=self.service_group)
+        self._orchestrator_client = ActionClient(
+            self,
+            OrchestratorAction,
+            "/orchestrator/action",
+            callback_group=self.service_group,
+        )
 
         self._action_server = ActionServer(
             self,
             ManipulationAction,
-            '/manipulation/action',
+            "/manipulation/action",
             execute_callback=self.execute_callback,
             goal_callback=self.goal_callback,
         )
@@ -154,8 +155,9 @@ class orchestrator(Node):
             self.ref_frame = entity.pose_reference_frame
             self.stamp = entity.stamp
 
-            self.pose = transform_pose(self.tf_buffer, self.pose, self.stamp,
-                                       self.ref_frame)
+            self.pose = transform_pose(
+                self.tf_buffer, self.pose, self.stamp, self.ref_frame
+            )
 
             self.req_get_shape = GetShape.Request()
             self.req_get_shape.entityid = self.entity_id
@@ -176,19 +178,18 @@ class orchestrator(Node):
             self.bounding_box = shape.boundingbox2d if shape.has_boundingbox2d else None
 
             if self.point_cloud:
-                self.point_cloud = transform_pointCloud(self.tf_buffer,
-                                                        self.point_cloud,
-                                                        self.stamp,
-                                                        self.ref_frame)
+                self.point_cloud = transform_pointCloud(
+                    self.tf_buffer, self.point_cloud, self.stamp, self.ref_frame
+                )
             if self.bounding_box:
-                self.bounding_box = transform_bBox(self.tf_buffer,
-                                                   self.bounding_box,
-                                                   self.stamp,
-                                                   self.ref_frame)
+                self.bounding_box = transform_bBox(
+                    self.tf_buffer, self.bounding_box, self.stamp, self.ref_frame
+                )
 
             if self.command_type == "place" and self.point_cloud:
-                voxel_map_result = pointcloud_to_voxel_map(self.tf_buffer,
-                                                           self.point_cloud)
+                voxel_map_result = pointcloud_to_voxel_map(
+                    self.tf_buffer, self.point_cloud
+                )
                 if voxel_map_result:
                     self.voxel_map, self.voxel_orig, self.voxel_size = voxel_map_result
                     visualize_voxel_map(self.tf_buffer, self.voxel_map)
@@ -197,7 +198,8 @@ class orchestrator(Node):
                 self.req_gripping_parameter = GrippingParameter.Request()
                 self.req_gripping_parameter.objectgroup = self.object_group
                 future_param = self.client_gripping_parameter.call_async(
-                    self.req_gripping_parameter)
+                    self.req_gripping_parameter
+                )
                 future_param.add_done_callback(self.handle_gripping_parameter_response)
             else:
                 self.force = 0.0
@@ -220,7 +222,8 @@ class orchestrator(Node):
             self.grip_pos_mode = self.grip_orient_mode = 0
 
         future_param = self.client_gripping_parameter.call_async(
-            self.req_gripping_parameter)
+            self.req_gripping_parameter
+        )
         future_param.add_done_callback(self.handle_gripping_parameter_response)
 
         self.compute_goal_pose()
@@ -246,12 +249,12 @@ class orchestrator(Node):
             self.gripping_point_orient = Quaternion(w=1.0)
         elif self.command_type == "place":
             if self.voxel_map:
-                pos_list = find_placing_area(self.tf_buffer,
-                                             self.voxel_map,
-                                             self.bounding_box)
-                self.placing_point_pos = Point(x=pos_list[0],
-                                               y=pos_list[1],
-                                               z=pos_list[2])
+                pos_list = find_placing_area(
+                    self.tf_buffer, self.voxel_map, self.bounding_box
+                )
+                self.placing_point_pos = Point(
+                    x=pos_list[0], y=pos_list[1], z=pos_list[2]
+                )
             self.placing_point_orient = self.gripping_point_orient
 
         self.send_goal()
@@ -293,7 +296,9 @@ class orchestrator(Node):
                 self.finish_action()
 
             self.get_logger().info("Orchestrator goal accepted")
-            self.goal_handle.get_result_async().add_done_callback(self.handle_orchestrator_result)
+            self.goal_handle.get_result_async().add_done_callback(
+                self.handle_orchestrator_result
+            )
 
         except Exception as e:
             self.get_logger().error(f"Failed to send orchestrator goal: {e}")
@@ -327,6 +332,7 @@ def main(args=None):
         executor.spin()
     except KeyboardInterrupt:
         pass
+
 
 if __name__ == "__main__":
     main()

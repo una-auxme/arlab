@@ -75,7 +75,7 @@ class MoshiTTS(Node):
         self.device = (
             self.declare_parameter(
                 "device",
-                "cpu",
+                "cuda",
                 descriptor=ParameterDescriptor(
                     description="Device on which to run, defaults to 'cuda'."
                     f"See {DEFAULT_DSM_TTS_VOICE_REPO}"

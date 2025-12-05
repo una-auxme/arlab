@@ -88,20 +88,11 @@ class TTSGen:
         self.state = self.tts_model.machine.new_state([])
         self.offset = 0
 
-    def process_last(self):
-        while len(self.state.entries) > 0 or self.state.end_step is not None:
-            self._step()
-        additional_steps = (
-            self.tts_model.delay_steps + max(self.tts_model.lm.delays) + 8
-        )
-        for _ in range(additional_steps):
-            self._step()
-
     def process(self):
         while len(self.state.entries) > self.tts_model.machine.second_stream_ahead:
-            self._step()
+            self.step()
 
-    def _step(self):
+    def step(self):
         missing = self.tts_model.lm.n_q - self.tts_model.lm.dep_q
         input_tokens = torch.full(
             (1, missing, 1),

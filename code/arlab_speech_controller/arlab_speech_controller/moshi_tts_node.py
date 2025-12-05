@@ -62,7 +62,7 @@ class MoshiTTS(Node):
         self.voice = (
             self.declare_parameter(
                 "voice",
-                "expresso/ex03-ex01_happy_001_channel1_334s.wav",
+                "unmute-prod-website/degaulle-2.wav",
                 descriptor=ParameterDescriptor(
                     description="The voice to use, relative to the voice repo root. "
                     f"See {DEFAULT_DSM_TTS_VOICE_REPO}"
@@ -75,7 +75,7 @@ class MoshiTTS(Node):
         self.device = (
             self.declare_parameter(
                 "device",
-                "cuda",
+                "cpu",
                 descriptor=ParameterDescriptor(
                     description="Device on which to run, defaults to 'cuda'."
                     f"See {DEFAULT_DSM_TTS_VOICE_REPO}"
@@ -140,12 +140,14 @@ class MoshiTTS(Node):
             self.tts_gen.state.end_step is not None
             and self.tts_gen.offset < self.tts_gen.state.end_step
         ):
-            self.tts_gen._step()
+            self.tts_gen.step()
             self.delay_steps = (
+                # Adding 16 delay_steps to make sure all outputs are processed. This number seems arbitrary,
+                # but the original library uses an value of 8 which was not enough in our case.
                 self.tts_model.delay_steps + max(self.tts_model.lm.delays) + 16
             )
         elif self.delay_steps > 0:
-            self.tts_gen._step()
+            self.tts_gen.step()
             self.delay_steps -= 1
         else:
             self.tts_gen.reset_state()

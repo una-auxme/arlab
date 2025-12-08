@@ -1,3 +1,4 @@
+string objectname
 string objectgroup
 
 ---
@@ -9,3 +10,6 @@ int32 grippos_mode
 
 # 0 = dont calculate orientation, 1 = calculate orientation from bounding box, 2 = calculate orientation from pointcloud (future)
 int32 griporient_mode
+
+# weight of the object for UR5 parameterization
+float64 object_weight

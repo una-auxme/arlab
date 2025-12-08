@@ -37,7 +37,7 @@ def transform_pointCloud(tf_buffer, pointCloud, stamp, ref_frame):
     transformed_points = []
     transform_stamped = tf_buffer.lookup_transform(
         target_frame,
-        "camera_link", #ref_frame,
+        "camera_link", #ref_frame
         stamp,
         timeout=rclpy.duration.Duration(seconds=1.0)
     )

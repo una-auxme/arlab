@@ -31,7 +31,7 @@ from rclpy.node import Node
 from std_msgs.msg import Float64, String
 
 from .utils.transform_utils import transform_bBox, transform_pointCloud, transform_pose
-from .utils.voxel_utils import find_placing_area, visualize_voxel_map
+from .utils.voxel_utils import find_placing_area
 
 
 class orchestrator(Node):
@@ -89,7 +89,7 @@ class orchestrator(Node):
         self.gripping_point_orient = Quaternion(w=1.0)
         self.placing_point_pos = Point()
         self.placing_point_orient = Quaternion(w=1.0)
-        self.voxel_map = None
+        self.octomap = None
         self.action_result = None
 
     # Get Octomap from MoveIt Node
@@ -240,7 +240,7 @@ class orchestrator(Node):
             self.gripping_point_pos = self.pose.position
             self.gripping_point_orient = Quaternion(w=1.0)
         elif self.command_type == "place":
-            if self.voxel_map:
+            if self.octomap:
                 pos_list = find_placing_area(
                     self.tf_buffer, self.octomap, self.bounding_box
                 )

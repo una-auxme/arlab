@@ -96,10 +96,11 @@ class orchestrator(Node):
     def octomap_callback(self, msg: PlanningScene):
         octomap_with_pose = msg.world.octomap
         octomap_msg = octomap_with_pose.octomap
-        if not octomap_msg.data:
+        self.octomap = octomap_msg.data
+        if not self.octomap:
             self.get_logger().warn("Octomap is empty")
             return
-        self.get_logger().info(f"Octomap received")
+        self.get_logger().info("Octomap received")
 
     # Accept Goal from ManipulationAction
     def goal_callback(self, goal_request):
@@ -199,14 +200,6 @@ class orchestrator(Node):
                     self.tf_buffer, self.bounding_box, self.stamp, self.ref_frame
                 )
 
-            if self.command_type == "place" and self.point_cloud:
-                voxel_map_result = pointcloud_to_voxel_map(
-                    self.tf_buffer, self.point_cloud
-                )
-                if voxel_map_result:
-                    self.voxel_map, self.voxel_orig, self.voxel_size = voxel_map_result
-                    visualize_voxel_map(self.tf_buffer, self.voxel_map)
-
             if self.pickable:
                 self.req_gripping_parameter = GrippingParameter.Request()
                 self.req_gripping_parameter.objectgroup = self.object_group
@@ -241,20 +234,6 @@ class orchestrator(Node):
 
         self.compute_goal_pose()
 
-    # CreateVoxelmap Response
-    def handle_create_voxelmap_response(self, future):
-        try:
-            response = future.result()
-            self.force = response.gripforce
-            self.grip_pos_mode = response.grippos_mode
-            self.grip_orient_mode = response.griporient_mode
-        except Exception as e:
-            self.get_logger().error(f"CreateVoxelmap failed: {e}")
-            self.force = 5.0
-            self.grip_pos_mode = self.grip_orient_mode = 0
-
-        self.compute_goal_pose()
-
     # Compute Goal Pose for MoveIt Node
     def compute_goal_pose(self):
         if self.command_type == "pick":
@@ -263,7 +242,7 @@ class orchestrator(Node):
         elif self.command_type == "place":
             if self.voxel_map:
                 pos_list = find_placing_area(
-                    self.tf_buffer, self.voxel_map, self.bounding_box
+                    self.tf_buffer, self.octomap, self.bounding_box
                 )
                 self.placing_point_pos = Point(
                     x=pos_list[0], y=pos_list[1], z=pos_list[2]

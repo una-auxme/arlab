@@ -36,21 +36,3 @@ def find_placing_area(self, voxel_map, bbox, gripper_margin=0.02):
     # fallback
     self.get_logger().warn("No free area found for object + gripper")
     return [0, 0, 0]
-
-# Show Voxel Map
-def visualize_voxel_map(self, voxel_map):
-    """
-    Visualizes the voxel map using matplotlib 3D scatter plot.
-    """
-    filled = np.argwhere(voxel_map == 1)
-    if filled.size == 0:
-        print("Voxelmap is empty.")
-        return
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(filled[:,0], filled[:,1], filled[:,2], c='blue', marker='s', s=10)
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
-    plt.show()

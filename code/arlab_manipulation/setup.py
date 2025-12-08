@@ -34,8 +34,7 @@ setup(
     entry_points={
         "console_scripts": [
             "orchestrator = arlab_manipulation.orchestrator:main",
-            "gripping_parameter = arlab_manipulation.services.gripping_parameter:main",
-            "create_voxelmap = arlab_manipulation.services.create_voxelmap:main",
+            "gripping_parameter = arlab_manipulation.services.gripping_parameter:main"
         ],
     },
 )

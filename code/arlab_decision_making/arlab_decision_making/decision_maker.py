@@ -17,7 +17,11 @@ from py_trees.composites import Sequence
 from rclpy.node import Node
 
 from .behaviours import check_safety, task1, task2
-from .behaviours.test_trees import test_manipulation_home
+from .behaviours.test_trees import (
+    test_manipulation_home,
+    test_manipulation_home_move_seq,
+    test_manipulation_move,
+)
 
 
 def get_tree(task: str) -> Behaviour:
@@ -29,6 +33,8 @@ def get_tree(task: str) -> Behaviour:
             - "task1": Execute Task 1 behavior tree.
             - "task2": Execute Task 2 behavior tree.
             - "test_manipulation_home": Execute manipulation home test tree.
+            - "test_manipulation_move": Execute manipulation move test tree.
+            - "test_manipulation_home_move_seq": Execute manipulation test tree.
 
     Raises:
         ValueError: If an unknown task name is provided.
@@ -43,6 +49,10 @@ def get_tree(task: str) -> Behaviour:
         chosen_task = task2
     elif task == "test_manipulation_home":
         chosen_task = test_manipulation_home
+    elif task == "test_manipulation_move":
+        chosen_task = test_manipulation_move
+    elif task == "test_manipulation_home_move_seq":
+        chosen_task = test_manipulation_home_move_seq
     else:
         raise ValueError(f"Unknown task: {task}")
 
@@ -50,7 +60,7 @@ def get_tree(task: str) -> Behaviour:
         name="DecisionMaker",
         memory=False,
         children=[
-            #check_safety.get_tree(),
+            # check_safety.get_tree(),
             chosen_task.get_tree(),
         ],
     )

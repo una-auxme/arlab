@@ -33,7 +33,7 @@ def generate_launch_description():
         [
             FindPackageShare("manipulator_description"),
             "launch",
-            "manipulator_sim_moveit.launch.py",
+            "manipulator_moveit.launch.py",
         ]
     )
 
@@ -75,9 +75,9 @@ def generate_launch_description():
     ld.add_action(sim_include)
     ld.add_action(GetParameter)
     ld.add_action(Orchestrator)
-    # ld.add_action(Manipulation_CPP)
-    ld.add_action(Perception)
+    ld.add_action(Manipulation_CPP)
+    # ld.add_action(Perception)
     ld.add_action(KnowledgeBase)
-    ld.add_action(CompVision)
+    # ld.add_action(CompVision)
 
     return ld

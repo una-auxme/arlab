@@ -25,8 +25,21 @@ def generate_launch_description():
         package="arlab_computer_vision",
         executable="object_detection",
         remappings=[
-            ("camera_color_image", "/camera/color/image_raw"),
-            ("camera_info", "/camera/color/camera_info"),
+            ("camera_color_image", "/color/image_raw"),
+            ("camera_info", "/color/camera_info"),
+            ("camera_depth_image", "/depth/image_rect_raw"),
+        ],
+        parameters=[
+            {"log_level": "DEBUG"},  # Node-Parameter für Debug-Logs
+        ],
+        arguments=[
+            "--ros-args",
+            "--log-level",
+            "ObjectDetection:=debug",  # Nur unser Node auf DEBUG
+            "--log-level",
+            "rcl:=warn",  # ROS2 interne Logs auf WARN
+            "--log-level",
+            "rclpy:=warn",  # ROS2 Python Logs auf WARN
         ],
     )
 

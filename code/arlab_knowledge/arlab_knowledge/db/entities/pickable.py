@@ -34,7 +34,8 @@ class Pickable(Entity):
         back_populates="pickables", foreign_keys=located_on_id
     )
 
-    picking_tag: Mapped[str]
+    object_name: Mapped[str]
+    object_category: Mapped[str]
 
     __mapper_args__ = {
         "polymorphic_identity": "entity_pickable",
@@ -44,11 +45,13 @@ class Pickable(Entity):
     def _extract_kwargs(cls, m: msg.Entity) -> Dict:
         kwargs = super()._extract_kwargs(m)
         # Assign subclass specific attributes here
-        kwargs["picking_tag"] = m.pickable.picking_tag
+        kwargs["object_name"] = m.pickable.object_name
+        kwargs["object_category"] = m.pickable.object_category
         return kwargs
 
     def to_ros_msg(self) -> msg.Entity:
         m = super().to_ros_msg()
         # Assign subclass specific attributes here
-        m.pickable.picking_tag = self.picking_tag
+        m.pickable.object_name = self.object_name
+        m.pickable.object_category = self.object_category
         return m

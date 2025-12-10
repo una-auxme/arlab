@@ -65,4 +65,4 @@ class RosActionBehaviour(FromBlackboard):
         """
         super().get_result_callback(future)
 
-        self.blackboard.result_output = self.result_message
+        self.blackboard.result_output = self.result_message.result

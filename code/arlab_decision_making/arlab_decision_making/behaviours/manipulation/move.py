@@ -17,7 +17,7 @@ def get_tree() -> Behaviour:
         children=[
             SetupManipulationMove(),
             GenericManipulation(
-                "Home", "/manipulation/move_goal", "/manipulation/move_result"
+                "Move", "/manipulation/move_goal", "/manipulation/move_result"
             ),
             CheckManipulationMove(),
         ],
@@ -52,6 +52,7 @@ class CheckManipulationMove(Behaviour):
 
     def update(self):
         result: ManipulationAction.Result = self.blackboard.manipulation.move_result
-        # print(result.response.message)
-        # TODO: Check message and arm position
+        print(result.response.message)
+        if result.response.message != "SUCCESS":
+            return Status.FAILURE
         return Status.SUCCESS

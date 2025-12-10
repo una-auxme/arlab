@@ -130,6 +130,7 @@ class orchestrator(Node):
             self.send_goal()
 
         self.action_done_event.wait()
+        self.action_done_event.clear()
 
         if not goal_handle.is_active:
             return

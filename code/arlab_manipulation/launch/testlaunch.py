@@ -59,7 +59,7 @@ def generate_launch_description():
 
     # C++ subscriber node for orchestrator data (for MoveIt or robot control)
     Manipulation_CPP = Node(
-        package="arlab_manipulation_cpp", executable="Manipulation_CPP"
+        package="arlab_manipulation_cpp", executable="Manipulation_CPP", output="log"
     )
 
     # Video node from perception
@@ -75,9 +75,9 @@ def generate_launch_description():
     ld.add_action(sim_include)
     ld.add_action(GetParameter)
     ld.add_action(Orchestrator)
-    # ld.add_action(Manipulation_CPP)
+    ld.add_action(Manipulation_CPP)
     ld.add_action(Perception)
     ld.add_action(KnowledgeBase)
-    ld.add_action(CompVision)
+    # ld.add_action(CompVision)
 
     return ld

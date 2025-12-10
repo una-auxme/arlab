@@ -1,2 +1,2 @@
-map saving loading
+need to switch off slam and start amcl. try to use: https://github.com/ros-navigation/navigation2/blob/main/nav2_bringup/launch/localization_launch.py
 

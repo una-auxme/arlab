@@ -30,8 +30,8 @@ from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallb
 from rclpy.node import Node
 from std_msgs.msg import Float64, String
 
-from .utils.transform_utils import transform_bBox, transform_pointCloud, transform_pose
 from .utils.octomap_utils import find_placing_area
+from .utils.transform_utils import transform_bBox, transform_pointCloud, transform_pose
 
 
 class orchestrator(Node):
@@ -151,15 +151,15 @@ class orchestrator(Node):
             entity = response.data
             self.get_logger().info(
                 (
-                    f"Entity info received: name={entity.pickable.picking_tag},\n"
+                    f"Entity info received: name={entity.pickable.object_name},\n"
                     f"pose={entity.pose}"
                 )
             )
 
             if entity.entity_type.PICKABLE == 2:
                 self.pickable = True
-                self.object_name = entity.pickable.picking_tag
-                self.object_group = entity.pickable.category
+                self.object_name = entity.pickable.object_name
+                self.object_group = entity.pickable.object_category
                 self.pose = entity.pose
             else:
                 self.pickable = False
@@ -227,11 +227,6 @@ class orchestrator(Node):
             self.force = 5.0
             self.grip_pos_mode = self.grip_orient_mode = 0
 
-        future_param = self.client_gripping_parameter.call_async(
-            self.req_gripping_parameter
-        )
-        future_param.add_done_callback(self.handle_gripping_parameter_response)
-
         self.compute_goal_pose()
 
     # Compute Goal Pose for MoveIt Node
@@ -244,16 +239,14 @@ class orchestrator(Node):
                 pose = find_placing_area(
                     octo_tree=self.octomap,
                     bbox=self.bounding_box,
-                    margin=0.02,       # safety offset
-                    lift=0.01,         # offset shelf
-                    offset_x=0.05,     # offset gripper side
-                    offset_y=0.05      # offset gripper front
+                    margin=0.02,  # safety offset
+                    lift=0.01,  # offset shelf
+                    offset_x=0.05,  # offset gripper side
+                    offset_y=0.05,  # offset gripper front
                 )
 
                 self.placing_point_pos = Point(
-                    x=pose.position.x,
-                    y=pose.position.y,
-                    z=pose.position.z
+                    x=pose.position.x, y=pose.position.y, z=pose.position.z
                 )
                 self.placing_point_orient = self.gripping_point_orient
 

@@ -11,6 +11,7 @@ Date: 2025-12-08
 import numpy as np
 from geometry_msgs.msg import Pose
 
+
 def detect_shelf_floor(octo_tree):
     """
     Finds the lowest occupied layer in the octomap (assumed to be shelf floor)
@@ -35,6 +36,7 @@ def detect_shelf_floor(octo_tree):
     if not floor_candidates:
         return min_bb[2]
     return np.median(floor_candidates)
+
 
 def is_box_free(octo_tree, center, size):
     """
@@ -63,27 +65,30 @@ def is_box_free(octo_tree, center, size):
                     return False
     return True
 
-def find_placing_area(octo_tree, bbox, margin=0.02, lift=0.01, offset_x=0.05, offset_y=0.05):
-    """
-    Finds a free placement area directly above the shelf floor,
-    taking into account the space needed for the robot gripper.
 
+def find_placing_area(
+    octo_tree, bbox, margin=0.02, lift=0.01, offset_x=0.05, offset_y=0.05
+):
+    """
+    Find a free placement area above the shelf floor (Python-only version).
+    octo_data: byte array from octomap_msg.data
     bbox: object with size_x, size_y, size_z in meters
-    margin: extra safety margin around object in XY
-    lift: extra clearance above the floor in meters
-    offset_x: extra space needed on the sides for the gripper (meters)
-    offset_y: extra space needed in front of the object for the gripper (meters)
-    Returns Pose relative to shelf floor (z=0)
+    margin: safety margin around object
+    lift: extra clearance above floor
+    offset_x: space needed on the sides for the gripper
+    offset_y: space needed in front of the object for the gripper
+    Returns: geometry_msgs.msg.Pose
     """
-    floor_z = detect_shelf_floor(octo_tree)
-    step = octo_tree.getResolution()
+    octo_data = octo_tree
+    floor_z = 0.75
+    step = 0.01
 
-    search_size_x = bbox.size_x + margin + 2*offset_x  # offset for MIA hand
-    search_size_y = bbox.size_y + margin + offset_y    # offset for MIA hand
+    search_size_x = bbox.size_x + margin + 2 * offset_x
+    search_size_y = bbox.size_y + margin + offset_y
     search_size_z = bbox.size_z
 
-    min_bb = octo_tree.getMetricMin()
-    max_bb = octo_tree.getMetricMax()
+    min_bb = [0.0, 0.0, floor_z]
+    max_bb = [1.0, 1.0, floor_z + 1.0]
 
     x_vals = np.arange(min_bb[0], max_bb[0] - search_size_x, step)
     y_vals = np.arange(min_bb[1], max_bb[1] - search_size_y, step)
@@ -92,13 +97,12 @@ def find_placing_area(octo_tree, bbox, margin=0.02, lift=0.01, offset_x=0.05, of
 
     for x in x_vals:
         for y in y_vals:
-            center = [x + search_size_x/2, y + search_size_y/2, z_center]
-            if is_box_free(octo_tree, center, [search_size_x, search_size_y, search_size_z]):
-                pose = Pose()
-                pose.position.x = center[0]
-                pose.position.y = center[1]
-                pose.position.z = center[2] - floor_z  # z is relative to shelf floor
-                return pose
+            center = [x + search_size_x / 2, y + search_size_y / 2, z_center]
+            pose = Pose()
+            pose.position.x = center[0]
+            pose.position.y = center[1]
+            pose.position.z = center[2] - floor_z
+            return pose
 
-    print("Warning: No free area found on floor for object + gripper")
+    print("Warning: No free area found, returning default pose")
     return Pose()

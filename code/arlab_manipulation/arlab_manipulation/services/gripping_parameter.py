@@ -13,9 +13,9 @@ Date: 2025-08-24
 """
 
 import rclpy
-from rclpy.node import Node
 from arlab_common_interfaces.srv import GrippingParameter
 from geometry_msgs.msg import Point, Quaternion
+from rclpy.node import Node
 
 
 class GrippingParameterNode(Node):
@@ -24,35 +24,46 @@ class GrippingParameterNode(Node):
     def __init__(self):
         super().__init__("GetGrippingParameter")
         self.srv = self.create_service(
-            GrippingParameter,
-            "GetGrippingParameter",
-            self.callback
+            GrippingParameter, "GetGrippingParameter", self.callback
         )
 
         # Object group → gripping parameters (force, pos_mode, orient_mode)
         self.group_parameter_table = {
-            "fruits": [2.0, 0, 0],
+            "object_category_unknown": [5.0, 0, 0],
+            "sphere": [2.0, 0, 0],
+            "cube": [2.0, 0, 0],
             "cylinder": [5.0, 0, 0],
-            "default": [5.0, 0, 0]
+            "cone": [2.0, 0, 0],
+            "ring": [5.0, 0, 0],
+            "capsule": [2.0, 0, 0],
+            "default": [5.0, 0, 0],
         }
 
         # Object name → weight [kg]
         self.object_weight_table = {
-            "apple": 0.2,
-            "banana": 0.25,
-            "orange": 0.3,
-            "default": 1.0
+            "object_name_unknown": 0.2,
+            "apple": 0.25,
+            "banana": 0.3,
+            "beer": 0.2,
+            "bottle": 0.25,
+            "cereals": 0.3,
+            "cup": 0.2,
+            "milk": 0.25,
+            "chipscan": 0.3,
+            "chipsbag": 0.2,
+            "shoppingbag": 0.25,
+            "default": 1.0,
         }
 
     def callback(self, request, response):
         """Service callback that computes the gripping force for a requested object."""
 
         object_weight = self.object_weight_table.get(
-            request.objectname, self.object_weight_table["default"])
+            request.objectname, self.object_weight_table["default"]
+        )
 
         grip_parameter = self.group_parameter_table.get(
-            request.objectgroup,
-            self.group_parameter_table["default"]
+            request.objectgroup, self.group_parameter_table["default"]
         )
 
         gripforce, grippos_mode, griporient_mode = grip_parameter

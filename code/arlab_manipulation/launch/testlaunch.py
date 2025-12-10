@@ -63,9 +63,6 @@ def generate_launch_description():
     )
 
     # Video node from perception
-    Perception = Node(package="arlab_perception", executable="video_node")
-
-    # Video node from perception
     KnowledgeBase = Node(package="arlab_knowledge", executable="database_node")
 
     # Video node from perception
@@ -76,8 +73,7 @@ def generate_launch_description():
     ld.add_action(GetParameter)
     ld.add_action(Orchestrator)
     ld.add_action(Manipulation_CPP)
-    ld.add_action(Perception)
     ld.add_action(KnowledgeBase)
-    # ld.add_action(CompVision)
+    ld.add_action(CompVision)
 
     return ld

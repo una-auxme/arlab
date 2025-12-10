@@ -126,6 +126,7 @@ class ObjectDetection(Node):
 
         # Subscribe to RGB image stream.
         self.create_subscription(Image, "camera_color_image", self.process_data, 10)
+        self.alreadyCalled = False
 
     def camera_info_callback(self, msg: CameraInfo) -> None:
         """Extract camera intrinsics from CameraInfo message.
@@ -140,7 +141,7 @@ class ObjectDetection(Node):
             "cx": K[0, 2],
             "cy": K[1, 2],
         }
-        self.get_logger().info("Camera intrinsics set.")
+        # self.get_logger().info("Camera intrinsics set.")
 
     async def process_data(self, rgb_msg: Image) -> None:
         """Process incoming RGB images and sync detections with KB.
@@ -154,70 +155,75 @@ class ObjectDetection(Node):
             - Uses async service calls for KB operations.
         """
 
-        # comment in for real camera usage
-        # if self.camera_intrinsics is None:
-        #     return
+        self.alreadyCalled = True
 
-        # comment in for real camera usage
-        # if self.camera_intrinsics is None:
-        #     return
+        if not self.alreadyCalled:
+            # comment in for real camera usage
+            # if self.camera_intrinsics is None:
+            #     return
 
-        # self.get_logger().info("Processing image...")
+            # comment in for real camera usage
+            # if self.camera_intrinsics is None:
+            #     return
 
-        # Convert ROS image to RGB numpy array.
-        rgb_image = self.bridge.imgmsg_to_cv2(
-            rgb_msg,
-            desired_encoding="bgr8",
-        )
+            # self.get_logger().info("Processing image...")
 
-        # TODO: Integrate depth image handling if available.
-
-        # Run YOLO inference (segmentation/detection).
-        results = self.model(rgb_image)
-        result = results[0]
-
-        # Convert YOLO results to entity dicts.
-        entities_cv = generate_entities_from_yolo_result(
-            result=result,
-            class_names=self.model.names,
-            frame=rgb_image if self.visualize else None,
-            use_segmentation=self.use_segmentation,
-        )
-
-        # Debug: Zeige, wie viele Objekte erkannt wurden
-        object_names = [e["name"].data for e in entities_cv]
-        self.get_logger().info(f"Detected {len(entities_cv)} objects: {object_names}")
-
-        # Ensure services are available.
-        if not self.client_get_entities.wait_for_service(timeout_sec=2.0):
-            # self.get_logger().error("Service /get_entities not available.")
-            return
-        if not self.client_add_entities.wait_for_service(timeout_sec=2.0):
-            # self.get_logger().error("Service /add_entity not available.")
-            return
-        if not self.client_del_entities.wait_for_service(timeout_sec=2.0):
-            # self.get_logger().error("Service /del_entities not available.")
-            return
-
-        # Retrieve existing entities from KB (optional, currently unused).
-        get_entities_req = GetEntities.Request()
-        get_entities_req.entity_type.id = EntityType.ENTITY
-        # resp: GetEntities.Response = await self.client_get_entities.call_async(
-        #     get_entities_req
-        # )
-        # self.get_logger().info("GetEntities response received.")
-
-        # Insert (or upsert) detected entities into KB.
-        for entity_cv in entities_cv:
-            add_entity_req = AddEntity.Request()
-            add_entity_req.data = Entity(
-                description=f"Detected: {entity_cv['name'].data}",
-                pose=entity_cv["pose"],
-                pose_reference_frame=rgb_msg.header.frame_id,
-                stamp=self.get_clock().now().to_msg(),
+            # Convert ROS image to RGB numpy array.
+            rgb_image = self.bridge.imgmsg_to_cv2(
+                rgb_msg,
+                desired_encoding="bgr8",
             )
-            add_resp = await self.client_add_entities.call_async(add_entity_req)
-            # self.get_logger().info(f"AddEntity response received: {add_resp}")
+
+            # TODO: Integrate depth image handling if available.
+
+            # Run YOLO inference (segmentation/detection).
+            results = self.model(rgb_image)
+            result = results[0]
+
+            # Convert YOLO results to entity dicts.
+            entities_cv = generate_entities_from_yolo_result(
+                result=result,
+                class_names=self.model.names,
+                frame=rgb_image if self.visualize else None,
+                use_segmentation=self.use_segmentation,
+            )
+
+            # Debug: Zeige, wie viele Objekte erkannt wurden
+            object_names = [e["name"].data for e in entities_cv]
+            self.get_logger().info(
+                f"Detected {len(entities_cv)} objects: {object_names}"
+            )
+
+            # Ensure services are available.
+            if not self.client_get_entities.wait_for_service(timeout_sec=2.0):
+                # self.get_logger().error("Service /get_entities not available.")
+                return
+            if not self.client_add_entities.wait_for_service(timeout_sec=2.0):
+                # self.get_logger().error("Service /add_entity not available.")
+                return
+            if not self.client_del_entities.wait_for_service(timeout_sec=2.0):
+                # self.get_logger().error("Service /del_entities not available.")
+                return
+
+            # Retrieve existing entities from KB (optional, currently unused).
+            get_entities_req = GetEntities.Request()
+            get_entities_req.entity_type.id = EntityType.ENTITY
+            # resp: GetEntities.Response = await self.client_get_entities.call_async(
+            #     get_entities_req
+            # )
+            # self.get_logger().info("GetEntities response received.")
+
+            # Insert (or upsert) detected entities into KB.
+            for entity_cv in entities_cv:
+                add_entity_req = AddEntity.Request()
+                add_entity_req.data = Entity(
+                    description=f"Detected: {entity_cv['name'].data}",
+                    pose=entity_cv["pose"],
+                    pose_reference_frame=rgb_msg.header.frame_id,
+                    stamp=self.get_clock().now().to_msg(),
+                )
+                add_resp = await self.client_add_entities.call_async(add_entity_req)
+                # self.get_logger().info(f"AddEntity response received: {add_resp}")
 
 
 def pose_from_point2d(point2d: Point2D) -> Pose:

@@ -79,7 +79,7 @@ class ObjectDetection(Node):
         self.declare_parameter("use_depth", True)
         self.declare_parameter("sync_tolerance", 0.5)  # 500ms tolerance (default)
         # Enable/disable depth clustering (default: False for better performance)
-        self.declare_parameter("use_clustering", False)
+        self.declare_parameter("use_clustering", True)
 
         # Load parameters.
         yolo_weights = (
@@ -797,6 +797,8 @@ class ObjectDetection(Node):
                 continue
 
             # Project to 2D pixel coordinates
+            floor_candidates = []
+
             u = (fx * x[valid_mask] / z[valid_mask] + cx).astype(int)
             v = (fy * y[valid_mask] / z[valid_mask] + cy).astype(int)
 
@@ -1056,6 +1058,7 @@ class ObjectDetection(Node):
             rgb_msg: Incoming RGB `sensor_msgs/Image`.
             depth_msg: Optional incoming depth `sensor_msgs/Image`.
         """
+
         if not self._camera_intrinsics_set:
             return
 

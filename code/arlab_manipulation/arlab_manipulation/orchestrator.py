@@ -237,7 +237,7 @@ class orchestrator(Node):
         elif self.command_type == "place":
             if self.octomap:
                 pose = find_placing_area(
-                    octo_tree=self.octomap,
+                    octo_data=self.octomap,
                     bbox=self.bounding_box,
                     margin=0.02,  # safety offset
                     lift=0.01,  # offset shelf

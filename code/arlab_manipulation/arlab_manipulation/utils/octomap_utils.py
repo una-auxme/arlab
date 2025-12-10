@@ -20,8 +20,6 @@ def detect_shelf_floor(octo_data, resolution=0.01):
     resolution: voxel size in meters
     Returns floor_z in world coordinates
     """
-    if octo_data is None or octo_data.size == 0:
-        return 0.75
 
     floor_candidates = []
     for ix in range(octo_data.shape[0]):
@@ -44,8 +42,6 @@ def is_box_free(octo_data, center, size, resolution=0.01):
     size: [dx, dy, dz] in meters
     resolution: voxel size in meters
     """
-    if octo_data is None or octo_data.size == 0:
-        return True
 
     dx, dy, dz = size
     nx = int(np.ceil(dx / resolution))

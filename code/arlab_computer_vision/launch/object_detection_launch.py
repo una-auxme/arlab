@@ -29,6 +29,18 @@ def generate_launch_description():
             ("camera_info", "/color/camera_info"),
             ("camera_depth_image", "/depth/image_rect_raw"),
         ],
+        parameters=[
+            {"log_level": "DEBUG"},  # Node-Parameter für Debug-Logs
+        ],
+        arguments=[
+            "--ros-args",
+            "--log-level",
+            "ObjectDetection:=debug",  # Nur unser Node auf DEBUG
+            "--log-level",
+            "rcl:=warn",  # ROS2 interne Logs auf WARN
+            "--log-level",
+            "rclpy:=warn",  # ROS2 Python Logs auf WARN
+        ],
     )
 
     # Add node to the launch description

@@ -5,9 +5,6 @@ using Ultralytics YOLO segmentation, converts results into
 semantic/geometric entities, and communicates with a knowledge base (KB)
 via ROS services.
 
-TODO:
-    - Implement IoU-based tracking of entities and update existing
-      entries in the knowledge base instead of re-adding them each frame.
 
 Maintainers:
     Aleksander Michalak <aleksander1.michalak@uni-a.de>
@@ -15,7 +12,8 @@ Maintainers:
 
 import asyncio
 import os
-from concurrent.futures import ThreadPoolExecutor
+import threading
+import time
 from typing import Any
 
 import cv2
@@ -24,7 +22,7 @@ import rclpy
 import torch
 from ament_index_python.packages import get_package_share_directory
 from arlab_asyncio_executor.executors import AsyncIOExecutor
-from arlab_knowledge_interfaces.msg import Entity, EntityType, Shape
+from arlab_knowledge_interfaces.msg import Entity, Shape
 from arlab_knowledge_interfaces.srv import AddEntity, DelEntities, GetEntities, UpdShape
 from cv_bridge import CvBridge
 from geometry_msgs.msg import Point, Pose, Quaternion
@@ -35,7 +33,7 @@ from sensor_msgs.msg import CameraInfo, Image, PointCloud2, PointField
 from sklearn.cluster import DBSCAN
 from std_msgs.msg import Header, String  # <-- needed for 'name' field in entities
 from ultralytics import YOLO
-from vision_msgs.msg import Point2D
+from vision_msgs.msg import BoundingBox2D, Point2D, Pose2D
 
 
 class ObjectDetection(Node):
@@ -50,7 +48,6 @@ class ObjectDetection(Node):
            update entities.
 
     Attributes:
-        visualize (bool): Whether to display a live visualization window.
         bridge (CvBridge): ROS–OpenCV conversion bridge.
         model (YOLO): Ultralytics YOLO segmentation model.
         camera_intrinsics (dict[str, float] | None): Focal lengths and principal
@@ -61,6 +58,7 @@ class ObjectDetection(Node):
         client_get_entities: Service client for fetching entities.
         client_del_entities: Service client for deleting entities.
         client_add_entities: Service client for adding an entity.
+        client_upd_shape: Service client for updating entity shapes.
     """
 
     def __init__(self) -> None:
@@ -87,9 +85,7 @@ class ObjectDetection(Node):
         yolo_weights = (
             self.get_parameter("yolo_weights").get_parameter_value().string_value
         )
-        self.visualize = (
-            self.get_parameter("visualize").get_parameter_value().bool_value
-        )
+        # Visualization parameter removed for performance reasons
         log_level_str = (
             self.get_parameter("log_level").get_parameter_value().string_value
         )
@@ -146,28 +142,32 @@ class ObjectDetection(Node):
         if device == "cuda":
             self.model.half()
             self.get_logger().info("Using FP16 (half precision) for GPU inference")
+            # Warmup the model to avoid first inference delay
+            try:
+                import numpy as np
 
-        # Close any existing OpenCV windows from previous runs
-        if self.visualize:
-            cv2.destroyAllWindows()
+                dummy_input = np.zeros((480, 640, 3), dtype=np.uint8)
+                _ = self.model(dummy_input, verbose=False)
+                if torch.cuda.is_available():
+                    torch.cuda.synchronize()  # Wait for warmup to complete
+                self.get_logger().info("Model warmup completed")
+            except Exception as e:
+                self.get_logger().warn(f"Model warmup failed: {e}")
+
+        # Visualization removed - no need to close windows
 
         # Flag to track if a frame is currently being processed
         self._processing_frame = False
+        # Thread-safe lock for frame processing (synchron)
+        self._processing_lock_sync = threading.Lock()
+        # Async lock for frame processing (async)
+        self._processing_lock_async = None  # Will be created in async_init
 
         # Frame statistics
         self._frames_processed = 0
         self._frames_skipped = 0
 
-        # Thread pool for YOLO inference (max_workers=1 to avoid queue buildup)
-        # Frame-skipping ensures we don't create multiple tasks
-        self._yolo_executor = ThreadPoolExecutor(
-            max_workers=1, thread_name_prefix="yolo"
-        )
-
-        # Thread pool for depth processing (clustering)
-        self._depth_executor = ThreadPoolExecutor(
-            max_workers=1, thread_name_prefix="depth"
-        )
+        # Thread pool removed - using asyncio.to_thread for sequential processing
 
         self.camera_intrinsics: dict[str, float] | None = None
         self._camera_intrinsics_set = False
@@ -253,6 +253,9 @@ class ObjectDetection(Node):
         This method is required by AsyncIOExecutor but doesn't need
         to perform any initialization in this node.
         """
+        # Create async lock for frame processing
+        self._processing_lock_async = asyncio.Lock()
+
         # Start background task to periodically check KB services if not available
         if not self._kb_services_available:
             self._start_periodic_service_check()
@@ -331,17 +334,16 @@ class ObjectDetection(Node):
             rgb_msg: Incoming RGB `sensor_msgs/Image`.
             depth_msg: Optional incoming depth `sensor_msgs/Image`.
         """
-        self.get_logger().debug(
-            f"_process_data_sync called: RGB {rgb_msg.width}x{rgb_msg.height}, "
-            f"Depth: {'present' if depth_msg is not None else 'missing'}"
-        )
+        # Early frame skipping: Check if already processing BEFORE creating task
+        with self._processing_lock_sync:
+            if self._processing_frame:
+                self._frames_skipped += 1
+                return
+
         try:
             asyncio.get_running_loop()
-            self.get_logger().debug("Event loop found, creating task")
             asyncio.create_task(self.process_data(rgb_msg, depth_msg))
         except RuntimeError:
-            # No event loop running, create one
-            self.get_logger().warn("No event loop running, creating new one")
             asyncio.run(self.process_data(rgb_msg, depth_msg))
 
     def camera_info_callback(self, msg: CameraInfo) -> None:
@@ -425,6 +427,78 @@ class ObjectDetection(Node):
 
         return point_cloud
 
+    def _filter_depth_by_masks(
+        self,
+        depth_image: np.ndarray,
+        masks: np.ndarray,
+        intrinsics: dict[str, float],
+    ) -> np.ndarray:
+        """Filter depth points using segmentation masks.
+
+        Only depth points that lie within at least one segmentation mask
+        are kept. Points in overlapping mask regions are kept once.
+
+        Args:
+            depth_image: Depth image as numpy array (H x W), values in meters.
+            masks: Binary masks as numpy array (N x H x W) where N is number of
+                detections. Each mask is a binary array (0 or 1).
+            intrinsics: Camera intrinsics dict with keys: fx, fy, cx, cy.
+
+        Returns:
+            Filtered point cloud as numpy array (M x 3) where each row is [x, y, z]
+            in camera frame. Only points within mask regions are included.
+            Invalid points (depth=0 or NaN) are filtered out.
+        """
+        height, width = depth_image.shape
+
+        # Validate mask dimensions
+        if len(masks) == 0:
+            return np.array([]).reshape(0, 3)
+
+        # Check if masks match image dimensions
+        if masks.shape[1] != height or masks.shape[2] != width:
+            self.get_logger().warn(
+                f"Mask dimensions {masks.shape[1]}x{masks.shape[2]} do not match "
+                f"depth image dimensions {height}x{width}"
+            )
+            return np.array([]).reshape(0, 3)
+
+        # Create combined mask: OR operation across all masks
+        # A point is kept if it's in ANY mask
+        combined_mask = np.zeros((height, width), dtype=bool)
+        for mask in masks:
+            # Ensure mask is boolean
+            mask_bool = mask.astype(bool)
+            combined_mask = combined_mask | mask_bool
+
+        # Extract camera intrinsics
+        fx = intrinsics["fx"]
+        fy = intrinsics["fy"]
+        cx = intrinsics["cx"]
+        cy = intrinsics["cy"]
+
+        # Create pixel coordinate grids
+        u, v = np.meshgrid(np.arange(width), np.arange(height))
+
+        # Convert depth to float32
+        z = depth_image.astype(np.float32)
+
+        # Filter: valid depth AND within mask
+        valid_depth_mask = (z > 0) & np.isfinite(z)
+        final_mask = valid_depth_mask & combined_mask
+
+        # Extract valid points
+        u_valid = u[final_mask]
+        v_valid = v[final_mask]
+        z_valid = z[final_mask]
+
+        # Convert to 3D coordinates
+        x_valid = (u_valid - cx) * z_valid / fx
+        y_valid = (v_valid - cy) * z_valid / fy
+
+        # Stack into point cloud (N x 3)
+        return np.column_stack([x_valid, y_valid, z_valid])
+
     def _cluster_depth_points(
         self,
         point_cloud: np.ndarray,
@@ -500,133 +574,6 @@ class ObjectDetection(Node):
             )
 
         return clusters
-
-    def _project_3d_to_2d(
-        self, point_3d: np.ndarray, intrinsics: dict[str, float] | None = None
-    ) -> tuple[float, float]:
-        """Project a 3D point to 2D image coordinates.
-
-        Args:
-            point_3d: 3D point as numpy array [x, y, z] in camera frame.
-            intrinsics: Optional camera intrinsics dict. If None, uses cached values.
-
-        Returns:
-            Tuple of (u, v) pixel coordinates in image space.
-        """
-        x, y, z = point_3d
-
-        # Use cached values if available, otherwise use provided intrinsics
-        if intrinsics is None:
-            if self._fx is None:
-                raise ValueError("Camera intrinsics not set")
-            fx, fy, cx, cy = self._fx, self._fy, self._cx, self._cy
-        else:
-            fx = intrinsics["fx"]
-            fy = intrinsics["fy"]
-            cx = intrinsics["cx"]
-            cy = intrinsics["cy"]
-
-        # Project to image plane: u = fx * x / z + cx, v = fy * y / z + cy
-        if z <= 0:
-            return (-1, -1)  # Invalid (behind camera)
-
-        u = fx * x / z + cx
-        v = fy * y / z + cy
-
-        return (float(u), float(v))
-
-    def _calculate_cluster_bbox_2d(
-        self, cluster: dict[str, Any], intrinsics: dict[str, float] | None = None
-    ) -> tuple[float, float, float, float] | None:
-        """Calculate 2D bounding box for a cluster in image space (vectorized).
-
-        Args:
-            cluster: Cluster dictionary with 'points' (N x 3) and 'bbox_3d'.
-            intrinsics: Optional camera intrinsics dict. If None, uses cached values.
-
-        Returns:
-            Tuple of (min_u, min_v, max_u, max_v) in image coordinates,
-            or None if projection fails.
-        """
-        points_3d = cluster["points"]  # Shape: [N, 3]
-        if len(points_3d) == 0:
-            return None
-
-        # Use cached values if available
-        if intrinsics is None:
-            if self._fx is None:
-                return None
-            fx, fy, cx, cy = self._fx, self._fy, self._cx, self._cy
-        else:
-            fx = intrinsics["fx"]
-            fy = intrinsics["fy"]
-            cx = intrinsics["cx"]
-            cy = intrinsics["cy"]
-
-        # Vectorized projection: [N, 3] -> [N, 2]
-        x, y, z = points_3d[:, 0], points_3d[:, 1], points_3d[:, 2]
-
-        # Filter valid points (z > 0)
-        valid_mask = z > 0
-        if not np.any(valid_mask):
-            return None
-
-        # Project valid points
-        u = fx * x[valid_mask] / z[valid_mask] + cx
-        v = fy * y[valid_mask] / z[valid_mask] + cy
-
-        # Filter points with valid projections (u >= 0, v >= 0)
-        valid_2d = (u >= 0) & (v >= 0)
-        if not np.any(valid_2d):
-            return None
-
-        u_valid = u[valid_2d]
-        v_valid = v[valid_2d]
-
-        return (
-            float(np.min(u_valid)),
-            float(np.min(v_valid)),
-            float(np.max(u_valid)),
-            float(np.max(v_valid)),
-        )
-
-    def _calculate_iou(
-        self,
-        bbox1: tuple[float, float, float, float],
-        bbox2: tuple[float, float, float, float],
-    ) -> float:
-        """Calculate Intersection over Union (IoU) between two bounding boxes.
-
-        Args:
-            bbox1: Bounding box as (min_u, min_v, max_u, max_v).
-            bbox2: Bounding box as (min_u, min_v, max_u, max_v).
-
-        Returns:
-            IoU value between 0 and 1.
-        """
-        min_u1, min_v1, max_u1, max_v1 = bbox1
-        min_u2, min_v2, max_u2, max_v2 = bbox2
-
-        # Calculate intersection
-        inter_min_u = max(min_u1, min_u2)
-        inter_min_v = max(min_v1, min_v2)
-        inter_max_u = min(max_u1, max_u2)
-        inter_max_v = min(max_v1, max_v2)
-
-        if inter_max_u <= inter_min_u or inter_max_v <= inter_min_v:
-            return 0.0  # No intersection
-
-        inter_area = (inter_max_u - inter_min_u) * (inter_max_v - inter_min_v)
-
-        # Calculate union
-        area1 = (max_u1 - min_u1) * (max_v1 - min_v1)
-        area2 = (max_u2 - min_u2) * (max_v2 - min_v2)
-        union_area = area1 + area2 - inter_area
-
-        if union_area <= 0:
-            return 0.0
-
-        return inter_area / union_area
 
     def _create_cluster_mask(
         self,
@@ -725,153 +672,18 @@ class ObjectDetection(Node):
 
         return float(intersection) / float(union)
 
-    def _match_clusters_to_detections(
-        self,
-        yolo_result,
-        clusters: list[dict[str, Any]],
-        intrinsics: dict[str, float] | None,
-        image_width: int,
-        image_height: int,
-        iou_threshold: float = 0.1,
-    ) -> list[dict[str, Any]]:
-        """Match depth clusters to YOLO detections using mask-based IoU.
-
-        Uses segmentation masks if available, falls back to bounding boxes.
-
-        Args:
-            yolo_result: YOLO result object (with boxes and optionally masks).
-            clusters: List of cluster dictionaries.
-            intrinsics: Camera intrinsics dict.
-            image_width: Width of the image.
-            image_height: Height of the image.
-            iou_threshold: Minimum IoU for a valid match (default: 0.1).
-
-        Returns:
-            List of association dictionaries, each containing:
-                - 'detection_idx': index of YOLO detection
-                - 'cluster_idx': index of matched cluster (or None if no match)
-                - 'iou': IoU value (or 0.0 if no match)
-                - 'cluster': matched cluster dict (or None)
-        """
-        if len(clusters) == 0:
-            return []
-
-        yolo_boxes = yolo_result.boxes
-        num_detections = len(yolo_boxes)
-
-        # Initialize variables for both code paths
-        yolo_masks = None
-        xywh_all = None
-        cluster_bboxes_2d = None
-
-        # Check if segmentation masks are available
-        has_masks = (
-            hasattr(yolo_result, "masks")
-            and yolo_result.masks is not None
-            and len(yolo_result.masks) > 0
-        )
-
-        if has_masks:
-            self.get_logger().debug("Using segmentation masks for matching")
-            # Get YOLO masks: shape [N, H, W] where N is number of detections
-            yolo_masks = yolo_result.masks.data.detach().cpu().numpy()
-            # Resize masks to image dimensions if needed
-            if (
-                yolo_masks.shape[1] != image_height
-                or yolo_masks.shape[2] != image_width
-            ):
-                resized_masks = []
-                for mask in yolo_masks:
-                    mask_resized = cv2.resize(
-                        mask.astype(np.float32),
-                        (image_width, image_height),
-                        interpolation=cv2.INTER_NEAREST,
-                    )
-                    resized_masks.append(mask_resized > 0.5)  # Binarize
-                yolo_masks = np.array(resized_masks, dtype=np.uint8)
-            else:
-                yolo_masks = (yolo_masks > 0.5).astype(np.uint8)
-        else:
-            self.get_logger().debug(
-                "Masks not available, falling back to bounding boxes"
-            )
-            # Fallback to bounding boxes
-            xywh_all = yolo_boxes.xywh.detach().cpu().numpy()
-            cluster_bboxes_2d = []
-            for cluster in clusters:
-                bbox_2d = self._calculate_cluster_bbox_2d(cluster, None)  # Use cached
-                cluster_bboxes_2d.append(bbox_2d)
-
-        # Create cluster masks for all clusters
-        cluster_masks = []
-        for cluster in clusters:
-            cluster_mask = self._create_cluster_mask(
-                cluster, intrinsics, image_width, image_height
-            )
-            cluster_masks.append(cluster_mask)
-
-        associations = []
-
-        # For each YOLO detection, find best matching cluster
-        for det_idx in range(num_detections):
-            best_iou = 0.0
-            best_cluster_idx = None
-            best_cluster = None
-
-            if has_masks and yolo_masks is not None:
-                # Use mask-based IoU
-                yolo_mask = yolo_masks[det_idx]
-
-                for cluster_idx, cluster_mask in enumerate(cluster_masks):
-                    if cluster_mask is None:
-                        continue
-
-                    iou = self._calculate_mask_iou(yolo_mask, cluster_mask)
-                    if iou > best_iou and iou >= iou_threshold:
-                        best_iou = iou
-                        best_cluster_idx = cluster_idx
-                        best_cluster = clusters[cluster_idx]
-            elif xywh_all is not None and cluster_bboxes_2d is not None:
-                # Fallback to bounding box IoU
-                cx, cy, w, h = xywh_all[det_idx]
-                det_min_u = cx - w / 2
-                det_min_v = cy - h / 2
-                det_max_u = cx + w / 2
-                det_max_v = cy + h / 2
-                det_bbox = (det_min_u, det_min_v, det_max_u, det_max_v)
-
-                for cluster_idx, cluster_bbox_2d in enumerate(cluster_bboxes_2d):
-                    if cluster_bbox_2d is None:
-                        continue
-
-                    iou = self._calculate_iou(det_bbox, cluster_bbox_2d)
-                    if iou > best_iou and iou >= iou_threshold:
-                        best_iou = iou
-                        best_cluster_idx = cluster_idx
-                        best_cluster = clusters[cluster_idx]
-
-            associations.append(
-                {
-                    "detection_idx": det_idx,
-                    "cluster_idx": best_cluster_idx,
-                    "iou": best_iou,
-                    "cluster": best_cluster,
-                }
-            )
-
-        return associations
-
-    def _process_depth_image(
-        self, depth_msg: Image
+    def _process_depth_with_masks(
+        self, depth_msg: Image, masks: np.ndarray | None
     ) -> tuple[np.ndarray, list[dict[str, Any]]]:
-        """Process depth image: convert to point cloud and cluster.
+        """Process depth image with mask-based filtering before clustering.
 
         Args:
             depth_msg: Depth image message.
+            masks: Binary masks as numpy array (N x H x W) or None if no masks.
 
         Returns:
             Tuple of (point_cloud, clusters) where:
-                - point_cloud: numpy array (N x 3) of all valid 3D points
+                - point_cloud: numpy array (M x 3) of filtered 3D points
                 - clusters: list of cluster dictionaries
         """
         # Check if camera intrinsics are available
@@ -882,14 +694,9 @@ class ObjectDetection(Node):
             return np.array([]).reshape(0, 3), []
 
         # Convert depth image to numpy array
-        # Depth images are typically 16UC1 (uint16, millimeters) or
-        # 32FC1 (float32, meters)
         try:
             depth_image = self.bridge.imgmsg_to_cv2(
                 depth_msg, desired_encoding="passthrough"
-            )
-            self.get_logger().debug(
-                f"Depth image converted: {depth_image.shape}, dtype={depth_image.dtype}"
             )
         except Exception as e:
             self.get_logger().error(f"Failed to convert depth image: {e}")
@@ -902,32 +709,165 @@ class ObjectDetection(Node):
         elif depth_image.dtype != np.float32:
             depth_image = depth_image.astype(np.float32)
 
-        # Convert to point cloud
-        point_cloud = self._depth_to_point_cloud(depth_image, self.camera_intrinsics)
-        self.get_logger().debug(f"Point cloud generated: {len(point_cloud)} points")
+        # Filter depth points using masks (if available)
+        if masks is not None and len(masks) > 0:
+            point_cloud = self._filter_depth_by_masks(
+                depth_image, masks, self.camera_intrinsics
+            )
+        else:
+            point_cloud = self._depth_to_point_cloud(
+                depth_image, self.camera_intrinsics
+            )
 
         # Cluster points only if clustering is enabled
-        if self.use_clustering:
-            # Downsample point cloud if too large (for faster clustering)
-            # Keep every Nth point to reduce computation time
-            if len(point_cloud) > 50000:
-                downsample_factor = max(1, len(point_cloud) // 50000)
-                point_cloud = point_cloud[::downsample_factor]
-                self.get_logger().info(
-                    f"Downsampled point cloud to {len(point_cloud)} points "
-                    f"(factor: {downsample_factor})"
-                )
-
-            # Cluster points
-            self.get_logger().info("Starting DBSCAN clustering...")
+        clusters = []
+        if self.use_clustering and len(point_cloud) > 0:
             clusters = self._cluster_depth_points(point_cloud)
-            self.get_logger().info(f"Clustering complete: {len(clusters)} clusters")
-        else:
-            # Clustering disabled, return empty clusters
-            clusters = []
-            self.get_logger().debug("Clustering disabled, skipping DBSCAN")
 
         return point_cloud, clusters
+
+    def _associate_clusters_to_masks(
+        self,
+        clusters: list[dict[str, Any]],
+        masks: np.ndarray,
+        intrinsics: dict[str, float],
+        image_width: int,
+        image_height: int,
+        iou_threshold: float = 0.1,
+    ) -> list[dict[str, Any]]:
+        """Associate clusters to detection masks using point overlap.
+
+        Since clusters are created from mask-filtered points, we can directly
+        associate clusters to masks by checking which mask contains the most
+        cluster points. Returns detection-centric associations (one per detection).
+
+        Args:
+            clusters: List of cluster dictionaries.
+            masks: Binary masks as numpy array (N x H x W).
+            intrinsics: Camera intrinsics dict.
+            image_width: Width of the image.
+            image_height: Height of the image.
+            iou_threshold: Minimum IoU for a valid match (default: 0.1).
+
+        Returns:
+            List of association dictionaries (one per detection), each containing:
+                - 'detection_idx': index of YOLO detection
+                - 'cluster_idx': index of matched cluster (or None if no match)
+                - 'iou': IoU value (or 0.0 if no match)
+                - 'cluster': matched cluster dict (or None)
+        """
+        if len(clusters) == 0 or len(masks) == 0:
+            # Return empty associations for each detection
+            return [
+                {
+                    "detection_idx": i,
+                    "cluster_idx": None,
+                    "iou": 0.0,
+                    "cluster": None,
+                }
+                for i in range(len(masks))
+            ]
+
+        fx = intrinsics["fx"]
+        fy = intrinsics["fy"]
+        cx = intrinsics["cx"]
+        cy = intrinsics["cy"]
+
+        # Initialize associations: one per detection
+        associations: list[dict[str, Any]] = [
+            {
+                "detection_idx": i,
+                "cluster_idx": None,
+                "iou": 0.0,
+                "cluster": None,
+            }
+            for i in range(len(masks))
+        ]
+
+        # For each cluster, find the detection mask with highest point overlap
+        for cluster_idx, cluster in enumerate(clusters):
+            cluster_points = cluster["points"]
+
+            # Project cluster points to 2D
+            x, y, z = cluster_points[:, 0], cluster_points[:, 1], cluster_points[:, 2]
+
+            # Filter valid points (z > 0)
+            valid_mask = z > 0
+            if not np.any(valid_mask):
+                continue
+
+            # Project to 2D pixel coordinates
+            u = (fx * x[valid_mask] / z[valid_mask] + cx).astype(int)
+            v = (fy * y[valid_mask] / z[valid_mask] + cy).astype(int)
+
+            # Filter points within image bounds
+            in_bounds = (u >= 0) & (u < image_width) & (v >= 0) & (v < image_height)
+            if not np.any(in_bounds):
+                continue
+
+            u_valid = u[in_bounds]
+            v_valid = v[in_bounds]
+
+            # For each detection mask, count how many cluster points fall within it
+            best_detection_idx = None
+            best_iou = 0.0
+            best_overlap_count = 0
+
+            for det_idx, mask in enumerate(masks):
+                # Ensure mask dimensions match image dimensions
+                if mask.shape[0] != image_height or mask.shape[1] != image_width:
+                    continue
+                # Count points that fall within this mask
+                mask_bool = mask.astype(bool)
+                # Use safe indexing to prevent IndexError
+                # Points are already filtered to be within image bounds,
+                # but double-check for safety
+                safe_mask = (
+                    (v_valid >= 0)
+                    & (v_valid < image_height)
+                    & (u_valid >= 0)
+                    & (u_valid < image_width)
+                )
+                if np.any(safe_mask):
+                    points_in_mask = np.sum(
+                        mask_bool[v_valid[safe_mask], u_valid[safe_mask]]
+                    )
+                else:
+                    points_in_mask = 0
+
+                if points_in_mask > best_overlap_count:
+                    best_overlap_count = points_in_mask
+                    best_detection_idx = det_idx
+
+            # Calculate IoU if we found a match
+            if best_detection_idx is not None and best_overlap_count > 0:
+                # Create cluster mask for IoU calculation
+                cluster_mask = self._create_cluster_mask(
+                    cluster, intrinsics, image_width, image_height
+                )
+                if cluster_mask is not None:
+                    yolo_mask = masks[best_detection_idx].astype(np.uint8)
+                    best_iou = self._calculate_mask_iou(cluster_mask, yolo_mask)
+
+                    # Only keep match if IoU is above threshold
+                    if best_iou >= iou_threshold:
+                        # Update association for this detection if this cluster
+                        # is better
+                        current_assoc = associations[best_detection_idx]
+                        current_iou = current_assoc.get("iou", 0.0)
+                        if (
+                            current_assoc.get("cluster_idx") is None
+                            or best_iou > current_iou
+                        ):
+                            assoc_dict: dict[str, Any] = {
+                                "detection_idx": best_detection_idx,
+                                "cluster_idx": cluster_idx,
+                                "iou": best_iou,
+                                "cluster": cluster,
+                            }
+                            associations[best_detection_idx] = assoc_dict
+
+        return associations
 
     def _synced_callback(self, rgb_msg: Image, depth_msg: Image) -> None:
         """Callback for synchronized RGB and depth image messages.
@@ -936,18 +876,176 @@ class ObjectDetection(Node):
             rgb_msg: Incoming RGB `sensor_msgs/Image`.
             depth_msg: Incoming depth `sensor_msgs/Image`.
         """
-        # Calculate timestamp difference for debugging
-        rgb_stamp = rgb_msg.header.stamp.sec + rgb_msg.header.stamp.nanosec * 1e-9
-        depth_stamp = depth_msg.header.stamp.sec + depth_msg.header.stamp.nanosec * 1e-9
-        time_diff = abs(rgb_stamp - depth_stamp)
-
-        self.get_logger().info(
-            f"Synchronized frames received: RGB {rgb_msg.width}x{rgb_msg.height}, "
-            f"Depth {depth_msg.width}x{depth_msg.height}, "
-            f"time_diff={time_diff * 1000:.1f}ms"
-        )
-        # Forward to processing with depth
         self._process_data_sync(rgb_msg, depth_msg)
+
+    async def _run_yolo_inference(self, rgb_image: np.ndarray) -> tuple[Any, int]:
+        """Run YOLO inference on RGB image.
+
+        Args:
+            rgb_image: RGB image as numpy array.
+
+        Returns:
+            Tuple of (YOLO result, number of detections).
+        """
+        results = await asyncio.to_thread(self.model, rgb_image, verbose=False)
+        result = results[0]
+        num_detections = len(result.boxes) if hasattr(result, "boxes") else 0
+        return result, num_detections
+
+    def _extract_masks(
+        self, result: Any, image_height: int, image_width: int
+    ) -> np.ndarray | None:
+        """Extract segmentation masks from YOLO result.
+
+        Args:
+            result: YOLO result object.
+            image_height: Height of the image.
+            image_width: Width of the image.
+
+        Returns:
+            Binary masks as numpy array (N x H x W) or None if no masks.
+        """
+        has_masks = (
+            hasattr(result, "masks")
+            and result.masks is not None
+            and len(result.masks) > 0
+        )
+        if not has_masks:
+            return None
+
+        masks_raw = result.masks.data.detach().cpu().numpy()
+        if masks_raw.shape[1] != image_height or masks_raw.shape[2] != image_width:
+            masks_resized = []
+            for mask in masks_raw:
+                mask_tensor = torch.from_numpy(mask).unsqueeze(0)
+                mask_resized = torch.nn.functional.interpolate(
+                    mask_tensor.unsqueeze(0),
+                    size=(image_height, image_width),
+                    mode="bilinear",
+                    align_corners=False,
+                ).squeeze()
+                masks_resized.append(mask_resized.numpy() > 0.5)
+            return np.array(masks_resized, dtype=np.uint8)
+        else:
+            return (masks_raw > 0.5).astype(np.uint8)
+
+    def _should_associate_clusters(
+        self,
+        depth_msg: Image | None,
+        clusters: list[dict[str, Any]],
+        masks: np.ndarray | None,
+        num_detections: int,
+    ) -> bool:
+        """Check if cluster association should be performed.
+
+        Args:
+            depth_msg: Optional depth image message.
+            clusters: List of cluster dictionaries.
+            masks: Optional binary masks.
+            num_detections: Number of YOLO detections.
+
+        Returns:
+            True if association should be performed, False otherwise.
+        """
+        if depth_msg is None or not self.use_depth:
+            return False
+        if not clusters:
+            return False
+        if masks is None or len(masks) == 0:
+            return False
+        if num_detections == 0:
+            return False
+        if not self.use_clustering:
+            return False
+        if self.camera_intrinsics is None:
+            return False
+        return True
+
+    async def _update_knowledge_base(self, entities: list[dict], frame_id: str) -> None:
+        """Update knowledge base with detected entities.
+
+        Args:
+            entities: List of entity dictionaries.
+            frame_id: Reference frame ID.
+        """
+        if not self._kb_services_available:
+            return
+
+        # Verify services are still available
+        service_ready = (
+            self.client_get_entities.service_is_ready()
+            and self.client_add_entities.service_is_ready()
+            and self.client_del_entities.service_is_ready()
+        )
+        if not service_ready:
+            self._kb_services_available = False
+            self._start_periodic_service_check()
+            return
+
+        if len(entities) == 0:
+            return
+
+        now = self.get_clock().now().to_msg()
+        KB_TIMEOUT = 2.0
+
+        # Add entities sequentially
+        add_responses = []
+        for entity in entities:
+            add_entity_req = AddEntity.Request()
+            add_entity_req.data = Entity(
+                description=f"Detected: {entity['name'].data}",
+                pose=entity["pose"],
+                pose_reference_frame=frame_id,
+                stamp=now,
+                reference_frame="camera_link",
+            )
+            try:
+                response = await asyncio.wait_for(
+                    self.client_add_entities.call_async(add_entity_req),
+                    timeout=KB_TIMEOUT,
+                )
+                add_responses.append(response)
+            except (asyncio.TimeoutError, Exception):
+                add_responses.append(None)
+
+        # Update entities with point clouds and bounding boxes sequentially
+        for i, entity in enumerate(entities):
+            # Skip if no shape data to update
+            if entity.get("pointcloud") is None and entity.get("boundingbox2d") is None:
+                continue
+            if i >= len(add_responses) or add_responses[i] is None:
+                continue
+            if not hasattr(add_responses[i], "entityid"):
+                continue
+            entity_id = getattr(add_responses[i], "entityid", None)
+            if entity_id is None:
+                continue
+
+            shape_msg = Shape()
+            if entity.get("pointcloud") is not None:
+                shape_msg.has_pointcloud = True
+                shape_msg.pointcloud = entity["pointcloud"]
+            else:
+                shape_msg.has_pointcloud = False
+
+            if entity.get("boundingbox2d") is not None:
+                shape_msg.has_boundingbox2d = True
+                shape_msg.boundingbox2d = entity["boundingbox2d"]
+            else:
+                shape_msg.has_boundingbox2d = False
+
+            upd_shape_req = UpdShape.Request()
+            upd_shape_req.entityid = entity_id
+            upd_shape_req.shape = shape_msg
+            upd_shape_req.stamp = now
+
+            try:
+                await asyncio.wait_for(
+                    self.client_upd_shape.call_async(upd_shape_req),
+                    timeout=KB_TIMEOUT,
+                )
+            except (asyncio.TimeoutError, Exception):
+                pass  # Continue with next entity
 
     async def process_data(
         self, rgb_msg: Image, depth_msg: Image | None = None
@@ -957,379 +1055,184 @@ class ObjectDetection(Node):
         Args:
             rgb_msg: Incoming RGB `sensor_msgs/Image`.
             depth_msg: Optional incoming depth `sensor_msgs/Image`.
-
-        Notes:
-            - Returns early if camera intrinsics are unknown.
-            - Depth processing will be implemented in later phases.
-            - Uses async service calls for KB operations.
         """
-        self.get_logger().debug(
-            f"process_data called: RGB {rgb_msg.width}x{rgb_msg.height}, "
-            f"Depth: {'present' if depth_msg is not None else 'missing'}"
-        )
-
-        # Skip frame if camera intrinsics not yet set (only check once)
         if not self._camera_intrinsics_set:
-            self.get_logger().warn("Camera intrinsics not set yet, skipping frame")
             return
 
-        # Skip frame if already processing one (frame-skipping to avoid queue buildup)
-        if self._processing_frame:
-            self._frames_skipped += 1
-            self.get_logger().debug("Frame skipped - already processing")
+        if self._processing_lock_async is None:
             return
-        self._processing_frame = True
-        self._frames_processed += 1
-        self.get_logger().debug("Frame processing started")
 
-        try:
-            # Convert ROS image to numpy array.
-            # cv_bridge returns BGR by default, but YOLO expects RGB
-            self.get_logger().debug("Converting image...")
-            bgr_image = self.bridge.imgmsg_to_cv2(
-                rgb_msg,
-                desired_encoding="bgr8",
-            )
-            # Convert BGR to RGB for YOLO inference
-            rgb_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2RGB)
-            self.get_logger().debug("Image converted to RGB")
+        async with self._processing_lock_async:
+            if self._processing_frame:
+                self._frames_skipped += 1
+                return
+            self._processing_frame = True
+            self._frames_processed += 1
 
-            # Keep BGR copy for visualization (OpenCV imshow expects BGR)
-            bgr_image_for_viz = bgr_image if self.visualize else None
+            # Start timer for total processing time
+            t_start = time.perf_counter()
 
-            # Run YOLO inference and depth processing in parallel
-            loop = asyncio.get_event_loop()
-
-            # Start YOLO inference task
-            self.get_logger().debug("Starting YOLO inference...")
-            yolo_task = loop.run_in_executor(self._yolo_executor, self.model, rgb_image)
-
-            # Start depth processing task if depth data is available
-            depth_task = None
-            if depth_msg is not None and self.use_depth:
-                self.get_logger().info("Starting depth processing...")
-                depth_task = loop.run_in_executor(
-                    self._depth_executor, self._process_depth_image, depth_msg
-                )
-
-            # Wait for both tasks to complete (or just YOLO if no depth)
             try:
-                if depth_task is not None:
-                    self.get_logger().debug("Waiting for YOLO and depth processing...")
-                    (results, (point_cloud, clusters)) = await asyncio.gather(
-                        yolo_task, depth_task
-                    )
-                    self.get_logger().info(
-                        f"Depth processing complete: {len(point_cloud)} points, "
-                        f"{len(clusters)} clusters found"
-                    )
-                    if len(clusters) > 0:
-                        cluster_sizes = [c["size"] for c in clusters]
-                        self.get_logger().info(
-                            f"Found {len(clusters)} depth cluster(s) with sizes: "
-                            f"{cluster_sizes}"
+                # Convert ROS image to numpy array (BGR to RGB)
+                bgr_image = self.bridge.imgmsg_to_cv2(rgb_msg, desired_encoding="bgr8")
+                rgb_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2RGB)
+                self.get_logger().info(
+                    f"Image received: {rgb_msg.width}x{rgb_msg.height}"
+                )
+
+                # Run YOLO inference
+                result, num_detections = await self._run_yolo_inference(rgb_image)
+                if num_detections > 0:
+                    self.get_logger().info(f"{num_detections} object(s) detected")
+
+                # Extract segmentation masks
+                masks = self._extract_masks(result, rgb_msg.height, rgb_msg.width)
+
+                # Process depth data with mask-based filtering
+                clusters = []
+                if depth_msg is not None and self.use_depth:
+                    try:
+                        _, clusters = await asyncio.to_thread(
+                            self._process_depth_with_masks,
+                            depth_msg,
+                            masks,
                         )
-                    else:
-                        self.get_logger().info("No depth clusters found")
+                        if len(clusters) > 0:
+                            self.get_logger().info(
+                                f"{len(clusters)} cluster(s) detected"
+                            )
+                    except Exception as e:
+                        self.get_logger().error(
+                            f"Depth processing failed: {e}", exc_info=True
+                        )
+                        clusters = []
+
+                # Associate clusters to detections using masks
+                associations = []
+                if (
+                    self._should_associate_clusters(
+                        depth_msg, clusters, masks, num_detections
+                    )
+                    and masks is not None
+                    and self.camera_intrinsics is not None
+                ):
+                    associations = self._associate_clusters_to_masks(
+                        clusters,
+                        masks,
+                        self.camera_intrinsics,
+                        rgb_msg.width,
+                        rgb_msg.height,
+                    )
+
+                # Generate entities from YOLO results
+                boxes = getattr(result, "boxes", None)
+                if boxes is None or len(boxes) == 0:
+                    entities = []
                 else:
-                    results = await yolo_task
-                    point_cloud = None
-                    clusters = []
-
-                self.get_logger().debug("YOLO inference returned")
-                result = results[0]
-                num_detections = len(result.boxes) if hasattr(result, "boxes") else 0
-                self.get_logger().debug(
-                    f"YOLO inference complete: {num_detections} detections "
-                    f"in {rgb_msg.width}x{rgb_msg.height} image"
-                )
-            except Exception as e:
-                self.get_logger().error(f"Processing failed: {e}", exc_info=True)
-                return
-
-            # Phase 5: Match clusters to detections (before entity generation)
-            associations = []
-            if (
-                depth_msg is not None
-                and self.use_depth
-                and clusters
-                and num_detections > 0
-                and self.use_clustering
-                and self.camera_intrinsics is not None
-            ):
-                self.get_logger().debug(
-                    f"Matching {len(clusters)} clusters to {num_detections} "
-                    f"detections..."
-                )
-                associations = self._match_clusters_to_detections(
-                    result,
-                    clusters,
-                    None,  # Use cached intrinsics
-                    rgb_msg.width,
-                    rgb_msg.height,
-                )
-
-                # Log association results
-                matched_count = sum(
-                    1 for a in associations if a["cluster_idx"] is not None
-                )
-                self.get_logger().info(
-                    f"Association complete: {matched_count}/{num_detections} "
-                    f"detections matched to clusters"
-                )
-                if matched_count > 0:
-                    avg_iou = np.mean(
-                        [a["iou"] for a in associations if a["cluster_idx"] is not None]
+                    entities = generate_entities_from_yolo_result(
+                        result=result,
+                        class_names=self.model.names,
+                        frame=None,
+                        use_segmentation=self.use_segmentation,
+                        cluster_associations=associations if associations else None,
+                        frame_id=rgb_msg.header.frame_id,
+                        timestamp=rgb_msg.header.stamp,
                     )
-                    self.get_logger().debug(f"Average IoU: {avg_iou:.3f}")
-            elif depth_msg is not None and self.use_depth and not self.use_clustering:
-                self.get_logger().debug(
-                    "Clustering disabled, skipping cluster-to-detection matching"
-                )
+                    if len(entities) > 0:
+                        entity_names = [e["name"].data for e in entities]
+                        entity_str = f"{len(entities)} entit(y/ies) created: "
+                        entity_str += ", ".join(entity_names)
+                        self.get_logger().info(entity_str)
 
-            # Phase 6: Convert YOLO results to entity dicts with cluster associations
-            # Uses cluster centroid for pose if available, otherwise falls back to BB
-            self.get_logger().debug("Converting YOLO results to entities...")
-            entities_cv = generate_entities_from_yolo_result(
-                result=result,
-                class_names=self.model.names,
-                frame=None,  # Don't visualize during entity conversion
-                use_segmentation=self.use_segmentation,
-                cluster_associations=associations if associations else None,
-                frame_id=rgb_msg.header.frame_id,
-                timestamp=rgb_msg.header.stamp,
-            )
-            self.get_logger().debug(f"Generated {len(entities_cv)} entities")
-
-            # Visualize separately if needed (non-blocking)
-            if self.visualize and bgr_image_for_viz is not None:
-                self._visualize_detections(bgr_image_for_viz, result, self.model.names)
-
-            # Log detected objects
-            if len(entities_cv) > 0:
-                object_names = [e["name"].data for e in entities_cv]
-                self.get_logger().info(
-                    f"Detected {len(entities_cv)} object(s): {', '.join(object_names)}"
-                )
-            else:
-                self.get_logger().debug("No objects detected in this frame")
-
-            # Check if KB services are available (flag set in init/periodic check)
-            if not self._kb_services_available:
-                self.get_logger().debug(
-                    "Knowledge base services not available, skipping KB update."
-                )
-                return
-
-            # Verify services are still available
-            # (they might have failed during runtime)
-            if not (
-                self.client_get_entities.service_is_ready()
-                and self.client_add_entities.service_is_ready()
-                and self.client_del_entities.service_is_ready()
-            ):
-                self.get_logger().warn(
-                    "Knowledge base services became unavailable during runtime. "
-                    "Will retry periodically."
-                )
-                self._kb_services_available = False
-                self._start_periodic_service_check()
-                return
-
-            # Retrieve existing entities from KB (optional, currently unused).
-            get_entities_req = GetEntities.Request()
-            get_entities_req.entity_type.id = EntityType.ENTITY
-            # resp: GetEntities.Response = await self.client_get_entities.call_async(
-            #     get_entities_req
-            # )
-
-            # Insert (or upsert) detected entities into KB.
-            # Parallelize service calls for better performance
-            if len(entities_cv) > 0:
-                now = self.get_clock().now().to_msg()
-                tasks = []
-                for entity_cv in entities_cv:
-                    pose = entity_cv["pose"]
-                    # Log pose values for debugging (INFO level to verify Phase 6)
-                    frame_id = rgb_msg.header.frame_id
+                # Update knowledge base
+                if len(entities) > 0:
+                    await self._update_knowledge_base(entities, rgb_msg.header.frame_id)
+                    t_total = (time.perf_counter() - t_start) * 1000
                     self.get_logger().info(
-                        f"Adding entity '{entity_cv['name'].data}' with pose: "
-                        f"x={pose.position.x:.3f}, y={pose.position.y:.3f}, "
-                        f"z={pose.position.z:.3f} (ref_frame: {frame_id})"
+                        f"{len(entities)} entit(y/ies) saved in KB "
+                        f"(total processing time: {t_total:.2f}ms)"
                     )
-                    add_entity_req = AddEntity.Request()
-                    add_entity_req.data = Entity(
-                        description=f"Detected: {entity_cv['name'].data}",
-                        pose=pose,
-                        pose_reference_frame=rgb_msg.header.frame_id,
-                        stamp=now,
-                        reference_frame="camera_link",
-                    )
-                    tasks.append(self.client_add_entities.call_async(add_entity_req))
-                # Execute all service calls in parallel
-                add_responses = await asyncio.gather(*tasks)
-                self.get_logger().debug(
-                    f"Added {len(entities_cv)} entities to knowledge base in parallel"
-                )
-
-                # Phase 7: Update entities with point clouds (if available)
-                shape_tasks = []
-                for i, entity_cv in enumerate(entities_cv):
-                    if entity_cv.get("pointcloud") is not None:
-                        # Get entity ID from AddEntity response
-                        entity_id = add_responses[i].entityid
-
-                        # Create Shape message
-                        shape_msg = Shape()
-                        shape_msg.has_pointcloud = True
-                        shape_msg.pointcloud = entity_cv["pointcloud"]
-                        shape_msg.has_boundingbox2d = False
-
-                        # Create update request
-                        upd_shape_req = UpdShape.Request()
-                        upd_shape_req.entityid = entity_id
-                        upd_shape_req.shape = shape_msg
-                        upd_shape_req.stamp = now
-
-                        shape_tasks.append(
-                            self.client_upd_shape.call_async(upd_shape_req)
-                        )
-                        self.get_logger().debug(
-                            f"Updating entity {entity_id} with point cloud "
-                            f"({entity_cv['pointcloud'].width} points)"
-                        )
-
-                # Execute shape updates in parallel
-                if shape_tasks:
-                    await asyncio.gather(*shape_tasks)
+                else:
+                    t_total = (time.perf_counter() - t_start) * 1000
                     self.get_logger().info(
-                        f"Updated {len(shape_tasks)} entities with point clouds"
+                        f"Frame processed (no entities) "
+                        f"(total processing time: {t_total:.2f}ms)"
                     )
-        finally:
-            self._processing_frame = False
+            finally:
+                # Always reset processing flag, even if error occurred
+                self._processing_frame = False
 
-    def _visualize_detections(
-        self, frame: np.ndarray, result, class_names: dict
-    ) -> None:
-        """Visualize YOLO detections on frame with segmentation masks.
+    # Visualization functions removed for performance reasons
 
-        Args:
-            frame: BGR image frame to draw on.
-            result: YOLO result object.
-            class_names: Mapping from class indices to names.
-        """
-        boxes = getattr(result, "boxes", None)
-        if boxes is None or len(boxes) == 0:
-            cv2.imshow("YOLO Detections", frame)
-            cv2.waitKey(1)
-            return
 
-        xywh_all = boxes.xywh.detach().cpu().numpy()
-        class_ids = boxes.cls.detach().cpu().numpy().astype(int)
+def voxel_downsample(
+    points: np.ndarray,  # Shape: [N, 3] - x, y, z coordinates
+    voxel_size: float = 0.01,  # 1cm voxel size
+    max_points: int = 10000,  # Maximum number of points after downsampling
+) -> np.ndarray:
+    """Downsample point cloud using voxel grid method.
 
-        # Check if segmentation masks are available
-        has_masks = (
-            hasattr(result, "masks")
-            and result.masks is not None
-            and len(result.masks) > 0
-        )
+    This method preserves the shape better than random sampling by averaging
+    points within each voxel. The voxel size is automatically adjusted if
+    the result would exceed max_points.
 
-        if has_masks:
-            # Get masks and resize to frame dimensions
-            masks = result.masks.data.detach().cpu().numpy()
-            frame_h, frame_w = frame.shape[:2]
+    Args:
+        points: numpy array of shape [N, 3] with x, y, z coordinates.
+        voxel_size: Size of each voxel in meters (default: 1cm).
+        max_points: Maximum number of points after downsampling.
 
-            # Create overlay for masks
-            overlay = frame.copy()
+    Returns:
+        Downsampled numpy array of shape [M, 3] where M <= max_points.
+    """
+    if len(points) == 0:
+        return points
 
-            for i in range(len(boxes)):
-                # Get mask for this detection
-                mask = masks[i]
-                if mask.shape[0] != frame_h or mask.shape[1] != frame_w:
-                    mask = cv2.resize(
-                        mask.astype(np.float32),
-                        (frame_w, frame_h),
-                        interpolation=cv2.INTER_NEAREST,
-                    )
-                mask_binary = (mask > 0.5).astype(np.uint8)
+    if len(points) <= max_points:
+        # No downsampling needed
+        return points
 
-                # Generate color for this detection
-                color = self._get_color_for_class(class_ids[i])
-                color_bgr = (int(color[2]), int(color[1]), int(color[0]))
+    # Calculate bounding box
+    min_bounds = points.min(axis=0)
+    max_bounds = points.max(axis=0)
 
-                # Draw mask overlay
-                overlay[mask_binary > 0] = (
-                    overlay[mask_binary > 0] * 0.6 + np.array(color_bgr) * 0.4
-                ).astype(np.uint8)
+    # Adjust voxel size if needed to meet max_points constraint
+    # Estimate: if we have N points and want max_points, voxel_size should be
+    # approximately (N/max_points)^(1/3) times the current size
+    if len(points) > max_points:
+        scale_factor = (len(points) / max_points) ** (1.0 / 3.0)
+        voxel_size = voxel_size * scale_factor
 
-                # Draw bounding box
-                cx, cy, w, h = xywh_all[i]
-                x1 = int(cx - w / 2.0)
-                y1 = int(cy - h / 2.0)
-                x2 = int(cx + w / 2.0)
-                y2 = int(cy + h / 2.0)
+    # Calculate number of voxels in each dimension
+    voxel_counts = ((max_bounds - min_bounds) / voxel_size).astype(int) + 1
 
-                cv2.rectangle(overlay, (x1, y1), (x2, y2), color_bgr, 2)
+    # Assign each point to a voxel
+    voxel_indices = ((points - min_bounds) / voxel_size).astype(int)
+    # Clamp to valid range
+    voxel_indices = np.clip(voxel_indices, 0, voxel_counts - 1)
 
-                # Draw label
-                label = str(class_names[class_ids[i]])
-                cv2.putText(
-                    overlay,
-                    label,
-                    (x1, max(0, y1 - 8)),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.6,
-                    color_bgr,
-                    2,
-                )
+    # Create unique voxel keys (flatten 3D voxel indices to 1D)
+    # Use a large prime number to avoid collisions
+    voxel_keys = (
+        voxel_indices[:, 0] * 73856093
+        + voxel_indices[:, 1] * 19349663
+        + voxel_indices[:, 2] * 83492791
+    )
 
-            frame = overlay
-        else:
-            # Fallback to bounding boxes only
-            for i in range(len(boxes)):
-                cx, cy, w, h = xywh_all[i]
-                label = str(class_names[class_ids[i]])
+    # Group points by voxel and compute centroids
+    unique_keys, inverse_indices = np.unique(voxel_keys, return_inverse=True)
 
-                x1 = int(cx - w / 2.0)
-                y1 = int(cy - h / 2.0)
-                x2 = int(cx + w / 2.0)
-                y2 = int(cy + h / 2.0)
+    # Compute centroid for each voxel
+    downsampled_points = np.zeros((len(unique_keys), 3), dtype=np.float32)
+    for i, key in enumerate(unique_keys):
+        mask = inverse_indices == i
+        downsampled_points[i] = points[mask].mean(axis=0)
 
-                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                cv2.putText(
-                    frame,
-                    label,
-                    (x1, max(0, y1 - 8)),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.6,
-                    (0, 255, 0),
-                    2,
-                )
+    # If still too many points, apply random sampling as fallback
+    if len(downsampled_points) > max_points:
+        indices = np.random.choice(len(downsampled_points), max_points, replace=False)
+        downsampled_points = downsampled_points[indices]
 
-        cv2.imshow("YOLO Detections", frame)
-        cv2.waitKey(1)
-
-    def _get_color_for_class(self, class_id: int) -> tuple[int, int, int]:
-        """Generate a consistent color for a class ID.
-
-        Args:
-            class_id: Class index.
-
-        Returns:
-            RGB color tuple.
-        """
-        # Use a color palette that provides good contrast
-        colors = [
-            (255, 0, 0),  # Red
-            (0, 255, 0),  # Green
-            (0, 0, 255),  # Blue
-            (255, 255, 0),  # Yellow
-            (255, 0, 255),  # Magenta
-            (0, 255, 255),  # Cyan
-            (128, 0, 128),  # Purple
-            (255, 165, 0),  # Orange
-        ]
-        return colors[class_id % len(colors)]
+    return downsampled_points
 
 
 def numpy_to_pointcloud2(
@@ -1393,9 +1296,13 @@ def numpy_to_pointcloud2(
     pc2.point_step = 12
     pc2.row_step = pc2.point_step * pc2.width
 
-    # Convert numpy array to bytes
-    points_float32 = points.astype(np.float32)
-    pc2.data = points_float32.tobytes()
+    # Convert numpy array to bytes (optimized: ensure float32 and contiguous)
+    if points.dtype != np.float32:
+        points = points.astype(np.float32, copy=False)
+    if not points.flags["C_CONTIGUOUS"]:
+        points = np.ascontiguousarray(points)
+    # Use memoryview for faster conversion (if available)
+    pc2.data = points.tobytes()
 
     # Set flags
     pc2.is_bigendian = False
@@ -1451,6 +1358,7 @@ def generate_entities_from_yolo_result(
         - `name` (std_msgs/String)
         - `pose` (geometry_msgs/Pose from cluster centroid if available,
                   otherwise from bbox center)
+        - `boundingbox2d` (vision_msgs/BoundingBox2D from YOLO output)
         - `pointcloud` (Optional sensor_msgs/PointCloud2 if cluster available)
 
     Args:
@@ -1459,7 +1367,7 @@ def generate_entities_from_yolo_result(
         frame: Optional RGB frame for visualization overlay.
         use_segmentation: Whether the model is a segmentation model.
         cluster_associations: Optional list of cluster associations from
-            _match_clusters_to_detections(). Each dict contains:
+            _associate_clusters_to_masks(). Each dict contains:
             - 'detection_idx': index of YOLO detection
             - 'cluster_idx': index of matched cluster (or None)
             - 'cluster': matched cluster dict with 'centroid' and 'points' (or None)
@@ -1474,6 +1382,11 @@ def generate_entities_from_yolo_result(
         return []
 
     # Get all boxes at once - works for both detection and segmentation
+    # Ensure GPU operations are complete before copying to CPU (prevents blocking)
+    if boxes.xywh.is_cuda:
+        import torch
+
+        torch.cuda.synchronize()
     xywh_all = boxes.xywh.detach().cpu().numpy()  # Shape: [N, 4]
     class_ids = boxes.cls.detach().cpu().numpy().astype(int)  # Shape: [N]
     entities: list[dict] = []
@@ -1483,6 +1396,12 @@ def generate_entities_from_yolo_result(
 
         label = str(class_names[class_ids[i]])
         name_msg = String(data=label)
+
+        # Create 2D bounding box from YOLO output
+        bbox2d = BoundingBox2D()
+        bbox2d.center = Pose2D(x=float(cx), y=float(cy), theta=0.0)
+        bbox2d.size_x = float(w)
+        bbox2d.size_y = float(h)
 
         # Use cluster centroid if available, otherwise fallback to BB center
         pointcloud = None
@@ -1497,6 +1416,8 @@ def generate_entities_from_yolo_result(
                 # Extract point cloud if available
                 points = cluster.get("points")  # numpy array [N, 3]
                 if points is not None and len(points) > 0 and frame_id:
+                    # Apply intelligent downsampling to preserve shape
+                    points = voxel_downsample(points, voxel_size=0.01, max_points=10000)
                     pointcloud = numpy_to_pointcloud2(
                         points, frame_id=frame_id, timestamp=timestamp
                     )
@@ -1510,6 +1431,7 @@ def generate_entities_from_yolo_result(
         entity_dict: dict[str, Any] = {
             "name": name_msg,
             "pose": pose_msg,
+            "boundingbox2d": bbox2d,
         }
         if pointcloud is not None:
             entity_dict["pointcloud"] = pointcloud
@@ -1532,10 +1454,7 @@ def main(args=None):
     try:
         executor.spin()
     finally:
-        if object_detection_node.visualize:
-            cv2.destroyAllWindows()
-        # Shutdown thread pool
-        object_detection_node._yolo_executor.shutdown(wait=True)
+        # Visualization removed - no need to close windows
         rclpy.shutdown()
 
 

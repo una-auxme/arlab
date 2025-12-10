@@ -77,9 +77,9 @@ class ObjectDetection(Node):
         self.declare_parameter("visualize", True)
         self.declare_parameter("log_level", "INFO")
         self.declare_parameter("use_depth", True)
-        self.declare_parameter("sync_tolerance", 0.5)  # 500ms tolerance (default)
+        self.declare_parameter("sync_tolerance", 0.1)  # 500ms tolerance (default)
         # Enable/disable depth clustering (default: False for better performance)
-        self.declare_parameter("use_clustering", False)
+        self.declare_parameter("use_clustering", True)
 
         # Load parameters.
         yolo_weights = (

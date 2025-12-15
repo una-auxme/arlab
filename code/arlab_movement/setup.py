@@ -17,7 +17,7 @@ setup(
         ('share/' + package_name + '/launch', ['launch/nav2.launch.py']),
         ('share/' + package_name + '/launch', ['launch/slam_async.launch.py']),
         ('share/' + package_name + '/launch', ['launch/arlab_navigation.launch.py']),
-        ('share/' + package_name + '/launch', ['launch/map_load_nav.launch.py']),
+        ('share/' + package_name + '/launch', ['launch/localization.launch.py']),
         # entries for arlab_simulation
         (os.path.join('share', package_name, 'launch'), glob('launch/*.launch.py')),
         (os.path.join('share', package_name, 'worlds'), glob('worlds/*.sdf')),

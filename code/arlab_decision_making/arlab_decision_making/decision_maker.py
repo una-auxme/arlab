@@ -21,6 +21,7 @@ from .behaviours.test_trees import (
     test_manipulation_home,
     test_manipulation_home_move_seq,
     test_manipulation_move,
+    test_manipulation_video_sequence,
 )
 
 
@@ -35,6 +36,7 @@ def get_tree(task: str) -> Behaviour:
             - "test_manipulation_home": Execute manipulation home test tree.
             - "test_manipulation_move": Execute manipulation move test tree.
             - "test_manipulation_home_move_seq": Execute manipulation test tree.
+            - "test_grab_seq": Execute test_manipulation_video_seq test tree.
 
     Raises:
         ValueError: If an unknown task name is provided.
@@ -53,6 +55,8 @@ def get_tree(task: str) -> Behaviour:
         chosen_task = test_manipulation_move
     elif task == "test_manipulation_home_move_seq":
         chosen_task = test_manipulation_home_move_seq
+    elif task == "test_grab_seq":
+        chosen_task = test_manipulation_video_sequence
     else:
         raise ValueError(f"Unknown task: {task}")
 

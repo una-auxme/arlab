@@ -16,10 +16,22 @@
 # This file is heavily based on the implementations in rclpy.executors and rclpy.task
 # and adapted to work with asyncio.
 
+"""Contains a ROS executor that is asyncio compatible.
+
+Classes:
+- AsyncIORosTask(RosTask): A RosTask that runs in an asyncio event loop.
+- AsyncIOExecutor(Executor): ROS executor that has been integrated
+    with asyncio to improve throughput
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-augsburg.de>
+"""
+
 import asyncio
 import concurrent
 import concurrent.futures
 import inspect
+import queue
 import signal
 import sys
 import threading
@@ -43,6 +55,12 @@ from rclpy.task import Task as RosTask
 
 
 class AsyncIORosTask(RosTask):
+    """A RosTask that runs in an asyncio event loop.
+
+    This RosTask has been modified to put itself in an asyncio event loop
+    (if handler is a coroutine)
+    """
+
     def __init__(
         self,
         handler,
@@ -52,6 +70,18 @@ class AsyncIORosTask(RosTask):
         kwargs=None,
         executor=None,
     ):
+        """Create a new ros task
+
+        Args:
+            handler (Callable or Coroutine): Main handler function
+                to be called when the task is run.
+            asyncio_loop (_type_): Asyncio event loop to run the handler on
+            exception_queue (Queue): Queue to put exceptions in.
+                They are read and output by the main executor
+            args (_type_, optional): _description_. Defaults to None.
+            kwargs (_type_, optional): _description_. Defaults to None.
+            executor (_type_, optional): _description_. Defaults to None.
+        """
         super().__init__(handler=handler, args=args, kwargs=kwargs, executor=executor)
 
         self._exception_queue = exception_queue
@@ -59,6 +89,13 @@ class AsyncIORosTask(RosTask):
         self._asyncio_future: Optional[concurrent.futures.Future] = None
 
     def __call__(self):
+        """Run or resume a task.
+
+        This attempts to execute a handler.
+        If the handler is a coroutine it will run it on the self._asyncio_loop.
+
+        The return value of the handler is stored as the task result.
+        """
         if (
             not self._pending()
             or self._executing
@@ -73,6 +110,7 @@ class AsyncIORosTask(RosTask):
             # Execute a coroutine with asyncio
             # https://docs.python.org/3/library/asyncio-dev.html#asyncio-multithreading
             async def wrapped_handler():
+                """Wraps the handler with exception handling"""
                 try:
                     result = await self._handler
                     self.set_result(result)
@@ -85,6 +123,7 @@ class AsyncIORosTask(RosTask):
                     self._task_lock.release()
 
             if not self._asyncio_future:
+                # Only start the task if it has not already been started
                 self._executing = True
                 self._asyncio_future = asyncio.run_coroutine_threadsafe(
                     wrapped_handler(), self._asyncio_loop
@@ -108,7 +147,8 @@ class AsyncIOExecutor(Executor):
 
     The default and MultiThreaded ROS executors
     do not support asyncio based futures.
-    This Executor makes using asyncio in ros callbacks possible.
+    This Executor runs async callbacks inside asyncio.
+    -> Makes using asyncio in ros callbacks possible.
 
     Usage recommendation: Nodes that make heavy, concurrent use of I/O.
 
@@ -118,17 +158,37 @@ class AsyncIOExecutor(Executor):
     def __init__(
         self, async_init: Coroutine, *, context: Optional[Context] = None
     ) -> None:
+        """Initializes the executor
+
+        Args:
+            async_init (Coroutine): Coroutine that is run right after
+                the asyncio event loop is started up
+            context (Optional[Context], optional): Executor context. Defaults to None.
+        """
         super().__init__(context=context)
 
         self._spin_thread = None
+        """Thread spinning the executor"""
         self._exception_queue = Queue()
+        """Queue containing raised exceptions inside any ros tasks"""
 
         loop_setup_event = threading.Event()
+        """Fired when the asyncio event loop is set up and async_init is done"""
         self._shutdown_event = threading.Event()
+        """Fired when the executor is shutting down"""
         self._asyncio_loop = None
+        """The asyncio event loop created by this executor"""
 
         def asyncio_thread():
             async def asyncio_wait():
+                """Main asyncio thread function
+
+                1. Runs async_init
+                2. Sets self._asyncio_loop
+                3. Signals that the asyncio event loop is ready
+                    This makes the main thread finish the __init__
+                4. Waits on the self._shutdown_event
+                """
                 try:
                     await async_init
                     self._asyncio_loop = asyncio.get_running_loop()
@@ -143,15 +203,30 @@ class AsyncIOExecutor(Executor):
                         task.cancel()
                     print("All asyncio tasks cancelled.")
 
+                    # Make sure we don't block if an exception was raised
+                    # before the loop was setup
+                    loop_setup_event.set()
+
             asyncio.run(asyncio_wait())
 
         self._asyncio_thread = threading.Thread(target=asyncio_thread, daemon=True)
+        """Thread running the asyncio event loop"""
         self._asyncio_thread.start()
         loop_setup_event.wait()
+        # Check for exceptions that happened during loop setup
+        try:
+            e = self._exception_queue.get_nowait()
+            # Cleanup
+            self.shutdown()
+            raise e from e
+        except queue.Empty:
+            pass
 
     def create_task(
         self, callback: Union[Callable, Coroutine], *args, **kwargs
     ) -> RosTask:
+        # This function is the same as super().create_task,
+        # it just creates an AsyncIORosTask instead.
         task = AsyncIORosTask(
             callback,
             self._asyncio_loop,
@@ -172,8 +247,8 @@ class AsyncIOExecutor(Executor):
         node: Node,
         take_from_wait_list: Callable,
     ) -> RosTask:
-        # Heavily based on rclpy.executors.Executor._make_handler
-
+        # This function is the same as super()._make_handler,
+        # it just creates an AsyncIORosTask instead.
         entity._executor_event = True
 
         async def handler(entity, gc, is_shutdown, work_tracker):
@@ -209,6 +284,11 @@ class AsyncIOExecutor(Executor):
         return task
 
     def start_spin_thread(self):
+        """Starts the thread that spins the executor
+
+        This means it runs the super().spin function which
+        runs self.spin_one() in a loop.
+        """
         if self._spin_thread is not None:
             return
 
@@ -224,6 +304,10 @@ class AsyncIOExecutor(Executor):
         self._spin_thread.start()
 
     def spin(self):
+        """Execute callbacks until shutdown.
+
+        New spin function that starts the separate spin thread and
+        then waits for any exceptions on the main thread."""
         self.start_spin_thread()
         self.wait_for_exception()
 
@@ -232,6 +316,9 @@ class AsyncIOExecutor(Executor):
         timeout_sec: Optional[Union[float, TimeoutObject]] = None,
         wait_condition: Callable[[], bool] = lambda: False,
     ) -> None:
+        # Based on SingleThreadedExecutor._spin_once_impl.
+        # Only any task exception handling was removed here because
+        # exceptions are handled by the main thread not the spin_thread.
         try:
             task, entity, node = self.wait_for_ready_callbacks(
                 timeout_sec, None, wait_condition
@@ -248,6 +335,7 @@ class AsyncIOExecutor(Executor):
             task()
 
     def spin_once(self, timeout_sec: Optional[float] = None) -> None:
+        # Exactly matches SingleThreadedExecutor.spin_once
         self._spin_once_impl(timeout_sec)
 
     def spin_once_until_future_complete(
@@ -255,6 +343,7 @@ class AsyncIOExecutor(Executor):
         future: RosFuture,
         timeout_sec: Optional[Union[float, TimeoutObject]] = None,
     ) -> None:
+        # Exactly matches SingleThreadedExecutor.spin_once_until_future_complete
         future.add_done_callback(lambda x: self.wake())
         self._spin_once_impl(timeout_sec, future.done)
 
@@ -280,12 +369,24 @@ class AsyncIOExecutor(Executor):
             self.shutdown(shutdown_timeout)
             raise e from e
 
-    def shutdown(self, timeout_sec=None):
+    def shutdown(self, timeout_sec: Optional[float] = 5.0) -> bool:
+        """Signals the self._shutdown_event and joins all threads
+
+        Args:
+            timeout_sec (Optional[float], optional):
+                Maximum time to wait for a thread to finish. Defaults to 5.0.
+
+        Returns:
+            bool: True if all outstanding callbacks finished executing,
+                or False if the timeout expires before all outstanding work is done.
+        """
         result = super().shutdown(timeout_sec)
         self._shutdown_event.set()
         print("Waiting for asyncio thread to finish...")
         self._asyncio_thread.join(timeout=timeout_sec)
+        result = result and not self._asyncio_thread.is_alive()
         if self._spin_thread is not None:
             print("Waiting for spin thread to finish...")
             self._spin_thread.join(timeout=timeout_sec)
+            result = result and not self._spin_thread.is_alive()
         return result

@@ -7,12 +7,12 @@ ArmMotion::ArmMotion(const rclcpp::Node::SharedPtr& node, const std::string& gro
   mgi_.setGoalOrientationTolerance(5e-3);
 
   joints_home_ = {
-    {"shoulder_pan_joint", -1.5707},
-    {"shoulder_lift_joint", -0.7853},
-    {"elbow_joint", -2.3561},
-    {"wrist_1_joint", -1.3089},
-    {"wrist_2_joint", 1.5707},
-    {"wrist_3_joint", -3.1415}
+    {"shoulder_pan_joint", -1.6},
+    {"shoulder_lift_joint", -1.1449},
+    {"elbow_joint", -2.4225},
+    {"wrist_1_joint", -3.4335},
+    {"wrist_2_joint", -1.6580},
+    {"wrist_3_joint", -0.0698}
   };
 
 }

@@ -15,7 +15,7 @@ void OrchestratorActionServer::init()
 {
   // Capabilities initialisieren
   arm_ = std::make_unique<ArmMotion>(shared_from_this(), "ur_manipulator");
-  hand_ = std::make_unique<HandMotion>(*this);
+
   runner_ = std::make_unique<JobRunner>(*this, *arm_, *hand_);
 
   using std::placeholders::_1;
@@ -28,6 +28,13 @@ void OrchestratorActionServer::init()
       std::bind(&OrchestratorActionServer::handleGoal, this, _1, _2),
       std::bind(&OrchestratorActionServer::handleCancel, this, _1),
       std::bind(&OrchestratorActionServer::handleAccepted, this, _1));
+
+  // Action Client für z. B. cylindrical
+  // grasp_client_ = node->create_client<Grasp>(
+  //     shared_from_this(),
+  //     "/mia_hand/grasps/cylindrical/action");
+
+  hand_ = std::make_unique<HandMotion>(*this);
 
   RCLCPP_INFO(get_logger(), "--- OrchestratorActionServer initialized ---");
 }

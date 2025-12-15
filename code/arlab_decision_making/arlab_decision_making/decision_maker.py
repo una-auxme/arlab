@@ -87,7 +87,7 @@ class DecisionMaker(Node):
         self.update_rate = (
             self.declare_parameter(
                 "update_rate",
-                10.0,
+                5.0,
             )
             .get_parameter_value()
             .double_value

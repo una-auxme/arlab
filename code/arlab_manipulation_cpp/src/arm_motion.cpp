@@ -3,24 +3,30 @@
 ArmMotion::ArmMotion(const rclcpp::Node::SharedPtr &node, const std::string &group)
     : node_(node), mgi_(node_, group)
 {
+  mgi_.setNumPlanningAttempts(20);
   mgi_.setPlanningTime(5.0);
-  mgi_.setGoalPositionTolerance(1e-3);
-  mgi_.setGoalOrientationTolerance(5e-3);
+  mgi_.setGoalPositionTolerance(1e-2);
+  mgi_.setGoalOrientationTolerance(5e-2);
+  mgi_.setPoseReferenceFrame("world");
+  // mgi_.setPlannerId("RRTConnectkConfigDefault");
 
   joints_home_ = {
-    {"shoulder_pan_joint", -1.6},
-    {"shoulder_lift_joint", -1.1449},
-    {"elbow_joint", -2.4225},
-    {"wrist_1_joint", -3.4335},
-    {"wrist_2_joint", -1.6580},
-    {"wrist_3_joint", -0.0698}
-  };
-
+      {"shoulder_pan_joint", -1.6},
+      {"shoulder_lift_joint", -1.1449},
+      {"elbow_joint", -2.4225},
+      {"wrist_1_joint", -3.4335},
+      {"wrist_2_joint", -1.6580},
+      {"wrist_3_joint", -0.0698}};
 }
 
 bool ArmMotion::moveToPose(const geometry_msgs::msg::Pose &target)
 {
-  mgi_.setPoseTarget(target);
+  mgi_.clearPoseTargets();
+  mgi_.setStartStateToCurrentState();
+  if (!mgi_.setPoseTarget(target, "tool0"))
+  {
+    RCLCPP_ERROR(node_->get_logger(), "Set pose target fehlgeschlagen");
+  }
   moveit::planning_interface::MoveGroupInterface::Plan plan;
   if (mgi_.plan(plan) != moveit::core::MoveItErrorCode::SUCCESS)
   {

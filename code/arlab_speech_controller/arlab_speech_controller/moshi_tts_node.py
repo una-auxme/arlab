@@ -121,6 +121,7 @@ class MoshiTTS(Node):
         else:
             voice_path = self.tts_model.get_voice_path(self.voice)
         self.get_logger().info(f"Using voice path: {voice_path}")
+        self.prefixes = [self.tts_model.get_prefix(voice_path)]
         # This initialization is required for the bigger 1.6b model
         # CFG coef goes here because the model was trained with CFG distillation,
         # so it's not _actually_ doing CFG at inference time.
@@ -134,7 +135,9 @@ class MoshiTTS(Node):
                 pcm = self.tts_model.mimi.decode(frame[:, 1:, :]).cpu().numpy()
                 self.pcms_audio_queue.put_nowait(np.clip(pcm[0, 0], -1, 1))
 
-        self.tts_gen = TTSGen(self.tts_model, [], on_frame=_on_frame)
+        self.tts_gen = TTSGen(
+            self.tts_model, [], on_frame=_on_frame, prefixes=self.prefixes
+        )
 
     def _step_timer_callback(self):
         if self.pcms_audio_queue.qsize() > 5:
@@ -156,6 +159,10 @@ class MoshiTTS(Node):
             self.delay_steps -= 1
         else:
             self.tts_gen.reset_state()
+
+        self.get_logger().info(
+            f"offset: {self.tts_gen.offset}, skip: {self.tts_gen.prefix_skip}"
+        )
 
     def _start_tts_model(self):
         self.tts_model.mimi.streaming_forever(1)

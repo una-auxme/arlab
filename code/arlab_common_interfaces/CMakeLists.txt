@@ -35,7 +35,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 
   "msg/OrchestratorData.msg"
   "msg/Destination.msg"
-  "msg/ActionResponse.msg"
+  "msg/ManipulationResponse.msg"
+  "msg/MovementResponse.msg"
   "msg/MovementCommand.msg"
   "msg/ManipulationCommand.msg"
 

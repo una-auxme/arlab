@@ -19,7 +19,7 @@ ArmMotion::ArmMotion(const rclcpp::Node::SharedPtr &node, const std::string &gro
       {"wrist_3_joint", -0.0698}};
 }
 
-bool ArmMotion::moveToPose(const geometry_msgs::msg::Pose &target)
+void ArmMotion::moveToPose(const geometry_msgs::msg::Pose &target)
 {
   mgi_.clearPoseTargets();
   mgi_.setStartStateToCurrentState();
@@ -28,41 +28,51 @@ bool ArmMotion::moveToPose(const geometry_msgs::msg::Pose &target)
     RCLCPP_ERROR(node_->get_logger(), "Set pose target fehlgeschlagen");
   }
   moveit::planning_interface::MoveGroupInterface::Plan plan;
-  if (mgi_.plan(plan) != moveit::core::MoveItErrorCode::SUCCESS)
+  auto plan_result = mgi_.plan(plan);
+  if (plan_result != moveit::core::MoveItErrorCode::SUCCESS)
   {
-    RCLCPP_ERROR(node_->get_logger(), "Planung fehlgeschlagen");
-    throw std::runtime_error("Planung fehlgeschlagen");
-    return false;
+    std::string error_str = errorCodeToString(plan_result);
+    RCLCPP_ERROR(node_->get_logger(), "MoveIt planning failed: %s", error_str.c_str());
+    throw std::runtime_error(error_str);
+    return;
   }
-  if (mgi_.execute(plan) != moveit::core::MoveItErrorCode::SUCCESS)
+
+  auto execute_result = mgi_.execute(plan);
+  if (execute_result != moveit::core::MoveItErrorCode::SUCCESS)
   {
-    RCLCPP_ERROR(node_->get_logger(), "Ausführung fehlgeschlagen");
-    throw std::runtime_error("Ausführung fehlgeschlagen");
-    return false;
+    std::string error_str = errorCodeToString(execute_result);
+    RCLCPP_ERROR(node_->get_logger(), "MoveIt execution failed: %s", error_str.c_str());
+    throw std::runtime_error(error_str);
+    return;
   }
-  return true;
+  return;
 }
 
-bool ArmMotion::moveToJointPos(const std::map<std::string, double> &joints)
+void ArmMotion::moveToJointPos(const std::map<std::string, double> &joints)
 {
   mgi_.setJointValueTarget(joints);
   moveit::planning_interface::MoveGroupInterface::Plan plan;
-  if (mgi_.plan(plan) != moveit::core::MoveItErrorCode::SUCCESS)
+  auto plan_result = mgi_.plan(plan);
+  if (plan_result != moveit::core::MoveItErrorCode::SUCCESS)
   {
-    RCLCPP_ERROR(node_->get_logger(), "Planung (Joints) fehlgeschlagen");
-    throw std::runtime_error("Planung fehlgeschlagen");
-    return false;
+    std::string error_str = errorCodeToString(plan_result);
+    RCLCPP_ERROR(node_->get_logger(), "MoveIt planning (Joints) failed: %s", error_str.c_str());
+    throw std::runtime_error(error_str);
+    return;
   }
-  if (mgi_.execute(plan) != moveit::core::MoveItErrorCode::SUCCESS)
+
+  auto execute_result = mgi_.execute(plan);
+  if (execute_result != moveit::core::MoveItErrorCode::SUCCESS)
   {
-    RCLCPP_ERROR(node_->get_logger(), "Ausführung (Joints) fehlgeschlagen");
-    throw std::runtime_error("Ausführung fehlgeschlagen");
-    return false;
+    std::string error_str = errorCodeToString(execute_result);
+    RCLCPP_ERROR(node_->get_logger(), "MoveIt execution (Joints) failed: %s", error_str.c_str());
+    throw std::runtime_error(error_str);
+    return;
   }
-  return true;
+  return;
 }
 
-bool ArmMotion::moveToHome()
+void ArmMotion::moveToHome()
 {
-  return moveToJointPos(joints_home_);
+  moveToJointPos(joints_home_);
 }

@@ -1,5 +1,5 @@
 ManipulationCommand command
 ---
-ActionResponse response
+ManipulationResponse response
 ---
 # No feedback, action will be cancelled with ActionResponse if an error occurs

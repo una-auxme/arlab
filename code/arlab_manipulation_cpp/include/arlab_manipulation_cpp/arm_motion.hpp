@@ -10,9 +10,9 @@ class ArmMotion {
 public:
   ArmMotion(const rclcpp::Node::SharedPtr& node, const std::string& group);
 
-  bool moveToPose(const geometry_msgs::msg::Pose& target);
-  bool moveToJointPos(const std::map<std::string, double>& joints);
-  bool moveToHome(); // Nutzt konstante Pose
+  void moveToPose(const geometry_msgs::msg::Pose& target);
+  void moveToJointPos(const std::map<std::string, double>& joints);
+  void moveToHome(); // Nutzt konstante Pose
 
 private:
   rclcpp::Node::SharedPtr node_;

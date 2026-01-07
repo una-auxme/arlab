@@ -73,7 +73,7 @@ def generate_launch_description():
     ld.add_action(GetParameter)
     ld.add_action(Orchestrator)
     ld.add_action(Manipulation_CPP)
-    # ld.add_action(KnowledgeBase)
+    ld.add_action(KnowledgeBase)
     ld.add_action(CompVision)
 
     return ld

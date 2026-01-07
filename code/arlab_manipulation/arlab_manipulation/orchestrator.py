@@ -98,7 +98,9 @@ class orchestrator(Node):
         octomap_msg = octomap_with_pose.octomap
         self.octomap = octomap_msg.data
         if not self.octomap:
-            self.get_logger().warn("Octomap is empty")
+            # self.get_logger().warn("Octomap is empty")
+            self.msg = ""
+            self.finish_action()
             return
         self.get_logger().info("Octomap received")
 
@@ -136,10 +138,12 @@ class orchestrator(Node):
             return
 
         self.get_logger().info("Action response send to desicion maker")
-        if self.msg == "done":
-            self.action_result.response.message = "SUCCESS"
-        else:
-            self.action_result.response.message = "ERROR"
+        self.action_result.response.message = self.msg
+
+        # if self.msg == "done":
+        #     self.action_result.response.message = "SUCCESS"
+        # else:
+        #     self.action_result.response.message = "ERROR"
 
         goal_handle.succeed()
 
@@ -181,8 +185,8 @@ class orchestrator(Node):
 
         except Exception as e:
             self.get_logger().error(f"GetEntity failed: {e}")
-            self.pickable = False
-            self.send_goal()
+            self.msg = ""
+            self.finish_action()
 
     # GetShape Response
     def handle_get_shape_response(self, future):
@@ -214,7 +218,8 @@ class orchestrator(Node):
 
         except Exception as e:
             self.get_logger().error(f"GetShape failed: {e}")
-            self.compute_goal_pose()
+            self.msg = ""
+            self.finish_action()
 
     # GetGrippingParameter Response
     def handle_gripping_parameter_response(self, future):
@@ -223,12 +228,11 @@ class orchestrator(Node):
             self.force = response.gripforce
             self.grip_pos_mode = response.grippos_mode
             self.grip_orient_mode = response.griporient_mode
+            self.compute_goal_pose()
         except Exception as e:
             self.get_logger().error(f"GetGrippingParameter failed: {e}")
-            self.force = 5.0
-            self.grip_pos_mode = self.grip_orient_mode = 0
-
-        self.compute_goal_pose()
+            self.msg = ""
+            self.finish_action()
 
     # Compute Goal Pose for MoveIt Node
     def compute_goal_pose(self):
@@ -237,7 +241,7 @@ class orchestrator(Node):
             self.gripping_point_orient = Quaternion(w=1.0)
         elif self.command_type == "place":
             if self.octomap:
-                pose = find_placing_area(
+                pose, state = find_placing_area(
                     octo_data=self.octomap,
                     bbox=self.bounding_box,
                     margin=0.02,  # safety offset
@@ -245,13 +249,15 @@ class orchestrator(Node):
                     offset_x=0.05,  # offset gripper side
                     offset_y=0.05,  # offset gripper front
                 )
-
-                self.placing_point_pos = Point(
-                    x=pose.position.x, y=pose.position.y, z=pose.position.z
-                )
-                self.placing_point_orient = self.gripping_point_orient
-
-        self.send_goal()
+                if state == "success":
+                    self.placing_point_pos = Point(
+                        x=pose.position.x, y=pose.position.y, z=pose.position.z
+                    )
+                    self.placing_point_orient = self.gripping_point_orient
+                    self.send_goal()
+                else:
+                    self.msg = state
+                    self.finish_action()
 
     # Publish Goal Pose with ActionClient
     def send_goal(self):
@@ -273,7 +279,7 @@ class orchestrator(Node):
 
         if not self._orchestrator_client.wait_for_server(timeout_sec=5.0):
             self.get_logger().error("OrchestratorAction server not available")
-            self.msg = "error"
+            self.msg = ""
             self.finish_action()
             return
 
@@ -286,7 +292,7 @@ class orchestrator(Node):
             self.goal_handle = future.result()
             if not self.goal_handle.accepted:
                 self.get_logger().error("Orchestrator goal rejected")
-                self.msg = "error"
+                self.msg = ""
                 self.finish_action()
 
             self.get_logger().info("Orchestrator goal accepted")
@@ -295,8 +301,8 @@ class orchestrator(Node):
             )
 
         except Exception as e:
-            self.get_logger().error(f"Failed to send orchestrator goal: {e}")
-            self.msg = "error"
+            self.get_logger().error(f"Failed to receive orchestrator goal: {e}")
+            self.msg = ""
             self.finish_action()
 
     # OrchestratorAction Result
@@ -304,11 +310,12 @@ class orchestrator(Node):
         try:
             self.msg = future.result().result.response.message
             self.get_logger().info(f"Orchestrator action completed: {self.msg}")
+            self.msg = "success"
             self.finish_action()
 
         except Exception as e:
             self.get_logger().error(f"Orchestrator action failed: {e}")
-            self.msg = "error"
+            self.msg = ""
             self.finish_action()
 
     # Finish ManipulationAction --> send Result

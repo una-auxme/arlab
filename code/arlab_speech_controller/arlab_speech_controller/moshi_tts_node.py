@@ -39,7 +39,8 @@ class MoshiTTS(Node):
         self.hf_repo = (
             self.declare_parameter(
                 "hf_repo",
-                DEFAULT_DSM_TTS_REPO,
+                "kyutai/tts-0.75b-en-public",
+                # DEFAULT_DSM_TTS_REPO,
                 descriptor=ParameterDescriptor(
                     description="HF repo in which to look for the pretrained models."
                 ),
@@ -107,29 +108,33 @@ class MoshiTTS(Node):
     def _setup_tts_model(self):
         self.get_logger().info("Loading model...")
         checkpoint_info = CheckpointInfo.from_hf_repo(self.hf_repo)
+        # This initialization is required for the bigger 1.6b model
+        # self.tts_model = TTSModel.from_checkpoint_info(
+        #     checkpoint_info, n_q=32, temp=0.6, device=self.device
+        # )
         self.tts_model = TTSModel.from_checkpoint_info(
-            checkpoint_info, n_q=32, temp=0.6, device=self.device
+            checkpoint_info, n_q=16, temp=0.6, cfg_coef=3, device=self.device
         )
 
         if self.voice.endswith(".safetensors"):
             voice_path = self.voice
         else:
             voice_path = self.tts_model.get_voice_path(self.voice)
+        self.get_logger().info(f"Using voice path: {voice_path}")
+        # This initialization is required for the bigger 1.6b model
         # CFG coef goes here because the model was trained with CFG distillation,
         # so it's not _actually_ doing CFG at inference time.
         # Also, if you are generating a dialog, you should have two voices in the list.
-        condition_attributes = self.tts_model.make_condition_attributes(
-            [voice_path], cfg_coef=2.0
-        )
+        # condition_attributes = self.tts_model.make_condition_attributes(
+        #     [voice_path], cfg_coef=2.0
+        # )
 
         def _on_frame(frame):
             if (frame != -1).all():
                 pcm = self.tts_model.mimi.decode(frame[:, 1:, :]).cpu().numpy()
                 self.pcms_audio_queue.put_nowait(np.clip(pcm[0, 0], -1, 1))
 
-        self.tts_gen = TTSGen(
-            self.tts_model, [condition_attributes], on_frame=_on_frame
-        )
+        self.tts_gen = TTSGen(self.tts_model, [], on_frame=_on_frame)
 
     def _step_timer_callback(self):
         if self.pcms_audio_queue.qsize() > 5:

@@ -19,6 +19,7 @@ import rclpy
 import rclpy.executors
 import tf2_ros
 from arlab_common_interfaces.action import ManipulationAction, OrchestratorAction
+from arlab_common_interfaces.msg import ManipulationResponse
 from arlab_common_interfaces.srv import GrippingParameter
 from arlab_knowledge_interfaces.srv import GetEntity, GetShape
 from geometry_msgs.msg import Point, Pose, Quaternion
@@ -99,7 +100,8 @@ class orchestrator(Node):
         self.octomap = octomap_msg.data
         if not self.octomap:
             # self.get_logger().warn("Octomap is empty")
-            self.msg = ""
+            # self.error_code = -40
+            # self.msg = "Octomap is empty"
             self.finish_action()
             return
         self.get_logger().info("Octomap received")
@@ -117,6 +119,7 @@ class orchestrator(Node):
         """Execute the manipulation command action."""
 
         self.action_result = ManipulationAction.Result()
+        self.action_result.response = ManipulationResponse()
 
         goal_command = goal_handle.request.command
         self.command_type = goal_command.command_type
@@ -138,12 +141,8 @@ class orchestrator(Node):
             return
 
         self.get_logger().info("Action response send to desicion maker")
+        self.action_result.response.error_code = self.error_code
         self.action_result.response.message = self.msg
-
-        # if self.msg == "done":
-        #     self.action_result.response.message = "SUCCESS"
-        # else:
-        #     self.action_result.response.message = "ERROR"
 
         goal_handle.succeed()
 
@@ -174,18 +173,24 @@ class orchestrator(Node):
             self.ref_frame = entity.pose_reference_frame
             self.stamp = entity.stamp
 
-            self.pose = transform_pose(
+            self.pose, error_code, msg = transform_pose(
                 self.tf_buffer, self.pose, self.stamp, self.ref_frame
             )
 
-            self.req_get_shape = GetShape.Request()
-            self.req_get_shape.entityid = self.entity_id
-            future_shape = self.client_get_shape.call_async(self.req_get_shape)
-            future_shape.add_done_callback(self.handle_get_shape_response)
+            if error_code == 1:
+                self.req_get_shape = GetShape.Request()
+                self.req_get_shape.entityid = self.entity_id
+                future_shape = self.client_get_shape.call_async(self.req_get_shape)
+                future_shape.add_done_callback(self.handle_get_shape_response)
+            else:
+                self.error_code = error_code
+                self.msg = msg
+                self.finish_action()
 
         except Exception as e:
             self.get_logger().error(f"GetEntity failed: {e}")
-            self.msg = ""
+            self.error_code = -41
+            self.msg = "GetEntity from Knowledgebase failed"
             self.finish_action()
 
     # GetShape Response
@@ -197,15 +202,15 @@ class orchestrator(Node):
             self.bounding_box = shape.boundingbox2d if shape.has_boundingbox2d else None
 
             if self.point_cloud:
-                self.point_cloud = transform_pointCloud(
+                self.point_cloud, error_code, msg = transform_pointCloud(
                     self.tf_buffer, self.point_cloud, self.stamp, self.ref_frame
                 )
             if self.bounding_box:
-                self.bounding_box = transform_bBox(
+                self.bounding_box, error_code, msg = transform_bBox(
                     self.tf_buffer, self.bounding_box, self.stamp, self.ref_frame
                 )
 
-            if self.pickable:
+            if self.pickable and error_code == 1:
                 self.req_gripping_parameter = GrippingParameter.Request()
                 self.req_gripping_parameter.objectgroup = self.object_group
                 future_param = self.client_gripping_parameter.call_async(
@@ -213,12 +218,14 @@ class orchestrator(Node):
                 )
                 future_param.add_done_callback(self.handle_gripping_parameter_response)
             else:
-                self.force = 0.0
-                self.compute_goal_pose()
+                self.error_code = error_code
+                self.msg = msg
+                self.finish_action()
 
         except Exception as e:
             self.get_logger().error(f"GetShape failed: {e}")
-            self.msg = ""
+            self.error_code = -42
+            self.msg = "GetShape from Knowledgebase failed"
             self.finish_action()
 
     # GetGrippingParameter Response
@@ -231,7 +238,8 @@ class orchestrator(Node):
             self.compute_goal_pose()
         except Exception as e:
             self.get_logger().error(f"GetGrippingParameter failed: {e}")
-            self.msg = ""
+            self.error_code = -43
+            self.msg = "GetGrippingParameter from ParameterService failed"
             self.finish_action()
 
     # Compute Goal Pose for MoveIt Node
@@ -241,7 +249,7 @@ class orchestrator(Node):
             self.gripping_point_orient = Quaternion(w=1.0)
         elif self.command_type == "place":
             if self.octomap:
-                pose, state = find_placing_area(
+                pose, error_code, msg = find_placing_area(
                     octo_data=self.octomap,
                     bbox=self.bounding_box,
                     margin=0.02,  # safety offset
@@ -249,14 +257,15 @@ class orchestrator(Node):
                     offset_x=0.05,  # offset gripper side
                     offset_y=0.05,  # offset gripper front
                 )
-                if state == "success":
+                if error_code == 1:
                     self.placing_point_pos = Point(
                         x=pose.position.x, y=pose.position.y, z=pose.position.z
                     )
                     self.placing_point_orient = self.gripping_point_orient
                     self.send_goal()
                 else:
-                    self.msg = state
+                    self.error_code = error_code
+                    self.msg = self.msg
                     self.finish_action()
 
     # Publish Goal Pose with ActionClient
@@ -278,8 +287,9 @@ class orchestrator(Node):
         msg.data.cmd = String(data=self.command_type)
 
         if not self._orchestrator_client.wait_for_server(timeout_sec=5.0):
-            self.get_logger().error("OrchestratorAction server not available")
-            self.msg = ""
+            self.get_logger().error("OrchestratorAction server is not available")
+            self.error_code = -44
+            self.msg = "Orchestrator Actionserver ist not available"
             self.finish_action()
             return
 
@@ -292,7 +302,8 @@ class orchestrator(Node):
             self.goal_handle = future.result()
             if not self.goal_handle.accepted:
                 self.get_logger().error("Orchestrator goal rejected")
-                self.msg = ""
+                self.error_code = -45
+                self.msg = "Orchestrator Actiongoal from MoveIt rejected"
                 self.finish_action()
 
             self.get_logger().info("Orchestrator goal accepted")
@@ -302,7 +313,8 @@ class orchestrator(Node):
 
         except Exception as e:
             self.get_logger().error(f"Failed to receive orchestrator goal: {e}")
-            self.msg = ""
+            self.error_code = -46
+            self.msg = "Failed to receive orchestrator goal"
             self.finish_action()
 
     # OrchestratorAction Result
@@ -310,12 +322,14 @@ class orchestrator(Node):
         try:
             self.msg = future.result().result.response.message
             self.get_logger().info(f"Orchestrator action completed: {self.msg}")
-            self.msg = "success"
+            self.error_code = 1
+            self.msg = "Success"
             self.finish_action()
 
         except Exception as e:
-            self.get_logger().error(f"Orchestrator action failed: {e}")
-            self.msg = ""
+            self.get_logger().error(f"Handle orchestrator action result failed: {e}")
+            self.error_code = -48
+            self.msg = "Handle orchestrator action result failed"
             self.finish_action()
 
     # Finish ManipulationAction --> send Result

@@ -81,13 +81,11 @@ def find_placing_area(
     Returns: geometry_msgs.msg.Pose
     """
     if bbox is None:
-        print("Warning: bbox is None, returning default pose")
+        print("Bbox is empty")
         pose = Pose()
-        pose.position.x = 0.5
-        pose.position.y = 0.5
-        pose.position.z = 0.0
-        pose.orientation.w = 1.0
-        return pose
+        error_code = -50
+        msg = "BoundingBox is empty"
+        return pose, error_code, msg
 
     floor_z = detect_shelf_floor(octo_data, resolution)
 
@@ -116,12 +114,14 @@ def find_placing_area(
                 pose.position.y = center[1]
                 pose.position.z = center[2] - floor_z
                 pose.orientation.w = 1.0
-                return pose
+                return pose, error_code, msg
 
-    print("Warning: No free area found, returning default pose")
+    print("No free placing area found")
     pose = Pose()
     pose.position.x = 0.5
     pose.position.y = 0.5
     pose.position.z = 0.0
     pose.orientation.w = 1.0
-    return pose
+    error_code = -49
+    msg = "No free placing area found"
+    return pose, error_code, msg

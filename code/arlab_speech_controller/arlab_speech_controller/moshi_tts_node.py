@@ -202,7 +202,6 @@ class MoshiTTS(Node):
 
 @torch.no_grad()
 @no_compile()
-@no_cuda_graph()
 def main(args=None):
     # from arlab_common.debugging import start_debugger
 

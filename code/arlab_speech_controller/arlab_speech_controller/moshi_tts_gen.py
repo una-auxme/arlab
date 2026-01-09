@@ -17,6 +17,7 @@ from moshi.models.tts import (
     _delayed,
     script_to_entries,
 )
+from moshi.utils.compile import CUDAGraphed
 
 
 def prepare_script(model: TTSModel, script: str, first_turn: bool) -> list[Entry]:
@@ -187,6 +188,7 @@ class TTSGen:
             self.lm_gen_state_backup = _backup_attrs(
                 self.lm_gen._streaming_state,
                 [
+                    "cache",
                     "offsets",
                     "offset_cpu",
                 ],
@@ -203,6 +205,18 @@ class TTSGen:
         self.offset = self.offset_backup
         _restore_attrs(self.lm_gen._streaming_state, self.lm_gen_state_backup)
         self.lm_gen.lm_model.set_streaming_state(deepcopy(self.lm_model_state_backup))
+
+        # Fix cuda graphs
+        # (because they seem to not detect our reload of the lm_model streaming state)
+        # Code taken from LMGen._init_streaming_state
+        disable = self.lm_gen.lm_model.device.type != "cuda"
+        graphed_main = CUDAGraphed(self.lm_gen.lm_model.forward_text, disable=disable)
+        if self.lm_gen.lm_model.depformer is not None:
+            graphed_depth = CUDAGraphed(self.lm_gen.depformer_step, disable=disable)
+        else:
+            graphed_depth = None
+        self.lm_gen._streaming_state.graphed_main = graphed_main
+        self.lm_gen._streaming_state.graphed_depth = graphed_depth
 
     def reset_state(self):
         self.state = self.tts_model.machine.new_state([])

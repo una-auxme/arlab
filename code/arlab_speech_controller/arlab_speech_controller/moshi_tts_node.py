@@ -1,16 +1,13 @@
 import queue
 
-import numpy as np
 import rclpy
 import sounddevice as sd
 import torch
 from moshi.models.loaders import CheckpointInfo
 from moshi.models.tts import (
-    DEFAULT_DSM_TTS_REPO,
+    # DEFAULT_DSM_TTS_REPO,
     DEFAULT_DSM_TTS_VOICE_REPO,
-    Entry,
     TTSModel,
-    script_to_entries,
 )
 from moshi.utils.compile import no_compile, no_cuda_graph
 from rcl_interfaces.msg import ParameterDescriptor
@@ -75,8 +72,10 @@ class MoshiTTS(Node):
             .string_value
         )
 
-        self.tts_first_turn = True
         self.delay_steps: int = 0
+        self.silent_steps: int = 0
+        self.state_clean: bool = True
+
         self.pcms_audio_queue = queue.Queue()
         self.audio_enabled: bool = False
 
@@ -137,25 +136,37 @@ class MoshiTTS(Node):
             self.tts_gen.state.end_step is not None
             and self.tts_gen.offset < self.tts_gen.state.end_step
         ):
+            self.state_clean = False
+            self.silent_steps = 0
             self.tts_gen.step()
             self.delay_steps = (
-                # Adding 16 delay_steps to make sure all outputs are processed. This number seems arbitrary,
-                # but the original library uses an value of 8 which was not enough in our case.
-                self.tts_model.delay_steps + max(self.tts_model.lm.delays) + 16
+                # The delay steps are usually not sufficient to
+                # make sure all audio gets processed.
+                # First we tired adding arbitrary numbers (16 worked pretty well)
+                # Now we just wait until the output is silent
+                self.tts_model.delay_steps + max(self.tts_model.lm.delays)
             )
         elif self.delay_steps > 0:
+            self.state_clean = False
+            self.silent_steps = 0
             self.tts_gen.step()
             self.delay_steps -= 1
-        else:
-            self.tts_gen.restore_start_state()
+        elif self.silent_steps < self.tts_gen.audio_silent_steps:
+            samples = self.tts_gen.step()
+            if samples is not None:
+                if self.tts_gen.is_audio_silent(samples):
+                    self.silent_steps += 1
+                else:
+                    self.silent_steps = 0
+        elif not self.state_clean:
+            self.state_clean = True
+            self.get_logger().info(f"Restored state at offset: {self.tts_gen.offset}")
+            self.tts_gen.restore_state()
             # self.tts_gen.reset_state()
-
-        self.get_logger().info(
-            f"offset: {self.tts_gen.offset}, skip: {self.tts_gen.prefix_skip}"
-        )
 
     def _start_tts_model(self):
         self.tts_gen.init_streaming()
+        self.get_logger().info(f"Initial offset: {self.tts_gen.offset}")
         self.audio_enabled = True
         self.create_timer(0.05, self._step_timer_callback)
 

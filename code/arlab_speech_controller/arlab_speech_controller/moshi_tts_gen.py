@@ -17,7 +17,6 @@ from moshi.models.tts import (
     _delayed,
     script_to_entries,
 )
-from moshi.modules.streaming import StreamingModule
 
 
 def prepare_script(model: TTSModel, script: str, first_turn: bool) -> list[Entry]:
@@ -62,24 +61,12 @@ class TTSGen:
     cfg_is_no_text: bool = True
     on_frame: tp.Optional[tp.Callable[[np.ndarray], None]] = None
     audio_silent_threshold: float = 0.01
-    audio_silent_steps: int = 20
+    audio_silent_steps: int = 5
 
     def __post_init__(self):
         tts_model = self.tts_model
         attributes = self.attributes
         self.offset = 0
-
-        # Taken from https://huggingface.co/kyutai/tts-0.75b-en-public
-        if self.prefixes is not None:
-            # self.prefix_skip = int(
-            #     (tts_model.mimi.sample_rate * self.prefixes[0].shape[-1])
-            #     / tts_model.mimi.frame_rate
-            # )
-            # self.prefix_skip = int(self.prefixes[0].shape[-1])
-            self.prefix_skip = 145
-            print(self.prefix_skip)
-        else:
-            self.prefix_skip = 0
 
         self.state = self.tts_model.machine.new_state([])
 
@@ -87,7 +74,8 @@ class TTSGen:
             if tts_model.valid_cfg_conditionings:
                 raise ValueError(
                     "This model does not support direct CFG, but was trained with "
-                    "CFG distillation. Pass instead `cfg_coef` to `make_condition_attributes`."
+                    "CFG distillation. "
+                    "Pass instead `cfg_coef` to `make_condition_attributes`."
                 )
             nulled = _make_null(attributes)
             attributes = list(attributes) + nulled
@@ -97,20 +85,20 @@ class TTSGen:
         condition_tensors = tts_model.lm.condition_provider(prepared)
 
         cfg_is_masked_until = None
-        self.default_text_prefixes = None
-        self.default_audio_prefixes = None
+        text_prefixes = None
+        audio_prefixes = None
         device = tts_model.lm.device
         if self.prefixes is not None:
             if self.cfg_is_no_prefix:
                 cfg_is_masked_until = []
-            self.default_text_prefixes = []
-            self.default_audio_prefixes = []
+            text_prefixes = []
+            audio_prefixes = []
             for prefix in self.prefixes:
                 if cfg_is_masked_until is not None:
                     cfg_is_masked_until.append(prefix.shape[-1] + tts_model.delay_steps)
                 K, _ = prefix.shape
                 assert K == tts_model.lm.num_codebooks
-                self.default_text_prefixes.append(deque(prefix[0].cpu().tolist()))
+                text_prefixes.append(deque(prefix[0].cpu().tolist()))
                 delays = [
                     d + tts_model.delay_steps
                     for d in tts_model.lm.delays[tts_model.lm.audio_offset :]
@@ -121,10 +109,7 @@ class TTSGen:
                     tts_model.machine.token_ids.ungenerated,
                 )
                 delayed = delayed.to(device)
-                self.default_audio_prefixes.append(deque(delayed.t()))
-
-        self.current_text_prefixes = deepcopy(self.default_text_prefixes)
-        self.current_audio_prefixes = deepcopy(self.default_audio_prefixes)
+                audio_prefixes.append(deque(delayed.t()))
 
         def _on_text_logits_hook(text_logits):
             if tts_model.padding_bonus:
@@ -141,8 +126,8 @@ class TTSGen:
                 delay = delays[q + audio_offset]
                 if self.offset < delay + tts_model.delay_steps:
                     audio_tokens[:, q] = tts_model.machine.token_ids.zero
-            if self.current_audio_prefixes is not None:
-                for b, audio_prefix in enumerate(self.current_audio_prefixes):
+            if audio_prefixes is not None:
+                for b, audio_prefix in enumerate(audio_prefixes):
                     if audio_prefix:
                         audio_codes = audio_prefix.popleft()
                         mask = audio_codes != ungenerated
@@ -154,11 +139,8 @@ class TTSGen:
             tokens = text_tokens.tolist()
             out_tokens = []
             for b, (token, state) in enumerate(zip(tokens, [self.state])):
-                if (
-                    self.current_text_prefixes is not None
-                    and self.current_text_prefixes[b]
-                ):
-                    out_token = self.current_text_prefixes[b].popleft()
+                if text_prefixes is not None and text_prefixes[b]:
+                    out_token = text_prefixes[b].popleft()
                 else:
                     out_token, _ = tts_model.machine.process(self.offset, state, token)
                 out_tokens.append(out_token)
@@ -188,6 +170,7 @@ class TTSGen:
 
         silent_frame_counter = 0
 
+        # Wait until the audio is silent after the initial preconditioning
         while silent_frame_counter < self.audio_silent_steps:
             samples = self.step()
             if samples is not None:
@@ -196,8 +179,12 @@ class TTSGen:
                 else:
                     silent_frame_counter = 0
 
+        # Save the state after the preconditioning
+        self.backup_state()
+
+    def backup_state(self):
         if self.lm_gen._streaming_state is not None:
-            self.lm_gen_start_state = _backup_attrs(
+            self.lm_gen_state_backup = _backup_attrs(
                 self.lm_gen._streaming_state,
                 [
                     "offsets",
@@ -205,38 +192,22 @@ class TTSGen:
                 ],
             )
         if self.lm_gen.lm_model._streaming_state is not None:
-            self.lm_model_start_state = deepcopy(
+            self.lm_model_state_backup = deepcopy(
                 self.lm_gen.lm_model.get_streaming_state()
             )
-        self.start_state = deepcopy(self.state)
-        self.start_offset = self.offset
+        self.state_backup = deepcopy(self.state)
+        self.offset_backup = self.offset
 
-    def restore_start_state(self):
-        self.state = deepcopy(self.start_state)
-        self.offset = self.start_offset
-        # self.tts_model.mimi.set_streaming_state(self.tts_model_start_state)
-        # self.lm_gen.reset_streaming()
-
-        def _restore_offsets(name: str, module: StreamingModule):
-            _restore_attrs(module, self.lm_gen_start_state)
-
-        # _restore_attrs(self.lm_gen._streaming_state, self.lm_gen_start_state)
-        self.lm_gen._apply_named_streaming(_restore_offsets)
-        self.lm_gen.lm_model.set_streaming_state(deepcopy(self.lm_model_start_state))
+    def restore_state(self):
+        self.state = deepcopy(self.state_backup)
+        self.offset = self.offset_backup
+        _restore_attrs(self.lm_gen._streaming_state, self.lm_gen_state_backup)
+        self.lm_gen.lm_model.set_streaming_state(deepcopy(self.lm_model_state_backup))
 
     def reset_state(self):
-        pass
-        # self.state = self.tts_model.machine.new_state([])
-        # self.tts_model.mimi.reset_streaming()
-        # self.lm_gen.reset_streaming()
-        # self.offset = 0
-
-        # if self.current_text_prefixes is not None:
-        #     self.current_text_prefixes.clear()
-        #     self.current_text_prefixes += deepcopy(self.default_text_prefixes)
-        # if self.current_audio_prefixes is not None:
-        #     self.current_audio_prefixes.clear()
-        #     self.current_audio_prefixes += deepcopy(self.default_audio_prefixes)
+        self.state = self.tts_model.machine.new_state([])
+        self.lm_gen.reset_streaming()
+        self.offset = 0
 
     def process(self):
         while len(self.state.entries) > self.tts_model.machine.second_stream_ahead:
@@ -265,12 +236,12 @@ class TTSGen:
         self.state.entries.append(entry)
 
     def append_text(self, msg: str):
-        entries = prepare_script(self.tts_model, msg.strip(), first_turn=True)
+        entries = prepare_script(self.tts_model, msg.strip(), first_turn=False)
         self.tts_first_turn = False
         for entry in entries:
             self.append_entry(entry)
             self.process()
 
     def is_audio_silent(self, audio_samples: np.ndarray):
-        avg = np.average(audio_samples)
-        return abs(avg) <= self.audio_silent_threshold
+        max = np.max(np.abs(audio_samples))
+        return max <= self.audio_silent_threshold

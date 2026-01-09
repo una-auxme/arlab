@@ -10,6 +10,26 @@
       "request": "launch",
       "program": "${file}",
       "console": "integratedTerminal"
+    },
+     {
+      "name": "53000 arlab attach",
+      "type": "debugpy",
+      "request": "attach",
+      "connect": {
+        "host": "localhost",
+        "port": 53000
+      },
+      "justMyCode": false,
+      "pathMappings": [
+        {
+          "localRoot": "${workspaceFolder}/code",
+          "remoteRoot": "/workspace/src/arlab/code"
+        },
+        {
+          "localRoot": "${workspaceFolder}/code",
+          "remoteRoot": "/workspace/build"
+        }
+      ]
     }
   ]
 }

@@ -12,23 +12,12 @@ from moshi.models.tts import (
     TTSModel,
     script_to_entries,
 )
+from moshi.utils.compile import no_compile, no_cuda_graph
 from rcl_interfaces.msg import ParameterDescriptor
 from rclpy.node import Node
 from std_msgs.msg import String
 
 from .moshi_tts_gen import TTSGen
-
-
-def prepare_script(model: TTSModel, script: str, first_turn: bool) -> list[Entry]:
-    multi_speaker = first_turn and model.multi_speaker
-    return script_to_entries(
-        model.tokenizer,
-        model.machine.token_ids,
-        model.mimi.frame_rate,
-        [script],
-        multi_speaker=multi_speaker,
-        padding_between=1,
-    )
 
 
 class MoshiTTS(Node):
@@ -89,6 +78,7 @@ class MoshiTTS(Node):
         self.tts_first_turn = True
         self.delay_steps: int = 0
         self.pcms_audio_queue = queue.Queue()
+        self.audio_enabled: bool = False
 
         self._setup_tts_model()
         self._setup_audio_output()
@@ -130,10 +120,9 @@ class MoshiTTS(Node):
         #     [voice_path], cfg_coef=2.0
         # )
 
-        def _on_frame(frame):
-            if (frame != -1).all():
-                pcm = self.tts_model.mimi.decode(frame[:, 1:, :]).cpu().numpy()
-                self.pcms_audio_queue.put_nowait(np.clip(pcm[0, 0], -1, 1))
+        def _on_frame(audio_samples):
+            if self.audio_enabled:
+                self.pcms_audio_queue.put_nowait(audio_samples)
 
         self.tts_gen = TTSGen(
             self.tts_model, [], on_frame=_on_frame, prefixes=self.prefixes
@@ -158,14 +147,16 @@ class MoshiTTS(Node):
             self.tts_gen.step()
             self.delay_steps -= 1
         else:
-            self.tts_gen.reset_state()
+            self.tts_gen.restore_start_state()
+            # self.tts_gen.reset_state()
 
         self.get_logger().info(
             f"offset: {self.tts_gen.offset}, skip: {self.tts_gen.prefix_skip}"
         )
 
     def _start_tts_model(self):
-        self.tts_model.mimi.streaming_forever(1)
+        self.tts_gen.init_streaming()
+        self.audio_enabled = True
         self.create_timer(0.05, self._step_timer_callback)
 
     def _setup_audio_output(self):
@@ -190,13 +181,7 @@ class MoshiTTS(Node):
     def _tts_output_sub_callback(self, msg: String):
         data = msg.data
         self.get_logger().info(f"TTS: {data}")
-        entries = prepare_script(
-            self.tts_model, data.strip(), first_turn=self.tts_first_turn
-        )
-        self.tts_first_turn = False
-        for entry in entries:
-            self.tts_gen.append_entry(entry)
-            self.tts_gen.process()
+        self.tts_gen.append_text(data)
 
     def shutdown(self):
         self.tts_model.mimi.reset_streaming()
@@ -205,7 +190,13 @@ class MoshiTTS(Node):
 
 
 @torch.no_grad()
+@no_compile()
+@no_cuda_graph()
 def main(args=None):
+    # from arlab_common.debugging import start_debugger
+
+    # start_debugger(wait_for_client=True)
+
     rclpy.init(args=args)
     try:
         node = MoshiTTS()

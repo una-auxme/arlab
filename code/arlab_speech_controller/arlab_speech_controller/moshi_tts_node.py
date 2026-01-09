@@ -9,7 +9,7 @@ from moshi.models.tts import (
     DEFAULT_DSM_TTS_VOICE_REPO,
     TTSModel,
 )
-from moshi.utils.compile import no_compile, no_cuda_graph
+from moshi.utils.compile import no_compile
 from rcl_interfaces.msg import ParameterDescriptor
 from rclpy.node import Node
 from std_msgs.msg import String
@@ -72,6 +72,21 @@ class MoshiTTS(Node):
             .string_value
         )
 
+        self.max_offset = (
+            self.declare_parameter(
+                "max_offset",
+                700,
+                descriptor=ParameterDescriptor(
+                    description="Max amount of frames (offset) the model "
+                    "is allowed to produce in one go without a state restore. "
+                    "More supports longer continuous text output, "
+                    "but the model deteriorates quickly at some point"
+                ),
+            )
+            .get_parameter_value()
+            .integer_value
+        )
+
         self.delay_steps: int = 0
         self.silent_steps: int = 0
         self.state_clean: bool = True
@@ -131,6 +146,10 @@ class MoshiTTS(Node):
         if self.pcms_audio_queue.qsize() > 5:
             return
 
+        # Make sure we don't generate too much in one go
+        if self.tts_gen.offset >= self.max_offset:
+            self._restore_model_state()
+
         num_entries = len(self.tts_gen.state.entries)
         if num_entries > 0 or (
             self.tts_gen.state.end_step is not None
@@ -160,9 +179,12 @@ class MoshiTTS(Node):
                     self.silent_steps = 0
         elif not self.state_clean:
             self.state_clean = True
-            self.get_logger().info(f"Restored state at offset: {self.tts_gen.offset}")
-            self.tts_gen.restore_state()
-            # self.tts_gen.reset_state()
+            self._restore_model_state()
+
+    def _restore_model_state(self):
+        self.get_logger().info(f"Restored state at offset: {self.tts_gen.offset}")
+        self.tts_gen.restore_state()
+        # self.tts_gen.reset_state()
 
     def _start_tts_model(self):
         self.tts_gen.init_streaming()
@@ -192,6 +214,10 @@ class MoshiTTS(Node):
     def _tts_output_sub_callback(self, msg: String):
         data = msg.data
         self.get_logger().info(f"TTS: {data}")
+
+        if self.tts_gen.offset >= self.max_offset:
+            self._restore_model_state()
+
         self.tts_gen.append_text(data)
 
     def shutdown(self):

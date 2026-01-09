@@ -122,6 +122,8 @@ class MoshiTTS(Node):
 
         if self.voice.endswith(".safetensors"):
             voice_path = self.voice
+        elif self.voice.startswith("local:"):
+            voice_path = self.voice.removeprefix("local:")
         else:
             voice_path = self.tts_model.get_voice_path(self.voice)
         self.get_logger().info(f"Using voice path: {voice_path}")

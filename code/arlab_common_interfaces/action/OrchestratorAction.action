@@ -2,4 +2,4 @@ OrchestratorData data
 ---
 ManipulationResponse response
 ---
-# No feedback, action will be cancelled with ActionResponse if an error occurs
+# No feedback, action will be cancelled with ManipulationResponse if an error occurs

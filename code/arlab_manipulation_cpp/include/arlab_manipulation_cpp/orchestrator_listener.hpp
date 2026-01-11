@@ -25,6 +25,7 @@ private:
   void handleAccepted(const std::shared_ptr<GoalHandleOrchestrator> goal_handle);
   void execute(const std::shared_ptr<GoalHandleOrchestrator> goal_handle);
 
+  std::string errorMessageFromCode(int code);
   // Action-Server
   rclcpp_action::Server<OrchestratorAction>::SharedPtr action_server_;
   // rclcpp_action::Client<Grasp>::SharedPtr grasp_client_;

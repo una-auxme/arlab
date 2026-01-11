@@ -97,23 +97,100 @@ void OrchestratorActionServer::execute(
   }
   catch (const std::exception &e)
   {
-
-    RCLCPP_ERROR(get_logger(), "JobRunner exception: %s", e.what());
+    const char* msg = e.what();
+    int code = (msg == nullptr || msg[0] == '\0') ? 0 : std::stoi(msg);
+    RCLCPP_ERROR(get_logger(), "JobRunner exception: %d", code);
 
     auto result = std::make_shared<OrchestratorAction::Result>();
-    // result->success = false;
-    result->response.message = "error";
+    result->response.error_code = code;
+    result->response.message = "Manipulation Error: " + OrchestratorActionServer::errorMessageFromCode(code);
+
     goal_handle->succeed(result);
 
     return;
   }
 
   auto result = std::make_shared<OrchestratorAction::Result>();
-  // result->success = true;
-  result->response.message = "done";
+  result->response.error_code = 1;
+  result->response.message = "Manipulation completed successfully";
+
   goal_handle->succeed(result);
 
   RCLCPP_INFO(get_logger(), "JobRunner done, Result send back to Client");
+}
+
+std::string OrchestratorActionServer::errorMessageFromCode(int code)
+{
+  switch (code)
+  {
+  case 0:
+    return "Undefined";
+  case 1:
+    return "Success";
+  case -1:
+    return "Planning failed";
+  case -2:
+    return "Invalid motion plan";
+  case -3:
+    return "Motion plan invalidated by environment change";
+  case -4:
+    return "Control failed";
+  case -5:
+    return "Unable to acquire sensor data";
+  case -6:
+    return "Timed out";
+  case -7:
+    return "Preempted";
+  case -10:
+    return "Start state in collision";
+  case -11:
+    return "Start state violates path constraints";
+  case -12:
+    return "Goal in collision";
+  case -13:
+    return "Goal violates path constraints";
+  case -14:
+    return "Goal constraints violated";
+  case -15:
+    return "Invalid group name";
+  case -16:
+    return "Invalid goal constraints";
+  case -17:
+    return "Invalid robot state";
+  case -18:
+    return "Invalid link name";
+  case -19:
+    return "Invalid object name";
+  case -21:
+    return "Frame transform failure";
+  case -22:
+    return "Collision checking unavailable";
+  case -23:
+    return "Robot state stale";
+  case -24:
+    return "Sensor info stale";
+  case -25:
+    return "Communication failure";
+  case -26:
+    return "Start state invalid";
+  case -27:
+    return "Goal state invalid";
+  case -28:
+    return "Unrecognized goal type";
+  case -29:
+    return "crash";
+  case -30:
+    return "abort";
+  case -31:
+    return "no IK solution";
+  case -35:
+    return "Unknown job command";
+  case 99999:
+    return "Unknown failure";
+  default:
+    return "Unknown error code";
+  }
+
 }
 
 int main(int argc, char **argv)

@@ -83,4 +83,6 @@ void JobRunner::run(const arlab_common_interfaces::msg::OrchestratorData &msg)
   }
 
   RCLCPP_WARN(logger_, "Unknown command: %s", cmd.c_str());
+  //Unknown Job Command
+  throw std::runtime_error("-35");
 }

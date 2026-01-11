@@ -25,24 +25,27 @@ void ArmMotion::moveToPose(const geometry_msgs::msg::Pose &target)
   mgi_.setStartStateToCurrentState();
   if (!mgi_.setPoseTarget(target, "tool0"))
   {
-    RCLCPP_ERROR(node_->get_logger(), "Set pose target fehlgeschlagen");
+    RCLCPP_ERROR(node_->get_logger(), "Set pose target failed");
   }
+
   moveit::planning_interface::MoveGroupInterface::Plan plan;
   auto plan_result = mgi_.plan(plan);
   if (plan_result != moveit::core::MoveItErrorCode::SUCCESS)
   {
-    std::string error_str = errorCodeToString(plan_result);
-    RCLCPP_ERROR(node_->get_logger(), "MoveIt planning failed: %s", error_str.c_str());
-    throw std::runtime_error(error_str);
+    RCLCPP_ERROR(node_->get_logger(), "MoveIt planning failed: %d", plan_result.val);
+
+    std::string code_str = moveit::core::errorCodeToString(plan_result);
+    throw std::runtime_error(code_str.c_str());
     return;
   }
 
   auto execute_result = mgi_.execute(plan);
   if (execute_result != moveit::core::MoveItErrorCode::SUCCESS)
   {
-    std::string error_str = errorCodeToString(execute_result);
-    RCLCPP_ERROR(node_->get_logger(), "MoveIt execution failed: %s", error_str.c_str());
-    throw std::runtime_error(error_str);
+    RCLCPP_ERROR(node_->get_logger(), "MoveIt execution failed: %d", execute_result.val);
+
+    std::string code_str = moveit::core::errorCodeToString(execute_result);
+    throw std::runtime_error(code_str.c_str());
     return;
   }
   return;
@@ -55,18 +58,18 @@ void ArmMotion::moveToJointPos(const std::map<std::string, double> &joints)
   auto plan_result = mgi_.plan(plan);
   if (plan_result != moveit::core::MoveItErrorCode::SUCCESS)
   {
-    std::string error_str = errorCodeToString(plan_result);
-    RCLCPP_ERROR(node_->get_logger(), "MoveIt planning (Joints) failed: %s", error_str.c_str());
-    throw std::runtime_error(error_str);
+    RCLCPP_ERROR(node_->get_logger(), "MoveIt planning (Joints) failed: %d", plan_result.val);
+    std::string code_str = moveit::core::errorCodeToString(plan_result);
+    throw std::runtime_error(code_str.c_str());
     return;
   }
 
   auto execute_result = mgi_.execute(plan);
   if (execute_result != moveit::core::MoveItErrorCode::SUCCESS)
   {
-    std::string error_str = errorCodeToString(execute_result);
-    RCLCPP_ERROR(node_->get_logger(), "MoveIt execution (Joints) failed: %s", error_str.c_str());
-    throw std::runtime_error(error_str);
+    RCLCPP_ERROR(node_->get_logger(), "MoveIt execution (Joints) failed: %d", execute_result.val);
+    std::string code_str = moveit::core::errorCodeToString(execute_result);
+    throw std::runtime_error(code_str.c_str());
     return;
   }
   return;

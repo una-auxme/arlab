@@ -245,8 +245,14 @@ class orchestrator(Node):
     # Compute Goal Pose for MoveIt Node
     def compute_goal_pose(self):
         if self.command_type == "pick":
-            self.gripping_point_pos = self.pose.position
-            self.gripping_point_orient = Quaternion(w=1.0)
+            if self.pose is not None:
+                self.gripping_point_pos = self.pose.position
+                self.gripping_point_orient = Quaternion(w=1.0)
+            else:
+                self.err = -52
+                self.msg = "No pose calculated"
+                self.finish_action()
+
         elif self.command_type == "place":
             if self.octomap:
                 pose, err, msg = find_placing_area(

@@ -45,6 +45,7 @@ int32 ORCHESTRATOR_ACTION_RESULT_FAIL=-48
 int32 NO_FREE_PLACING_AREA_FOUND=-49
 int32 NO_BOUNDINGBOX=-50
 int32 TRANSFORMATION_FAILED=-51
+int32 NO_POSE_CALCULATED=-52
 
 # Enum-like type of a destination. One of the constants defined above.
 int32 error_code

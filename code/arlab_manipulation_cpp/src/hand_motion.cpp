@@ -1,93 +1,79 @@
-#include "arlab_manipulation_cpp/hand_motion.hpp"
-#include "mia_hand_msgs/action/grasp.hpp"
+#include "hand_motion.hpp"
 
-HandMotion::HandMotion(rclcpp::Node &node)
+#include <stdexcept>
+
+HandMotion::HandMotion(rclcpp::Node::SharedPtr node, std::string action_name)
+: node_(std::move(node)), action_name_(std::move(action_name))
 {
-  // pub_thumb_ = node.create_publisher<std_msgs::msg::Float64MultiArray>(
-  //     "/thumb_joint_position_controller/commands", 1);
-  // pub_index_ = node.create_publisher<std_msgs::msg::Float64MultiArray>(
-  //     "/index_joint_position_controller/commands", 1);
-  // pub_mrl_   = node.create_publisher<std_msgs::msg::Float64MultiArray>(
-  //     "/mrl_joint_position_controller/commands", 1);
-
-  // grasp_client_ = node.grasp_client_;
+  if (!node_) {
+    throw std::invalid_argument("HandMotion: node ist null");
+  }
+  client_ = rclcpp_action::create_client<Grasp>(node_, action_name_);
 }
 
-// void HandMotion::publishArray(
-//     const rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr& pub,
-//     const std::vector<double>& data) {
-//   std_msgs::msg::Float64MultiArray msg;
-//   msg.data = data;
-//   pub->publish(msg);
-// }
-
-// void HandMotion::open()  { send_pos(0.1,  0.0, 0.1); }
-// void HandMotion::close() { send_pos(0.3,  0.9, 0.9); }
-// void HandMotion::point() { send_pos(0.3, -0.1, 1.0); }
-
-// void HandMotion::send_pos(double thumb, double index, double mrl) {
-//   publishArray(pub_thumb_, {thumb});
-//   publishArray(pub_index_, {index});
-//   publishArray(pub_mrl_,   {mrl});
-// }
-
-void HandMotion::executeGrasp(int close_percent, int spe_for_percent)
+void HandMotion::open(std::chrono::milliseconds timeout)
 {
-  // // Warten bis der Action Server bereit ist
-  // if (!grasp_client_->wait_for_action_server(std::chrono::seconds(2)))
-  // {
-  //   RCLCPP_ERROR(this->get_logger(), "Hand Action Server nicht verfügbar");
-  //   return;
-  // }
-
-  // // Ziel vorbereiten
-  // auto goal_msg = mia_hand_msgs::action::Grasp::Goal();
-  // goal_msg.close_percent = close_percent;
-  // goal_msg.spe_for_percent = spe_for_percent;
-
-  // // Optionen mit Callbacks
-  // auto send_options = rclcpp_action::Client<mia_hand_msgs::action::Grasp>::SendGoalOptions();
-  // send_options.goal_response_callback =
-  //     [](std::shared_future<rclcpp_action::ClientGoalHandle<Grasp>::SharedPtr> future)
-  // {
-  //   auto handle = future.get();
-  //   if (!handle)
-  //   {
-  //     RCLCPP_ERROR(rclcpp::get_logger("grasp"), "Goal abgelehnt");
-  //   }
-  //   else
-  //   {
-  //     RCLCPP_INFO(rclcpp::get_logger("grasp"), "Goal akzeptiert");
-  //   }
-  // };
-
-  // send_options.feedback_callback =
-  //     [](rclcpp_action::ClientGoalHandle<Grasp>::SharedPtr,
-  //        const std::shared_ptr<const mia_hand_msgs::action::Grasp::Feedback> feedback)
-  // {
-  //   RCLCPP_INFO(rclcpp::get_logger("grasp"),
-  //               "Hand Feedback – Positions: %d",
-  //               feedback->current_positions);
-  // };
-
-  // send_options.result_callback =
-  //     [](const rclcpp_action::ClientGoalHandle<Grasp>::WrappedResult &result)
-  // {
-  //   RCLCPP_INFO(rclcpp::get_logger("grasp"),
-  //               "Action beendet, Code: %d",
-  //               result.code);
-  // };
-
-  // // Goal senden
-  // grasp_client_->send_goal(goal_msg, send_options);
+  grasp(/*target_closure_percent=*/0, /*speed_for_percent=*/15, timeout);
 }
 
-void HandMotion::open_hand()
+void HandMotion::close(std::chrono::milliseconds timeout)
 {
-  // executeGrasp(0, 20);
+  grasp(/*target_closure_percent=*/100, /*speed_for_percent=*/15, timeout);
 }
 
-void HandMotion::close_hand()
+void HandMotion::grasp(
+  int target_closure_percent,
+  int speed_for_percent,
+  std::chrono::milliseconds timeout,
+  std::chrono::milliseconds server_wait)
 {
-  // executeGrasp(70, 20);
+  // optionale Begrenzung
+  if (target_closure_percent < 0) target_closure_percent = 0;
+  if (target_closure_percent > 100) target_closure_percent = 100;
+
+  // 1) Action-Server da?
+  if (!client_->wait_for_action_server(server_wait)) {
+    throw std::runtime_error("Grasp Action-Server nicht erreichbar: " + action_name_);
+  }
+
+  // 2) Goal bauen
+  Grasp::Goal goal;
+  goal.spe_for_percent = speed_for_percent;
+  goal.target_closure_percent = target_closure_percent;
+
+  // 3) Goal senden
+  auto goal_future = client_->async_send_goal(goal);
+  auto rc = rclcpp::spin_until_future_complete(node_, goal_future, timeout);
+  if (rc != rclcpp::FutureReturnCode::SUCCESS) {
+    throw std::runtime_error("Timeout/Fehler beim Senden des Grasp-Goals");
+  }
+
+  auto goal_handle = goal_future.get();
+  if (!goal_handle) {
+    throw std::runtime_error("Grasp-Goal wurde abgelehnt (goal_handle null)");
+  }
+
+  // 4) Result holen
+  auto result_future = client_->async_get_result(goal_handle);
+  rc = rclcpp::spin_until_future_complete(node_, result_future, timeout);
+  if (rc != rclcpp::FutureReturnCode::SUCCESS) {
+    // optional cancel
+    try {
+      auto cancel_future = client_->async_cancel_goal(goal_handle);
+      (void)rclcpp::spin_until_future_complete(node_, cancel_future, std::chrono::milliseconds{1000});
+    } catch (...) {
+      // ignore
+    }
+    throw std::runtime_error("Timeout/Fehler beim Warten auf Grasp-Result");
+  }
+
+  auto wrapped = result_future.get();
+  if (wrapped.code != rclcpp_action::ResultCode::SUCCEEDED) {
+    throw std::runtime_error("Grasp Action nicht erfolgreich (ResultCode != SUCCEEDED)");
+  }
+
+  const auto & result = wrapped.result;
+  if (result && !result->err_message.empty()) {
+    throw std::runtime_error("Hand-Grasp Fehler: " + result->err_message);
+  }
 }

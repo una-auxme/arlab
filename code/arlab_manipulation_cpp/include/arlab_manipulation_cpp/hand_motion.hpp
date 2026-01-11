@@ -1,35 +1,37 @@
 #pragma once
 
-#include <rclcpp/rclcpp.hpp>
-#include <std_msgs/msg/float64_multi_array.hpp>
-#include <vector>
+#include <chrono>
+#include <memory>
+#include <string>
+
+#include "rclcpp/rclcpp.hpp"
+#include "rclcpp_action/rclcpp_action.hpp"
 #include "mia_hand_msgs/action/grasp.hpp"
 
 class HandMotion
 {
 public:
-  explicit HandMotion(rclcpp::Node &node);
+  using Grasp = mia_hand_msgs::action::Grasp;
+  using Client = rclcpp_action::Client<Grasp>;
+  using GoalHandle = rclcpp_action::ClientGoalHandle<Grasp>;
 
-  // using Grasp = mia_hand_msgs::action::Grasp;
-  // using GoalHandleGrasp = rclcpp_action::ClientGoalHandle<Grasp>;
+  explicit HandMotion(
+    rclcpp::Node::SharedPtr node,
+    std::string action_name = "/mia_hand/grasps/cylindrical/action");
 
-  // void open();
-  // void close();
-  // void point();
+  // "Hand auf" / "Hand zu"
+  void open(std::chrono::milliseconds timeout = std::chrono::milliseconds{3000});
+  void close(std::chrono::milliseconds timeout = std::chrono::milliseconds{3000});
 
-  // void send_pos(double thumb, double index, double mrl);
-
-  void open_hand();
-  void close_hand();
+  // Generisch: beliebiger Schließgrad (0..100)
+  void grasp(
+    int target_closure_percent,
+    int speed_for_percent = 15,
+    std::chrono::milliseconds timeout = std::chrono::milliseconds{3000},
+    std::chrono::milliseconds server_wait = std::chrono::milliseconds{2000});
 
 private:
-  // rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr pub_thumb_;
-  // rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr pub_index_;
-  // rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr pub_mrl_;
-
-  // void publishArray(const rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr& pub,
-  //                   const std::vector<double>& data);
-
-  void executeGrasp(int close_percent, int spe_for_percent);
-  // rclcpp_action::Client<Grasp>::SharedPtr grasp_client_;
+  rclcpp::Node::SharedPtr node_;
+  std::string action_name_;
+  Client::SharedPtr client_;
 };

@@ -151,8 +151,7 @@ class ObjectDetection(Node):
             )
         else:
             self.get_logger().info(
-                "Processing timeout disabled "
-                "(using _processing_frame flag only)"
+                "Processing timeout disabled (using _processing_frame flag only)"
             )
 
         # Load delete old entities parameter
@@ -209,8 +208,7 @@ class ObjectDetection(Node):
             # Verify CUDA is actually available
             if not torch.cuda.is_available():
                 self.get_logger().warn(
-                    "CUDA not available despite device='cuda'. "
-                    "Falling back to CPU."
+                    "CUDA not available despite device='cuda'. Falling back to CPU."
                 )
                 self.device = "cpu"
             else:
@@ -220,15 +218,12 @@ class ObjectDetection(Node):
                     gpu_name = torch.cuda.get_device_name(0)
                     gpu_memory = torch.cuda.get_device_properties(0).total_memory / 1e9
                     self.get_logger().info(
-                        f"GPU detected: {gpu_name} "
-                        f"({gpu_memory:.1f} GB total memory)"
+                        f"GPU detected: {gpu_name} ({gpu_memory:.1f} GB total memory)"
                     )
                 except Exception as e:
                     self.get_logger().warn(f"GPU verification failed: {e}")
 
-                self.get_logger().info(
-                    "Using FP16 (half precision) for GPU inference"
-                )
+                self.get_logger().info("Using FP16 (half precision) for GPU inference")
                 # Warmup the model to avoid first inference delay
                 # Use actual scaled image size to pre-compile CUDA kernels
                 try:
@@ -1472,13 +1467,15 @@ class ObjectDetection(Node):
             try:
                 # Transform pose and point cloud from camera frame to target frame
                 # If target frame doesn't exist, fallback to source frame
-                transformed_pose, transformed_pc, actual_frame = (
-                    await self._transform_to_world_frame(
-                        pose=entity["pose"],
-                        pointcloud=entity.get("pointcloud"),
-                        source_frame=frame_id,
-                        timestamp=timestamp,
-                    )
+                (
+                    transformed_pose,
+                    transformed_pc,
+                    actual_frame,
+                ) = await self._transform_to_world_frame(
+                    pose=entity["pose"],
+                    pointcloud=entity.get("pointcloud"),
+                    source_frame=frame_id,
+                    timestamp=timestamp,
                 )
 
                 # Update entity dict with transformed point cloud

@@ -156,7 +156,8 @@ class PointCloud2(Base):
         m.point_step = self.point_step
         m.row_step = self.row_step
         # Convert signed byte array to unsigned byte array
-        # DBInt8Data stores data as signed bytes ('b'), but ROS expects unsigned bytes ('B')
+        # DBInt8Data stores data as signed bytes ('b'),
+        # but ROS expects unsigned bytes ('B')
         if isinstance(self.data, array.array) and self.data.typecode == "b":
             # Convert signed bytes (-128 to 127) to unsigned bytes (0 to 255)
             m.data = array.array("B", (b & 0xFF for b in self.data))

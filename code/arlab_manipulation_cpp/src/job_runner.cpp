@@ -40,12 +40,12 @@ void JobRunner::run(const arlab_common_interfaces::msg::OrchestratorData &msg)
 
   if (cmd == "open")
   {
-    hand_.open_hand();
+    hand_.open();
     return;
   }
   if (cmd == "close")
   {
-    hand_.close_hand();
+    hand_.close();
     return;
   }
   if (cmd == "point")
@@ -66,7 +66,7 @@ void JobRunner::run(const arlab_common_interfaces::msg::OrchestratorData &msg)
   if (cmd == "pick")
   {
     // einfache Sequenz
-    hand_.open_hand();
+    hand_.open();
     (void)arm_.moveToHome();
     (void)arm_.moveToJointPos(createJointPos(0.0, -1.5707, 0.0, 0.0, 0.0, 0.0));
     (void)arm_.moveToJointPos(createJointPos(0.0, -1.7104, 1.2915, 0.4188, 1.5358, -1.5708));
@@ -75,7 +75,7 @@ void JobRunner::run(const arlab_common_interfaces::msg::OrchestratorData &msg)
     //  zur Pose fahren:
     //(void)arm_.moveToPose(createPose(0.3, 0.0, 0.2, 0.0, 0.0, 0.0, 1.0));
     //(void)arm_.moveToPose(msg.pose);
-    hand_.close_hand();
+    hand_.close();
     // von Pose weg fahren:
     //(void)arm_.moveToPose(createPose(0.3, 0.0, 0.4, 0.0, 0.0, 0.0, 1.0));
     (void)arm_.moveToHome();

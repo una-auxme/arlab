@@ -13,6 +13,7 @@ def generate_launch_description():
             PythonLaunchDescriptionSource(
                 os.path.join(easy_handeye_dir, 'launch', 'calibrate.launch.py')
             ),
+
             launch_arguments={
                 'calibration_type': 'eye_on_base',   # ROS 2 Param
                 'name': 'my_eob_calib',             # Name der Kalibrierung

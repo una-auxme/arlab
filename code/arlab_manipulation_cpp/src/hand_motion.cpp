@@ -1,4 +1,4 @@
-#include "hand_motion.hpp"
+#include "arlab_manipulation_cpp/hand_motion.hpp"
 
 #include <stdexcept>
 

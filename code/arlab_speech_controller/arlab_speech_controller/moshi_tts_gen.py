@@ -167,8 +167,6 @@ class TTSGen:
         self.lm_gen.streaming_forever(1)
         self.tts_model.mimi.streaming_forever(1)
 
-        self.append_text("Hello.")
-
         silent_frame_counter = 0
 
         # Wait until the audio is silent after the initial preconditioning
@@ -250,11 +248,13 @@ class TTSGen:
         self.state.entries.append(entry)
 
     def append_text(self, msg: str):
-        entries = prepare_script(self.tts_model, msg.strip(), first_turn=False)
-        self.tts_first_turn = False
-        for entry in entries:
-            self.append_entry(entry)
-            self.process()
+        stripped = msg.strip()
+        if stripped:
+            entries = prepare_script(self.tts_model, msg.strip(), first_turn=False)
+            self.tts_first_turn = False
+            for entry in entries:
+                self.append_entry(entry)
+                self.process()
 
     def is_audio_silent(self, audio_samples: np.ndarray):
         max = np.max(np.abs(audio_samples))

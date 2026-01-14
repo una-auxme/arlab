@@ -1,4 +1,6 @@
 import queue
+from collections import deque
+from typing import List
 
 import rclpy
 import sounddevice as sd
@@ -15,6 +17,21 @@ from rclpy.node import Node
 from std_msgs.msg import String
 
 from .moshi_tts_gen import TTSGen
+
+
+def split_into_sentences(text: str) -> List[str]:
+    delimiters = [".", "!", "?"]
+    sentences = [text]
+    for delimiter in delimiters:
+        splits = []
+        for sentence in sentences:
+            new_splits = sentence.split(delimiter)
+            for i in range(len(new_splits) - 1):
+                new_splits[i] += delimiter
+            splits += new_splits
+
+        sentences = splits
+    return sentences
 
 
 class MoshiTTS(Node):
@@ -75,12 +92,26 @@ class MoshiTTS(Node):
         self.max_offset = (
             self.declare_parameter(
                 "max_offset",
-                700,
+                500,
                 descriptor=ParameterDescriptor(
                     description="Max amount of frames (offset) the model "
                     "is allowed to produce in one go without a state restore. "
                     "More supports longer continuous text output, "
                     "but the model deteriorates quickly at some point"
+                ),
+            )
+            .get_parameter_value()
+            .integer_value
+        )
+
+        self.max_sentence_length = (
+            self.declare_parameter(
+                "max_sentence_length",
+                120,
+                descriptor=ParameterDescriptor(
+                    description="Max number of characters in one sentence. "
+                    "Bigger sentences will be split. "
+                    "Sentences smaller than 0.5*max_sentence_length will be merged."
                 ),
             )
             .get_parameter_value()
@@ -93,6 +124,8 @@ class MoshiTTS(Node):
 
         self.pcms_audio_queue = queue.Queue()
         self.audio_enabled: bool = False
+
+        self.sentence_buffer: deque[str] = deque()
 
         self._setup_tts_model()
         self._setup_audio_output()
@@ -152,6 +185,12 @@ class MoshiTTS(Node):
         if self.tts_gen.offset >= self.max_offset:
             self._restore_model_state()
 
+        # Queue tokens from the current sentence (First entry in the sentence buffer)
+        if len(self.sentence_buffer) > 0 and len(self.sentence_buffer[0].strip()) > 0:
+            self.get_logger().info(f"Added text to model: {self.sentence_buffer[0]}")
+            self.tts_gen.append_text(self.sentence_buffer[0])
+            self.sentence_buffer[0] = ""
+
         num_entries = len(self.tts_gen.state.entries)
         if num_entries > 0 or (
             self.tts_gen.state.end_step is not None
@@ -179,9 +218,18 @@ class MoshiTTS(Node):
                     self.silent_steps += 1
                 else:
                     self.silent_steps = 0
-        elif not self.state_clean:
-            self.state_clean = True
-            self._restore_model_state()
+        else:
+            if not self.state_clean:
+                self.state_clean = True
+                self._restore_model_state()
+
+            # Start the next sentence
+            if (
+                len(self.sentence_buffer) > 0
+                and len(self.sentence_buffer[0].strip()) == 0
+            ):
+                self.get_logger().info("Switched to new sentence.")
+                self.sentence_buffer.popleft()
 
     def _restore_model_state(self):
         self.get_logger().info(f"Restored state at offset: {self.tts_gen.offset}")
@@ -216,11 +264,10 @@ class MoshiTTS(Node):
     def _tts_output_sub_callback(self, msg: String):
         data = msg.data
         self.get_logger().info(f"TTS: {data}")
-
-        if self.tts_gen.offset >= self.max_offset:
-            self._restore_model_state()
-
-        self.tts_gen.append_text(data)
+        sentences = deque(split_into_sentences(data))
+        if len(sentences) > 0 and len(self.sentence_buffer) > 0:
+            self.sentence_buffer[len(self.sentence_buffer) - 1] += sentences.popleft()
+        self.sentence_buffer += sentences
 
     def shutdown(self):
         self.tts_model.mimi.reset_streaming()

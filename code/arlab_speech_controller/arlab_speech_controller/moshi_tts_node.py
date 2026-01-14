@@ -20,7 +20,7 @@ from .moshi_tts_gen import TTSGen
 
 
 def split_into_sentences(text: str) -> List[str]:
-    delimiters = [".", "!", "?"]
+    delimiters = [".", "!", "?", ":", ";", ","]
     sentences = [text]
     for delimiter in delimiters:
         splits = []
@@ -107,7 +107,7 @@ class MoshiTTS(Node):
         self.max_sentence_length = (
             self.declare_parameter(
                 "max_sentence_length",
-                120,
+                200,
                 descriptor=ParameterDescriptor(
                     description="Max number of characters in one sentence. "
                     "Bigger sentences will be split. "
@@ -268,6 +268,22 @@ class MoshiTTS(Node):
         if len(sentences) > 0 and len(self.sentence_buffer) > 0:
             self.sentence_buffer[len(self.sentence_buffer) - 1] += sentences.popleft()
         self.sentence_buffer += sentences
+
+        # Split/merge sentences based on min/max length
+        max_length = self.max_sentence_length
+        min_length = self.max_sentence_length // 2
+        idx = 0
+        while idx < len(self.sentence_buffer):
+            sentence = self.sentence_buffer[idx]
+            s_len = len(sentence)
+            if s_len > max_length:
+                self.sentence_buffer[idx] = sentence[s_len // 2 :]
+                self.sentence_buffer.insert(idx, sentence[: s_len // 2])
+            elif s_len < min_length and idx + 1 < len(self.sentence_buffer):
+                self.sentence_buffer[idx] += self.sentence_buffer[idx + 1]
+                del self.sentence_buffer[idx + 1]
+            else:
+                idx += 1
 
     def shutdown(self):
         self.tts_model.mimi.reset_streaming()

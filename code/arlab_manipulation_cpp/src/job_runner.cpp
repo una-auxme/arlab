@@ -60,7 +60,7 @@ void JobRunner::run(const arlab_common_interfaces::msg::OrchestratorData &msg)
   }
   if (cmd == "move")
   {
-    (void)arm_.moveToPose(msg.pose);
+    (void)arm_.moveToPoseBoxGoal(msg.pose);
     return;
   }
   if (cmd == "pick")

@@ -11,8 +11,15 @@ public:
   ArmMotion(const rclcpp::Node::SharedPtr& node, const std::string& group);
 
   void moveToPose(const geometry_msgs::msg::Pose& target);
+  void moveToPoseBoxGoal(const geometry_msgs::msg::Pose &target,
+                       double pos_tol,
+                       bool use_orientation = false,
+                       double ori_tol = 5e-2,
+                       const std::string &eef_link = "tool0",
+                       const std::string &frame_id = "world");
   void moveToJointPos(const std::map<std::string, double>& joints);
   void moveToHome(); // Nutzt konstante Pose
+  
 
 private:
   rclcpp::Node::SharedPtr node_;

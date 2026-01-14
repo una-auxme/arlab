@@ -25,9 +25,9 @@ def generate_launch_description():
         package="arlab_computer_vision",
         executable="object_detection",
         remappings=[
-            ("camera_color_image", "/color/image_raw"),
-            ("camera_info", "/color/camera_info"),
-            ("camera_depth_image", "/depth/image_rect_raw"),
+            ("camera_color_image", "/camera/color/image_raw"),
+            ("camera_info", "/camera/color/camera_info"),
+            ("camera_depth_image", "/camera/depth/image_rect_raw"),
         ],
         parameters=[
             {"log_level": "DEBUG"},  # Node-Parameter für Debug-Logs

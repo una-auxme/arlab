@@ -14,7 +14,7 @@ from arlab_common.exceptions import emsg_with_trace
 from arlab_common.markers import debug_marker_array
 from arlab_common.parameters import update_attributes
 from arlab_knowledge_interfaces.msg import Result
-from arlab_knowledge_interfaces.srv import GetEntities, GetEntity
+from arlab_knowledge_interfaces.srv import GetEntities, GetEntity, GetShape
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.node import Node
 from rclpy.parameter import Parameter
@@ -22,6 +22,7 @@ from rclpy.publisher import Publisher
 from visualization_msgs.msg import Marker, MarkerArray
 
 from arlab_knowledge.db.entities.entity import Entity
+from arlab_knowledge.db.entities.shape import Shape
 
 prefix = "/arlab/knowledge"
 """ROS prefix/namespace for all services
@@ -42,6 +43,7 @@ class KnowledgeVisualization(Node):
         service_cb (MutuallyExclusiveCallbackGroup): Callback group for services.
         get_entities_client: Client for GetEntities service.
         get_entity_client: Client for GetEntity service.
+        get_shape_client: Client for GetShape service.
         timer: Timer for periodic updates.
     """
 
@@ -63,10 +65,19 @@ class KnowledgeVisualization(Node):
         # Setup services
         self.service_cb = MutuallyExclusiveCallbackGroup()
         self.get_entities_client = self.create_client(
-            GetEntities, f"{prefix}/get_entities", callback_group=self.service_cb
+            GetEntities,
+            f"{prefix}/get_entities",
+            callback_group=self.service_cb,
         )
         self.get_entity_client = self.create_client(
-            GetEntity, f"{prefix}/get_entity", callback_group=self.service_cb
+            GetEntity,
+            f"{prefix}/get_entity",
+            callback_group=self.service_cb,
+        )
+        self.get_shape_client = self.create_client(
+            GetShape,
+            f"{prefix}/get_shape",
+            callback_group=self.service_cb,
         )
         for client in self.clients:
             while not client.wait_for_service(timeout_sec=2.0):
@@ -112,7 +123,10 @@ class KnowledgeVisualization(Node):
         Workflow:
             1. Call GetEntities service to get all entity IDs.
             2. For each entity ID, call GetEntity service to get entity data.
-            3. Convert each entity to markers and collect them.
+            3. For each entity ID, call GetShape service to get shape data
+               (including pointclouds and bounding boxes).
+            4. Convert each entity (with optional shape) to markers and collect
+               them.
 
         Returns:
             List[Marker]: List of markers representing the entities.
@@ -133,8 +147,17 @@ class KnowledgeVisualization(Node):
             self.get_logger().error(f"Service call unsuccessful: {result.result.error}")
             return []
 
-        markers = []
-        # Step 2: Get each entity and convert to markers
+        markers: List[Marker] = []
+        num_entities = len(result.entities)
+        if num_entities == 0:
+            self.get_logger().info("No entities found in knowledge base")
+            return []
+
+        self.get_logger().info(
+            f"Retrieved {num_entities} entit(y/ies) from knowledge base"
+        )
+
+        # Step 2: Get each entity and its shape, then convert to markers
         for entity_id in result.entities:
             req = GetEntity.Request(entityid=entity_id)
             entity_rsp: Optional[
@@ -149,10 +172,65 @@ class KnowledgeVisualization(Node):
                     f"Service call unsuccessful: {entity_rsp.result.error}"
                 )
                 continue
-            # Step 3: Convert entity to markers
+            # Step 3: Convert entity to DB model
             entity = Entity.from_ros_msg(entity_rsp.data)
-            markers += entity.get_all_markers()
 
+            # Step 4: Try to retrieve shape (including pointcloud / bbox2d)
+            shape_req = GetShape.Request(entityid=entity_id)
+            shape_rsp: Optional[
+                GetShape.Response
+            ] = await self.get_shape_client.call_async(shape_req)
+
+            if shape_rsp is None:
+                self.get_logger().error("GetShape response was None")
+            elif shape_rsp.result.result_type != Result.SUCCESS:
+                # Shape is optional – log at debug to avoid spamming when most
+                # entities simply have no shape.
+                self.get_logger().debug(
+                    f"GetShape unsuccessful for entity {entity_id}: "
+                    f"{shape_rsp.result.error}"
+                )
+            else:
+                try:
+                    entity.shape = Shape.from_ros_msg(shape_rsp.shape)
+                except Exception as e:
+                    self.get_logger().error(
+                        f"Failed to convert Shape for entity {entity_id}: {e}"
+                    )
+
+            # Step 5: Convert entity (with optional shape) to markers
+            # Pass entity_id to ensure markers have unique IDs
+            entity_markers = entity.get_all_markers(entity_id=entity_id)
+            markers += entity_markers
+
+            # Log visualization info
+            marker_type = "unknown"
+            if entity_markers:
+                frame_id = entity_markers[0].header.frame_id
+                if entity_markers[0].type == Marker.POINTS:
+                    marker_type = "point cloud"
+                    num_points = (
+                        len(entity_markers[0].points) if entity_markers[0].points else 0
+                    )
+                    self.get_logger().info(
+                        f"Visualizing entity {entity_id} ('{entity.description}'): "
+                        f"{marker_type} marker with {num_points} points "
+                        f"(frame: {frame_id})"
+                    )
+                else:
+                    marker_type = "pose"
+                    self.get_logger().info(
+                        f"Visualizing entity {entity_id} ('{entity.description}'): "
+                        f"{marker_type} marker (frame: {frame_id})"
+                    )
+            else:
+                self.get_logger().warn(
+                    f"Entity {entity_id} ('{entity.description}') produced no markers"
+                )
+
+        self.get_logger().info(
+            f"Converted {len(result.entities)} entit(y/ies) to {len(markers)} marker(s)"
+        )
         return markers
 
     async def update_markers(self):
@@ -160,13 +238,14 @@ class KnowledgeVisualization(Node):
         Retrieves markers from the knowledge base and publishes them as a
         MarkerArray message.
         """
+        markers = await self.get_markers()
         marker_array = debug_marker_array(
             namespace="knowledge",
-            markers=await self.get_markers(),
+            markers=markers,
             timestamp=self.get_clock().now().to_msg(),
         )
         self.marker_publisher.publish(marker_array)
-        self.get_logger().debug("Published marker array")
+        self.get_logger().info(f"Published {len(markers)} marker(s) to RViz")
 
 
 def main(args=None):

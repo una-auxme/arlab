@@ -58,9 +58,17 @@ void JobRunner::run(const arlab_common_interfaces::msg::OrchestratorData &msg)
     (void)arm_.moveToHome();
     return;
   }
-  if (cmd == "move")
+  if (cmd == "moveToBox")
   {
-    (void)arm_.moveToPoseBoxGoal(msg.pose);
+    arm_.moveToPoseBoxGoal(
+        msg.pose,
+        0.01,              // pos_tol
+        false,             // keine Orientierung
+        0.05,              // egal, da false
+        "tool0",           // Endeffektor-Link
+        "world",           // Referenzframe
+        "RRTConnectkConfigDefault"  // optionaler Planner
+    );
     return;
   }
   if (cmd == "pick")

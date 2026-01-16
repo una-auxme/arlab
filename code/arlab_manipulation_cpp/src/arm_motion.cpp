@@ -1,4 +1,5 @@
 #include "arlab_manipulation_cpp/arm_motion.hpp"
+#include "arlab_manipulation_cpp/orchestrator_listener.hpp"
 
 #include <moveit_msgs/msg/constraints.hpp>
 #include <moveit_msgs/msg/position_constraint.hpp>
@@ -15,7 +16,6 @@
 #include <moveit_msgs/action/move_group.hpp>
 #include <shape_msgs/msg/solid_primitive.hpp>
 #include <geometry_msgs/msg/pose.hpp>
-
 
 ArmMotion::ArmMotion(const rclcpp::Node::SharedPtr &node, const std::string &group)
     : node_(node), mgi_(node_, group)
@@ -51,20 +51,18 @@ void ArmMotion::moveToPose(const geometry_msgs::msg::Pose &target)
   auto plan_result = mgi_.plan(plan);
   if (plan_result != moveit::core::MoveItErrorCode::SUCCESS)
   {
-    RCLCPP_ERROR(node_->get_logger(), "MoveIt planning failed: %d", plan_result.val);
+    RCLCPP_ERROR(node_->get_logger(), "MoveIt planning failed: %s", plan_result.message.c_str());
 
-    std::string code_str = moveit::core::errorCodeToString(plan_result);
-    throw std::runtime_error(code_str.c_str());
+    throw ManipulationException(plan_result);
     return;
   }
 
   auto execute_result = mgi_.execute(plan);
   if (execute_result != moveit::core::MoveItErrorCode::SUCCESS)
   {
-    RCLCPP_ERROR(node_->get_logger(), "MoveIt execution failed: %d", execute_result.val);
+    RCLCPP_ERROR(node_->get_logger(), "MoveIt execution failed: %s", execute_result.message.c_str());
 
-    std::string code_str = moveit::core::errorCodeToString(execute_result);
-    throw std::runtime_error(code_str.c_str());
+    throw ManipulationException(execute_result);
     return;
   }
   return;
@@ -83,7 +81,7 @@ void ArmMotion::moveToPoseBoxGoal(const geometry_msgs::msg::Pose &target,
   // Ensure server is up
   if (!move_group_client_->wait_for_action_server(std::chrono::seconds(3)))
   {
-    throw std::runtime_error("MoveGroup action server not available (move_action).");
+    throw ManipulationException(arlab_common_interfaces::msg::ManipulationResponse::TIMED_OUT);
   }
 
   // -----------------------------
@@ -161,7 +159,7 @@ void ArmMotion::moveToPoseBoxGoal(const geometry_msgs::msg::Pose &target,
   MoveGroup::Goal goal_msg;
   goal_msg.request = req;
 
-  goal_msg.planning_options.plan_only = false;     // execute
+  goal_msg.planning_options.plan_only = false; // execute
   goal_msg.planning_options.look_around = false;
   goal_msg.planning_options.replan = false;
 
@@ -169,24 +167,44 @@ void ArmMotion::moveToPoseBoxGoal(const geometry_msgs::msg::Pose &target,
   auto goal_handle = goal_handle_future.get();
   if (!goal_handle)
   {
-    throw std::runtime_error("Failed to send MoveGroup goal.");
+    throw ManipulationException(arlab_common_interfaces::msg::ManipulationResponse::UNKNOWN_FAILURE, std::string{"Failed to send MoveGroup goal."});
   }
 
   auto result_future = move_group_client_->async_get_result(goal_handle);
   auto wrapped_result = result_future.get();
 
+  auto code_to_str = [](rclcpp_action::ResultCode c)
+  {
+    switch (c)
+    {
+    case rclcpp_action::ResultCode::SUCCEEDED:
+      return "SUCCEEDED";
+    case rclcpp_action::ResultCode::ABORTED:
+      return "ABORTED";
+    case rclcpp_action::ResultCode::CANCELED:
+      return "CANCELED";
+    default:
+      return "UNKNOWN";
+    }
+  };
+
   if (wrapped_result.code != rclcpp_action::ResultCode::SUCCEEDED)
   {
-    throw std::runtime_error("MoveGroup action did not succeed (ResultCode != SUCCEEDED).");
+    std::stringstream ss;
+    ss << "MoveGroup action result_code=" << code_to_str(wrapped_result.code);
+
+    // Oft ist result trotzdem gesetzt → MoveItErrorCodes mitloggen
+    if (wrapped_result.result)
+      ss << ", moveit_error_code=" << wrapped_result.result->error_code.val;
+
+    RCLCPP_ERROR(node_->get_logger(), "%s", ss.str().c_str());
+    throw ManipulationException(arlab_common_interfaces::msg::ManipulationResponse::UNKNOWN_FAILURE, ss.str());
   }
 
   const auto &res = wrapped_result.result;
   if (res->error_code.val != moveit_msgs::msg::MoveItErrorCodes::SUCCESS)
   {
-    // res->error_code is the canonical MoveIt error
-    std::stringstream ss;
-    ss << "MoveGroup failed with MoveItErrorCodes: " << res->error_code.val;
-    throw std::runtime_error(ss.str());
+    throw ManipulationException(res->error_code.val);
   }
 }
 
@@ -197,18 +215,16 @@ void ArmMotion::moveToJointPos(const std::map<std::string, double> &joints)
   auto plan_result = mgi_.plan(plan);
   if (plan_result != moveit::core::MoveItErrorCode::SUCCESS)
   {
-    RCLCPP_ERROR(node_->get_logger(), "MoveIt planning (Joints) failed: %d", plan_result.val);
-    std::string code_str = moveit::core::errorCodeToString(plan_result);
-    throw std::runtime_error(code_str.c_str());
+    RCLCPP_ERROR(node_->get_logger(), "MoveIt planning (Joints) failed: %s", plan_result.message.c_str());
+    throw ManipulationException(plan_result);
     return;
   }
 
   auto execute_result = mgi_.execute(plan);
   if (execute_result != moveit::core::MoveItErrorCode::SUCCESS)
   {
-    RCLCPP_ERROR(node_->get_logger(), "MoveIt execution (Joints) failed: %d", execute_result.val);
-    std::string code_str = moveit::core::errorCodeToString(execute_result);
-    throw std::runtime_error(code_str.c_str());
+    RCLCPP_ERROR(node_->get_logger(), "MoveIt execution (Joints) failed: %s", execute_result.message.c_str());
+    throw ManipulationException(execute_result);
     return;
   }
   return;

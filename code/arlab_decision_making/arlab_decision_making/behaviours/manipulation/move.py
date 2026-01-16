@@ -1,11 +1,10 @@
 from math import pi
 
 from arlab_common_interfaces.action import ManipulationAction
-from arlab_common_interfaces.msg import ManipulationCommand
+from arlab_common_interfaces.msg import ManipulationCommand, ManipulationResponse
 from py_trees.behaviour import Behaviour
 from py_trees.common import Access, Status
 from py_trees.composites import Sequence
-from transforms3d.euler import euler2quat
 
 from .generic_manipulation import GenericManipulation
 
@@ -43,7 +42,7 @@ class SetupManipulationMove(Behaviour):
 
     def update(self):
         goal = ManipulationAction.Goal()
-        goal.command.command_type = ManipulationCommand.MOVE_TO_BOX
+        goal.command.command_type = ManipulationCommand.COMMAND_MOVE_TO_BOX
         goal.command.target_pose.position.x = self.x
         goal.command.target_pose.position.y = self.y
         goal.command.target_pose.position.z = self.z
@@ -63,7 +62,7 @@ class CheckManipulationMove(Behaviour):
 
     def update(self):
         result: ManipulationAction.Result = self.blackboard.manipulation.move_result
-        print(result.response.message)
-        if result.response.message != "SUCCESS":
+        print(f"Move message: {result.response.message}")
+        if result.response.error_code != ManipulationResponse.SUCCESS:
             return Status.FAILURE
         return Status.SUCCESS

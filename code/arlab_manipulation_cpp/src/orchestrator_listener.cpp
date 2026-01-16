@@ -6,6 +6,19 @@
 #include <geometry_msgs/msg/pose.hpp>
 #include <thread>
 
+ManipulationException::ManipulationException(int code) : code_(code), msg_(errorMessageFromCode(code))
+{
+}
+ManipulationException::ManipulationException(int code, std::string &&msg) : code_(code), msg_(std::move(msg))
+{
+}
+ManipulationException::ManipulationException(const moveit::core::MoveItErrorCode &code) : code_(code.val), msg_(moveit::core::errorCodeToString(code)) {
+                                                                                          };
+const char *ManipulationException::what() const noexcept
+{
+  return msg_.c_str();
+}
+
 OrchestratorActionServer::OrchestratorActionServer(const rclcpp::NodeOptions &options)
     : rclcpp::Node("OrchestratorActionServer", options)
 {
@@ -88,15 +101,25 @@ void OrchestratorActionServer::execute(
 
     runner_->run(data_msg);
   }
-  catch (const std::exception &e)
+  catch (const ManipulationException &e)
   {
-    const char* msg = e.what();
-    int code = (msg == nullptr || msg[0] == '\0') ? 0 : std::stoi(msg);
-    RCLCPP_ERROR(get_logger(), "JobRunner exception: %d", code);
+    RCLCPP_ERROR(get_logger(), "JobRunner exception: %s", e.what());
 
     auto result = std::make_shared<OrchestratorAction::Result>();
-    result->response.error_code = code;
-    result->response.message = "Manipulation Error: " + OrchestratorActionServer::errorMessageFromCode(code);
+    result->response.error_code = e.code();
+    result->response.message = "Manipulation Error: " + std::string(e.what());
+
+    goal_handle->succeed(result);
+
+    return;
+  }
+  catch (const std::exception &e)
+  {
+    RCLCPP_ERROR(get_logger(), "JobRunner unknown exception: %s", e.what());
+
+    auto result = std::make_shared<OrchestratorAction::Result>();
+    result->response.error_code = 99999;
+    result->response.message = "Manipulation Unknown Error: " + std::string(e.what());
 
     goal_handle->succeed(result);
 
@@ -112,7 +135,7 @@ void OrchestratorActionServer::execute(
   RCLCPP_INFO(get_logger(), "JobRunner done, Result send back to Client");
 }
 
-std::string OrchestratorActionServer::errorMessageFromCode(int code)
+std::string errorMessageFromCode(int code)
 {
   switch (code)
   {
@@ -183,7 +206,6 @@ std::string OrchestratorActionServer::errorMessageFromCode(int code)
   default:
     return "Unknown error code";
   }
-
 }
 
 int main(int argc, char **argv)

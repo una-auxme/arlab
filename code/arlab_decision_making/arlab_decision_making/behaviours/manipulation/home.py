@@ -1,5 +1,5 @@
 from arlab_common_interfaces.action import ManipulationAction
-from arlab_common_interfaces.msg import ManipulationCommand
+from arlab_common_interfaces.msg import ManipulationCommand, ManipulationResponse
 from py_trees.behaviour import Behaviour
 from py_trees.common import Access, Status
 from py_trees.composites import Sequence
@@ -45,7 +45,7 @@ class CheckManipulationHome(Behaviour):
 
     def update(self):
         result: ManipulationAction.Result = self.blackboard.manipulation.home_result
-        print(result.response.message)
-        if result.response.message != "SUCCESS":
+        print(f"Move message: {result.response.message}")
+        if result.response.error_code != ManipulationResponse.SUCCESS:
             return Status.FAILURE
         return Status.SUCCESS

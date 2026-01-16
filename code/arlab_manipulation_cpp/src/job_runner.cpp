@@ -2,6 +2,9 @@
 #include "arlab_manipulation_cpp/job_runner.hpp"
 #include "arlab_manipulation_cpp/arm_motion.hpp"
 #include "arlab_manipulation_cpp/hand_motion.hpp"
+#include "arlab_manipulation_cpp/orchestrator_listener.hpp"
+#include "arlab_common_interfaces/msg/manipulation_response.hpp"
+#include "arlab_common_interfaces/msg/manipulation_command.hpp"
 
 JobRunner::JobRunner(rclcpp::Node &node, ArmMotion &arm, HandMotion &hand)
     : logger_(node.get_logger()), arm_(arm), hand_(hand) {}
@@ -38,12 +41,12 @@ void JobRunner::run(const arlab_common_interfaces::msg::OrchestratorData &msg)
   const std::string cmd = msg.cmd.data;
   RCLCPP_INFO(logger_, "JobRunner received cmd='%s'", cmd.c_str());
 
-  if (cmd == "open")
+  if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_OPEN)
   {
     hand_.open();
     return;
   }
-  if (cmd == "close")
+  if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_CLOSE)
   {
     hand_.close();
     return;
@@ -53,30 +56,30 @@ void JobRunner::run(const arlab_common_interfaces::msg::OrchestratorData &msg)
     // hand_.point();
     return;
   }
-  if (cmd == "home")
+  if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_HOME)
   {
     (void)arm_.moveToHome();
     return;
   }
-  if (cmd == "move")
+  if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_MOVE)
   {
     (void)arm_.moveToPose(msg.pose);
     return;
   }
-  if (cmd == "moveToBox")
+  if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_MOVE_TO_BOX)
   {
     arm_.moveToPoseBoxGoal(
         msg.pose,
-        0.01,              // pos_tol
-        false,             // keine Orientierung
-        0.05,              // egal, da false
-        "tool0",           // Endeffektor-Link
-        "world",           // Referenzframe
-        "RRTConnectkConfigDefault"  // optionaler Planner
+        0.1,                       // pos_tol
+        false,                     // Orientierung
+        0.05,                      // or_tol
+        "tcp_helper",              // Endeffektor-Link
+        "world",                   // Referenzframe
+        "RRTConnectkConfigDefault" // optionaler Planner
     );
     return;
   }
-  if (cmd == "pick")
+  if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PICK)
   {
     // einfache Sequenz
     hand_.open();
@@ -96,6 +99,5 @@ void JobRunner::run(const arlab_common_interfaces::msg::OrchestratorData &msg)
   }
 
   RCLCPP_WARN(logger_, "Unknown command: %s", cmd.c_str());
-  //Unknown Job Command
-  throw std::runtime_error("-35");
+  throw ManipulationException(arlab_common_interfaces::msg::ManipulationResponse::UNKNOWN_JOB_COMMAND);
 }

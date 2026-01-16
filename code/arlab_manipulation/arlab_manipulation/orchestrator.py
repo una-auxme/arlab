@@ -13,6 +13,7 @@ Date: 2025-10-22
 
 from threading import Event
 from time import sleep
+from typing import cast
 
 import numpy as np
 import rclpy
@@ -30,7 +31,6 @@ from rclpy.action.server import ActionServer, GoalResponse
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
 from rclpy.node import Node
 from std_msgs.msg import Float64, String
-from typing import cast
 
 from .utils.octomap_utils import find_placing_area
 from .utils.transform_utils import transform_bBox, transform_pointCloud, transform_pose
@@ -93,6 +93,8 @@ class orchestrator(Node):
         self.placing_point_orient = Quaternion(w=1.0)
         self.octomap = None
         self.action_result = None
+        self.err = ManipulationResponse.UNDEFINED
+        self.msg = ""
 
     # Get Octomap from MoveIt Node
     def octomap_callback(self, msg: PlanningScene):
@@ -103,7 +105,7 @@ class orchestrator(Node):
             # self.get_logger().warn("Octomap is empty")
             # self.err = -40
             # self.msg = "Octomap is empty"
-            self.finish_action()
+            # self.finish_action()
             return
         self.get_logger().info("Octomap received")
 
@@ -204,11 +206,11 @@ class orchestrator(Node):
 
             self.point_cloud, err, msg = transform_pointCloud(
                 self.tf_buffer, self.point_cloud, self.stamp, self.ref_frame
-                )
+            )
 
             self.bounding_box, err, msg = transform_bBox(
                 self.tf_buffer, self.bounding_box, self.stamp, self.ref_frame
-                )
+            )
 
             if self.pickable and err == 1:
                 self.req_gripping_parameter = GrippingParameter.Request()
@@ -295,7 +297,7 @@ class orchestrator(Node):
         if not self._orchestrator_client.wait_for_server(timeout_sec=5.0):
             self.get_logger().error("OrchestratorAction server is not available")
             self.err = -44
-            self.msg = "Orchestrator Actionserver ist not available"
+            self.msg = "Orchestrator Actionserver is not available"
             self.finish_action()
             return
 
@@ -326,10 +328,10 @@ class orchestrator(Node):
     # OrchestratorAction Result
     def handle_orchestrator_result(self, future):
         try:
-            self.msg = future.result().result.response.message
+            result = future.result().result.response
+            self.msg = result.message
             self.get_logger().info(f"Orchestrator action completed: {self.msg}")
-            self.err = 1
-            self.msg = "Success"
+            self.err = result.error_code
             self.finish_action()
 
         except Exception as e:

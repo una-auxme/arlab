@@ -1,0 +1,12 @@
+{
+    "button_list": [
+        {
+            "button_name": "xyz",
+            "button_cmd": "ros2 launch ..."
+        },
+        {
+            "button_name": "abc",
+            "button_cmd": "ros2 run ..."
+        }
+    ]
+}

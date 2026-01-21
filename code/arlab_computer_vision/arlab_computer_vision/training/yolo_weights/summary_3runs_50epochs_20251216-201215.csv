@@ -1,0 +1,4 @@
+experiment,precision_M,recall_M,f1_M,mAP50_M,mAP50-95_M,epochs,weights_file
+baseline,,,,,,50,/workspace/src/arlab/code/arlab_computer_vision/arlab_computer_vision/training/yolo_weights/yolo11n-seg-YCB-baseline-20251215-232114.pt
+moderate_geom,,,,,,50,/workspace/src/arlab/code/arlab_computer_vision/arlab_computer_vision/training/yolo_weights/yolo11n-seg-YCB-moderate_geom-20251216-094455.pt
+strong_geom,,,,,,50,/workspace/src/arlab/code/arlab_computer_vision/arlab_computer_vision/training/yolo_weights/yolo11n-seg-YCB-strong_geom-20251216-201014.pt

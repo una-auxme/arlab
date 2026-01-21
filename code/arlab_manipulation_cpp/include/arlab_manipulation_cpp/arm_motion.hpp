@@ -13,6 +13,10 @@ public:
   ArmMotion(const rclcpp::Node::SharedPtr& node, const std::string& group);
 
   void moveToPose(const geometry_msgs::msg::Pose& target);
+  void moveLinearToPose(const geometry_msgs::msg::Pose &target,
+                       double eef_step = 0.01,
+                       double jump_threshold = 0.0,
+                       double min_fraction = 0.95);
   void moveToPoseBoxGoal(const geometry_msgs::msg::Pose &target,
                        double pos_tol,
                        bool use_orientation = false,
@@ -22,7 +26,7 @@ public:
                        const std::string &planner_id = "");
   void moveToJointPos(const std::map<std::string, double>& joints);
   void moveToHome();
-
+  geometry_msgs::msg::Pose makeApproachPose(const geometry_msgs::msg::Pose &target, double dz_world, double dz_eef);
 
 private:
   rclcpp::Node::SharedPtr node_;

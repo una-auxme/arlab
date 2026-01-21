@@ -24,6 +24,7 @@ target_compile_features(Manipulation_CPP PUBLIC cxx_std_17)
 
 ament_target_dependencies(
   Manipulation_CPP
+  moveit_core
   moveit_ros_planning_interface
   rclcpp
   rclcpp_action
@@ -31,6 +32,9 @@ ament_target_dependencies(
   std_msgs
   arlab_common_interfaces
   mia_hand_msgs
+  tf2
+  tf2_geometry_msgs
+  tf2_ros
 )
 
 install(TARGETS Manipulation_CPP

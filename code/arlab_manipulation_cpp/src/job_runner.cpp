@@ -77,16 +77,22 @@ void JobRunner::run(const arlab_common_interfaces::msg::OrchestratorData &msg)
   if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PICK)
   {
     hand_.open();
-    //(void)arm_.moveToHome();
-    //(void)arm_.moveToPose(msg.pose);
+    //arm_.moveToHome();
+    auto approach_pose = arm_.makeApproachPose(msg.pose, 0.1, 0.05);
+    arm_.moveToPose(approach_pose); // oberhalb
+    arm_.moveToPose(msg.pose);
     hand_.close();
-    (void)arm_.moveToHome();
+    arm_.moveToPose(approach_pose); // oberhalb
+    arm_.moveToHome();
     return;
   }
   if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PLACE)
   {
+    auto approach_pose = arm_.makeApproachPose(msg.pose, 0.1, 0.05);
+    arm_.moveToPose(approach_pose); // oberhalb
     arm_.moveToPose(msg.pose);
     hand_.open();
+    arm_.moveToPose(approach_pose); // oberhalb
     arm_.moveToHome();
     return;
   }

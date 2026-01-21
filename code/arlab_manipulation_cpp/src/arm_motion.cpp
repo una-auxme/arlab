@@ -9,8 +9,15 @@
 #include <moveit_msgs/msg/bounding_volume.hpp>
 #include <shape_msgs/msg/solid_primitive.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
-
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2/LinearMath/Quaternion.h>
 #include <moveit/robot_state/conversions.hpp>
+
+#include <moveit/move_group_interface/move_group_interface.hpp>
+#include <moveit/robot_trajectory/robot_trajectory.hpp>
+#include <moveit/trajectory_processing/trajectory_tools.hpp>  // applyTOTGTimeParameterization
+
 
 #include <rclcpp_action/rclcpp_action.hpp>
 
@@ -43,6 +50,30 @@ ArmMotion::ArmMotion(const rclcpp::Node::SharedPtr &node, const std::string &gro
       {"wrist_3_joint", -0.0698}};
 }
 
+geometry_msgs::msg::Pose ArmMotion::makeApproachPose(
+    const geometry_msgs::msg::Pose& target,
+    double dz_tool,   // Verschiebung entlang Tool-Z (in Tool-Richtung)
+    double dz_world)  // Verschiebung entlang World/Base-Z
+{
+  geometry_msgs::msg::Pose approach = target;
+
+  // Tool-Z Achse (0,0,1) in Zielorientierung in das Referenz-Frame drehen
+  tf2::Quaternion q;
+  tf2::fromMsg(target.orientation, q);
+  tf2::Matrix3x3 R(q);
+
+  tf2::Vector3 tool_z_world = R * tf2::Vector3(0.0, 0.0, 1.0); // Tool-Z im Welt/Base-Frame
+
+  approach.position.x += tool_z_world.x() * dz_tool;
+  approach.position.y += tool_z_world.y() * dz_tool;
+  approach.position.z += tool_z_world.z() * dz_tool;
+
+  // zusätzlich World/Base +Z
+  approach.position.z += dz_world;
+
+  return approach;
+}
+
 void ArmMotion::moveToPose(const geometry_msgs::msg::Pose &target)
 {
   mgi_.clearPoseTargets();
@@ -69,6 +100,62 @@ void ArmMotion::moveToPose(const geometry_msgs::msg::Pose &target)
     return;
   }
   return;
+}
+
+void ArmMotion::moveLinearToPose(const geometry_msgs::msg::Pose& target,
+                                 double eef_step,        // z.B. 0.005
+                                 double jump_threshold,  // z.B. 0.0
+                                 double min_fraction)    // z.B. 0.95
+{
+  mgi_.setStartStateToCurrentState();
+
+  std::vector<geometry_msgs::msg::Pose> waypoints;
+  waypoints.push_back(target);
+
+  moveit_msgs::msg::RobotTrajectory traj_msg;
+
+  const double fraction = mgi_.computeCartesianPath(
+      waypoints,
+      eef_step,
+      jump_threshold,
+      traj_msg,
+      true  // avoid_collisions
+  );
+
+  if (fraction < min_fraction)
+  {
+    RCLCPP_ERROR(node_->get_logger(),
+                 "Cartesian path fraction too low: %.3f (min %.3f)", fraction, min_fraction);
+    throw ManipulationException(moveit::core::MoveItErrorCode::PLANNING_FAILED);
+  }
+
+  // RobotTrajectory bauen
+  robot_trajectory::RobotTrajectory rt(mgi_.getRobotModel(), mgi_.getName());
+  rt.setRobotTrajectoryMsg(*mgi_.getCurrentState(), traj_msg);
+
+  // Zeitparameter (TOTG) berechnen
+  const double vel = mgi_.getMaxVelocityScalingFactor();
+  const double acc = mgi_.getMaxAccelerationScalingFactor();
+
+  const bool time_ok = trajectory_processing::applyTOTGTimeParameterization(rt, vel, acc);
+  if (!time_ok)
+  {
+    RCLCPP_ERROR(node_->get_logger(), "TOTG time parameterization failed");
+    throw ManipulationException(moveit::core::MoveItErrorCode::FAILURE);
+  }
+
+  // zurück in msg + ausführen
+  rt.getRobotTrajectoryMsg(traj_msg);
+
+  moveit::planning_interface::MoveGroupInterface::Plan plan;
+  plan.trajectory = traj_msg;
+
+  auto exec_res = mgi_.execute(plan);
+  if (exec_res != moveit::core::MoveItErrorCode::SUCCESS)
+  {
+    RCLCPP_ERROR(node_->get_logger(), "Cartesian execution failed: %s", exec_res.message.c_str());
+    throw ManipulationException(exec_res);
+  }
 }
 
 void ArmMotion::moveToPoseBoxGoal(const geometry_msgs::msg::Pose &target,

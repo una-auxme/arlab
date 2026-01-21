@@ -26,6 +26,8 @@ endif()
 find_package(rosidl_default_generators REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(arlab_knowledge_interfaces REQUIRED)
 
 # Add all your interface files here:
 rosidl_generate_interfaces(${PROJECT_NAME}
@@ -40,9 +42,12 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 
   "action/MovementAction.action"
   "action/ManipulationAction.action"
+  "action/PredictSnapshot.action"
   DEPENDENCIES
     geometry_msgs
     std_msgs
+    sensor_msgs
+    arlab_knowledge_interfaces
 )
 
 ament_package()

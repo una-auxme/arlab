@@ -8,6 +8,11 @@
   <maintainer email="m.yugarajah@gmail.com">Meruna Yugarajah</maintainer>
   <license>MIT</license>
 
+  <depend>action_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>arlab_knowledge_interfaces</depend>
+  <depend>arlab_common_interfaces</depend>
+
   <test_depend>python3-pytest</test_depend>
 
   <export>

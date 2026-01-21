@@ -1,7 +1,8 @@
 """ROS2 YOLO-based object detection node with KB integration.
 
-This module defines a ROS2 node that performs real-time object detection
-using Ultralytics YOLO segmentation, converts results into
+This module defines a ROS2 node that performs snapshot-based object detection
+using Ultralytics YOLO segmentation. The node provides a predict_snapshot
+function for on-demand processing of RGB+Depth images, converts results into
 semantic/geometric entities, and communicates with a knowledge base (KB)
 via ROS services.
 
@@ -12,7 +13,6 @@ Maintainers:
 
 import asyncio
 import os
-import threading
 import time
 from typing import Any
 
@@ -24,11 +24,12 @@ import tf2_sensor_msgs
 import torch
 from ament_index_python.packages import get_package_share_directory
 from arlab_asyncio_executor.executors import AsyncIOExecutor
+from arlab_common_interfaces.action import PredictSnapshot
 from arlab_knowledge_interfaces.msg import Entity, Result, Shape
 from arlab_knowledge_interfaces.srv import AddEntity, DelEntities, GetEntities, UpdShape
 from cv_bridge import CvBridge
 from geometry_msgs.msg import Point, Pose, PoseStamped, Quaternion
-from message_filters import ApproximateTimeSynchronizer, Subscriber
+from rclpy.action.server import ActionServer
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.node import Node
 from sensor_msgs.msg import CameraInfo, Image, PointCloud2, PointField
@@ -40,14 +41,17 @@ from vision_msgs.msg import BoundingBox2D, Point2D, Pose2D
 
 
 class ObjectDetection(Node):
-    """ROS2 node for real-time object detection and KB synchronization.
+    """ROS2 node for snapshot-based object detection and KB synchronization.
 
     The node:
-        1) Subscribes to RGB images and camera intrinsics.
-        2) Runs YOLO segmentation on incoming frames.
-        3) Converts detections to semantic entities (label, bbox, point cloud,
+        1) Loads and initializes YOLO model during startup (model stays loaded).
+        2) Subscribes to camera_info topic to receive camera intrinsics.
+        3) Provides predict_snapshot() method for on-demand processing of
+           RGB+Depth image snapshots.
+        4) Runs YOLO segmentation on provided snapshots.
+        5) Converts detections to semantic entities (label, bbox, point cloud,
            pose).
-        4) Interacts with a knowledge base through ROS services to insert or
+        6) Interacts with a knowledge base through ROS services to insert or
            update entities.
 
     Attributes:
@@ -65,7 +69,12 @@ class ObjectDetection(Node):
     """
 
     def __init__(self) -> None:
-        """Initialize the node, parameters, subscriptions, and service clients."""
+        """Initialize the node, parameters, and service clients.
+
+        Loads YOLO model, sets up camera_info subscription for intrinsics,
+        and initializes knowledge base service clients. The model remains
+        loaded and ready for snapshot processing via predict_snapshot().
+        """
         super().__init__(type(self).__name__)
 
         package_share_dir = get_package_share_directory("arlab_computer_vision")
@@ -279,16 +288,11 @@ class ObjectDetection(Node):
 
         # Flag to track if a frame is currently being processed
         self._processing_frame = False
-        # Thread-safe lock for frame processing (synchron)
-        self._processing_lock_sync = threading.Lock()
         # Async lock for frame processing (async)
         self._processing_lock_async = None  # Will be created in async_init
 
-        # Frame statistics
-        self._frames_processed = 0
-        self._frames_skipped = 0
-
         # Timeout for processing (tracks last processing time)
+        # Note: Only used if processing_timeout > 0.0 (currently disabled)
         self._last_processing_time = 0.0
 
         # Thread pool removed - using asyncio.to_thread for sequential processing
@@ -359,34 +363,18 @@ class ObjectDetection(Node):
         )
         self.get_logger().info("Subscribed to camera_info topic")
 
-        # Subscribe to RGB and depth image streams with synchronization.
-        if self.use_depth:
-            # Create subscribers for message_filters
-            rgb_sub = Subscriber(self, Image, "camera_color_image")
-            depth_sub = Subscriber(self, Image, "camera_depth_image")
+        # Create Action Server for predict_snapshot
+        self._action_server = ActionServer(
+            self,
+            PredictSnapshot,
+            "predict_snapshot",
+            self._predict_snapshot_goal_handler,
+            callback_group=self.service_client_group,
+        )
+        self.get_logger().info("Action server 'predict_snapshot' started")
 
-            # Create time synchronizer
-            # queue_size=1 minimizes memory usage - only buffer 1 synchronized pair
-            # This prevents OOM during slow inference and reduces swap pressure
-            self.sync = ApproximateTimeSynchronizer(
-                [rgb_sub, depth_sub],
-                queue_size=1,  # Minimized to reduce memory footprint
-                slop=self.sync_tolerance,
-            )
-            self.sync.registerCallback(self._synced_callback)
-            self.get_logger().info(
-                f"Subscribed to synchronized RGB and depth topics "
-                f"(tolerance: {self.sync_tolerance}s)"
-            )
-        else:
-            # Subscribe to RGB image stream only.
-            self.create_subscription(
-                Image,
-                "camera_color_image",
-                self._process_data_sync,
-                qos_profile=1,  # Only keep latest frame to reduce delay
-            )
-            self.get_logger().info("Subscribed to camera_color_image topic")
+        # Live image subscriptions removed - using snapshot-based prediction instead
+        # Images will be provided via predict_snapshot function call or action
 
     async def async_init(self):
         """Async initialization for AsyncIOExecutor.
@@ -400,9 +388,6 @@ class ObjectDetection(Node):
         # Start background task to periodically check KB services if not available
         if not self._kb_services_available:
             self._start_periodic_service_check()
-
-        # Start frame statistics reporting task
-        asyncio.create_task(self._frame_statistics_reporter())
 
     def _check_kb_services(self) -> bool:
         """Check if all KB services are available.
@@ -446,51 +431,6 @@ class ObjectDetection(Node):
                 self._periodic_service_check()
             )
 
-    async def _frame_statistics_reporter(self):
-        """Report frame statistics every 10 seconds."""
-        while True:
-            await asyncio.sleep(10.0)
-            total = self._frames_processed + self._frames_skipped
-            if total > 0:
-                processed_pct = (
-                    self._frames_processed / total * 100 if total > 0 else 0.0
-                )
-                skipped_pct = self._frames_skipped / total * 100 if total > 0 else 0.0
-                self.get_logger().info(
-                    f"Frame statistics (last 10s): "
-                    f"Processed: {self._frames_processed} ({processed_pct:.1f}%), "
-                    f"Skipped: {self._frames_skipped} ({skipped_pct:.1f}%), "
-                    f"Total: {total}"
-                )
-                # Reset counters
-                self._frames_processed = 0
-                self._frames_skipped = 0
-
-    def _process_data_sync(
-        self, rgb_msg: Image, depth_msg: Image | None = None
-    ) -> None:
-        """Synchronous wrapper for async process_data callback.
-
-        Args:
-            rgb_msg: Incoming RGB `sensor_msgs/Image`.
-            depth_msg: Optional incoming depth `sensor_msgs/Image`.
-        """
-        # Early frame skipping: Check if already processing BEFORE creating task
-        with self._processing_lock_sync:
-            if self._processing_frame:
-                self._frames_skipped += 1
-                if self._frames_skipped % 10 == 0:  # Log every 10th skipped
-                    self.get_logger().debug(
-                        f"Skipped {self._frames_skipped} frames "
-                        f"(processing in progress)"
-                    )
-                return
-
-        try:
-            asyncio.get_running_loop()
-            asyncio.create_task(self.process_data(rgb_msg, depth_msg))
-        except RuntimeError:
-            asyncio.run(self.process_data(rgb_msg, depth_msg))
 
     def camera_info_callback(self, msg: CameraInfo) -> None:
         """Extract camera intrinsics from CameraInfo message.
@@ -1154,22 +1094,6 @@ class ObjectDetection(Node):
 
         return associations
 
-    def _synced_callback(self, rgb_msg: Image, depth_msg: Image) -> None:
-        """Callback for synchronized RGB and depth image messages.
-
-        Args:
-            rgb_msg: Incoming RGB `sensor_msgs/Image`.
-            depth_msg: Incoming depth `sensor_msgs/Image`.
-        """
-        # Check if already processing (thread-safe check)
-        # Note: processing_timeout is disabled (0.0) -
-        # rely on _processing_frame flag only
-        with self._processing_lock_sync:
-            if self._processing_frame:
-                # Skip immediately
-                return
-
-        self._process_data_sync(rgb_msg, depth_msg)
 
     def _run_yolo_inference(self, rgb_image: np.ndarray) -> tuple[Any, int]:
         """Run YOLO inference on RGB image (synchronous).
@@ -1557,51 +1481,98 @@ class ObjectDetection(Node):
         return saved_count
 
     async def process_data(
-        self, rgb_msg: Image, depth_msg: Image | None = None
-    ) -> None:
+        self,
+        rgb_msg: Image,
+        depth_msg: Image | None = None,
+        return_entities: bool = False,
+        use_locks: bool = True,
+    ) -> list[dict] | None:
         """Process incoming RGB images and sync detections with KB.
 
         Args:
             rgb_msg: Incoming RGB `sensor_msgs/Image`.
             depth_msg: Optional incoming depth `sensor_msgs/Image`.
+            return_entities: If True, return list of entity dictionaries.
+                If False (default), return None and only save to KB.
+            use_locks: If True, use processing locks to prevent parallel execution.
+                If False, skip locks (for direct calls from predict_snapshot).
+
+        Returns:
+            List of entity dictionaries if return_entities=True, None otherwise.
         """
         if not self._camera_intrinsics_set:
             if not self._warned_missing_intrinsics:
                 self.get_logger().warn(
-                    "Camera intrinsics not set - dropping frame. "
+                    "Camera intrinsics not set - cannot process frame. "
                     "Waiting for camera_info topic..."
                 )
                 self._warned_missing_intrinsics = True
-            return
+            if return_entities:
+                return []
+            return None
 
-        if self._processing_lock_async is None:
-            if not self._warned_missing_async_lock:
-                self.get_logger().warn(
-                    "Async processing lock not initialized - dropping frame. "
-                    "This should not happen if async_init() was called."
-                )
-                self._warned_missing_async_lock = True
-            return
+        if use_locks:
+            if self._processing_lock_async is None:
+                if not self._warned_missing_async_lock:
+                    self.get_logger().warn(
+                        "Async processing lock not initialized - dropping frame. "
+                        "This should not happen if async_init() was called."
+                    )
+                    self._warned_missing_async_lock = True
+                if return_entities:
+                    return []
+                return None
 
-        # Check if already processing (async lock prevents parallel processing)
-        # Note: processing_timeout is disabled (0.0) -
-        # rely on _processing_frame flag only
-        async with self._processing_lock_async:
-            if self._processing_frame:
-                self._frames_skipped += 1
-                return
-            self._processing_frame = True
-            self._frames_processed += 1
+            # Check if already processing (async lock prevents parallel processing)
+            async with self._processing_lock_async:
+                if self._processing_frame:
+                    if return_entities:
+                        return []
+                    return None
+                self._processing_frame = True
 
-            # Update last processing time
-            current_time = time.perf_counter()
-            self._last_processing_time = current_time
+                # Update last processing time (for processing_timeout, if enabled)
+                current_time = time.perf_counter()
+                self._last_processing_time = current_time
 
-            # Start timer for total processing time
+                # Start timer for total processing time
+                t_start = time.perf_counter()
+
+                try:
+                    entities = await self._process_data_internal(
+                        rgb_msg, depth_msg, t_start, return_entities
+                    )
+                finally:
+                    # Always reset processing flag, even if error occurred
+                    self._processing_frame = False
+                return entities
+        else:
+            # Direct call without locks (for predict_snapshot)
             t_start = time.perf_counter()
+            return await self._process_data_internal(
+                rgb_msg, depth_msg, t_start, return_entities
+            )
 
-            try:
-                # Convert ROS image to numpy array (BGR to RGB)
+    async def _process_data_internal(
+        self,
+        rgb_msg: Image,
+        depth_msg: Image | None,
+        t_start: float,
+        return_entities: bool,
+    ) -> list[dict] | None:
+        """Internal processing logic without locks.
+
+        Args:
+            rgb_msg: Incoming RGB `sensor_msgs/Image`.
+            depth_msg: Optional incoming depth `sensor_msgs/Image`.
+            t_start: Start time for performance measurement.
+            return_entities: Whether to return entities list.
+
+        Returns:
+            List of entity dictionaries if return_entities=True, None otherwise.
+        """
+        try:
+            # Convert ROS image to numpy array (BGR to RGB)
                 bgr_image = self.bridge.imgmsg_to_cv2(rgb_msg, desired_encoding="bgr8")
                 rgb_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2RGB)
                 original_height, original_width = rgb_image.shape[:2]
@@ -1726,7 +1697,7 @@ class ObjectDetection(Node):
                             )
                     except Exception as e:
                         self.get_logger().error(
-                            f"Depth processing failed: {e}", exc_info=True
+                            f"Depth processing failed: {e}"
                         )
                         clusters = []
 
@@ -1810,9 +1781,237 @@ class ObjectDetection(Node):
                 del masks
                 del clusters
                 del result
-            finally:
-                # Always reset processing flag, even if error occurred
-                self._processing_frame = False
+
+                # Return entities if requested
+                if return_entities:
+                    return entities
+                return None
+        except Exception as e:
+            self.get_logger().error(
+                f"Error processing frame: {e}"
+            )
+            if return_entities:
+                return []
+            return None
+
+    async def predict_snapshot(
+        self, rgb_image: Image, depth_image: Image | None = None
+    ) -> list[dict]:
+        """Process a snapshot (RGB + optional Depth) and return detected entities.
+
+        This method processes a single image snapshot through the YOLO model
+        and returns the detected entities. The model must be pre-loaded (done
+        during node initialization).
+
+        Args:
+            rgb_image: RGB image as sensor_msgs/Image.
+            depth_image: Optional depth image as sensor_msgs/Image.
+                If None, depth processing is skipped.
+
+        Returns:
+            List of entity dictionaries. Each entity contains:
+            - 'name': String message with object class name
+            - 'pose': PoseStamped message
+            - 'pointcloud': Optional PointCloud2 message
+            - 'boundingbox2d': Optional BoundingBox2D message
+            Empty list if no objects detected or on error.
+
+        Raises:
+            RuntimeError: If camera intrinsics are not set (required for processing).
+        """
+        # Validate camera intrinsics are set
+        if not self._camera_intrinsics_set:
+            error_msg = (
+                "Camera intrinsics not set. "
+                "Cannot process snapshot without camera calibration. "
+                "Ensure camera_info topic is available."
+            )
+            self.get_logger().error(error_msg)
+            raise RuntimeError(error_msg)
+
+        # Validate RGB image
+        if rgb_image is None:
+            error_msg = "RGB image is None. Cannot process snapshot."
+            self.get_logger().error(error_msg)
+            raise ValueError(error_msg)
+
+        # Process snapshot using existing process_data method
+        # use_locks=False: Direct call, no need for frame processing locks
+        # return_entities=True: Return entities list instead of just saving to KB
+        try:
+            entities = await self.process_data(
+                rgb_msg=rgb_image,
+                depth_msg=depth_image,
+                return_entities=True,
+                use_locks=False,
+            )
+
+            # Ensure we return a list
+            # (process_data returns None if return_entities is False)
+            if entities is None:
+                return []
+            return entities
+
+        except Exception as e:
+            self.get_logger().error(
+                f"Error processing snapshot: {e}"
+            )
+            # Return empty list on error (don't raise, allow caller to handle)
+            return []
+
+    async def _predict_snapshot_goal_handler(self, goal_handle):
+        """Handle incoming predict_snapshot action goals.
+
+        This method is called when a new goal is received by the action server.
+        It processes the RGB and optional depth images, sends feedback during
+        processing, and returns the detected entities.
+
+        Args:
+            goal_handle: Action goal handle from rclpy.action.
+
+        Returns:
+            PredictSnapshot.Result: Result containing detected entities and status.
+        """
+        self.get_logger().info("Received predict_snapshot action goal")
+
+        # Extract goal data
+        goal = goal_handle.request
+        rgb_image = goal.rgb_image
+        depth_image = goal.depth_image if hasattr(goal, "depth_image") else None
+
+        # Create result
+        result = PredictSnapshot.Result()
+
+        try:
+            # Send initial feedback
+            feedback = PredictSnapshot.Feedback()
+            feedback.status = "Processing snapshot..."
+            feedback.progress = 0.0
+            feedback.objects_detected = 0
+            goal_handle.publish_feedback(feedback)
+
+            # Validate camera intrinsics
+            if not self._camera_intrinsics_set:
+                error_msg = (
+                    "Camera intrinsics not set. "
+                    "Cannot process snapshot without camera calibration."
+                )
+                self.get_logger().error(error_msg)
+                result.success = False
+                result.error_message = error_msg
+                goal_handle.abort()
+                return result
+
+            # Validate RGB image
+            if rgb_image is None:
+                error_msg = "RGB image is None. Cannot process snapshot."
+                self.get_logger().error(error_msg)
+                result.success = False
+                result.error_message = error_msg
+                goal_handle.abort()
+                return result
+
+            # Send feedback: Starting YOLO inference
+            feedback.status = "Running YOLO inference..."
+            feedback.progress = 0.2
+            goal_handle.publish_feedback(feedback)
+
+            # Call predict_snapshot
+            entities = await self.predict_snapshot(rgb_image, depth_image)
+
+            # Send feedback: Processing complete
+            feedback.status = "Processing complete"
+            feedback.progress = 0.9
+            feedback.objects_detected = len(entities)
+            goal_handle.publish_feedback(feedback)
+
+            # Convert entity dictionaries to Entity messages
+            # Note: predict_snapshot returns list of dicts with keys:
+            # - 'name': String message
+            # - 'pose': PoseStamped message
+            # - 'boundingbox2d': BoundingBox2D message (optional)
+            # - 'pointcloud': PointCloud2 message (optional)
+            result.entities = []
+            for entity_dict in entities:
+                # Create Entity message from dictionary
+                entity_msg = Entity()
+
+                # Extract name for description
+                entity_name = "unknown"
+                if "name" in entity_dict and entity_dict["name"] is not None:
+                    if hasattr(entity_dict["name"], "data"):
+                        entity_name = entity_dict["name"].data
+                    else:
+                        entity_name = str(entity_dict["name"])
+
+                # Set description (Entity message doesn't have 'name' field)
+                entity_msg.description = f"Detected: {entity_name}"
+
+                # Set pose
+                if "pose" in entity_dict and entity_dict["pose"] is not None:
+                    pose_stamped = entity_dict["pose"]
+                    # Check if it's a PoseStamped or just a Pose
+                    if hasattr(pose_stamped, "pose"):
+                        # It's a PoseStamped
+                        entity_msg.pose = pose_stamped.pose
+                        if hasattr(pose_stamped.header, "frame_id"):
+                            entity_msg.pose_reference_frame = (
+                                pose_stamped.header.frame_id
+                            )
+                        if hasattr(pose_stamped.header, "stamp"):
+                            entity_msg.stamp = pose_stamped.header.stamp
+                    elif (
+                        hasattr(pose_stamped, "position")
+                        and hasattr(pose_stamped, "orientation")
+                    ):
+                        # It's a Pose directly
+                        entity_msg.pose = pose_stamped
+                        # Use default frame if not set
+                        entity_msg.pose_reference_frame = "unknown"
+                        entity_msg.stamp = self.get_clock().now().to_msg()
+
+                # Set entity type based on name (simplified - could be improved)
+                # This is a placeholder - you may want to map class names to EntityType
+                from arlab_knowledge_interfaces.msg import EntityType
+
+                # Default to pickable for most objects
+                # EntityType is a message with an 'id' field, not a direct enum
+                entity_msg.entity_type = EntityType(id=EntityType.PICKABLE)
+                # Could add logic here to map specific class names to
+                # furniture/human types
+
+                # Note: Entity message doesn't include pointcloud or boundingbox2d
+                # These are stored separately in the KB via UpdShape service
+                # If needed, we could extend the action result to include these
+
+                result.entities.append(entity_msg)
+
+            # Set result
+            result.success = True
+            result.error_message = ""
+
+            # Send final feedback
+            feedback.status = f"Successfully detected {len(entities)} objects"
+            feedback.progress = 1.0
+            feedback.objects_detected = len(entities)
+            goal_handle.publish_feedback(feedback)
+
+            self.get_logger().info(
+                f"Action completed successfully: {len(entities)} entities detected"
+            )
+            goal_handle.succeed()
+            return result
+
+        except Exception as e:
+            error_msg = f"Error processing snapshot: {str(e)}"
+            self.get_logger().error(f"{error_msg}: {e}")
+            import traceback
+
+            self.get_logger().error(traceback.format_exc())
+            result.success = False
+            result.error_message = error_msg
+            goal_handle.abort()
+            return result
 
     # Visualization functions removed for performance reasons
 

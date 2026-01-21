@@ -431,7 +431,6 @@ class ObjectDetection(Node):
                 self._periodic_service_check()
             )
 
-
     def camera_info_callback(self, msg: CameraInfo) -> None:
         """Extract camera intrinsics from CameraInfo message.
 
@@ -1094,7 +1093,6 @@ class ObjectDetection(Node):
 
         return associations
 
-
     def _run_yolo_inference(self, rgb_image: np.ndarray) -> tuple[Any, int]:
         """Run YOLO inference on RGB image (synchronous).
 
@@ -1573,223 +1571,215 @@ class ObjectDetection(Node):
         """
         try:
             # Convert ROS image to numpy array (BGR to RGB)
-                bgr_image = self.bridge.imgmsg_to_cv2(rgb_msg, desired_encoding="bgr8")
-                rgb_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2RGB)
-                original_height, original_width = rgb_image.shape[:2]
+            bgr_image = self.bridge.imgmsg_to_cv2(rgb_msg, desired_encoding="bgr8")
+            rgb_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2RGB)
+            original_height, original_width = rgb_image.shape[:2]
 
-                # Scale image to 640x640 for YOLO inference (square input)
-                scale_factor_x = 1.0
-                scale_factor_y = 1.0
-                yolo_image = rgb_image
-                if self.max_image_width > 0:
-                    # Scale to square 640x640
-                    yolo_size = self.max_image_width
-                    scale_factor_x = yolo_size / original_width
-                    scale_factor_y = yolo_size / original_height
-                    yolo_image = cv2.resize(
-                        rgb_image,
-                        (yolo_size, yolo_size),
-                        interpolation=cv2.INTER_LINEAR,
-                    )
-
-                # Run YOLO inference (synchronous)
-                t_yolo_start = time.perf_counter()
-                result, num_detections = self._run_yolo_inference(yolo_image)
-                t_yolo_end = time.perf_counter()
-                inference_time_ms = (t_yolo_end - t_yolo_start) * 1000
-
-                # Free large image arrays immediately after inference to reduce memory
-                # pressure (helps prevent swap during slow inference)
-                if yolo_image is not rgb_image:  # Only delete if it's a separate array
-                    del yolo_image
-                del rgb_image
-                del bgr_image
-
-                # Get device info for diagnostics
-                device_info = "unknown"
-                if hasattr(result, "boxes") and result.boxes is not None:
-                    if hasattr(result.boxes, "data") and result.boxes.data is not None:
-                        if hasattr(result.boxes.data, "device"):
-                            device_info = str(result.boxes.data.device)
-
-                # Log inference time with device info
-                self.get_logger().info(
-                    f"YOLO inference: {inference_time_ms:.1f}ms (device: {device_info})"
+            # Scale image to 640x640 for YOLO inference (square input)
+            scale_factor_x = 1.0
+            scale_factor_y = 1.0
+            yolo_image = rgb_image
+            if self.max_image_width > 0:
+                # Scale to square 640x640
+                yolo_size = self.max_image_width
+                scale_factor_x = yolo_size / original_width
+                scale_factor_y = yolo_size / original_height
+                yolo_image = cv2.resize(
+                    rgb_image,
+                    (yolo_size, yolo_size),
+                    interpolation=cv2.INTER_LINEAR,
                 )
-                if num_detections > 0:
-                    # Log what YOLO classified
-                    if hasattr(result, "boxes") and hasattr(result.boxes, "cls"):
-                        class_ids = result.boxes.cls.cpu().numpy().astype(int)
-                        confidences = (
-                            result.boxes.conf.cpu().numpy()
-                            if hasattr(result.boxes, "conf")
-                            else None
-                        )
-                        detections = []
-                        for i, class_id in enumerate(class_ids):
-                            class_name = self.model.names[class_id]
-                            if confidences is not None:
-                                detections.append(
-                                    f"{class_name} ({confidences[i]:.2f})"
-                                )
-                            else:
-                                detections.append(class_name)
-                        detections_str = ", ".join(detections)
-                        self.get_logger().info(
-                            f"{num_detections} object(s) detected: {detections_str}"
-                        )
-                    else:
-                        self.get_logger().info(f"{num_detections} object(s) detected")
 
-                # Scale bounding boxes back to original image size if image was scaled
-                if (scale_factor_x != 1.0 or scale_factor_y != 1.0) and hasattr(
-                    result, "boxes"
-                ):
-                    # YOLO boxes need to be scaled back to original image coordinates
-                    # Only scale xywh (the base format) - xyxy is computed from xywh
-                    boxes = result.boxes
-                    if hasattr(boxes, "xywh") and boxes.xywh is not None:
-                        # Scale xywh format (center x, center y, width, height)
-                        boxes.xywh[:, 0] = boxes.xywh[:, 0] / scale_factor_x  # x_center
-                        boxes.xywh[:, 1] = boxes.xywh[:, 1] / scale_factor_y  # y_center
-                        boxes.xywh[:, 2] = boxes.xywh[:, 2] / scale_factor_x  # width
-                        boxes.xywh[:, 3] = boxes.xywh[:, 3] / scale_factor_y  # height
-                        # Note: xyxy is a computed property and will be automatically
-                        # updated based on the scaled xywh values
+            # Run YOLO inference (synchronous)
+            t_yolo_start = time.perf_counter()
+            result, num_detections = self._run_yolo_inference(yolo_image)
+            t_yolo_end = time.perf_counter()
+            inference_time_ms = (t_yolo_end - t_yolo_start) * 1000
 
-                # Extract segmentation masks
-                # For depth processing, scale masks to depth image size
-                # For entity generation, scale masks to original RGB size
-                masks_for_depth = None
-                masks_for_entities = None
+            # Free large image arrays immediately after inference to reduce memory
+            # pressure (helps prevent swap during slow inference)
+            if yolo_image is not rgb_image:  # Only delete if it's a separate array
+                del yolo_image
+            del rgb_image
+            del bgr_image
 
-                if depth_msg is not None and self.use_depth and num_detections > 0:
-                    # Extract masks scaled to depth image size for depth processing
-                    masks_for_depth = self._extract_masks(
-                        result, depth_msg.height, depth_msg.width
-                    )
-                    # Also extract masks scaled to original RGB size for entities
-                    masks_for_entities = self._extract_masks(
-                        result, original_height, original_width
-                    )
-                elif num_detections > 0:
-                    # Only extract masks for entities (no depth processing)
-                    masks_for_entities = self._extract_masks(
-                        result, original_height, original_width
-                    )
+            # Get device info for diagnostics
+            device_info = "unknown"
+            if hasattr(result, "boxes") and result.boxes is not None:
+                if hasattr(result.boxes, "data") and result.boxes.data is not None:
+                    if hasattr(result.boxes.data, "device"):
+                        device_info = str(result.boxes.data.device)
 
-                # Use masks_for_entities for entity generation
-                masks = masks_for_entities
-
-                # Process depth data with mask-based filtering
-                # Skip depth processing if no detections (saves memory)
-                clusters = []
-                if depth_msg is not None and self.use_depth and num_detections > 0:
-                    try:
-                        _, clusters = await asyncio.to_thread(
-                            self._process_depth_with_masks,
-                            depth_msg,
-                            masks_for_depth,  # Use depth-scaled masks
-                        )
-                        if len(clusters) > 0:
-                            self.get_logger().info(
-                                f"{len(clusters)} cluster(s) detected"
-                            )
-                    except Exception as e:
-                        self.get_logger().error(
-                            f"Depth processing failed: {e}"
-                        )
-                        clusters = []
-
-                # Associate clusters to detections using masks
-                associations = []
-                if (
-                    self._should_associate_clusters(
-                        depth_msg, clusters, masks, num_detections
-                    )
-                    and masks is not None
-                    and self.camera_intrinsics is not None
-                ):
-                    associations = self._associate_clusters_to_masks(
-                        clusters,
-                        masks,
-                        self.camera_intrinsics,
-                        rgb_msg.width,
-                        rgb_msg.height,
-                    )
-                    successful_associations = [
-                        a for a in associations if a.get("cluster") is not None
-                    ]
-                    if len(successful_associations) < num_detections:
-                        self.get_logger().warn(
-                            f"Only {len(successful_associations)}/{num_detections} "
-                            f"detections have associated clusters. "
-                            f"This may indicate insufficient depth data or "
-                            f"cluster detection issues."
-                        )
-
-                # Generate entities from YOLO results
-                boxes = getattr(result, "boxes", None)
-                if boxes is None or len(boxes) == 0:
-                    entities = []
-                else:
-                    entities = generate_entities_from_yolo_result(
-                        result=result,
-                        class_names=self.model.names,
-                        frame=None,
-                        use_segmentation=self.use_segmentation,
-                        cluster_associations=associations if associations else None,
-                        frame_id=rgb_msg.header.frame_id,  # Original frame
-                        # (will be transformed to camera_tool_link then world)
-                        timestamp=rgb_msg.header.stamp,
-                        max_points=self.point_cloud_max_points,
-                    )
-                    if len(entities) > 0:
-                        entity_names = [e["name"].data for e in entities]
-                        entity_str = f"{len(entities)} entit(y/ies) created: "
-                        entity_str += ", ".join(entity_names)
-                        self.get_logger().info(entity_str)
-
-                # Update knowledge base
-                if len(entities) > 0:
-                    saved_count = await self._update_knowledge_base(
-                        entities, self.source_frame, rgb_msg.header.stamp
-                    )
-                    t_total = (time.perf_counter() - t_start) * 1000
-                    if saved_count > 0:
-                        self.get_logger().info(
-                            f"{saved_count} of {len(entities)} entit(y/ies) "
-                            f"saved in KB (total processing time: {t_total:.2f}ms)"
-                        )
-                    else:
-                        self.get_logger().warn(
-                            f"None of {len(entities)} entit(y/ies) could be saved "
-                            f"in KB (likely transform failures) "
-                            f"(total time: {t_total:.2f}ms)"
-                        )
-                else:
-                    t_total = (time.perf_counter() - t_start) * 1000
-                    self.get_logger().info(
-                        f"Frame processed (no entities) "
-                        f"(total processing time: {t_total:.2f}ms)"
-                    )
-
-                # Free large arrays after processing to reduce memory pressure
-                # This helps prevent swap during slow inference
-                del masks_for_depth
-                del masks_for_entities
-                del masks
-                del clusters
-                del result
-
-                # Return entities if requested
-                if return_entities:
-                    return entities
-                return None
-        except Exception as e:
-            self.get_logger().error(
-                f"Error processing frame: {e}"
+            # Log inference time with device info
+            self.get_logger().info(
+                f"YOLO inference: {inference_time_ms:.1f}ms (device: {device_info})"
             )
+            if num_detections > 0:
+                # Log what YOLO classified
+                if hasattr(result, "boxes") and hasattr(result.boxes, "cls"):
+                    class_ids = result.boxes.cls.cpu().numpy().astype(int)
+                    confidences = (
+                        result.boxes.conf.cpu().numpy()
+                        if hasattr(result.boxes, "conf")
+                        else None
+                    )
+                    detections = []
+                    for i, class_id in enumerate(class_ids):
+                        class_name = self.model.names[class_id]
+                        if confidences is not None:
+                            detections.append(f"{class_name} ({confidences[i]:.2f})")
+                        else:
+                            detections.append(class_name)
+                    detections_str = ", ".join(detections)
+                    self.get_logger().info(
+                        f"{num_detections} object(s) detected: {detections_str}"
+                    )
+                else:
+                    self.get_logger().info(f"{num_detections} object(s) detected")
+
+            # Scale bounding boxes back to original image size if image was scaled
+            if (scale_factor_x != 1.0 or scale_factor_y != 1.0) and hasattr(
+                result, "boxes"
+            ):
+                # YOLO boxes need to be scaled back to original image coordinates
+                # Only scale xywh (the base format) - xyxy is computed from xywh
+                boxes = result.boxes
+                if hasattr(boxes, "xywh") and boxes.xywh is not None:
+                    # Scale xywh format (center x, center y, width, height)
+                    boxes.xywh[:, 0] = boxes.xywh[:, 0] / scale_factor_x  # x_center
+                    boxes.xywh[:, 1] = boxes.xywh[:, 1] / scale_factor_y  # y_center
+                    boxes.xywh[:, 2] = boxes.xywh[:, 2] / scale_factor_x  # width
+                    boxes.xywh[:, 3] = boxes.xywh[:, 3] / scale_factor_y  # height
+                    # Note: xyxy is a computed property and will be automatically
+                    # updated based on the scaled xywh values
+
+            # Extract segmentation masks
+            # For depth processing, scale masks to depth image size
+            # For entity generation, scale masks to original RGB size
+            masks_for_depth = None
+            masks_for_entities = None
+
+            if depth_msg is not None and self.use_depth and num_detections > 0:
+                # Extract masks scaled to depth image size for depth processing
+                masks_for_depth = self._extract_masks(
+                    result, depth_msg.height, depth_msg.width
+                )
+                # Also extract masks scaled to original RGB size for entities
+                masks_for_entities = self._extract_masks(
+                    result, original_height, original_width
+                )
+            elif num_detections > 0:
+                # Only extract masks for entities (no depth processing)
+                masks_for_entities = self._extract_masks(
+                    result, original_height, original_width
+                )
+
+            # Use masks_for_entities for entity generation
+            masks = masks_for_entities
+
+            # Process depth data with mask-based filtering
+            # Skip depth processing if no detections (saves memory)
+            clusters = []
+            if depth_msg is not None and self.use_depth and num_detections > 0:
+                try:
+                    _, clusters = await asyncio.to_thread(
+                        self._process_depth_with_masks,
+                        depth_msg,
+                        masks_for_depth,  # Use depth-scaled masks
+                    )
+                    if len(clusters) > 0:
+                        self.get_logger().info(f"{len(clusters)} cluster(s) detected")
+                except Exception as e:
+                    self.get_logger().error(f"Depth processing failed: {e}")
+                    clusters = []
+
+            # Associate clusters to detections using masks
+            associations = []
+            if (
+                self._should_associate_clusters(
+                    depth_msg, clusters, masks, num_detections
+                )
+                and masks is not None
+                and self.camera_intrinsics is not None
+            ):
+                associations = self._associate_clusters_to_masks(
+                    clusters,
+                    masks,
+                    self.camera_intrinsics,
+                    rgb_msg.width,
+                    rgb_msg.height,
+                )
+                successful_associations = [
+                    a for a in associations if a.get("cluster") is not None
+                ]
+                if len(successful_associations) < num_detections:
+                    self.get_logger().warn(
+                        f"Only {len(successful_associations)}/{num_detections} "
+                        f"detections have associated clusters. "
+                        f"This may indicate insufficient depth data or "
+                        f"cluster detection issues."
+                    )
+
+            # Generate entities from YOLO results
+            boxes = getattr(result, "boxes", None)
+            if boxes is None or len(boxes) == 0:
+                entities = []
+            else:
+                entities = generate_entities_from_yolo_result(
+                    result=result,
+                    class_names=self.model.names,
+                    frame=None,
+                    use_segmentation=self.use_segmentation,
+                    cluster_associations=associations if associations else None,
+                    frame_id=rgb_msg.header.frame_id,  # Original frame
+                    # (will be transformed to camera_tool_link then world)
+                    timestamp=rgb_msg.header.stamp,
+                    max_points=self.point_cloud_max_points,
+                )
+                if len(entities) > 0:
+                    entity_names = [e["name"].data for e in entities]
+                    entity_str = f"{len(entities)} entit(y/ies) created: "
+                    entity_str += ", ".join(entity_names)
+                    self.get_logger().info(entity_str)
+
+            # Update knowledge base
+            if len(entities) > 0:
+                saved_count = await self._update_knowledge_base(
+                    entities, self.source_frame, rgb_msg.header.stamp
+                )
+                t_total = (time.perf_counter() - t_start) * 1000
+                if saved_count > 0:
+                    self.get_logger().info(
+                        f"{saved_count} of {len(entities)} entit(y/ies) "
+                        f"saved in KB (total processing time: {t_total:.2f}ms)"
+                    )
+                else:
+                    self.get_logger().warn(
+                        f"None of {len(entities)} entit(y/ies) could be saved "
+                        f"in KB (likely transform failures) "
+                        f"(total time: {t_total:.2f}ms)"
+                    )
+            else:
+                t_total = (time.perf_counter() - t_start) * 1000
+                self.get_logger().info(
+                    f"Frame processed (no entities) "
+                    f"(total processing time: {t_total:.2f}ms)"
+                )
+
+            # Free large arrays after processing to reduce memory pressure
+            # This helps prevent swap during slow inference
+            del masks_for_depth
+            del masks_for_entities
+            del masks
+            del clusters
+            del result
+
+            # Return entities if requested
+            if return_entities:
+                return entities
+            return None
+        except Exception as e:
+            self.get_logger().error(f"Error processing frame: {e}")
             if return_entities:
                 return []
             return None
@@ -1853,9 +1843,7 @@ class ObjectDetection(Node):
             return entities
 
         except Exception as e:
-            self.get_logger().error(
-                f"Error processing snapshot: {e}"
-            )
+            self.get_logger().error(f"Error processing snapshot: {e}")
             # Return empty list on error (don't raise, allow caller to handle)
             return []
 
@@ -1960,9 +1948,8 @@ class ObjectDetection(Node):
                             )
                         if hasattr(pose_stamped.header, "stamp"):
                             entity_msg.stamp = pose_stamped.header.stamp
-                    elif (
-                        hasattr(pose_stamped, "position")
-                        and hasattr(pose_stamped, "orientation")
+                    elif hasattr(pose_stamped, "position") and hasattr(
+                        pose_stamped, "orientation"
                     ):
                         # It's a Pose directly
                         entity_msg.pose = pose_stamped

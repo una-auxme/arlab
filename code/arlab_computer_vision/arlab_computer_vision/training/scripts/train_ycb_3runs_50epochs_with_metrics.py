@@ -93,6 +93,12 @@ EXPERIMENTS = [
             perspective=0.0005,
         ),
     },
+
+    {
+        "name": "no_augmentation",
+        "params": dict(
+        ),
+    },
 ]
 
 

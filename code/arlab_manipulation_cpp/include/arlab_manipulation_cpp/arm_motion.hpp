@@ -21,7 +21,7 @@ public:
                        const std::string &frame_id = "world",
                        const std::string &planner_id = "");
   void moveToJointPos(const std::map<std::string, double>& joints);
-  void moveToHome(); // Nutzt konstante Pose
+  void moveToHome();
 
 
 private:

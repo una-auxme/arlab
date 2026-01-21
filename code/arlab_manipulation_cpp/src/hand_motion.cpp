@@ -1,4 +1,5 @@
 #include "arlab_manipulation_cpp/hand_motion.hpp"
+#include "arlab_manipulation_cpp/orchestrator_listener.hpp"
 
 #include <stdexcept>
 
@@ -6,7 +7,7 @@ HandMotion::HandMotion(rclcpp::Node::SharedPtr node)
 : node_(std::move(node))
 {
   if (!node_) {
-    throw std::invalid_argument("HandMotion: node ist null");
+    throw ManipulationException(arlab_common_interfaces::msg::ManipulationResponse::ORCHESTRATOR_LISTENER_NODE_NULL);
   }
   client_ = rclcpp_action::create_client<Grasp>(node_, "/mia_hand/grasps/cylindrical/action");
 }
@@ -33,7 +34,7 @@ void HandMotion::grasp(
 
   // 1) Action-Server?
   if (!client_->wait_for_action_server(server_wait)) {
-    //throw std::runtime_error("Grasp Action-Server not ready: " + "/mia_hand/grasps/cylindrical/action");
+    throw ManipulationException(arlab_common_interfaces::msg::ManipulationResponse::GRASP_ACTION_SERVER_NOT_READY);
   }
 
   // 2) Goal
@@ -45,12 +46,12 @@ void HandMotion::grasp(
   auto goal_future = client_->async_send_goal(goal);
   auto rc = rclcpp::spin_until_future_complete(node_, goal_future, timeout);
   if (rc != rclcpp::FutureReturnCode::SUCCESS) {
-    //throw std::runtime_error("Timeout/Error while sending the Grasp-Goal");
+    throw ManipulationException(arlab_common_interfaces::msg::ManipulationResponse::GRASP_GOAL_TIME_OUT);
   }
 
   auto goal_handle = goal_future.get();
   if (!goal_handle) {
-    //throw std::runtime_error("Grasp-Goal wurde abgelehnt (goal_handle null)");
+    throw ManipulationException(arlab_common_interfaces::msg::ManipulationResponse::INVALID_GRASP_GOAL);
   }
 
   // 4) Result
@@ -64,16 +65,17 @@ void HandMotion::grasp(
     } catch (...) {
       // ignore
     }
-    //throw std::runtime_error("Timeout/Error while waiting for Grasp-Result");
+    throw ManipulationException(arlab_common_interfaces::msg::ManipulationResponse::GRASP_RESULT_TIME_OUT);
   }
 
   auto wrapped = result_future.get();
   if (wrapped.code != rclcpp_action::ResultCode::SUCCEEDED) {
-    //throw std::runtime_error("Grasp Action not successful");
+    throw ManipulationException(arlab_common_interfaces::msg::ManipulationResponse::GRASP_ACTION_FAILED);
   }
 
-  const auto & result = wrapped.result;
-  if (result && !result->err_message.empty()) {
-    //throw std::runtime_error("Hand-Grasp error: " + result->err_message);
-  }
+  // const auto & result = wrapped.result;
+  // if (result && !result->err_message.empty()) {
+  //   //throw std::runtime_error("Hand-Grasp error: " + result->err_message);
+  // }
+
 }

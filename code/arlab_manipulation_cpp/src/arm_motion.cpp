@@ -20,6 +20,10 @@
 ArmMotion::ArmMotion(const rclcpp::Node::SharedPtr &node, const std::string &group)
     : node_(node), mgi_(node_, group)
 {
+  if (!node_) {
+    throw ManipulationException(arlab_common_interfaces::msg::ManipulationResponse::ORCHESTRATOR_LISTENER_NODE_NULL);
+  }
+
   mgi_.setNumPlanningAttempts(20);
   mgi_.setPlanningTime(5.0);
   mgi_.setGoalPositionTolerance(1e-2);
@@ -52,7 +56,6 @@ void ArmMotion::moveToPose(const geometry_msgs::msg::Pose &target)
   if (plan_result != moveit::core::MoveItErrorCode::SUCCESS)
   {
     RCLCPP_ERROR(node_->get_logger(), "MoveIt planning failed: %s", plan_result.message.c_str());
-
     throw ManipulationException(plan_result);
     return;
   }
@@ -61,7 +64,6 @@ void ArmMotion::moveToPose(const geometry_msgs::msg::Pose &target)
   if (execute_result != moveit::core::MoveItErrorCode::SUCCESS)
   {
     RCLCPP_ERROR(node_->get_logger(), "MoveIt execution failed: %s", execute_result.message.c_str());
-
     throw ManipulationException(execute_result);
     return;
   }
@@ -201,11 +203,11 @@ void ArmMotion::moveToPoseBoxGoal(const geometry_msgs::msg::Pose &target,
     throw ManipulationException(arlab_common_interfaces::msg::ManipulationResponse::UNKNOWN_FAILURE, ss.str());
   }
 
-  const auto &res = wrapped_result.result;
-  if (res->error_code.val != moveit_msgs::msg::MoveItErrorCodes::SUCCESS)
-  {
-    throw ManipulationException(res->error_code.val);
-  }
+  // const auto &res = wrapped_result.result;
+  // if (res->error_code.val != moveit_msgs::msg::MoveItErrorCodes::SUCCESS)
+  // {
+  //   throw ManipulationException(res->error_code.val);
+  // }
 }
 
 void ArmMotion::moveToJointPos(const std::map<std::string, double> &joints)

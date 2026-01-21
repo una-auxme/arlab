@@ -20,8 +20,6 @@ private:
   std::string msg_;
 };
 
-// class JobRunner;
-
 class OrchestratorActionServer : public rclcpp::Node
 {
 public:

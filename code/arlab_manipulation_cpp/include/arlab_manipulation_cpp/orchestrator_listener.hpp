@@ -6,19 +6,6 @@
 #include "arlab_common_interfaces/action/orchestrator_action.hpp"
 #include "mia_hand_msgs/action/grasp.hpp"
 
-class ManipulationException : public std::exception
-{
-public:
-  explicit ManipulationException(int code);
-  explicit ManipulationException(int code, std::string &&msg);
-  explicit ManipulationException(const moveit::core::MoveItErrorCode &code);
-  const char *what() const noexcept override;
-  int code() const noexcept { return code_; }
-
-private:
-  int code_;
-  std::string msg_;
-};
 
 class OrchestratorActionServer : public rclcpp::Node
 {

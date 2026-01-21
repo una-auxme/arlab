@@ -1,5 +1,6 @@
 #include "arlab_manipulation_cpp/arm_motion.hpp"
 #include "arlab_manipulation_cpp/orchestrator_listener.hpp"
+#include "arlab_manipulation_cpp/manipulator_exception.hpp"
 
 #include <moveit_msgs/msg/constraints.hpp>
 #include <moveit_msgs/msg/position_constraint.hpp>

@@ -14,7 +14,7 @@ find_package(arlab_common_interfaces REQUIRED)
 find_package(mia_hand_msgs REQUIRED)
 # find_package(urdf_tutorial REQUIRED)
 
-add_executable(Manipulation_CPP src/orchestrator_listener.cpp src/job_runner.cpp src/arm_motion.cpp src/hand_motion.cpp)
+add_executable(Manipulation_CPP src/orchestrator_listener.cpp src/job_runner.cpp src/arm_motion.cpp src/hand_motion.cpp src/manipulator_exception.cpp)
 
 target_include_directories(Manipulation_CPP PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

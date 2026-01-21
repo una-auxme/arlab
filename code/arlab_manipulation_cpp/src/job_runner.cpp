@@ -3,6 +3,7 @@
 #include "arlab_manipulation_cpp/arm_motion.hpp"
 #include "arlab_manipulation_cpp/hand_motion.hpp"
 #include "arlab_manipulation_cpp/orchestrator_listener.hpp"
+#include "arlab_manipulation_cpp/manipulator_exception.hpp"
 #include "arlab_common_interfaces/msg/manipulation_response.hpp"
 #include "arlab_common_interfaces/msg/manipulation_command.hpp"
 

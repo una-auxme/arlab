@@ -12,6 +12,7 @@ Maintainers:
 
 import asyncio
 import os
+import queue
 import threading
 import time
 from typing import Any
@@ -20,11 +21,10 @@ import cv2
 import numpy as np
 import rclpy
 import tf2_geometry_msgs
-import tf2_sensor_msgs
 import torch
 from ament_index_python.packages import get_package_share_directory
 from arlab_asyncio_executor.executors import AsyncIOExecutor
-from arlab_knowledge_interfaces.msg import Entity, Result, Shape
+from arlab_knowledge_interfaces.msg import Entity, Result
 from arlab_knowledge_interfaces.srv import AddEntity, DelEntities, GetEntities, UpdShape
 from cv_bridge import CvBridge
 from geometry_msgs.msg import Point, Pose, PoseStamped, Quaternion
@@ -88,8 +88,8 @@ class ObjectDetection(Node):
         # Delete old entities before adding new ones
         self.declare_parameter("delete_old_entities", True)
         # Maximum number of points per entity point cloud
-        # (0 = no limit, not recommended)
-        self.declare_parameter("point_cloud_max_points", 0)
+        # (0 = no limit, not recommended due to OOM risk)
+        self.declare_parameter("point_cloud_max_points", 10000)
         # Maximum image width for YOLO inference (0 = no scaling)
         # Reduces memory usage and speeds up inference for large images
         self.declare_parameter("max_image_width", 640)
@@ -200,7 +200,7 @@ class ObjectDetection(Node):
         # Note: YOLO doesn't support device parameter in __init__,
         # but will use the device specified during first inference
         self.model = YOLO(yolo_weights)
-        # Store device - will be used during inference
+        # Store device - will be verified/updated below
         self.device = device
 
         # Use half precision (FP16) for faster GPU inference
@@ -212,7 +212,8 @@ class ObjectDetection(Node):
                 )
                 self.device = "cpu"
             else:
-                # Set model to use GPU (Ultralytics handles this internally)
+                # Explicitly move model to GPU
+                self.model.to("cuda")
                 # Verify GPU is accessible
                 try:
                     gpu_name = torch.cuda.get_device_name(0)
@@ -224,33 +225,28 @@ class ObjectDetection(Node):
                     self.get_logger().warn(f"GPU verification failed: {e}")
 
                 self.get_logger().info("Using FP16 (half precision) for GPU inference")
-                # Warmup the model to avoid first inference delay
-                # Use actual scaled image size to pre-compile CUDA kernels
+                # Warmup: Load model on GPU and compile CUDA kernels
                 try:
                     import numpy as np
 
-                    # Calculate warmup image size based on max_image_width
+                    # Calculate warmup size based on max_image_width
                     # This matches the actual scaled image size used in inference
-                    # (640x640 square)
                     if self.max_image_width > 0:
-                        # Use square size matching YOLO input (640x640)
                         warmup_size = (
                             self.max_image_width,
                             self.max_image_width,
                             3,
                         )
                     else:
-                        # Fallback to typical size
                         warmup_size = (640, 640, 3)
 
                     self.get_logger().debug(
                         f"Warmup image size: {warmup_size[1]}x{warmup_size[0]}"
                     )
 
+                    # Create dummy input and run warmup inference
+                    # This loads the model on GPU and compiles CUDA kernels
                     dummy_input = np.zeros(warmup_size, dtype=np.uint8)
-                    # Set device during warmup to load model on GPU initially
-                    # After first call, model stays on this device
-                    # Run warmup multiple times to compile all CUDA kernels
                     for i in range(3):  # 3 warmup runs to compile all kernels
                         _ = self.model(dummy_input, verbose=False, device=device)
                         if torch.cuda.is_available():
@@ -290,6 +286,15 @@ class ObjectDetection(Node):
 
         # Timeout for processing (tracks last processing time)
         self._last_processing_time = 0.0
+
+        # === KB WORKER THREAD ===
+        # Dedicated thread for KB updates to avoid deadlock with .call()
+        self._kb_queue: queue.Queue = queue.Queue(maxsize=5)
+        self._kb_thread_running = True
+        self._kb_thread = threading.Thread(
+            target=self._kb_worker, daemon=True, name="KBUpdateWorker"
+        )
+        self._kb_thread.start()
 
         # Thread pool removed - using asyncio.to_thread for sequential processing
 
@@ -469,28 +474,285 @@ class ObjectDetection(Node):
     def _process_data_sync(
         self, rgb_msg: Image, depth_msg: Image | None = None
     ) -> None:
-        """Synchronous wrapper for async process_data callback.
+        """Fully synchronous frame processing - no async, no threads.
+
+        This ensures Ultralytics YOLO has complete control over the CUDA
+        context without interference from async event loops.
 
         Args:
             rgb_msg: Incoming RGB `sensor_msgs/Image`.
             depth_msg: Optional incoming depth `sensor_msgs/Image`.
         """
-        # Early frame skipping: Check if already processing BEFORE creating task
+        # Frame skipping check
         with self._processing_lock_sync:
             if self._processing_frame:
                 self._frames_skipped += 1
-                if self._frames_skipped % 10 == 0:  # Log every 10th skipped
-                    self.get_logger().debug(
-                        f"Skipped {self._frames_skipped} frames "
-                        f"(processing in progress)"
-                    )
                 return
+            self._processing_frame = True
+            self._frames_processed += 1
+
+        t_start = time.perf_counter()
 
         try:
-            asyncio.get_running_loop()
-            asyncio.create_task(self.process_data(rgb_msg, depth_msg))
-        except RuntimeError:
-            asyncio.run(self.process_data(rgb_msg, depth_msg))
+            # === 1. PREPROCESSING (CPU) ===
+            t_pre = time.perf_counter()
+            bgr_image = self.bridge.imgmsg_to_cv2(rgb_msg, desired_encoding="bgr8")
+            rgb_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2RGB)
+            original_height, original_width = rgb_image.shape[:2]
+
+            # Scale to YOLO input size
+            if self.max_image_width > 0:
+                yolo_size = self.max_image_width
+                scale_x = yolo_size / original_width
+                scale_y = yolo_size / original_height
+                yolo_image = cv2.resize(
+                    rgb_image, (yolo_size, yolo_size), interpolation=cv2.INTER_LINEAR
+                )
+            else:
+                yolo_image = rgb_image
+                scale_x = scale_y = 1.0
+            preprocess_ms = (time.perf_counter() - t_pre) * 1000
+
+            # === 2. YOLO INFERENCE (GPU) ===
+            # Synchronous call - Ultralytics has full control
+            t_yolo = time.perf_counter()
+            result, num_detections = self._run_yolo_inference(yolo_image)
+            inference_ms = (time.perf_counter() - t_yolo) * 1000
+
+            # Free memory
+            del yolo_image, rgb_image, bgr_image
+
+            # === 3. POSTPROCESSING (CPU) ===
+            t_post = time.perf_counter()
+            entities = []
+
+            if num_detections > 0:
+                # Scale boxes back
+                if scale_x != 1.0 or scale_y != 1.0:
+                    if hasattr(result, "boxes") and result.boxes is not None:
+                        boxes = result.boxes
+                        if hasattr(boxes, "xywh") and boxes.xywh is not None:
+                            boxes.xywh[:, 0] /= scale_x
+                            boxes.xywh[:, 1] /= scale_y
+                            boxes.xywh[:, 2] /= scale_x
+                            boxes.xywh[:, 3] /= scale_y
+
+                # Extract masks
+                masks = self._extract_masks(result, original_height, original_width)
+
+                # Depth processing (synchronous, no threading)
+                clusters = []
+                if depth_msg is not None and self.use_depth:
+                    masks_for_depth = self._extract_masks(
+                        result, depth_msg.height, depth_msg.width
+                    )
+                    if masks_for_depth is not None:
+                        _, clusters = self._process_depth_with_masks(
+                            depth_msg, masks_for_depth
+                        )
+
+                # Associate clusters
+                associations = []
+                if clusters and masks is not None and self.camera_intrinsics:
+                    associations = self._associate_clusters_to_masks(
+                        clusters,
+                        masks,
+                        self.camera_intrinsics,
+                        rgb_msg.width,
+                        rgb_msg.height,
+                    )
+
+                # Generate entities
+                entities = generate_entities_from_yolo_result(
+                    result=result,
+                    class_names=self.model.names,
+                    frame=None,
+                    use_segmentation=self.use_segmentation,
+                    cluster_associations=associations if associations else None,
+                    frame_id=rgb_msg.header.frame_id,
+                    timestamp=rgb_msg.header.stamp,
+                    max_points=self.point_cloud_max_points,
+                )
+
+            postprocess_ms = (time.perf_counter() - t_post) * 1000
+
+            # === 4. KB UPDATE (Queued - non-blocking) ===
+            queued_count = 0
+            if entities:
+                queued_count = self._update_kb_sync(
+                    entities, self.source_frame, rgb_msg.header.stamp
+                )
+
+            # Timing summary
+            total_ms = (time.perf_counter() - t_start) * 1000
+            self.get_logger().info(
+                f"[Timing] Pre:{preprocess_ms:.1f}ms | "
+                f"YOLO:{inference_ms:.1f}ms | "
+                f"Post:{postprocess_ms:.1f}ms | "
+                f"Total:{total_ms:.1f}ms | "
+                f"{queued_count} queued"
+            )
+
+        except Exception as e:
+            self.get_logger().error(f"Frame processing error: {e}")
+        finally:
+            self._processing_frame = False
+
+    def _update_kb_sync(
+        self,
+        entities: list,
+        source_frame: str,
+        timestamp: Any,
+    ) -> int:
+        """Queue entities for KB update (non-blocking).
+
+        Entities are queued and processed by the dedicated KB worker thread.
+        This prevents deadlock from .call() in the main callback.
+
+        Args:
+            entities: List of entity dicts.
+            source_frame: Source TF frame.
+            timestamp: ROS timestamp.
+
+        Returns:
+            Number of entities queued (not necessarily saved yet).
+        """
+        if not self._kb_services_available:
+            return 0
+
+        # Queue the work for the KB thread (non-blocking)
+        try:
+            self._kb_queue.put_nowait(
+                {
+                    "entities": entities,
+                    "source_frame": source_frame,
+                    "timestamp": timestamp,
+                }
+            )
+            return len(entities)
+        except queue.Full:
+            # Queue full - drop this update to avoid blocking main thread
+            self.get_logger().warn(
+                f"KB queue full, dropping {len(entities)} entities"
+            )
+            return 0
+
+    def _kb_worker(self):
+        """Dedicated worker thread for KB updates.
+
+        This thread processes KB updates from the queue using blocking .call().
+        Running in a separate thread avoids deadlock with the main executor.
+        """
+        self.get_logger().info("KB worker thread started")
+
+        from rclpy.duration import Duration
+        from rclpy.time import Time
+
+        while self._kb_thread_running:
+            try:
+                # Wait for work (with timeout for clean shutdown)
+                try:
+                    work = self._kb_queue.get(timeout=1.0)
+                except queue.Empty:
+                    continue
+
+                if work is None:
+                    # Shutdown signal
+                    break
+
+                entities = work["entities"]
+                source_frame = work["source_frame"]
+
+                if not self._kb_services_available:
+                    continue
+
+                now = self.get_clock().now().to_msg()
+                saved_count = 0
+
+                # Delete old entities if configured
+                if self._delete_old_entities:
+                    try:
+                        get_req = GetEntities.Request()
+                        resp = self.client_get_entities.call(get_req)
+
+                        if (
+                            resp is not None
+                            and resp.result.result_type == Result.SUCCESS
+                        ):
+                            if resp.entities:
+                                del_req = DelEntities.Request()
+                                del_req.entityids = list(resp.entities)
+                                self.client_del_entities.call(del_req)
+                    except Exception as e:
+                        self.get_logger().warn(
+                            f"KB: Failed to delete old entities: {e}"
+                        )
+
+                # Add new entities
+                for entity in entities:
+                    try:
+                        pose = entity.get("pose")
+                        if pose is None:
+                            continue
+
+                        # Try transform to target frame, fallback to source frame
+                        try:
+                            latest_time = Time(seconds=0, nanoseconds=0)
+                            transform = self.tf_buffer.lookup_transform(
+                                self.target_frame,
+                                source_frame,
+                                latest_time,
+                                timeout=Duration(seconds=0.5),
+                            )
+
+                            pose_stamped = PoseStamped()
+                            pose_stamped.header.frame_id = source_frame
+                            pose_stamped.header.stamp = transform.header.stamp
+                            pose_stamped.pose = pose
+
+                            transformed = tf2_geometry_msgs.do_transform_pose_stamped(
+                                pose_stamped, transform
+                            )
+                            transformed_pose = transformed.pose
+                            actual_frame = self.target_frame
+                        except Exception as e:
+                            # Fallback: use source frame instead of skipping
+                            self.get_logger().warn(
+                                f"KB: Transform to '{self.target_frame}' failed, "
+                                f"using '{source_frame}': {e}"
+                            )
+                            transformed_pose = pose
+                            actual_frame = source_frame
+
+                        add_req = AddEntity.Request()
+                        add_req.data = Entity(
+                            description=f"Detected: {entity['name'].data}",
+                            pose=transformed_pose,
+                            pose_reference_frame=actual_frame,
+                            stamp=now,
+                        )
+
+                        response = self.client_add_entities.call(add_req)
+
+                        if response is not None and hasattr(response, "entityid"):
+                            saved_count += 1
+                            self.get_logger().info(
+                                f"KB: Saved '{entity['name'].data}' "
+                                f"(id={response.entityid})"
+                            )
+
+                    except Exception as e:
+                        self.get_logger().error(f"KB: Error saving entity: {e}")
+
+                if saved_count > 0:
+                    self.get_logger().info(
+                        f"KB: {saved_count}/{len(entities)} entities saved"
+                    )
+
+            except Exception as e:
+                self.get_logger().error(f"KB worker error: {e}")
+
+        self.get_logger().info("KB worker thread stopped")
 
     def camera_info_callback(self, msg: CameraInfo) -> None:
         """Extract camera intrinsics from CameraInfo message.
@@ -1180,18 +1442,19 @@ class ObjectDetection(Node):
         Returns:
             Tuple of (YOLO result, number of detections).
         """
-        # Model is already on the correct device (set during initialization)
-        # No need to pass device parameter - avoids device transfer overhead
-        results = self.model(rgb_image, verbose=False)
+        # Simple synchronous inference - Ultralytics has full control
+        results = self.model(rgb_image, verbose=False, device=self.device)
         result = results[0]
         num_detections = len(result.boxes) if hasattr(result, "boxes") else 0
-
         return result, num_detections
 
     def _extract_masks(
         self, result: Any, image_height: int, image_width: int
     ) -> np.ndarray | None:
         """Extract segmentation masks from YOLO result.
+
+        Optimized version: Performs batch resize on GPU before transferring
+        to CPU, avoiding multiple CPU-GPU transfers and sequential processing.
 
         Args:
             result: YOLO result object.
@@ -1209,21 +1472,27 @@ class ObjectDetection(Node):
         if not has_masks:
             return None
 
-        masks_raw = result.masks.data.detach().cpu().numpy()
-        if masks_raw.shape[1] != image_height or masks_raw.shape[2] != image_width:
-            masks_resized = []
-            for mask in masks_raw:
-                mask_tensor = torch.from_numpy(mask).unsqueeze(0)
-                mask_resized = torch.nn.functional.interpolate(
-                    mask_tensor.unsqueeze(0),
-                    size=(image_height, image_width),
-                    mode="bilinear",
-                    align_corners=False,
-                ).squeeze()
-                masks_resized.append(mask_resized.numpy() > 0.5)
-            return np.array(masks_resized, dtype=np.uint8)
+        # Keep masks on GPU for batch processing
+        masks_gpu = result.masks.data.detach()  # Shape: [N, H, W]
+
+        if masks_gpu.shape[1] != image_height or masks_gpu.shape[2] != image_width:
+            # Batch resize on GPU: [N, H, W] -> [N, 1, H, W] -> resize -> [N, H, W]
+            masks_resized = torch.nn.functional.interpolate(
+                masks_gpu.unsqueeze(1),  # Add channel dim: [N, H, W] -> [N, 1, H, W]
+                size=(image_height, image_width),
+                mode="bilinear",
+                align_corners=False,
+            ).squeeze(1)  # Remove channel dim: [N, 1, H, W] -> [N, H, W]
+
+            # Single sync + transfer to CPU
+            if masks_resized.is_cuda:
+                torch.cuda.synchronize()
+            return (masks_resized > 0.5).cpu().numpy().astype(np.uint8)
         else:
-            return (masks_raw > 0.5).astype(np.uint8)
+            # No resize needed - single sync + transfer
+            if masks_gpu.is_cuda:
+                torch.cuda.synchronize()
+            return (masks_gpu > 0.5).cpu().numpy().astype(np.uint8)
 
     def _should_associate_clusters(
         self,
@@ -1256,565 +1525,6 @@ class ObjectDetection(Node):
         if self.camera_intrinsics is None:
             return False
         return True
-
-    async def _transform_to_world_frame(
-        self,
-        pose: Pose,
-        pointcloud: PointCloud2 | None,
-        source_frame: str,
-        timestamp,
-    ) -> tuple[Pose, PointCloud2 | None, str]:
-        """Transform pose and point cloud from source frame to world frame.
-
-        This function performs a critical transformation that must succeed.
-        If the transform lookup fails, a fatal error is raised.
-
-        Args:
-            pose: Pose in source frame.
-            pointcloud: Optional point cloud in source frame.
-            source_frame: Source frame ID (e.g., camera frame).
-            timestamp: ROS timestamp for the transform lookup.
-
-        Returns:
-            Tuple of (transformed_pose, transformed_pointcloud, actual_frame).
-            actual_frame is the frame the pose is actually in (target_frame if
-            transform succeeded, source_frame if fallback was used).
-
-        Raises:
-            RuntimeError: If the transform lookup fails or times out.
-                This is a critical error - no fallback is provided.
-        """
-        # Timeout: Maximum time to wait for the transform to become available.
-        # If the transform from source_frame to "world" is not available within
-        # this time, the lookup will fail with a LookupException.
-        # This typically happens if:
-        # - The TF tree is not properly set up
-        # - The robot_localization or SLAM system is not running
-        # - There's a network/communication issue with the TF broadcaster
-        from rclpy.duration import Duration
-
-        # Early return if source and target frames are the same
-        if source_frame == self.target_frame:
-            # No transformation needed - return as-is
-            return pose, pointcloud, source_frame
-
-        transform_timeout = Duration(seconds=2.0)
-
-        try:
-            # Use Time(0) to request the latest available transform.
-            # This works around the issue where ROS clock time and TF time
-            # may use different epochs, causing "extrapolation into the future" errors.
-            from rclpy.time import Time
-
-            # Time(0) means "use the most recent transform available"
-            # This is the recommended way to get the latest transform when
-            # you don't care about the exact timestamp
-            latest_time = Time(seconds=0, nanoseconds=0)
-
-            # Lookup transform from source_frame to "world" frame
-            # This is a blocking call that waits up to transform_timeout seconds
-            # for the transform to become available in the TF buffer.
-            transform = await asyncio.to_thread(
-                self.tf_buffer.lookup_transform,
-                self.target_frame,  # "world"
-                source_frame,
-                latest_time,  # Time(0) = use latest available
-                timeout=transform_timeout,
-            )
-
-            # Extract the actual transform time from the result
-            # This ensures we use the timestamp from the TF data, not our request time
-            transform_time = transform.header.stamp
-
-            # Transform pose using the retrieved transform
-            pose_stamped = PoseStamped()
-            pose_stamped.pose = pose
-            pose_stamped.header.frame_id = source_frame
-            pose_stamped.header.stamp = transform_time
-            transformed_pose_stamped = tf2_geometry_msgs.do_transform_pose_stamped(
-                pose_stamped, transform
-            )
-            transformed_pose = transformed_pose_stamped.pose
-
-            # Transform point cloud if available using tf2_sensor_msgs
-            transformed_pc = None
-            if pointcloud is not None:
-                # Create a copy to avoid modifying the original
-                from copy import deepcopy
-
-                pc_copy = deepcopy(pointcloud)
-                # Point cloud should already be in source_frame (camera_tool_link)
-                # Transform directly from source_frame to target_frame (world)
-                pc_copy.header.frame_id = source_frame
-                pc_copy.header.stamp = transform_time
-                transformed_pc = tf2_sensor_msgs.do_transform_cloud(pc_copy, transform)
-                # do_transform_cloud should set the frame_id correctly, but ensure it
-                transformed_pc.header.frame_id = self.target_frame
-
-            return transformed_pose, transformed_pc, self.target_frame
-
-        except Exception as e:
-            # Transform failed - check if target frame exists
-            # If not, use source frame as fallback
-            error_str = str(e).lower()
-            if "does not exist" in error_str or "not available" in error_str:
-                # Frame doesn't exist - use source frame as fallback
-                self.get_logger().warn(
-                    f"Target frame '{self.target_frame}' not available in TF tree. "
-                    f"Saving entity in source frame '{source_frame}' instead. "
-                    f"Error: {e}"
-                )
-                # Return pose and pointcloud unchanged (in source frame)
-                return pose, pointcloud, source_frame
-            else:
-                # Other error - raise fatal error
-                error_msg = (
-                    f"CRITICAL: Failed to transform from '{source_frame}' to "
-                    f"'{self.target_frame}': {e}. "
-                    f"This indicates a problem with the TF tree or robot localization."
-                )
-                self.get_logger().fatal(error_msg)
-                raise RuntimeError(error_msg) from e
-
-    async def _update_knowledge_base(
-        self, entities: list[dict], frame_id: str, timestamp
-    ) -> int:
-        """Update knowledge base with detected entities.
-
-        Entities are transformed from the camera frame to the "world" frame
-        before being saved. If the transform fails, a critical error is raised.
-
-        Args:
-            entities: List of entity dictionaries.
-            frame_id: Source frame ID (camera frame).
-            timestamp: ROS timestamp for transform lookup.
-
-        Returns:
-            Number of entities successfully saved in the knowledge base.
-        """
-        if not self._kb_services_available:
-            return 0
-
-        # Verify services are still available
-        service_ready = (
-            self.client_get_entities.service_is_ready()
-            and self.client_add_entities.service_is_ready()
-            and self.client_del_entities.service_is_ready()
-        )
-        if not service_ready:
-            self._kb_services_available = False
-            self._start_periodic_service_check()
-            return 0
-
-        if len(entities) == 0:
-            return 0
-
-        now = self.get_clock().now().to_msg()
-        KB_TIMEOUT = 2.0
-
-        # Delete old entities created by this node before adding new ones
-        # This prevents accumulation of old entities with incorrect frames
-        # Only delete if parameter is enabled (default: True)
-        if self._delete_old_entities:
-            try:
-                # Get all existing entities
-                get_entities_req = GetEntities.Request()
-                get_entities_resp = await asyncio.wait_for(
-                    self.client_get_entities.call_async(get_entities_req),
-                    timeout=KB_TIMEOUT,
-                )
-                if (
-                    get_entities_resp is not None
-                    and get_entities_resp.result.result_type == Result.SUCCESS
-                ):
-                    # Get entity details to filter by description
-                    entity_ids_to_delete = []
-                    for entity_id in get_entities_resp.entities:
-                        # Delete all entities to ensure clean state
-                        # TODO: Implement smarter filtering (e.g., by description
-                        # "Detected:" or timestamp) to avoid deleting other entities
-                        entity_ids_to_delete.append(entity_id)
-
-                    # Delete old entities if any
-                    if entity_ids_to_delete:
-                        del_req = DelEntities.Request()
-                        del_req.entityids = entity_ids_to_delete
-                        try:
-                            del_resp = await asyncio.wait_for(
-                                self.client_del_entities.call_async(del_req),
-                                timeout=KB_TIMEOUT,
-                            )
-                            if del_resp is not None:
-                                self.get_logger().info(
-                                    f"Deleted {len(entity_ids_to_delete)} old "
-                                    f"entit(y/ies) before adding new ones"
-                                )
-                        except (asyncio.TimeoutError, Exception) as e:
-                            self.get_logger().warn(
-                                f"Failed to delete old entities: {e}. "
-                                f"Continuing with adding new entities."
-                            )
-            except (asyncio.TimeoutError, Exception) as e:
-                self.get_logger().warn(
-                    f"Failed to get existing entities for cleanup: {e}. "
-                    f"Continuing with adding new entities."
-                )
-
-        # Add entities sequentially
-        add_responses = []
-        saved_count = 0  # Track how many entities were successfully saved
-        for entity in entities:
-            try:
-                # Transform pose and point cloud from camera frame to target frame
-                # If target frame doesn't exist, fallback to source frame
-                (
-                    transformed_pose,
-                    transformed_pc,
-                    actual_frame,
-                ) = await self._transform_to_world_frame(
-                    pose=entity["pose"],
-                    pointcloud=entity.get("pointcloud"),
-                    source_frame=frame_id,
-                    timestamp=timestamp,
-                )
-
-                # Update entity dict with transformed point cloud
-                if transformed_pc is not None:
-                    entity["pointcloud"] = transformed_pc
-
-                add_entity_req = AddEntity.Request()
-                add_entity_req.data = Entity(
-                    description=f"Detected: {entity['name'].data}",
-                    pose=transformed_pose,
-                    pose_reference_frame=actual_frame,
-                    stamp=now,
-                )
-                self.get_logger().info(
-                    f"Saving entity '{entity['name'].data}' "
-                    f"with pose_reference_frame='{actual_frame}' "
-                    f"(pose: x={transformed_pose.position.x:.3f}, "
-                    f"y={transformed_pose.position.y:.3f}, "
-                    f"z={transformed_pose.position.z:.3f})"
-                )
-                try:
-                    response = await asyncio.wait_for(
-                        self.client_add_entities.call_async(add_entity_req),
-                        timeout=KB_TIMEOUT,
-                    )
-                    if response is not None and hasattr(response, "entityid"):
-                        saved_count += 1
-                    add_responses.append(response)
-                except (asyncio.TimeoutError, Exception):
-                    add_responses.append(None)
-            except RuntimeError as e:
-                # Transform failed - skip this entity (critical error, no fallback)
-                self.get_logger().error(
-                    f"Skipping entity '{entity['name'].data}' "
-                    f"due to transform failure: {e}"
-                )
-                add_responses.append(None)  # Mark as failed for shape update
-                continue
-
-        # Update entities with point clouds and bounding boxes sequentially
-        for i, entity in enumerate(entities):
-            # Skip if no shape data to update
-            if entity.get("pointcloud") is None and entity.get("boundingbox2d") is None:
-                continue
-            if i >= len(add_responses) or add_responses[i] is None:
-                continue
-            if not hasattr(add_responses[i], "entityid"):
-                continue
-            entity_id = getattr(add_responses[i], "entityid", None)
-            if entity_id is None:
-                continue
-
-            shape_msg = Shape()
-            if entity.get("pointcloud") is not None:
-                shape_msg.has_pointcloud = True
-                shape_msg.pointcloud = entity["pointcloud"]
-            else:
-                shape_msg.has_pointcloud = False
-
-            if entity.get("boundingbox2d") is not None:
-                shape_msg.has_boundingbox2d = True
-                shape_msg.boundingbox2d = entity["boundingbox2d"]
-            else:
-                shape_msg.has_boundingbox2d = False
-
-            upd_shape_req = UpdShape.Request()
-            upd_shape_req.entityid = entity_id
-            upd_shape_req.shape = shape_msg
-            upd_shape_req.stamp = now
-
-            try:
-                await asyncio.wait_for(
-                    self.client_upd_shape.call_async(upd_shape_req),
-                    timeout=KB_TIMEOUT,
-                )
-            except (asyncio.TimeoutError, Exception):
-                pass  # Continue with next entity
-
-        return saved_count
-
-    async def process_data(
-        self, rgb_msg: Image, depth_msg: Image | None = None
-    ) -> None:
-        """Process incoming RGB images and sync detections with KB.
-
-        Args:
-            rgb_msg: Incoming RGB `sensor_msgs/Image`.
-            depth_msg: Optional incoming depth `sensor_msgs/Image`.
-        """
-        if not self._camera_intrinsics_set:
-            if not self._warned_missing_intrinsics:
-                self.get_logger().warn(
-                    "Camera intrinsics not set - dropping frame. "
-                    "Waiting for camera_info topic..."
-                )
-                self._warned_missing_intrinsics = True
-            return
-
-        if self._processing_lock_async is None:
-            if not self._warned_missing_async_lock:
-                self.get_logger().warn(
-                    "Async processing lock not initialized - dropping frame. "
-                    "This should not happen if async_init() was called."
-                )
-                self._warned_missing_async_lock = True
-            return
-
-        # Check if already processing (async lock prevents parallel processing)
-        # Note: processing_timeout is disabled (0.0) -
-        # rely on _processing_frame flag only
-        async with self._processing_lock_async:
-            if self._processing_frame:
-                self._frames_skipped += 1
-                return
-            self._processing_frame = True
-            self._frames_processed += 1
-
-            # Update last processing time
-            current_time = time.perf_counter()
-            self._last_processing_time = current_time
-
-            # Start timer for total processing time
-            t_start = time.perf_counter()
-
-            try:
-                # Convert ROS image to numpy array (BGR to RGB)
-                bgr_image = self.bridge.imgmsg_to_cv2(rgb_msg, desired_encoding="bgr8")
-                rgb_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2RGB)
-                original_height, original_width = rgb_image.shape[:2]
-
-                # Scale image to 640x640 for YOLO inference (square input)
-                scale_factor_x = 1.0
-                scale_factor_y = 1.0
-                yolo_image = rgb_image
-                if self.max_image_width > 0:
-                    # Scale to square 640x640
-                    yolo_size = self.max_image_width
-                    scale_factor_x = yolo_size / original_width
-                    scale_factor_y = yolo_size / original_height
-                    yolo_image = cv2.resize(
-                        rgb_image,
-                        (yolo_size, yolo_size),
-                        interpolation=cv2.INTER_LINEAR,
-                    )
-
-                # Run YOLO inference (synchronous)
-                t_yolo_start = time.perf_counter()
-                result, num_detections = self._run_yolo_inference(yolo_image)
-                t_yolo_end = time.perf_counter()
-                inference_time_ms = (t_yolo_end - t_yolo_start) * 1000
-
-                # Free large image arrays immediately after inference to reduce memory
-                # pressure (helps prevent swap during slow inference)
-                if yolo_image is not rgb_image:  # Only delete if it's a separate array
-                    del yolo_image
-                del rgb_image
-                del bgr_image
-
-                # Get device info for diagnostics
-                device_info = "unknown"
-                if hasattr(result, "boxes") and result.boxes is not None:
-                    if hasattr(result.boxes, "data") and result.boxes.data is not None:
-                        if hasattr(result.boxes.data, "device"):
-                            device_info = str(result.boxes.data.device)
-
-                # Log inference time with device info
-                self.get_logger().info(
-                    f"YOLO inference: {inference_time_ms:.1f}ms (device: {device_info})"
-                )
-                if num_detections > 0:
-                    # Log what YOLO classified
-                    if hasattr(result, "boxes") and hasattr(result.boxes, "cls"):
-                        class_ids = result.boxes.cls.cpu().numpy().astype(int)
-                        confidences = (
-                            result.boxes.conf.cpu().numpy()
-                            if hasattr(result.boxes, "conf")
-                            else None
-                        )
-                        detections = []
-                        for i, class_id in enumerate(class_ids):
-                            class_name = self.model.names[class_id]
-                            if confidences is not None:
-                                detections.append(
-                                    f"{class_name} ({confidences[i]:.2f})"
-                                )
-                            else:
-                                detections.append(class_name)
-                        detections_str = ", ".join(detections)
-                        self.get_logger().info(
-                            f"{num_detections} object(s) detected: {detections_str}"
-                        )
-                    else:
-                        self.get_logger().info(f"{num_detections} object(s) detected")
-
-                # Scale bounding boxes back to original image size if image was scaled
-                if (scale_factor_x != 1.0 or scale_factor_y != 1.0) and hasattr(
-                    result, "boxes"
-                ):
-                    # YOLO boxes need to be scaled back to original image coordinates
-                    # Only scale xywh (the base format) - xyxy is computed from xywh
-                    boxes = result.boxes
-                    if hasattr(boxes, "xywh") and boxes.xywh is not None:
-                        # Scale xywh format (center x, center y, width, height)
-                        boxes.xywh[:, 0] = boxes.xywh[:, 0] / scale_factor_x  # x_center
-                        boxes.xywh[:, 1] = boxes.xywh[:, 1] / scale_factor_y  # y_center
-                        boxes.xywh[:, 2] = boxes.xywh[:, 2] / scale_factor_x  # width
-                        boxes.xywh[:, 3] = boxes.xywh[:, 3] / scale_factor_y  # height
-                        # Note: xyxy is a computed property and will be automatically
-                        # updated based on the scaled xywh values
-
-                # Extract segmentation masks
-                # For depth processing, scale masks to depth image size
-                # For entity generation, scale masks to original RGB size
-                masks_for_depth = None
-                masks_for_entities = None
-
-                if depth_msg is not None and self.use_depth and num_detections > 0:
-                    # Extract masks scaled to depth image size for depth processing
-                    masks_for_depth = self._extract_masks(
-                        result, depth_msg.height, depth_msg.width
-                    )
-                    # Also extract masks scaled to original RGB size for entities
-                    masks_for_entities = self._extract_masks(
-                        result, original_height, original_width
-                    )
-                elif num_detections > 0:
-                    # Only extract masks for entities (no depth processing)
-                    masks_for_entities = self._extract_masks(
-                        result, original_height, original_width
-                    )
-
-                # Use masks_for_entities for entity generation
-                masks = masks_for_entities
-
-                # Process depth data with mask-based filtering
-                # Skip depth processing if no detections (saves memory)
-                clusters = []
-                if depth_msg is not None and self.use_depth and num_detections > 0:
-                    try:
-                        _, clusters = await asyncio.to_thread(
-                            self._process_depth_with_masks,
-                            depth_msg,
-                            masks_for_depth,  # Use depth-scaled masks
-                        )
-                        if len(clusters) > 0:
-                            self.get_logger().info(
-                                f"{len(clusters)} cluster(s) detected"
-                            )
-                    except Exception as e:
-                        self.get_logger().error(
-                            f"Depth processing failed: {e}", exc_info=True
-                        )
-                        clusters = []
-
-                # Associate clusters to detections using masks
-                associations = []
-                if (
-                    self._should_associate_clusters(
-                        depth_msg, clusters, masks, num_detections
-                    )
-                    and masks is not None
-                    and self.camera_intrinsics is not None
-                ):
-                    associations = self._associate_clusters_to_masks(
-                        clusters,
-                        masks,
-                        self.camera_intrinsics,
-                        rgb_msg.width,
-                        rgb_msg.height,
-                    )
-                    successful_associations = [
-                        a for a in associations if a.get("cluster") is not None
-                    ]
-                    if len(successful_associations) < num_detections:
-                        self.get_logger().warn(
-                            f"Only {len(successful_associations)}/{num_detections} "
-                            f"detections have associated clusters. "
-                            f"This may indicate insufficient depth data or "
-                            f"cluster detection issues."
-                        )
-
-                # Generate entities from YOLO results
-                boxes = getattr(result, "boxes", None)
-                if boxes is None or len(boxes) == 0:
-                    entities = []
-                else:
-                    entities = generate_entities_from_yolo_result(
-                        result=result,
-                        class_names=self.model.names,
-                        frame=None,
-                        use_segmentation=self.use_segmentation,
-                        cluster_associations=associations if associations else None,
-                        frame_id=rgb_msg.header.frame_id,  # Original frame
-                        # (will be transformed to camera_tool_link then world)
-                        timestamp=rgb_msg.header.stamp,
-                        max_points=self.point_cloud_max_points,
-                    )
-                    if len(entities) > 0:
-                        entity_names = [e["name"].data for e in entities]
-                        entity_str = f"{len(entities)} entit(y/ies) created: "
-                        entity_str += ", ".join(entity_names)
-                        self.get_logger().info(entity_str)
-
-                # Update knowledge base
-                if len(entities) > 0:
-                    saved_count = await self._update_knowledge_base(
-                        entities, self.source_frame, rgb_msg.header.stamp
-                    )
-                    t_total = (time.perf_counter() - t_start) * 1000
-                    if saved_count > 0:
-                        self.get_logger().info(
-                            f"{saved_count} of {len(entities)} entit(y/ies) "
-                            f"saved in KB (total processing time: {t_total:.2f}ms)"
-                        )
-                    else:
-                        self.get_logger().warn(
-                            f"None of {len(entities)} entit(y/ies) could be saved "
-                            f"in KB (likely transform failures) "
-                            f"(total time: {t_total:.2f}ms)"
-                        )
-                else:
-                    t_total = (time.perf_counter() - t_start) * 1000
-                    self.get_logger().info(
-                        f"Frame processed (no entities) "
-                        f"(total processing time: {t_total:.2f}ms)"
-                    )
-
-                # Free large arrays after processing to reduce memory pressure
-                # This helps prevent swap during slow inference
-                del masks_for_depth
-                del masks_for_entities
-                del masks
-                del clusters
-                del result
-            finally:
-                # Always reset processing flag, even if error occurred
-                self._processing_frame = False
-
-    # Visualization functions removed for performance reasons
 
 
 def voxel_downsample(

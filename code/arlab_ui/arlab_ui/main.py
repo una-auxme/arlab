@@ -97,7 +97,7 @@ class App(tk.Tk):
         self.outgoing_queue: "queue.Queue[str]" = queue.Queue()
 
         self.ros_error_queue: "queue.Queue[str]" = queue.Queue()
-        self.ros_error_buffer: list[str] = []  # keeps errors even when error box hidden
+        self.ros_error_buffer: list[str] = [] 
 
         self.ros_node = None
 
@@ -315,6 +315,7 @@ class App(tk.Tk):
     def _on_toggle(self):
         self._rebuild_tabs()
 
+    # --------- Screensaver ----------
     def _build_screensaver(self, image_path: str):
         # Full-window overlay
         self._screensaver_frame = tk.Frame(
@@ -355,7 +356,6 @@ class App(tk.Tk):
 
     def _show_screensaver(self):
         self._screensaver_on = True
-        # Cover entire window
         self._screensaver_frame.place(x=0, y=0, relwidth=1, relheight=1)
         self._screensaver_frame.lift()
 
@@ -364,7 +364,7 @@ class App(tk.Tk):
         self._screensaver_frame.place_forget()
 
     def _on_user_activity(self, event=None):
-        # If saver is on, first interaction wakes it
+        # Wake on first interaction
         if getattr(self, "_screensaver_on", False):
             self._hide_screensaver()
 
@@ -422,7 +422,7 @@ class App(tk.Tk):
             outgoing_queue=self.outgoing_queue,
             ros_error_queue=self.ros_error_queue,
             rosout_topic="/rosout",
-            min_severity=Log.WARN,  # or Log.WARN or Log.Error
+            min_severity=Log.WARN,  # Log.WARN or Log.Error
         )
 
         try:

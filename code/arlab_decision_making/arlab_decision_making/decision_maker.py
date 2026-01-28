@@ -22,6 +22,7 @@ from .behaviours.test_trees import (
     test_manipulation_home_move_seq,
     test_manipulation_move,
     test_manipulation_video_sequence,
+    test_manipulation_dr6_video,
 )
 
 
@@ -57,6 +58,8 @@ def get_tree(task: str) -> Behaviour:
         chosen_task = test_manipulation_home_move_seq
     elif task == "test_grab_seq":
         chosen_task = test_manipulation_video_sequence
+    elif task == "test_grab_dr6":
+        chosen_task = test_manipulation_dr6_video
     else:
         raise ValueError(f"Unknown task: {task}")
 

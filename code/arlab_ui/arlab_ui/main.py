@@ -156,7 +156,7 @@ class App(tk.Tk):
         header.grid(row=0, column=0, sticky="ew")
         header.columnconfigure(0, weight=1)
 
-        ttk.Label(header, text="Global tabs").grid(row=0, column=0, sticky="w")
+        ttk.Label(header, text="Tabs").grid(row=0, column=0, sticky="w")
 
         ttk.Checkbutton(
             header,

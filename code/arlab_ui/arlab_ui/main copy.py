@@ -8,8 +8,6 @@ from pathlib import Path
 import threading
 import queue
 
-from rclpy.qos import QoSProfile, QoSDurabilityPolicy, QoSReliabilityPolicy
-
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
@@ -41,20 +39,7 @@ class RosBridge(Node):
         self.pub = self.create_publisher(String, pub_topic, 10)
 
         # Subscribe to /rosout for logs/errors
-        rosout_qos = QoSProfile(
-            depth=100,
-            reliability=QoSReliabilityPolicy.BEST_EFFORT,
-            durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
-        )
-
-        self.rosout_sub = self.create_subscription(
-            Log,
-            rosout_topic,
-            self._on_rosout,
-            rosout_qos,
-        )
-
-
+        self.rosout_sub = self.create_subscription(Log, rosout_topic, self._on_rosout, 50)
 
         self.timer = self.create_timer(0.05, self._drain_outgoing)
 

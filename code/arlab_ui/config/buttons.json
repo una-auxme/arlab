@@ -1,12 +1,40 @@
 {
-    "button_list": [
+    "buttons": [
         {
-            "button_name": "xyz",
-            "button_cmd": "ros2 launch ..."
+            "name": "List files",
+            "cmd": "ls -la"
         },
         {
-            "button_name": "abc",
-            "button_cmd": "ros2 run ..."
+            "name": "Show date",
+            "cmd": "date"
+        },
+        {
+            "name": "Echo hi",
+            "cmd": "echo hi"
+        },
+        {
+            "name": "List files2",
+            "cmd": "ls -la"
+        },
+        {
+            "name": "Show date2",
+            "cmd": "date"
+        },
+        {
+            "name": "Echo hi2",
+            "cmd": "echo hi"
+        },
+        {
+            "name": "List files3",
+            "cmd": "ls -la"
+        },
+        {
+            "name": "Show date3",
+            "cmd": "date"
+        },
+        {
+            "name": "Echo hi3",
+            "cmd": "echo hi"
         }
     ]
 }

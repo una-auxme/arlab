@@ -83,6 +83,10 @@ class App(tk.Tk):
         self.title("Zirbi Touchscreen UI")
         self.geometry("900x600")
 
+        icon = tk.PhotoImage(file="src/arlab/code/arlab_ui/assets/Zirbi.png")
+        self.iconphoto(True, icon)
+
+
         self.buttons_data = []
         self.secondary_enabled = tk.BooleanVar(value=False)
 
@@ -100,6 +104,20 @@ class App(tk.Tk):
         self._build_layout()
         self._load_config()
         self._rebuild_tabs()
+
+        self.screensaver_seconds = 10  # inactivity timeout
+        self._screensaver_on = False
+
+        self._build_screensaver("/workspace/src/arlab/code/arlab_ui/assets/Zirbi.png")
+
+        # Any user interaction resets timer + hides saver
+        self.bind_all("<Any-KeyPress>", self._on_user_activity)
+        self.bind_all("<Any-Button>", self._on_user_activity)
+        self.bind_all("<Motion>", self._on_user_activity)
+
+        # Touchscreens sometimes behave like mouse button events; this covers most cases.
+        self._reset_screensaver_timer()
+
 
         # ROS thread + Tk polling
         self.ros_thread = threading.Thread(target=self._ros_spin, daemon=True)
@@ -297,6 +315,62 @@ class App(tk.Tk):
     def _on_toggle(self):
         self._rebuild_tabs()
 
+    def _build_screensaver(self, image_path: str):
+        # Full-window overlay
+        self._screensaver_frame = tk.Frame(
+            self,
+            bg="white",
+            bd=0,
+            highlightthickness=0,
+            relief="flat"
+            )
+        self._screensaver_frame.place_forget()  # hidden initially
+
+        # Load & keep reference
+        self._screensaver_img = tk.PhotoImage(file=image_path)
+
+        self._screensaver_label = tk.Label(
+            self._screensaver_frame,
+            image=self._screensaver_img,
+            bg="white",
+            padx=0,
+            pady=0,
+            bd=0,
+            highlightthickness=0,
+        )
+        self._screensaver_label.pack(fill="both", expand=True, padx=0, pady=0)
+
+    def _reset_screensaver_timer(self):
+        # Cancel old timer if exists
+        if hasattr(self, "_screensaver_after_id") and self._screensaver_after_id is not None:
+            try:
+                self.after_cancel(self._screensaver_after_id)
+            except Exception:
+                pass
+
+        self._screensaver_after_id = self.after(
+            int(self.screensaver_seconds * 1000),
+            self._show_screensaver
+        )
+
+    def _show_screensaver(self):
+        self._screensaver_on = True
+        # Cover entire window
+        self._screensaver_frame.place(x=0, y=0, relwidth=1, relheight=1)
+        self._screensaver_frame.lift()
+
+    def _hide_screensaver(self):
+        self._screensaver_on = False
+        self._screensaver_frame.place_forget()
+
+    def _on_user_activity(self, event=None):
+        # If saver is on, first interaction wakes it
+        if getattr(self, "_screensaver_on", False):
+            self._hide_screensaver()
+
+        self._reset_screensaver_timer()
+
+
     # ---------- ROS errors -> error box (when visible) ----------
     def _append_error(self, line: str):
         self.ros_error_buffer.append(line)
@@ -308,8 +382,6 @@ class App(tk.Tk):
         if target is not None:
             target.insert("end", line + "\n")
             target.see("end")
-        else:
-            self._append_chat(line)
 
     def _drain_ros_errors(self):
         try:

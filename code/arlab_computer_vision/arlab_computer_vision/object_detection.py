@@ -632,9 +632,7 @@ class ObjectDetection(Node):
             return len(entities)
         except queue.Full:
             # Queue full - drop this update to avoid blocking main thread
-            self.get_logger().warn(
-                f"KB queue full, dropping {len(entities)} entities"
-            )
+            self.get_logger().warn(f"KB queue full, dropping {len(entities)} entities")
             return 0
 
     def _kb_worker(self):

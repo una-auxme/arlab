@@ -319,6 +319,9 @@ class ObjectDetection(Node):
         self._fy: float | None = None
         self._cx: float | None = None
         self._cy: float | None = None
+        # Store RGB image resolution for intrinsics scaling
+        self._rgb_width: int | None = None
+        self._rgb_height: int | None = None
 
         # Track warnings to avoid spam
         self._warned_missing_intrinsics = False
@@ -957,6 +960,10 @@ class ObjectDetection(Node):
             "cy": K[1, 2],
         }
 
+        # Store RGB image resolution for intrinsics scaling
+        self._rgb_width = msg.width
+        self._rgb_height = msg.height
+
         # Only log if this is the first time or if values changed
         if not self._camera_intrinsics_set:
             self.camera_intrinsics = new_intrinsics
@@ -979,6 +986,37 @@ class ObjectDetection(Node):
             self._cx = new_intrinsics["cx"]
             self._cy = new_intrinsics["cy"]
 
+    def _scale_intrinsics_for_depth(
+        self, intrinsics: dict[str, float], depth_width: int, depth_height: int
+    ) -> dict[str, float]:
+        """Scale camera intrinsics to match depth image resolution.
+
+        Args:
+            intrinsics: Camera intrinsics dict for RGB image resolution.
+            depth_width: Width of depth image.
+            depth_height: Height of depth image.
+
+        Returns:
+            Scaled intrinsics dict with keys: fx, fy, cx, cy.
+        """
+        if (
+            self._rgb_width is not None
+            and self._rgb_height is not None
+            and (depth_width != self._rgb_width or depth_height != self._rgb_height)
+        ):
+            # Scale intrinsics proportionally to depth image resolution
+            scale_x = depth_width / self._rgb_width
+            scale_y = depth_height / self._rgb_height
+            return {
+                "fx": intrinsics["fx"] * scale_x,
+                "fy": intrinsics["fy"] * scale_y,
+                "cx": intrinsics["cx"] * scale_x,
+                "cy": intrinsics["cy"] * scale_y,
+            }
+        else:
+            # Use intrinsics directly if resolutions match or RGB resolution unknown
+            return intrinsics.copy()
+
     def _depth_to_point_cloud(
         self, depth_image: np.ndarray, intrinsics: dict[str, float]
     ) -> np.ndarray:
@@ -987,16 +1025,20 @@ class ObjectDetection(Node):
         Args:
             depth_image: Depth image as numpy array (H x W), values in meters.
             intrinsics: Camera intrinsics dict with keys: fx, fy, cx, cy.
+                These intrinsics are for the RGB image resolution and will be
+                scaled to match the depth image resolution.
 
         Returns:
             Point cloud as numpy array (N x 3) where each row is [x, y, z]
             in camera frame. Invalid points (depth=0 or NaN) are filtered out.
         """
         height, width = depth_image.shape
-        fx = intrinsics["fx"]
-        fy = intrinsics["fy"]
-        cx = intrinsics["cx"]
-        cy = intrinsics["cy"]
+        # Scale intrinsics to match depth image resolution
+        scaled_intrinsics = self._scale_intrinsics_for_depth(intrinsics, width, height)
+        fx = scaled_intrinsics["fx"]
+        fy = scaled_intrinsics["fy"]
+        cx = scaled_intrinsics["cx"]
+        cy = scaled_intrinsics["cy"]
 
         # Create pixel coordinate grids
         u, v = np.meshgrid(np.arange(width), np.arange(height))
@@ -1070,11 +1112,12 @@ class ObjectDetection(Node):
             mask_bool = mask.astype(bool)
             combined_mask = combined_mask | mask_bool
 
-        # Extract camera intrinsics
-        fx = intrinsics["fx"]
-        fy = intrinsics["fy"]
-        cx = intrinsics["cx"]
-        cy = intrinsics["cy"]
+        # Scale intrinsics to match depth image resolution
+        scaled_intrinsics = self._scale_intrinsics_for_depth(intrinsics, width, height)
+        fx = scaled_intrinsics["fx"]
+        fy = scaled_intrinsics["fy"]
+        cx = scaled_intrinsics["cx"]
+        cy = scaled_intrinsics["cy"]
 
         # Create pixel coordinate grids
         u, v = np.meshgrid(np.arange(width), np.arange(height))
@@ -1145,11 +1188,12 @@ class ObjectDetection(Node):
             )
             return np.array([]).reshape(0, 3), []
 
-        # Extract camera intrinsics
-        fx = intrinsics["fx"]
-        fy = intrinsics["fy"]
-        cx = intrinsics["cx"]
-        cy = intrinsics["cy"]
+        # Scale intrinsics to match depth image resolution
+        scaled_intrinsics = self._scale_intrinsics_for_depth(intrinsics, width, height)
+        fx = scaled_intrinsics["fx"]
+        fy = scaled_intrinsics["fy"]
+        cx = scaled_intrinsics["cx"]
+        cy = scaled_intrinsics["cy"]
 
         # Create pixel coordinate grids once
         u_grid, v_grid = np.meshgrid(np.arange(width), np.arange(height))
@@ -1333,16 +1377,38 @@ class ObjectDetection(Node):
         if len(points_3d) == 0:
             return None
 
-        # Use cached values if available
+        # Scale intrinsics to match image resolution (for depth images)
+        if image_width is None or image_height is None:
+            return None
+
         if intrinsics is None:
-            if self._fx is None:
+            if (
+                self._fx is None
+                or self._fy is None
+                or self._cx is None
+                or self._cy is None
+                or self._rgb_width is None
+                or self._rgb_height is None
+            ):
                 return None
-            fx, fy, cx, cy = self._fx, self._fy, self._cx, self._cy
+            # Scale cached intrinsics if needed
+            if image_width != self._rgb_width or image_height != self._rgb_height:
+                scale_x = image_width / self._rgb_width
+                scale_y = image_height / self._rgb_height
+                fx = self._fx * scale_x
+                fy = self._fy * scale_y
+                cx = self._cx * scale_x
+                cy = self._cy * scale_y
+            else:
+                fx, fy, cx, cy = self._fx, self._fy, self._cx, self._cy
         else:
-            fx = intrinsics["fx"]
-            fy = intrinsics["fy"]
-            cx = intrinsics["cx"]
-            cy = intrinsics["cy"]
+            scaled_intrinsics = self._scale_intrinsics_for_depth(
+                intrinsics, image_width, image_height
+            )
+            fx = scaled_intrinsics["fx"]
+            fy = scaled_intrinsics["fy"]
+            cx = scaled_intrinsics["cx"]
+            cy = scaled_intrinsics["cy"]
 
         # Vectorized projection: [N, 3] -> [N, 2]
         x, y, z = points_3d[:, 0], points_3d[:, 1], points_3d[:, 2]
@@ -1541,10 +1607,14 @@ class ObjectDetection(Node):
                 for i in range(len(masks))
             ]
 
-        fx = intrinsics["fx"]
-        fy = intrinsics["fy"]
-        cx = intrinsics["cx"]
-        cy = intrinsics["cy"]
+        # Scale intrinsics to match image resolution (for depth images)
+        scaled_intrinsics = self._scale_intrinsics_for_depth(
+            intrinsics, image_width, image_height
+        )
+        fx = scaled_intrinsics["fx"]
+        fy = scaled_intrinsics["fy"]
+        cx = scaled_intrinsics["cx"]
+        cy = scaled_intrinsics["cy"]
 
         # Initialize associations: one per detection
         associations: list[dict[str, Any]] = [

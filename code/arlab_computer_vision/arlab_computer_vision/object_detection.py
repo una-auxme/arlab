@@ -72,7 +72,7 @@ class ObjectDetection(Node):
         default_yolo_weights = os.path.join(
             package_share_dir,
             "yolo_weights",
-            "yolo11n-seg.pt",  # 'yolo11n-trained.pt' for detection model
+            "yolo11n-seg-fruit-final.pt",  # 'yolo11n-trained.pt' for detection model
         )
 
         # Declare configurable parameters.
@@ -95,8 +95,10 @@ class ObjectDetection(Node):
         # Maximum image width for YOLO inference (0 = no scaling)
         # Reduces memory usage and speeds up inference for large images
         self.declare_parameter("max_image_width", 640)
+        # Source frame for TF transformations (camera frame)
+        self.declare_parameter("source_frame", "camera_tool_link")
         # Target frame for TF transformations (default: "world")
-        # If frame doesn't exist, entities will be saved in source frame
+        # If frame doesn't exist, entities will NOT be saved (only warning logged)
         self.declare_parameter("target_frame", "world")
 
         # Load parameters.
@@ -354,6 +356,14 @@ class ObjectDetection(Node):
         # Check services availability initially
         self._check_kb_services()
 
+        # Load source frame parameter
+        self.source_frame = (
+            self.get_parameter("source_frame").get_parameter_value().string_value
+        )
+        self.get_logger().info(
+            f"Source frame for TF transformations: '{self.source_frame}'"
+        )
+
         # Load target frame parameter
         self.target_frame = (
             self.get_parameter("target_frame").get_parameter_value().string_value
@@ -365,7 +375,6 @@ class ObjectDetection(Node):
         # TF2 Buffer for coordinate frame transformations
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
-        self.source_frame = "camera_tool_link"  # Source frame for transformations
 
         # Subscribe to camera info (async; sets intrinsics once available).
         self.create_subscription(
@@ -725,21 +734,20 @@ class ObjectDetection(Node):
                                 pose_stamped, transform
                             )
                             transformed_pose = transformed.pose
-                            actual_frame = self.target_frame
                         except Exception as e:
-                            # Fallback: use source frame instead of skipping
+                            # Transform failed - log warning and skip entity
                             self.get_logger().warn(
-                                f"KB: Transform to '{self.target_frame}' failed, "
-                                f"using '{source_frame}': {e}"
+                                f"KB: Transform to '{self.target_frame}' failed for "
+                                f"'{entity['name'].data}', entity not saved: {e}"
                             )
-                            transformed_pose = pose
-                            actual_frame = source_frame
+                            continue  # Skip to next entity
 
+                        # Transform succeeded - add entity to KB
                         add_req = AddEntity.Request()
                         add_req.data = Entity(
                             description=f"Detected: {entity['name'].data}",
                             pose=transformed_pose,
-                            pose_reference_frame=actual_frame,
+                            pose_reference_frame=self.target_frame,
                             stamp=now,
                         )
 

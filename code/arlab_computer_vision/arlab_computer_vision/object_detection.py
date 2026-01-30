@@ -87,6 +87,8 @@ class ObjectDetection(Node):
         self.declare_parameter("processing_timeout", 0.0)
         # Delete old entities before adding new ones
         self.declare_parameter("delete_old_entities", True)
+        # Clear DB when no objects are detected (keeps DB in sync with camera)
+        self.declare_parameter("clear_db_on_no_detection", True)
         # Maximum number of points per entity point cloud
         # (0 = no limit, not recommended due to OOM risk)
         self.declare_parameter("point_cloud_max_points", 10000)
@@ -159,6 +161,16 @@ class ObjectDetection(Node):
             self.get_parameter("delete_old_entities").get_parameter_value().bool_value
         )
         self.get_logger().info(f"Delete old entities: {self._delete_old_entities}")
+
+        # Load clear DB on no detection parameter
+        self._clear_db_on_no_detection = (
+            self.get_parameter("clear_db_on_no_detection")
+            .get_parameter_value()
+            .bool_value
+        )
+        self.get_logger().info(
+            f"Clear DB on no detection: {self._clear_db_on_no_detection}"
+        )
 
         # Load point cloud max points parameter
         self.point_cloud_max_points = (
@@ -577,11 +589,12 @@ class ObjectDetection(Node):
             postprocess_ms = (time.perf_counter() - t_post) * 1000
 
             # === 4. KB UPDATE (Queued - non-blocking) ===
-            # Always call to ensure DB reflects current camera state
-            # (clears old entities even when nothing is detected)
-            queued_count = self._update_kb_sync(
-                entities, self.source_frame, rgb_msg.header.stamp
-            )
+            # Update KB if entities detected OR if clear_db_on_no_detection enabled
+            queued_count = 0
+            if entities or self._clear_db_on_no_detection:
+                queued_count = self._update_kb_sync(
+                    entities, self.source_frame, rgb_msg.header.stamp
+                )
 
             # Timing summary
             total_ms = (time.perf_counter() - t_start) * 1000

@@ -314,6 +314,9 @@ class ObjectDetection(Node):
 
         self.camera_intrinsics: dict[str, float] | None = None
         self._camera_intrinsics_set = False
+        # Separate depth camera intrinsics (if available)
+        self.depth_camera_intrinsics: dict[str, float] | None = None
+        self._depth_camera_intrinsics_set = False
         # Cached intrinsics values for faster access
         self._fx: float | None = None
         self._fy: float | None = None
@@ -322,6 +325,9 @@ class ObjectDetection(Node):
         # Store RGB image resolution for intrinsics scaling
         self._rgb_width: int | None = None
         self._rgb_height: int | None = None
+        # Store depth image resolution
+        self._depth_width: int | None = None
+        self._depth_height: int | None = None
 
         # Track warnings to avoid spam
         self._warned_missing_intrinsics = False
@@ -387,6 +393,19 @@ class ObjectDetection(Node):
             qos_profile=1,
         )
         self.get_logger().info("Subscribed to camera_info topic")
+
+        # Subscribe to depth camera info if available (for separate depth intrinsics)
+        # Note: This is optional - if not available, RGB intrinsics will be scaled
+        self.create_subscription(
+            CameraInfo,
+            "depth_camera_info",
+            self.depth_camera_info_callback,
+            qos_profile=1,
+        )
+        self.get_logger().info(
+            "Subscribed to depth_camera_info topic "
+            "(will use scaled RGB intrinsics if not available)"
+        )
 
         # Subscribe to RGB and depth image streams with synchronization.
         if self.use_depth:
@@ -986,19 +1005,64 @@ class ObjectDetection(Node):
             self._cx = new_intrinsics["cx"]
             self._cy = new_intrinsics["cy"]
 
+    def depth_camera_info_callback(self, msg: CameraInfo) -> None:
+        """Extract depth camera intrinsics from CameraInfo message.
+
+        Args:
+            msg: Depth CameraInfo message with intrinsic matrix K.
+        """
+        K = np.array(msg.k, dtype=float).reshape(3, 3)
+        new_intrinsics = {
+            "fx": K[0, 0],
+            "fy": K[1, 1],
+            "cx": K[0, 2],
+            "cy": K[1, 2],
+        }
+
+        # Store depth image resolution
+        self._depth_width = msg.width
+        self._depth_height = msg.height
+
+        # Only log if this is the first time or if values changed
+        if not self._depth_camera_intrinsics_set:
+            self.depth_camera_intrinsics = new_intrinsics
+            self._depth_camera_intrinsics_set = True
+            self.get_logger().info(
+                f"Depth camera intrinsics set: {msg.width}x{msg.height}, "
+                f"fx={K[0, 0]:.1f}, fy={K[1, 1]:.1f}"
+            )
+        else:
+            # Update silently (intrinsics shouldn't change, but update just in case)
+            self.depth_camera_intrinsics = new_intrinsics
+
     def _scale_intrinsics_for_depth(
         self, intrinsics: dict[str, float], depth_width: int, depth_height: int
     ) -> dict[str, float]:
-        """Scale camera intrinsics to match depth image resolution.
+        """Get camera intrinsics for depth image resolution.
+
+        If depth camera intrinsics are available, use them directly.
+        Otherwise, scale RGB intrinsics to match depth image resolution.
 
         Args:
-            intrinsics: Camera intrinsics dict for RGB image resolution.
+            intrinsics: Camera intrinsics dict (RGB, used as fallback).
             depth_width: Width of depth image.
             depth_height: Height of depth image.
 
         Returns:
-            Scaled intrinsics dict with keys: fx, fy, cx, cy.
+            Intrinsics dict with keys: fx, fy, cx, cy for depth image resolution.
         """
+        # Prefer depth camera intrinsics if available and resolution matches
+        if (
+            self.depth_camera_intrinsics is not None
+            and self._depth_width is not None
+            and self._depth_height is not None
+            and depth_width == self._depth_width
+            and depth_height == self._depth_height
+        ):
+            # Use depth camera intrinsics directly (no scaling needed)
+            return self.depth_camera_intrinsics.copy()
+
+        # Fallback: Scale RGB intrinsics to match depth image resolution
         if (
             self._rgb_width is not None
             and self._rgb_height is not None

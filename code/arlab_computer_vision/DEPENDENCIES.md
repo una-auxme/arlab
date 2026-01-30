@@ -12,12 +12,14 @@
 ## Python Packages
 
 ### Core (requirements.txt)
+
 - `ultralytics` - YOLO models
 - `numpy` - Numerical operations
 - `opencv-python` - Image processing
 - `scikit-learn` - Clustering (DBSCAN)
 
 ### PyTorch (choose one)
+
 - **CUDA** (`requirements.cuda.txt`): PyTorch with CUDA support
 - **CPU** (`requirements.cpu.txt`): PyTorch CPU-only
 - **ROCm** (`requirements.rocm.txt`): PyTorch with AMD GPU support

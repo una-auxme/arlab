@@ -24,7 +24,7 @@ import tf2_geometry_msgs
 import torch
 from ament_index_python.packages import get_package_share_directory
 from arlab_asyncio_executor.executors import AsyncIOExecutor
-from arlab_knowledge_interfaces.msg import Entity, Result
+from arlab_knowledge_interfaces.msg import Entity, Result, Shape
 from arlab_knowledge_interfaces.srv import AddEntity, DelEntities, GetEntities, UpdShape
 from cv_bridge import CvBridge
 from geometry_msgs.msg import Point, Pose, PoseStamped, Quaternion
@@ -99,7 +99,7 @@ class ObjectDetection(Node):
         self.declare_parameter("source_frame", "camera_tool_link")
         # Target frame for TF transformations (default: "world")
         # If frame doesn't exist, entities will NOT be saved (only warning logged)
-        self.declare_parameter("target_frame", "world")
+        self.declare_parameter("target_frame", "camera_tool_link")
 
         # Load parameters.
         yolo_weights = (
@@ -563,24 +563,89 @@ class ObjectDetection(Node):
 
                 # Depth processing (synchronous, no threading)
                 clusters = []
+                masks_for_depth = None
                 if depth_msg is not None and self.use_depth:
+                    self.get_logger().debug(
+                        f"Processing depth data: depth_msg size "
+                        f"{depth_msg.width}x{depth_msg.height}, "
+                        f"use_depth={self.use_depth}, "
+                        f"use_clustering={self.use_clustering}"
+                    )
                     masks_for_depth = self._extract_masks(
                         result, depth_msg.height, depth_msg.width
                     )
                     if masks_for_depth is not None:
+                        self.get_logger().debug(
+                            f"Extracted {len(masks_for_depth)} mask(s) "
+                            f"for depth processing"
+                        )
                         _, clusters = self._process_depth_with_masks(
                             depth_msg, masks_for_depth
                         )
+                    else:
+                        self.get_logger().info(
+                            "No masks extracted for depth processing - "
+                            "using global point cloud clustering"
+                        )
+                        # Fallback: Create global point cloud and cluster
+                        # even without masks (for detection models)
+                        _, clusters = self._process_depth_with_masks(
+                            depth_msg,
+                            None,  # No masks - will use global clustering
+                        )
+                        self.get_logger().info(
+                            f"Global clustering result: {len(clusters)} cluster(s)"
+                        )
+                else:
+                    if depth_msg is None:
+                        self.get_logger().debug("No depth message available")
+                    if not self.use_depth:
+                        self.get_logger().debug("use_depth is False")
 
                 # Associate clusters
                 associations = []
-                if clusters and masks is not None and self.camera_intrinsics:
+                # Use masks_for_depth for association since clusters come from depth
+                masks_for_association = (
+                    masks_for_depth if masks_for_depth is not None else masks
+                )
+                if (
+                    clusters
+                    and masks_for_association is not None
+                    and self.camera_intrinsics
+                ):
+                    # Use depth dimensions for association
+                    # (clusters come from depth)
+                    assoc_width = (
+                        depth_msg.width if depth_msg is not None else rgb_msg.width
+                    )
+                    assoc_height = (
+                        depth_msg.height if depth_msg is not None else rgb_msg.height
+                    )
+                    self.get_logger().debug(
+                        f"Associating {len(clusters)} cluster(s) to "
+                        f"{len(masks_for_association)} detection mask(s) "
+                        f"(using {assoc_width}x{assoc_height} dimensions)"
+                    )
                     associations = self._associate_clusters_to_masks(
                         clusters,
-                        masks,
+                        masks_for_association,
                         self.camera_intrinsics,
-                        rgb_msg.width,
-                        rgb_msg.height,
+                        assoc_width,
+                        assoc_height,
+                    )
+                    successful_associations = [
+                        a for a in associations if a.get("cluster") is not None
+                    ]
+                    self.get_logger().info(
+                        f"Cluster association: "
+                        f"{len(successful_associations)}/{len(associations)} "
+                        f"successful association(s)"
+                    )
+                elif clusters:
+                    self.get_logger().warn(
+                        f"Cluster association skipped: clusters={len(clusters)}, "
+                        f"masks={masks is not None}, "
+                        f"intrinsics={self.camera_intrinsics is not None}"
                     )
 
                 # Generate entities
@@ -594,6 +659,20 @@ class ObjectDetection(Node):
                     timestamp=rgb_msg.header.stamp,
                     max_points=self.point_cloud_max_points,
                 )
+
+                # Log entity generation results
+                if entities:
+                    entities_with_pc = [e for e in entities if "pointcloud" in e]
+                    self.get_logger().info(
+                        f"Generated {len(entities)} entit(y/ies), "
+                        f"{len(entities_with_pc)} with point cloud(s)"
+                    )
+                    for entity in entities:
+                        has_pc = "pointcloud" in entity
+                        self.get_logger().debug(
+                            f"  Entity '{entity['name'].data}': "
+                            f"pointcloud={'yes' if has_pc else 'no'}"
+                        )
 
             postprocess_ms = (time.perf_counter() - t_post) * 1000
 
@@ -759,6 +838,97 @@ class ObjectDetection(Node):
                                 f"KB: Saved '{entity['name'].data}' "
                                 f"(id={response.entityid})"
                             )
+                            # Update shape (point cloud and bounding box) if available
+                            has_pc = "pointcloud" in entity
+                            has_bbox = "boundingbox2d" in entity
+                            self.get_logger().info(
+                                f"KB: Entity '{entity['name'].data}' "
+                                f"has_pointcloud={has_pc}, has_bbox={has_bbox}"
+                            )
+                            if has_pc or has_bbox:
+                                try:
+                                    # Transform point cloud if needed
+                                    transformed_pc = None
+                                    if "pointcloud" in entity:
+                                        pc = entity["pointcloud"]
+                                        # Point cloud is already in source_frame,
+                                        # transform to target_frame
+                                        if source_frame != self.target_frame:
+                                            try:
+                                                # Point cloud already transformed
+                                                pc_copy = pc
+                                                # Ensure frame_id is correct
+                                                pc_copy.header.frame_id = (
+                                                    self.target_frame
+                                                )
+                                                transformed_pc = pc_copy
+                                            except Exception as e:
+                                                name = entity["name"].data
+                                                self.get_logger().warn(
+                                                    f"KB: Failed to transform "
+                                                    f"point cloud for '{name}': {e}"
+                                                )
+                                                transformed_pc = pc
+                                        else:
+                                            transformed_pc = pc
+
+                                    # Create Shape message
+                                    shape_msg = Shape()
+                                    if transformed_pc is not None:
+                                        shape_msg.has_pointcloud = True
+                                        shape_msg.pointcloud = transformed_pc
+                                    else:
+                                        shape_msg.has_pointcloud = False
+
+                                    if "boundingbox2d" in entity:
+                                        shape_msg.has_boundingbox2d = True
+                                        shape_msg.boundingbox2d = entity[
+                                            "boundingbox2d"
+                                        ]
+                                    else:
+                                        shape_msg.has_boundingbox2d = False
+
+                                    # Update shape in KB
+                                    upd_shape_req = UpdShape.Request()
+                                    upd_shape_req.entityid = response.entityid
+                                    upd_shape_req.shape = shape_msg
+                                    upd_shape_req.stamp = now
+
+                                    shape_response = self.client_upd_shape.call(
+                                        upd_shape_req
+                                    )
+                                    if (
+                                        shape_response is not None
+                                        and shape_response.result.result_type
+                                        == Result.SUCCESS
+                                    ):
+                                        self.get_logger().info(
+                                            f"KB: Updated shape for "
+                                            f"'{entity['name'].data}' "
+                                            f"(id={response.entityid})"
+                                        )
+                                    else:
+                                        error_msg = (
+                                            shape_response.result.error
+                                            if shape_response is not None
+                                            else "Unknown error"
+                                        )
+                                        result_type = (
+                                            shape_response.result.result_type
+                                            if shape_response is not None
+                                            else "None"
+                                        )
+                                        self.get_logger().error(
+                                            f"KB: Failed to update shape for "
+                                            f"'{entity['name'].data}': "
+                                            f"result_type={result_type}, "
+                                            f"error={error_msg}"
+                                        )
+                                except Exception as e:
+                                    self.get_logger().error(
+                                        f"KB: Error updating shape for "
+                                        f"'{entity['name'].data}': {e}"
+                                    )
 
                     except Exception as e:
                         self.get_logger().error(f"KB: Error saving entity: {e}")
@@ -1278,17 +1448,54 @@ class ObjectDetection(Node):
         # If segmentation masks are available, cluster per mask to avoid
         # mixing nearby objects into a single global cluster.
         if masks is not None and len(masks) > 0 and self.use_clustering:
+            self.get_logger().debug(
+                f"Clustering with {len(masks)} mask(s), depth image: "
+                f"{depth_image.shape[0]}x{depth_image.shape[1]}"
+            )
             point_cloud, clusters = self._cluster_depth_points_per_mask(
                 depth_image, masks, self.camera_intrinsics
             )
         else:
             # Fallback: global point cloud and optional clustering
+            self.get_logger().debug(
+                f"Creating global point cloud (masks: {masks is not None}, "
+                f"num_masks: {len(masks) if masks is not None else 0}, "
+                f"use_clustering: {self.use_clustering})"
+            )
             point_cloud = self._depth_to_point_cloud(
                 depth_image, self.camera_intrinsics
             )
             clusters: list[dict[str, Any]] = []
             if self.use_clustering and len(point_cloud) > 0:
+                self.get_logger().debug(
+                    f"Applying global clustering to {len(point_cloud)} points"
+                )
                 clusters = self._cluster_depth_points(point_cloud)
+
+        # Log clustering results
+        if len(clusters) > 0:
+            total_points = sum(c["size"] for c in clusters)
+            self.get_logger().info(
+                f"Depth processing: {len(clusters)} cluster(s) found, "
+                f"{total_points} total cluster points, "
+                f"{point_cloud.shape[0]} total point cloud points"
+            )
+            for i, cluster in enumerate(clusters):
+                self.get_logger().debug(
+                    f"  Cluster {i}: {cluster['size']} points, "
+                    f"centroid: [{cluster['centroid'][0]:.3f}, "
+                    f"{cluster['centroid'][1]:.3f}, "
+                    f"{cluster['centroid'][2]:.3f}], "
+                    f"detection_idx: {cluster.get('detection_idx', 'N/A')}"
+                )
+        else:
+            self.get_logger().warn(
+                f"Depth processing: No clusters found. "
+                f"Point cloud size: {point_cloud.shape[0]}, "
+                f"Masks: {len(masks) if masks is not None else 0}, "
+                f"Use clustering: {self.use_clustering}, "
+                f"Camera intrinsics: {self.camera_intrinsics is not None}"
+            )
 
         return point_cloud, clusters
 
@@ -1442,6 +1649,10 @@ class ObjectDetection(Node):
             rgb_msg: Incoming RGB `sensor_msgs/Image`.
             depth_msg: Incoming depth `sensor_msgs/Image`.
         """
+        self.get_logger().debug(
+            f"Received synchronized RGB ({rgb_msg.width}x{rgb_msg.height}) "
+            f"and Depth ({depth_msg.width}x{depth_msg.height}) messages"
+        )
         # Check if already processing (thread-safe check)
         # Note: processing_timeout is disabled (0.0) -
         # rely on _processing_frame flag only

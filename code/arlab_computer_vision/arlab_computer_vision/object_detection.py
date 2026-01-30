@@ -577,11 +577,11 @@ class ObjectDetection(Node):
             postprocess_ms = (time.perf_counter() - t_post) * 1000
 
             # === 4. KB UPDATE (Queued - non-blocking) ===
-            queued_count = 0
-            if entities:
-                queued_count = self._update_kb_sync(
-                    entities, self.source_frame, rgb_msg.header.stamp
-                )
+            # Always call to ensure DB reflects current camera state
+            # (clears old entities even when nothing is detected)
+            queued_count = self._update_kb_sync(
+                entities, self.source_frame, rgb_msg.header.stamp
+            )
 
             # Timing summary
             total_ms = (time.perf_counter() - t_start) * 1000

@@ -5,6 +5,17 @@ using Ultralytics YOLO segmentation, converts results into
 semantic/geometric entities, and communicates with a knowledge base (KB)
 via ROS services.
 
+The node supports two operating modes:
+    - Continuous mode: Processes every camera frame automatically using
+      a general-purpose YOLO model (yolo11n-seg.pt by default).
+    - Snapshot mode: Triggered via ROS2 Action (/predict_snapshot) for
+      single-shot detection using a specialized model (e.g., fruit detection).
+
+Parameters:
+    enable_continuous (bool): Enable continuous processing (default: True).
+        Set to False for snapshot-only mode with reduced GPU memory usage.
+    yolo_weights_continuous (str): Path to YOLO model for continuous mode.
+    yolo_weights_snapshot (str): Path to YOLO model for snapshot mode.
 
 Maintainers:
     Aleksander Michalak <aleksander1.michalak@uni-a.de>
@@ -24,11 +35,18 @@ import tf2_geometry_msgs
 import torch
 from ament_index_python.packages import get_package_share_directory
 from arlab_asyncio_executor.executors import AsyncIOExecutor
+from arlab_common_interfaces.action import PredictSnapshot
 from arlab_knowledge_interfaces.msg import Entity, Result
 from arlab_knowledge_interfaces.srv import AddEntity, DelEntities, GetEntities, UpdShape
 from cv_bridge import CvBridge
 from geometry_msgs.msg import Point, Pose, PoseStamped, Quaternion
 from message_filters import ApproximateTimeSynchronizer, Subscriber
+from rclpy.action.server import (
+    ActionServer,
+    CancelResponse,
+    GoalResponse,
+    ServerGoalHandle,
+)
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.node import Node
 from sensor_msgs.msg import CameraInfo, Image, PointCloud2, PointField
@@ -44,7 +62,8 @@ class ObjectDetection(Node):
 
     The node:
         1) Subscribes to RGB images and camera intrinsics.
-        2) Runs YOLO segmentation on incoming frames.
+        2) Runs YOLO segmentation on incoming frames (continuous mode) or
+           on-demand via Action (snapshot mode).
         3) Converts detections to semantic entities (label, bbox, point cloud,
            pose).
         4) Interacts with a knowledge base through ROS services to insert or
@@ -52,7 +71,10 @@ class ObjectDetection(Node):
 
     Attributes:
         bridge (CvBridge): ROS–OpenCV conversion bridge.
-        model (YOLO): Ultralytics YOLO segmentation model.
+        model_continuous (YOLO | None): YOLO model for continuous processing.
+            None if enable_continuous=False.
+        model_snapshot (YOLO): YOLO model for snapshot detection (always loaded).
+        enable_continuous (bool): Whether continuous processing is enabled.
         camera_intrinsics (dict[str, float] | None): Focal lengths and principal
             point.
         service_client_group (MutuallyExclusiveCallbackGroup): Callback group for
@@ -69,14 +91,26 @@ class ObjectDetection(Node):
         super().__init__(type(self).__name__)
 
         package_share_dir = get_package_share_directory("arlab_computer_vision")
-        default_yolo_weights = os.path.join(
+
+        # Default weights paths
+        default_weights_continuous = os.path.join(
             package_share_dir,
             "yolo_weights",
-            "yolo11n-seg-fruit-final.pt",  # 'yolo11n-trained.pt' for detection model
+            "yolo11n-seg.pt",  # General segmentation model for continuous mode
+        )
+        default_weights_snapshot = os.path.join(
+            package_share_dir,
+            "yolo_weights",
+            "yolo11n-seg-fruit-final.pt",  # Specialized fruit model for snapshot mode
         )
 
         # Declare configurable parameters.
-        self.declare_parameter("yolo_weights", default_yolo_weights)
+        # YOLO weights for continuous mode (general detection)
+        self.declare_parameter("yolo_weights_continuous", default_weights_continuous)
+        # YOLO weights for snapshot mode (specialized detection, e.g., fruits)
+        self.declare_parameter("yolo_weights_snapshot", default_weights_snapshot)
+        # Enable/disable continuous processing (False = snapshot-only, reduces overhead)
+        self.declare_parameter("enable_continuous", True)
         self.declare_parameter("visualize", True)
         self.declare_parameter("log_level", "INFO")
         self.declare_parameter("use_depth", True)
@@ -102,10 +136,6 @@ class ObjectDetection(Node):
         self.declare_parameter("target_frame", "world")
 
         # Load parameters.
-        yolo_weights = (
-            self.get_parameter("yolo_weights").get_parameter_value().string_value
-        )
-        # Visualization parameter removed for performance reasons
         log_level_str = (
             self.get_parameter("log_level").get_parameter_value().string_value
         )
@@ -124,22 +154,36 @@ class ObjectDetection(Node):
         self.get_logger().set_level(log_level)
         self.get_logger().info(f"Log level set to: {log_level_str.upper()}")
 
+        # Load enable_continuous parameter (handles both bool and string from launch)
+        self.enable_continuous = self._parse_bool_param(
+            "enable_continuous",
+            self.get_parameter("enable_continuous").get_parameter_value(),
+        )
+        self.get_logger().info(f"Continuous processing: {self.enable_continuous}")
+
+        # Load YOLO weights paths
+        yolo_weights_continuous = (
+            self.get_parameter("yolo_weights_continuous")
+            .get_parameter_value()
+            .string_value
+        )
+        yolo_weights_snapshot = (
+            self.get_parameter("yolo_weights_snapshot")
+            .get_parameter_value()
+            .string_value
+        )
+
         self.use_depth = (
             self.get_parameter("use_depth").get_parameter_value().bool_value
         )
         self.sync_tolerance = (
             self.get_parameter("sync_tolerance").get_parameter_value().double_value
         )
-        use_clustering_param = self.get_parameter(
-            "use_clustering"
-        ).get_parameter_value()
-        # Handle both bool and string values (ROS2 parameter parsing issue)
-        if isinstance(use_clustering_param.bool_value, bool):
-            self.use_clustering = use_clustering_param.bool_value
-        else:
-            # Try to parse as string (workaround for ROS2 parameter parsing)
-            param_str = str(use_clustering_param.bool_value).lower()
-            self.use_clustering = param_str in ("true", "1", "yes", "on")
+        # Load use_clustering parameter (handles both bool and string from launch)
+        self.use_clustering = self._parse_bool_param(
+            "use_clustering",
+            self.get_parameter("use_clustering").get_parameter_value(),
+        )
         if self.use_depth and self.use_clustering:
             self.get_logger().info("Depth clustering enabled")
         elif self.use_depth and not self.use_clustering:
@@ -198,37 +242,19 @@ class ObjectDetection(Node):
                 "Image scaling disabled - using original image size for YOLO"
             )
 
-        # Check if using segmentation model based on filename
-        self.use_segmentation = "-seg.pt" in yolo_weights
-        if self.use_segmentation:
-            self.get_logger().info("Using YOLO segmentation model.")
-        else:
-            self.get_logger().info("Using YOLO detection model.")
-
-        # Init CV bridge and YOLO model.
+        # === MODEL INITIALIZATION ===
         self.bridge = CvBridge()
         device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.get_logger().info(f"Using device: {device}.")
-
-        # Initialize YOLO model
-        # Note: YOLO doesn't support device parameter in __init__,
-        # but will use the device specified during first inference
-        self.model = YOLO(yolo_weights)
-        # Store device - will be verified/updated below
         self.device = device
 
-        # Use half precision (FP16) for faster GPU inference
+        # Verify CUDA availability
         if device == "cuda":
-            # Verify CUDA is actually available
             if not torch.cuda.is_available():
                 self.get_logger().warn(
                     "CUDA not available despite device='cuda'. Falling back to CPU."
                 )
                 self.device = "cpu"
             else:
-                # Explicitly move model to GPU
-                self.model.to("cuda")
-                # Verify GPU is accessible
                 try:
                     gpu_name = torch.cuda.get_device_name(0)
                     gpu_memory = torch.cuda.get_device_properties(0).total_memory / 1e9
@@ -238,54 +264,44 @@ class ObjectDetection(Node):
                 except Exception as e:
                     self.get_logger().warn(f"GPU verification failed: {e}")
 
-                self.get_logger().info("Using FP16 (half precision) for GPU inference")
-                # Warmup: Load model on GPU and compile CUDA kernels
-                try:
-                    import numpy as np
+        # Initialize continuous model (only if enabled)
+        self.model_continuous: YOLO | None = None
+        self.use_segmentation_continuous = False
+        if self.enable_continuous:
+            self.get_logger().info(
+                f"Loading continuous model: {os.path.basename(yolo_weights_continuous)}"
+            )
+            self.model_continuous = YOLO(yolo_weights_continuous)
+            self.use_segmentation_continuous = "-seg" in yolo_weights_continuous
+            if self.device == "cuda":
+                self.model_continuous.to("cuda")
+                self._warmup_model(self.model_continuous, "continuous")
+            self.get_logger().info(
+                f"Continuous model: segmentation={self.use_segmentation_continuous}"
+            )
 
-                    # Calculate warmup size based on max_image_width
-                    # This matches the actual scaled image size used in inference
-                    if self.max_image_width > 0:
-                        warmup_size = (
-                            self.max_image_width,
-                            self.max_image_width,
-                            3,
-                        )
-                    else:
-                        warmup_size = (640, 640, 3)
+        # Initialize snapshot model (always loaded)
+        self.get_logger().info(
+            f"Loading snapshot model: {os.path.basename(yolo_weights_snapshot)}"
+        )
+        self.model_snapshot = YOLO(yolo_weights_snapshot)
+        self.use_segmentation_snapshot = "-seg" in yolo_weights_snapshot
+        if self.device == "cuda":
+            self.model_snapshot.to("cuda")
+            self._warmup_model(self.model_snapshot, "snapshot")
+        self.get_logger().info(
+            f"Snapshot model: segmentation={self.use_segmentation_snapshot}"
+        )
 
-                    self.get_logger().debug(
-                        f"Warmup image size: {warmup_size[1]}x{warmup_size[0]}"
-                    )
-
-                    # Create dummy input and run warmup inference
-                    # This loads the model on GPU and compiles CUDA kernels
-                    dummy_input = np.zeros(warmup_size, dtype=np.uint8)
-                    for i in range(3):  # 3 warmup runs to compile all kernels
-                        _ = self.model(dummy_input, verbose=False, device=device)
-                        if torch.cuda.is_available():
-                            torch.cuda.synchronize()
-
-                    # Verify GPU was actually used
-                    if torch.cuda.is_available():
-                        model_device = (
-                            self.model.device
-                            if hasattr(self.model, "device")
-                            else "unknown"
-                        )
-                        self.get_logger().info(
-                            f"Model warmup completed on GPU "
-                            f"(device: {model_device}, "
-                            f"warmup size: {warmup_size[1]}x{warmup_size[0]})"
-                        )
-                    else:
-                        self.get_logger().warn(
-                            "Model warmup completed but GPU not verified"
-                        )
-                except Exception as e:
-                    self.get_logger().warn(f"Model warmup failed: {e}")
-
-        # Visualization removed - no need to close windows
+        # Legacy attribute for compatibility (points to continuous model if available)
+        self.model = (
+            self.model_continuous if self.model_continuous else self.model_snapshot
+        )
+        self.use_segmentation = (
+            self.use_segmentation_continuous
+            if self.enable_continuous
+            else self.use_segmentation_snapshot
+        )
 
         # Flag to track if a frame is currently being processed
         self._processing_frame = False
@@ -300,6 +316,15 @@ class ObjectDetection(Node):
 
         # Timeout for processing (tracks last processing time)
         self._last_processing_time = 0.0
+
+        # === SNAPSHOT MODE: Frame Buffer ===
+        # Stores the latest synchronized RGB/depth frame pair for snapshot processing
+        self._buffered_rgb: Image | None = None
+        self._buffered_depth: Image | None = None
+        self._buffer_lock = threading.Lock()
+        # Track last detected classes for action result
+        self._last_detected_classes: list[str] = []
+        self._last_num_objects: int = 0
 
         # === KB WORKER THREAD ===
         # Dedicated thread for KB updates to avoid deadlock with .call()
@@ -409,10 +434,22 @@ class ObjectDetection(Node):
             self.create_subscription(
                 Image,
                 "camera_color_image",
-                self._process_data_sync,
+                self._rgb_only_callback,
                 qos_profile=1,  # Only keep latest frame to reduce delay
             )
             self.get_logger().info("Subscribed to camera_color_image topic")
+
+        # === SNAPSHOT ACTION SERVER ===
+        # Action server for triggered snapshot detection (always created)
+        self._snapshot_action_server = ActionServer(
+            self,
+            PredictSnapshot,
+            "predict_snapshot",
+            execute_callback=self._execute_snapshot,
+            goal_callback=self._goal_callback,
+            cancel_callback=self._cancel_callback,
+        )
+        self.get_logger().info("Action server 'predict_snapshot' ready")
 
     async def async_init(self):
         """Async initialization for AsyncIOExecutor.
@@ -429,6 +466,171 @@ class ObjectDetection(Node):
 
         # Start frame statistics reporting task
         asyncio.create_task(self._frame_statistics_reporter())
+
+    @staticmethod
+    def _parse_bool_param(param_name: str, param_value) -> bool:
+        """Parse a ROS2 parameter value as boolean.
+
+        Handles both native bool parameters and string values from launch files.
+        ROS2 launch files may pass boolean parameters as strings, so we need
+        to check string_value first before falling back to bool_value.
+
+        Args:
+            param_name: Parameter name (for error messages).
+            param_value: Result of get_parameter(...).get_parameter_value().
+
+        Returns:
+            Boolean value of the parameter.
+        """
+        # Check if parameter was passed as string (common with launch files)
+        if param_value.string_value:
+            return param_value.string_value.lower() in ("true", "1", "yes", "on")
+        # Otherwise use native bool value
+        return param_value.bool_value
+
+    def _warmup_model(self, model: YOLO, name: str) -> None:
+        """Warmup a YOLO model to compile CUDA kernels.
+
+        Args:
+            model: YOLO model instance.
+            name: Name for logging (e.g., 'continuous', 'snapshot').
+        """
+        if self.device != "cuda":
+            return
+
+        try:
+            warmup_size = (
+                (self.max_image_width, self.max_image_width, 3)
+                if self.max_image_width > 0
+                else (640, 640, 3)
+            )
+            dummy_input = np.zeros(warmup_size, dtype=np.uint8)
+            for _ in range(3):  # 3 warmup runs to compile all kernels
+                _ = model(dummy_input, verbose=False, device=self.device)
+                torch.cuda.synchronize()
+            self.get_logger().info(
+                f"Model '{name}' warmup completed "
+                f"(size: {warmup_size[1]}x{warmup_size[0]})"
+            )
+        except Exception as e:
+            self.get_logger().warn(f"Model '{name}' warmup failed: {e}")
+
+    def _goal_callback(self, goal_request) -> GoalResponse:
+        """Accept or reject snapshot goals.
+
+        Args:
+            goal_request: The goal request from the action client.
+
+        Returns:
+            GoalResponse.ACCEPT to accept the goal.
+        """
+        self.get_logger().info("Snapshot prediction requested")
+        return GoalResponse.ACCEPT
+
+    def _cancel_callback(self, goal_handle) -> CancelResponse:
+        """Handle cancellation requests.
+
+        Args:
+            goal_handle: The goal handle to cancel.
+
+        Returns:
+            CancelResponse.ACCEPT to accept cancellation.
+        """
+        self.get_logger().info("Snapshot cancellation requested")
+        return CancelResponse.ACCEPT
+
+    def _execute_snapshot(
+        self, goal_handle: ServerGoalHandle
+    ) -> PredictSnapshot.Result:
+        """Execute a single snapshot using the buffered frame.
+
+        Runs the identical pipeline as continuous mode, but only once
+        using the snapshot model. KB is updated the same way.
+
+        Args:
+            goal_handle: Action goal handle.
+
+        Returns:
+            PredictSnapshot.Result with detected classes.
+        """
+        result = PredictSnapshot.Result()
+        result.success = False
+        result.detected_classes = []
+        result.num_objects = 0
+        result.error_message = ""
+
+        try:
+            # Get buffered frame
+            with self._buffer_lock:
+                rgb_msg = self._buffered_rgb
+                depth_msg = self._buffered_depth
+
+            if rgb_msg is None:
+                result.error_message = "No frame buffered - camera not streaming?"
+                self.get_logger().warn(result.error_message)
+                goal_handle.abort()
+                return result
+
+            # Publish feedback: starting
+            feedback = PredictSnapshot.Feedback()
+            feedback.status = "Processing snapshot with fruit detection model..."
+            feedback.progress = 0.1
+            feedback.objects_detected = 0
+            goal_handle.publish_feedback(feedback)
+
+            self.get_logger().info("Processing snapshot with snapshot model...")
+
+            # Run the pipeline with SNAPSHOT model (fruit detection)
+            entities = self._process_data_sync(
+                rgb_msg,
+                depth_msg,
+                model=self.model_snapshot,
+                use_segmentation=self.use_segmentation_snapshot,
+            )
+
+            # Publish feedback: done
+            feedback.status = "Detection complete"
+            feedback.progress = 1.0
+            feedback.objects_detected = len(entities)
+            goal_handle.publish_feedback(feedback)
+
+            # Build result
+            result.detected_classes = self._last_detected_classes
+            result.num_objects = self._last_num_objects
+            result.success = True
+
+            classes_str = ", ".join(result.detected_classes) or "none"
+            self.get_logger().info(
+                f"Snapshot complete: {result.num_objects} objects ({classes_str})"
+            )
+            goal_handle.succeed()
+
+        except Exception as e:
+            self.get_logger().error(f"Snapshot failed: {e}")
+            result.error_message = str(e)
+            goal_handle.abort()
+
+        return result
+
+    def _rgb_only_callback(self, rgb_msg: Image) -> None:
+        """Callback for RGB-only mode (no depth).
+
+        Wraps _process_data_sync for use as a subscription callback.
+
+        Args:
+            rgb_msg: Incoming RGB `sensor_msgs/Image`.
+        """
+        # Buffer for snapshot mode
+        with self._buffer_lock:
+            self._buffered_rgb = rgb_msg
+            self._buffered_depth = None
+
+        # Skip continuous processing if disabled
+        if not self.enable_continuous:
+            return
+
+        # Process with continuous model
+        self._process_data_sync(rgb_msg, None)
 
     def _check_kb_services(self) -> bool:
         """Check if all KB services are available.
@@ -493,8 +695,12 @@ class ObjectDetection(Node):
                 self._frames_skipped = 0
 
     def _process_data_sync(
-        self, rgb_msg: Image, depth_msg: Image | None = None
-    ) -> None:
+        self,
+        rgb_msg: Image,
+        depth_msg: Image | None = None,
+        model: YOLO | None = None,
+        use_segmentation: bool | None = None,
+    ) -> list[dict]:
         """Fully synchronous frame processing - no async, no threads.
 
         This ensures Ultralytics YOLO has complete control over the CUDA
@@ -503,12 +709,23 @@ class ObjectDetection(Node):
         Args:
             rgb_msg: Incoming RGB `sensor_msgs/Image`.
             depth_msg: Optional incoming depth `sensor_msgs/Image`.
+            model: YOLO model to use (defaults to self.model for continuous).
+            use_segmentation: Whether model uses segmentation.
+
+        Returns:
+            List of detected entity dicts (for snapshot result tracking).
         """
+        # Use defaults if not specified
+        if model is None:
+            model = self.model
+        if use_segmentation is None:
+            use_segmentation = self.use_segmentation
+
         # Frame skipping check
         with self._processing_lock_sync:
             if self._processing_frame:
                 self._frames_skipped += 1
-                return
+                return []
             self._processing_frame = True
             self._frames_processed += 1
 
@@ -537,7 +754,7 @@ class ObjectDetection(Node):
             # === 2. YOLO INFERENCE (GPU) ===
             # Synchronous call - Ultralytics has full control
             t_yolo = time.perf_counter()
-            result, num_detections = self._run_yolo_inference(yolo_image)
+            result, num_detections = self._run_yolo_inference(yolo_image, model)
             inference_ms = (time.perf_counter() - t_yolo) * 1000
 
             # Free memory
@@ -586,14 +803,20 @@ class ObjectDetection(Node):
                 # Generate entities
                 entities = generate_entities_from_yolo_result(
                     result=result,
-                    class_names=self.model.names,
+                    class_names=model.names,
                     frame=None,
-                    use_segmentation=self.use_segmentation,
+                    use_segmentation=use_segmentation,
                     cluster_associations=associations if associations else None,
                     frame_id=rgb_msg.header.frame_id,
                     timestamp=rgb_msg.header.stamp,
                     max_points=self.point_cloud_max_points,
                 )
+
+                # Track detected classes for snapshot action result
+                self._last_detected_classes = list(
+                    set(e["name"].data for e in entities)
+                )
+                self._last_num_objects = len(entities)
 
             postprocess_ms = (time.perf_counter() - t_post) * 1000
 
@@ -617,8 +840,11 @@ class ObjectDetection(Node):
 
         except Exception as e:
             self.get_logger().error(f"Frame processing error: {e}")
+            entities = []  # Return empty list on error
         finally:
             self._processing_frame = False
+
+        return entities
 
     def _update_kb_sync(
         self,
@@ -1438,31 +1664,46 @@ class ObjectDetection(Node):
     def _synced_callback(self, rgb_msg: Image, depth_msg: Image) -> None:
         """Callback for synchronized RGB and depth image messages.
 
+        Always buffers frames for snapshot mode.
+        Only processes continuously if enable_continuous=True.
+
         Args:
             rgb_msg: Incoming RGB `sensor_msgs/Image`.
             depth_msg: Incoming depth `sensor_msgs/Image`.
         """
-        # Check if already processing (thread-safe check)
-        # Note: processing_timeout is disabled (0.0) -
-        # rely on _processing_frame flag only
+        # Always buffer the latest frame pair for snapshot mode
+        with self._buffer_lock:
+            self._buffered_rgb = rgb_msg
+            self._buffered_depth = depth_msg
+
+        # Skip continuous processing if disabled
+        if not self.enable_continuous:
+            return
+
+        # Frame skipping for continuous mode
         with self._processing_lock_sync:
             if self._processing_frame:
-                # Skip immediately
+                self._frames_skipped += 1
                 return
 
         self._process_data_sync(rgb_msg, depth_msg)
 
-    def _run_yolo_inference(self, rgb_image: np.ndarray) -> tuple[Any, int]:
+    def _run_yolo_inference(
+        self, rgb_image: np.ndarray, model: YOLO | None = None
+    ) -> tuple[Any, int]:
         """Run YOLO inference on RGB image (synchronous).
 
         Args:
             rgb_image: RGB image as numpy array.
+            model: YOLO model to use (defaults to self.model).
 
         Returns:
             Tuple of (YOLO result, number of detections).
         """
+        if model is None:
+            model = self.model
         # Simple synchronous inference - Ultralytics has full control
-        results = self.model(rgb_image, verbose=False, device=self.device)
+        results = model(rgb_image, verbose=False, device=self.device)
         result = results[0]
         num_detections = len(result.boxes) if hasattr(result, "boxes") else 0
         return result, num_detections

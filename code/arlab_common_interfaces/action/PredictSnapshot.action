@@ -1,13 +1,13 @@
-# Goal: RGB and optional depth image for snapshot prediction
-sensor_msgs/Image rgb_image
-sensor_msgs/Image depth_image
+# Goal: Trigger snapshot detection (uses subscribed camera topics, not images in goal)
+float32 timeout  # Max wait time for fresh frame in seconds (0.0 = use currently buffered frame)
 ---
-# Result: Detected entities and processing status
-arlab_knowledge_interfaces/Entity[] entities
-bool success
-string error_message
+# Result: Detection summary
+string[] detected_classes  # Unique class names detected (e.g., ["apple", "banana", "orange"])
+int32 num_objects          # Total number of objects detected
+bool success               # True if detection completed successfully
+string error_message       # Error description if success=false
 ---
-# Feedback: Processing status updates
-string status
-float32 progress  # 0.0 to 1.0
-int32 objects_detected  # Number of objects detected so far
+# Feedback: Processing status
+string status              # Current processing step description
+float32 progress           # Progress 0.0 to 1.0
+int32 objects_detected     # Number of objects detected so far

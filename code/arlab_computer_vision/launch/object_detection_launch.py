@@ -8,6 +8,8 @@ from camera_color_image to /camera/color/image_raw.
 """
 
 from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
@@ -20,6 +22,14 @@ def generate_launch_description():
     """
     ld = LaunchDescription()
 
+    # Declare launch arguments
+    enable_continuous_arg = DeclareLaunchArgument(
+        "enable_continuous",
+        default_value="true",
+        description="Enable continuous processing (false = snapshot-only mode)",
+    )
+    ld.add_action(enable_continuous_arg)
+
     # Object detection node with topic remapping
     object_detection_node = Node(
         package="arlab_computer_vision",
@@ -31,6 +41,7 @@ def generate_launch_description():
         ],
         parameters=[
             {"log_level": "DEBUG"},  # Node-Parameter für Debug-Logs
+            {"enable_continuous": LaunchConfiguration("enable_continuous")},
         ],
         arguments=[
             "--ros-args",

@@ -28,6 +28,7 @@ def generate_launch_description():
             ("camera_color_image", "/camera/color/image_raw"),
             ("camera_info", "/camera/color/camera_info"),
             ("camera_depth_image", "/camera/depth/image_rect_raw"),
+            ("camera_point_cloud", "/camera/depth/color/points"),
         ],
         parameters=[
             {"log_level": "DEBUG"},  # Node-Parameter für Debug-Logs

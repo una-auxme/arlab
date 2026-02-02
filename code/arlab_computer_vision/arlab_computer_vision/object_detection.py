@@ -8,6 +8,7 @@ via ROS services.
 
 Maintainers:
     Aleksander Michalak <aleksander1.michalak@uni-a.de>
+    Peter Viechter <peter.viechter@uni-a.de>
 """
 
 import os

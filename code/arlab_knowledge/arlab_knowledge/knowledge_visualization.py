@@ -155,7 +155,8 @@ class KnowledgeVisualization(Node):
             return []
 
         self.get_logger().info(
-            f"Retrieved {num_entities} entit(y/ies) from knowledge base"
+            f"Retrieved {num_entities} entit(y/ies) from knowledge base",
+            throttle_duration_sec=2.0,
         )
 
         # Step 2: Get each entity and its shape, then convert to markers
@@ -250,7 +251,9 @@ class KnowledgeVisualization(Node):
             timestamp=self.get_clock().now().to_msg(),
         )
         self.marker_publisher.publish(marker_array)
-        self.get_logger().info(f"Published {len(markers)} marker(s) to RViz")
+        self.get_logger().info(
+            f"Published {len(markers)} marker(s) to RViz", throttle_duration_sec=2.0
+        )
 
 
 def main(args=None):

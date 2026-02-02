@@ -337,7 +337,7 @@ class App(tk.Tk):
         self._gif_frames = []
         self._gif_index = 0
         self._gif_after_id = None
-        self._gif_delay_ms = 80  # default frame delay if we can't read it
+        self._gif_delay_ms = 80  # default frame delay if not specified in GIF
 
         self._load_screensaver_media(image_path)
 
@@ -374,7 +374,7 @@ class App(tk.Tk):
         self._reset_screensaver_timer()
 
     def _load_screensaver_media(self, path: str):
-        # stop any previous animation
+        # stop previous animation
         self._stop_gif()
 
         self._screensaver_path = path
@@ -404,7 +404,7 @@ class App(tk.Tk):
         return frames
 
     def _start_gif(self):
-        # only animate if we have multiple frames and screensaver is visible
+        # only animate multiple frames are available and screensaver is on
         if not getattr(self, "_screensaver_on", False):
             return
         if not getattr(self, "_gif_frames", None) or len(self._gif_frames) <= 1:

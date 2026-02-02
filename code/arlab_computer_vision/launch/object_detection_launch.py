@@ -27,14 +27,13 @@ def generate_launch_description():
         remappings=[
             ("camera_color_image", "/camera_gripper/color/image_raw"),
             ("camera_info", "/camera_gripper/color/camera_info"),
-            ("camera_depth_image", "/camera_gripper/depth/image_rect_raw"),
             ("camera_point_cloud", "/camera_gripper/depth/color/points"),
         ],
         parameters=[
             {"log_level": "DEBUG"},  # Node-Parameter für Debug-Logs
             {"sync_tolerance": 10.0},
             {"target_frame": "world"},
-            {"source_frame": "camera_gripper_link"},
+            {"snapshot_mode": True},
         ],
         arguments=[
             "--ros-args",

@@ -13,6 +13,7 @@ Maintainers:
 import os
 import time
 from copy import deepcopy
+from time import sleep
 from typing import Any, List, Optional, Tuple
 
 import cv2
@@ -22,6 +23,8 @@ import rclpy.executors
 import ros2_numpy
 import torch
 from ament_index_python.packages import get_package_share_directory
+from arlab_common_interfaces.action import VisionSnapshotAction
+from arlab_common_interfaces.msg import VisionSnapshotCommand, VisionSnapshotResponse
 from arlab_knowledge_interfaces.msg import (
     Entity,
     EntityPickable,
@@ -33,6 +36,7 @@ from arlab_knowledge_interfaces.srv import AddEntity, DelEntities, GetEntities, 
 from cv_bridge import CvBridge
 from message_filters import ApproximateTimeSynchronizer, Subscriber
 from numpy.typing import NDArray
+from rclpy.action.server import ActionServer, GoalResponse
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.duration import Duration
 from rclpy.node import Node
@@ -100,17 +104,14 @@ class ObjectDetection(Node):
         self.declare_parameter("delete_old_entities", True)
         # Clear DB when no objects are detected (keeps DB in sync with camera)
         self.declare_parameter("clear_db_on_no_detection", True)
-        # Maximum number of points per entity point cloud
-        # (0 = no limit, not recommended due to OOM risk)
-        self.declare_parameter("point_cloud_max_points", 10000)
         # Maximum image width for YOLO inference (0 = no scaling)
         # Reduces memory usage and speeds up inference for large images
         self.declare_parameter("max_image_width", 640)
-        # Source frame for TF transformations (camera frame)
-        self.declare_parameter("source_frame", "camera_tool_link")
         # Target frame for TF transformations (default: "world")
-        # If frame doesn't exist, entities will NOT be saved (only warning logged)
         self.declare_parameter("target_frame", "camera_tool_link")
+
+        # Enable snapshot mode
+        self.declare_parameter("snapshot_mode", True)
 
         # Load parameters.
         yolo_weights = (
@@ -171,16 +172,6 @@ class ObjectDetection(Node):
             f"Clear DB on no detection: {self._clear_db_on_no_detection}"
         )
 
-        # Load point cloud max points parameter
-        self.point_cloud_max_points = (
-            self.get_parameter("point_cloud_max_points")
-            .get_parameter_value()
-            .integer_value
-        )
-        self.get_logger().info(
-            f"Point cloud max points per entity: {self.point_cloud_max_points}"
-        )
-
         # Load max image width parameter
         self.max_image_width = (
             self.get_parameter("max_image_width").get_parameter_value().integer_value
@@ -193,6 +184,21 @@ class ObjectDetection(Node):
         else:
             self.get_logger().info(
                 "Image scaling disabled - using original image size for YOLO"
+            )
+
+        # Enable snapshot mode?
+        self._snapshot_mode = (
+            self.get_parameter("snapshot_mode").get_parameter_value().bool_value
+        )
+        self.get_logger().info(f"Snapshot mode: {self._snapshot_mode}")
+
+        if self._snapshot_mode:
+            self._action_server = ActionServer(
+                self,
+                VisionSnapshotAction,
+                "/vision/snapshot",
+                execute_callback=self._snapshot_execute_callback,
+                goal_callback=self._snapshot_goal_callback,
             )
 
         # Check if using segmentation model based on filename
@@ -331,18 +337,6 @@ class ObjectDetection(Node):
 
         # Flag to track if KB services are available
         self._kb_services_available = False
-        # Track if periodic check task is running
-        self._periodic_check_task = None
-        # Check services availability initially
-        self._check_kb_services()
-
-        # Load source frame parameter
-        self.source_frame = (
-            self.get_parameter("source_frame").get_parameter_value().string_value
-        )
-        self.get_logger().info(
-            f"Source frame for TF transformations: '{self.source_frame}'"
-        )
 
         # Load target frame parameter
         self.target_frame = (
@@ -369,18 +363,17 @@ class ObjectDetection(Node):
         if self.use_depth:
             # Create subscribers for message_filters
             rgb_sub = Subscriber(self, Image, "camera_color_image")
-            depth_sub = Subscriber(self, Image, "camera_depth_image")
             pointcloud_sub = Subscriber(self, PointCloud2, "camera_point_cloud")
 
             # Create time synchronizer
             # queue_size=1 minimizes memory usage - only buffer 1 synchronized pair
             # This prevents OOM during slow inference and reduces swap pressure
             self.sync = ApproximateTimeSynchronizer(
-                [rgb_sub, depth_sub, pointcloud_sub],
+                [rgb_sub, pointcloud_sub],
                 queue_size=1,  # Minimized to reduce memory footprint
                 slop=self.sync_tolerance,
             )
-            self.sync.registerCallback(self._process_data)
+            self.sync.registerCallback(self._image_data_callback)
             self.get_logger().info(
                 f"Subscribed to synchronized RGB and depth topics "
                 f"(tolerance: {self.sync_tolerance}s)"
@@ -390,19 +383,25 @@ class ObjectDetection(Node):
             self.create_subscription(
                 Image,
                 "camera_color_image",
-                self._process_data,
+                self._image_data_callback,
                 qos_profile=1,  # Only keep latest frame to reduce delay
             )
             self.get_logger().info("Subscribed to camera_color_image topic")
+        self.color_image: Optional[Image] = None
+        self.pointcloud: Optional[PointCloud2] = None
 
         self.segmented_image_pub = self.create_publisher(
-            Image, "segmented_image", qos_profile=1
+            Image, "/vision/segmented_image", qos_profile=1
         )
         self.debug_pointcloud_pub = self.create_publisher(
-            PointCloud2, "debug_pc", qos_profile=1
+            PointCloud2, "/vision/debug_pc", qos_profile=1
         )
 
-        self.create_timer(timer_period_sec=5.0, callback=self._check_kb_services)
+        self._knowledge_timer = self.create_timer(
+            timer_period_sec=5.0, callback=self._check_kb_services
+        )
+        # Check services availability initially
+        self._check_kb_services()
         self.create_timer(
             timer_period_sec=5.0, callback=self._frame_statistics_reporter
         )
@@ -421,6 +420,7 @@ class ObjectDetection(Node):
         self._kb_services_available = available
         if available:
             self.get_logger().info("Knowledge base services are available.")
+            self._knowledge_timer.cancel()
         else:
             self.get_logger().warn(
                 "Knowledge base services not available. Will retry periodically."
@@ -443,11 +443,23 @@ class ObjectDetection(Node):
             self._frames_processed = 0
             self._frames_skipped = 0
 
+    def _image_data_callback(
+        self,
+        rgb_msg: Image,
+        pointcloud_msg: PointCloud2 | None = None,
+    ) -> None:
+        self.color_image = rgb_msg
+        self.pointcloud = pointcloud_msg
+        if not self._snapshot_mode:
+            self._process_data(
+                rgb_msg, pointcloud_msg, delete_old_entities=self._delete_old_entities
+            )
+
     def _process_data(
         self,
         rgb_msg: Image,
-        depth_msg: Image | None = None,
         pointcloud_msg: PointCloud2 | None = None,
+        delete_old_entities: bool = False,
     ) -> None:
         """Fully synchronous frame processing - no async, no threads.
 
@@ -490,7 +502,8 @@ class ObjectDetection(Node):
 
         # === 3. POSTPROCESSING (CPU) ===
         t_post = time.perf_counter()
-        entities = []
+        old_entity_ids = self._kb_get_entities_for_deletion()
+        entities: List[Tuple[Entity, Shape]] = []
 
         if num_detections > 0:
             # Scale boxes back
@@ -505,8 +518,6 @@ class ObjectDetection(Node):
 
             # Extract masks
             masks = self._extract_masks(result, original_height, original_width)
-
-            entities: List[Tuple[Entity, Shape]] = []
 
             # Depth processing
             if (
@@ -584,13 +595,16 @@ class ObjectDetection(Node):
                         create_entity(label, entity_points, entity_pointcloud.header)
                     )
             else:
-                if depth_msg is None:
-                    self.get_logger().debug("No depth message available")
+                if pointcloud_msg is None:
+                    self.get_logger().debug("No pointcloud message available")
                 if not self.use_depth:
                     self.get_logger().debug("use_depth is False")
 
-            if self._kb_services_available:
-                self.kb_add_entities(entities)
+        if self._kb_services_available:
+            self.kb_add_entities(entities)
+        if delete_old_entities:
+            if len(entities) > 0 or self._clear_db_on_no_detection:
+                self._kb_delete_entities(ids=old_entity_ids)
 
         postprocess_ms = (time.perf_counter() - t_post) * 1000
 
@@ -604,29 +618,28 @@ class ObjectDetection(Node):
             # f"{queued_count} queued"
         )
 
-    def delete_old_entities(self):
-        if self._delete_old_entities:
-            get_req = GetEntities.Request()
-            # Only delete pickables
-            get_req.entity_type.id = EntityType.PICKABLE
-            response: GetEntities.Response = self.client_get_entities.call(get_req)
+    def _kb_get_entities_for_deletion(self) -> List[int]:
+        get_req = GetEntities.Request()
+        # Only delete pickables
+        get_req.entity_type.id = EntityType.PICKABLE
+        response: GetEntities.Response = self.client_get_entities.call(get_req)
 
-            if response.result.result_type != Result.SUCCESS:
-                self.get_logger().error(
-                    f"Failed to get entities: {response.result.error}"
-                )
-                return
+        if response.result.result_type != Result.SUCCESS:
+            self.get_logger().error(f"Failed to get entities: {response.result.error}")
+            return []
 
-            if response.entities:
-                del_req = DelEntities.Request()
-                del_req.entityids = list(response.entities)
-                del_response: DelEntities.Response = self.client_del_entities.call(
-                    del_req
-                )
-                if del_response.result.result_type != Result.SUCCESS:
-                    self.get_logger().error(
-                        f"Failed to delete entities: {del_response.result.error}"
-                    )
+        return response.entities
+
+    def _kb_delete_entities(self, ids: List[int]):
+        self.get_logger().info(f"Clearing {len(ids)} entities from kb")
+
+        del_req = DelEntities.Request()
+        del_req.entityids = ids
+        del_response: DelEntities.Response = self.client_del_entities.call(del_req)
+        if del_response.result.result_type != Result.SUCCESS:
+            self.get_logger().error(
+                f"Failed to delete entities: {del_response.result.error}"
+            )
 
     def kb_add_entities(self, entities: List[Tuple[Entity, Shape]]):
         # Add new entities
@@ -752,6 +765,38 @@ class ObjectDetection(Node):
         else:
             # No resize needed - single sync + transfer
             return masks_gpu.cpu().numpy().astype(np.uint8)
+
+    def _snapshot_goal_callback(self, goal_request: VisionSnapshotAction.Goal):
+        self.get_logger().info(
+            "Received goal from Decision Making. "
+            f"Delete old: {goal_request.command.clear_database}"
+        )
+        return GoalResponse.ACCEPT
+
+    def _snapshot_execute_callback(self, goal_handle):
+        # sleep to make sure position has stabilized
+        sleep(1.0)
+
+        goal_command: VisionSnapshotCommand = goal_handle.request.command
+        action_result = VisionSnapshotAction.Result()
+        if self.color_image is None or self.pointcloud is None:
+            action_result.response.result = VisionSnapshotResponse.ERROR_NO_IMAGE_DATA
+            action_result.response.error_msg = "No image data"
+            goal_handle.succeed()
+            return action_result
+
+        try:
+            self._process_data(
+                self.color_image,
+                self.pointcloud,
+                delete_old_entities=goal_command.clear_database,
+            )
+            action_result.response.result = VisionSnapshotResponse.SUCCESS
+        except Exception as e:
+            action_result.response.result = VisionSnapshotResponse.ERROR_UNKNOWN
+            action_result.response.error_msg = f"Exception: {e}"
+        goal_handle.succeed()
+        return action_result
 
 
 def create_entity(

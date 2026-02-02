@@ -47,11 +47,20 @@ Currently no general startup routine exists
 
 ## Contributing
 
-Everybody can contribute. Get in touch with @wieerwill for questions and open tasks. We are happy to have you on board.
+Everybody can contribute. Get in touch with us for questions and open tasks. We are happy to have you on board.
 We follow the [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](./CODE_OF_CONDUCT.md)
 
 For easy start we created a [CONTRIBUTING](./CONTRIBUTING.md) Guideline.
 
 ## Authors and acknowledgment
 
+- Lukas Asam
+- Daniel Gabler
+- Aleksander Michalak
+- Sofia Öttl
+- Jonas Platzer
+- Leonie Schmidt
+- Peter Viechter
+- Meruna Yugarajah
+- Nils Mandischer
 - Robert Jeutter

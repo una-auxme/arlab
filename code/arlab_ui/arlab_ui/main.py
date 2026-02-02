@@ -83,8 +83,8 @@ class App(tk.Tk):
         self.title("Zirbi Touchscreen UI")
         self.geometry("900x600")
 
-        icon = tk.PhotoImage(file="src/arlab/code/arlab_ui/assets/Zirbi.png")
-        self.iconphoto(True, icon)
+        self._app_icon = tk.PhotoImage(file="src/arlab/code/arlab_ui/assets/Zirbi.png")
+        self.iconphoto(True, self._app_icon)
 
 
         self.buttons_data = []
@@ -108,7 +108,7 @@ class App(tk.Tk):
         self.screensaver_seconds = 10  # inactivity timeout
         self._screensaver_on = False
 
-        self._build_screensaver("/workspace/src/arlab/code/arlab_ui/assets/Zirbi.png")
+        self._build_screensaver("/workspace/src/arlab/code/arlab_ui/assets/Zirbi.gif")
 
         # Any user interaction resets timer + hides saver
         self.bind_all("<Any-KeyPress>", self._on_user_activity)
@@ -317,29 +317,29 @@ class App(tk.Tk):
 
     # --------- Screensaver ----------
     def _build_screensaver(self, image_path: str):
-        # Full-window overlay
         self._screensaver_frame = tk.Frame(
-            self,
-            bg="white",
-            bd=0,
-            highlightthickness=0,
-            relief="flat"
-            )
-        self._screensaver_frame.place_forget()  # hidden initially
-
-        # Load & keep reference
-        self._screensaver_img = tk.PhotoImage(file=image_path)
+            self, bg="white", bd=0, highlightthickness=0, relief="flat"
+        )
+        self._screensaver_frame.place_forget()
 
         self._screensaver_label = tk.Label(
             self._screensaver_frame,
-            image=self._screensaver_img,
             bg="white",
-            padx=0,
-            pady=0,
             bd=0,
             highlightthickness=0,
+            padx=0,
+            pady=0,
+            relief="flat",
         )
-        self._screensaver_label.pack(fill="both", expand=True, padx=0, pady=0)
+        self._screensaver_label.pack(fill="both", expand=True)
+
+        # animation state
+        self._gif_frames = []
+        self._gif_index = 0
+        self._gif_after_id = None
+        self._gif_delay_ms = 80  # default frame delay if we can't read it
+
+        self._load_screensaver_media(image_path)
 
     def _reset_screensaver_timer(self):
         # Cancel old timer if exists
@@ -358,10 +358,13 @@ class App(tk.Tk):
         self._screensaver_on = True
         self._screensaver_frame.place(x=0, y=0, relwidth=1, relheight=1)
         self._screensaver_frame.lift()
+        self._start_gif()  # start animation if it's a GIF
 
     def _hide_screensaver(self):
         self._screensaver_on = False
+        self._stop_gif()   # stop animation timer
         self._screensaver_frame.place_forget()
+
 
     def _on_user_activity(self, event=None):
         # Wake on first interaction
@@ -369,6 +372,65 @@ class App(tk.Tk):
             self._hide_screensaver()
 
         self._reset_screensaver_timer()
+
+    def _load_screensaver_media(self, path: str):
+        # stop any previous animation
+        self._stop_gif()
+
+        self._screensaver_path = path
+        lower = path.lower()
+
+        if lower.endswith(".gif"):
+            self._gif_frames = self._load_gif_frames(path)
+            self._gif_index = 0
+            self._screensaver_label.configure(image=self._gif_frames[0])
+        else:
+            # static image (png/gif single-frame/etc.)
+            self._screensaver_img = tk.PhotoImage(file=path)
+            self._screensaver_label.configure(image=self._screensaver_img)
+
+    def _load_gif_frames(self, path: str) -> list[tk.PhotoImage]:
+        frames = []
+        i = 0
+        while True:
+            try:
+                frames.append(tk.PhotoImage(file=path, format=f"gif -index {i}"))
+                i += 1
+            except tk.TclError:
+                break
+
+        if not frames:
+            raise RuntimeError(f"Could not read any frames from GIF: {path}")
+        return frames
+
+    def _start_gif(self):
+        # only animate if we have multiple frames and screensaver is visible
+        if not getattr(self, "_screensaver_on", False):
+            return
+        if not getattr(self, "_gif_frames", None) or len(self._gif_frames) <= 1:
+            return
+        if self._gif_after_id is not None:
+            return  # already running
+
+        def step():
+            if not getattr(self, "_screensaver_on", False):
+                self._gif_after_id = None
+                return
+
+            self._gif_index = (self._gif_index + 1) % len(self._gif_frames)
+            self._screensaver_label.configure(image=self._gif_frames[self._gif_index])
+            self._gif_after_id = self.after(self._gif_delay_ms, step)
+
+        self._gif_after_id = self.after(self._gif_delay_ms, step)
+
+    def _stop_gif(self):
+        if getattr(self, "_gif_after_id", None) is not None:
+            try:
+                self.after_cancel(self._gif_after_id)
+            except Exception:
+                pass
+            self._gif_after_id = None
+
 
 
     # ---------- ROS errors -> error box (when visible) ----------

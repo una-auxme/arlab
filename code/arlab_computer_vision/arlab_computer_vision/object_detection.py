@@ -10,21 +10,27 @@ Maintainers:
     Aleksander Michalak <aleksander1.michalak@uni-a.de>
 """
 
-import asyncio
 import os
 import queue
 import time
+from copy import deepcopy
 from typing import Any, List, Optional, Tuple
 
 import cv2
 import numpy as np
 import rclpy
+import rclpy.executors
 import ros2_numpy
 import tf2_geometry_msgs
 import torch
 from ament_index_python.packages import get_package_share_directory
-from arlab_asyncio_executor.executors import AsyncIOExecutor
-from arlab_knowledge_interfaces.msg import Entity, Result, Shape
+from arlab_knowledge_interfaces.msg import (
+    Entity,
+    EntityPickable,
+    EntityType,
+    Result,
+    Shape,
+)
 from arlab_knowledge_interfaces.srv import AddEntity, DelEntities, GetEntities, UpdShape
 from cv_bridge import CvBridge
 from geometry_msgs.msg import Point, Pose, PoseStamped, Quaternion
@@ -427,18 +433,10 @@ class ObjectDetection(Node):
             PointCloud2, "debug_pc", qos_profile=1
         )
 
-    async def async_init(self):
-        """Async initialization for AsyncIOExecutor.
-
-        This method is required by AsyncIOExecutor but doesn't need
-        to perform any initialization in this node.
-        """
-        # Start background task to periodically check KB services if not available
-        if not self._kb_services_available:
-            self._start_periodic_service_check()
-
-        # Start frame statistics reporting task
-        asyncio.create_task(self._frame_statistics_reporter())
+        self.create_timer(timer_period_sec=5.0, callback=self._check_kb_services)
+        self.create_timer(
+            timer_period_sec=5.0, callback=self._frame_statistics_reporter
+        )
 
     def _check_kb_services(self) -> bool:
         """Check if all KB services are available.
@@ -460,47 +458,21 @@ class ObjectDetection(Node):
             )
         return available
 
-    async def _periodic_service_check(self):
-        """Periodically check KB services availability every 30 seconds
-        if not available.
-        """
-        while True:
-            await asyncio.sleep(30.0)
-            if not self._kb_services_available:
-                self.get_logger().info(
-                    "Retrying to connect to knowledge base services..."
-                )
-                self._check_kb_services()
-            else:
-                # If services are available, stop periodic checking
-                break
-
-    def _start_periodic_service_check(self):
-        """Start periodic service check task if not already running."""
-        if self._periodic_check_task is None or self._periodic_check_task.done():
-            self._periodic_check_task = asyncio.create_task(
-                self._periodic_service_check()
-            )
-
-    async def _frame_statistics_reporter(self):
+    def _frame_statistics_reporter(self):
         """Report frame statistics every 10 seconds."""
-        while True:
-            await asyncio.sleep(10.0)
-            total = self._frames_processed + self._frames_skipped
-            if total > 0:
-                processed_pct = (
-                    self._frames_processed / total * 100 if total > 0 else 0.0
-                )
-                skipped_pct = self._frames_skipped / total * 100 if total > 0 else 0.0
-                self.get_logger().info(
-                    f"Frame statistics (last 10s): "
-                    f"Processed: {self._frames_processed} ({processed_pct:.1f}%), "
-                    f"Skipped: {self._frames_skipped} ({skipped_pct:.1f}%), "
-                    f"Total: {total}"
-                )
-                # Reset counters
-                self._frames_processed = 0
-                self._frames_skipped = 0
+        total = self._frames_processed + self._frames_skipped
+        if total > 0:
+            processed_pct = self._frames_processed / total * 100 if total > 0 else 0.0
+            skipped_pct = self._frames_skipped / total * 100 if total > 0 else 0.0
+            self.get_logger().info(
+                f"Frame statistics (last 10s): "
+                f"Processed: {self._frames_processed} ({processed_pct:.1f}%), "
+                f"Skipped: {self._frames_skipped} ({skipped_pct:.1f}%), "
+                f"Total: {total}"
+            )
+            # Reset counters
+            self._frames_processed = 0
+            self._frames_skipped = 0
 
     def _process_data(
         self,
@@ -565,31 +537,56 @@ class ObjectDetection(Node):
             # Extract masks
             masks = self._extract_masks(result, original_height, original_width)
 
-            # Depth processing (synchronous, no threading)
-            clusters = []
-            masks_for_depth = None
+            entities: List[Tuple[Entity, Shape]] = []
+
+            # Depth processing
             if (
                 pointcloud_msg is not None
                 and masks is not None
                 and self.use_depth
                 and self.camera_intrinsics_matrix is not None
             ):
-                transform_msg = self.tf_buffer.lookup_transform(
+                depth_to_target_msg = self.tf_buffer.lookup_transform(
+                    self.target_frame,
+                    pointcloud_msg.header.frame_id,
+                    Time(seconds=0.0),
+                    timeout=Duration(seconds=1.0),
+                )
+                depth_to_target: NDArray = ros2_numpy.numpify(
+                    depth_to_target_msg.transform
+                )
+
+                structured_points = deepcopy(pointcloud2_to_array(pointcloud_msg))
+                sp_np = np.stack(
+                    (
+                        structured_points["x"],
+                        structured_points["y"],
+                        structured_points["z"],
+                        np.ones(structured_points.shape[0]),
+                    )
+                )
+                target_sp = depth_to_target @ sp_np
+                target_sp = target_sp / target_sp[3]
+                structured_points["x"] = target_sp[0]
+                structured_points["y"] = target_sp[1]
+                structured_points["z"] = target_sp[2]
+
+                depth_to_color_msg = self.tf_buffer.lookup_transform(
                     rgb_msg.header.frame_id,
                     pointcloud_msg.header.frame_id,
                     Time.from_msg(rgb_msg.header.stamp),
                     timeout=Duration(seconds=1.0),
                 )
-                transform: NDArray = ros2_numpy.numpify(transform_msg.transform)
-
-                structured_points = pointcloud2_to_array(pointcloud_msg)
+                depth_to_color: NDArray = ros2_numpy.numpify(
+                    depth_to_color_msg.transform
+                )
 
                 np_points = pointcloud2_to_xyz_array(pointcloud_msg)
                 np_points = np_points.transpose(1, 0)
                 np_points = np.concatenate(
                     [np_points, np.ones((1, np_points.shape[-1]))]
                 )
-                np_points = transform @ np_points
+                np_points = depth_to_color @ np_points
                 camera_points = self.camera_intrinsics_matrix @ np_points[:3]
                 camera_points = camera_points / camera_points[2]
                 camera_points = camera_points[:2]
@@ -602,111 +599,31 @@ class ObjectDetection(Node):
                 camera_points_idxs[1] = np.clip(
                     camera_points_idxs[1], 0, original_width - 1
                 )
-                for mask in masks:
+                for i, mask in enumerate(masks):
                     point_mask = mask[camera_points_idxs[0], camera_points_idxs[1]]
                     entity_points = structured_points[point_mask > 0.5]
-                    # entity_points = np_points[point_mask > 0.5]
-                    # entity_data = np.zeros(
-                    #     entity_points.shape[0],
-                    #     dtype=[("x", np.float32), ("y", np.float32), ("z", np.float32)],
-                    # )
-                    # entity_data["x"] = entity_points[:, 0]
-                    # entity_data["y"] = entity_points[:, 1]
-                    # entity_data["z"] = entity_points[:, 2]
-
-                    # entity_pointcloud: PointCloud2 = ros2_numpy.msgify(
-                    #     PointCloud2, entity_data
-                    # )
+                    if len(entity_points) == 0:
+                        continue
                     entity_pointcloud = array_to_pointcloud2(entity_points)
                     entity_pointcloud.header = pointcloud_msg.header
+                    entity_pointcloud.header.frame_id = self.target_frame
                     self.debug_pointcloud_pub.publish(entity_pointcloud)
+
+                    # Extract label
+                    label = result.names[int(result.boxes.cls[i].item())]
+                    entities.append(
+                        create_entity(label, entity_points, entity_pointcloud.header)
+                    )
             else:
                 if depth_msg is None:
                     self.get_logger().debug("No depth message available")
                 if not self.use_depth:
                     self.get_logger().debug("use_depth is False")
 
-            # Associate clusters
-            associations = []
-            # Use masks_for_depth for association since clusters come from depth
-            masks_for_association = (
-                masks_for_depth if masks_for_depth is not None else masks
-            )
-            if (
-                clusters
-                and masks_for_association is not None
-                and self.camera_intrinsics
-            ):
-                # Use depth dimensions for association
-                # (clusters come from depth)
-                assoc_width = (
-                    depth_msg.width if depth_msg is not None else rgb_msg.width
-                )
-                assoc_height = (
-                    depth_msg.height if depth_msg is not None else rgb_msg.height
-                )
-                self.get_logger().debug(
-                    f"Associating {len(clusters)} cluster(s) to "
-                    f"{len(masks_for_association)} detection mask(s) "
-                    f"(using {assoc_width}x{assoc_height} dimensions)"
-                )
-                associations = self._associate_clusters_to_masks(
-                    clusters,
-                    masks_for_association,
-                    self.camera_intrinsics,
-                    assoc_width,
-                    assoc_height,
-                )
-                successful_associations = [
-                    a for a in associations if a.get("cluster") is not None
-                ]
-                self.get_logger().info(
-                    f"Cluster association: "
-                    f"{len(successful_associations)}/{len(associations)} "
-                    f"successful association(s)"
-                )
-            elif clusters:
-                self.get_logger().warn(
-                    f"Cluster association skipped: clusters={len(clusters)}, "
-                    f"masks={masks is not None}, "
-                    f"intrinsics={self.camera_intrinsics is not None}"
-                )
-
-            # Generate entities
-            entities = generate_entities_from_yolo_result(
-                result=result,
-                class_names=self.model.names,
-                frame=None,
-                use_segmentation=self.use_segmentation,
-                cluster_associations=associations if associations else None,
-                frame_id=rgb_msg.header.frame_id,
-                timestamp=rgb_msg.header.stamp,
-                max_points=self.point_cloud_max_points,
-            )
-
-            # Log entity generation results
-            if entities:
-                entities_with_pc = [e for e in entities if "pointcloud" in e]
-                self.get_logger().info(
-                    f"Generated {len(entities)} entit(y/ies), "
-                    f"{len(entities_with_pc)} with point cloud(s)"
-                )
-                for entity in entities:
-                    has_pc = "pointcloud" in entity
-                    self.get_logger().debug(
-                        f"  Entity '{entity['name'].data}': "
-                        f"pointcloud={'yes' if has_pc else 'no'}"
-                    )
+            if self._kb_services_available:
+                self.kb_add_entities(entities)
 
         postprocess_ms = (time.perf_counter() - t_post) * 1000
-
-        # === 4. KB UPDATE (Queued - non-blocking) ===
-        # Update KB if entities detected OR if clear_db_on_no_detection enabled
-        # queued_count = 0
-        # if entities or self._clear_db_on_no_detection:
-        #     queued_count = self._update_kb(
-        #         entities, self.source_frame, rgb_msg.header.stamp
-        #     )
 
         # Timing summary
         total_ms = (time.perf_counter() - t_start) * 1000
@@ -729,139 +646,34 @@ class ObjectDetection(Node):
                     del_req.entityids = list(resp.entities)
                     self.client_del_entities.call(del_req)
 
-    def add_entities(self, entities: List[Tuple[Entity, Shape]]):
+    def kb_add_entities(self, entities: List[Tuple[Entity, Shape]]):
         # Add new entities
-        for entity in entities:
-            pose = entity.get("pose")
-            if pose is None:
+        for entity, shape in entities:
+            add_req = AddEntity.Request()
+            add_req.data = entity
+
+            response: AddEntity.Response = self.client_add_entities.call(add_req)
+
+            if response.result.result_type != Result.SUCCESS:
+                self.get_logger().error(
+                    f"Failed to save entity in database: {response.result.error}"
+                )
                 continue
 
-            # Try transform to target frame, fallback to source frame
-            try:
-                latest_time = Time(seconds=0, nanoseconds=0)
-                transform = self.tf_buffer.lookup_transform(
-                    self.target_frame,
-                    source_frame,
-                    latest_time,
-                    timeout=Duration(seconds=0.5),
-                )
+            # Update shape in KB
+            upd_shape_req = UpdShape.Request()
+            upd_shape_req.entityid = response.entityid
+            upd_shape_req.shape = shape
+            upd_shape_req.stamp = shape.pointcloud.header.stamp
 
-                pose_stamped = PoseStamped()
-                pose_stamped.header.frame_id = source_frame
-                pose_stamped.header.stamp = transform.header.stamp
-                pose_stamped.pose = pose
-
-                transformed = tf2_geometry_msgs.do_transform_pose_stamped(
-                    pose_stamped, transform
-                )
-                transformed_pose = transformed.pose
-            except Exception as e:
-                # Transform failed - log warning and skip entity
-                self.get_logger().warn(
-                    f"KB: Transform to '{self.target_frame}' failed for "
-                    f"'{entity['name'].data}', entity not saved: {e}"
-                )
-                continue  # Skip to next entity
-
-            # Transform succeeded - add entity to KB
-            add_req = AddEntity.Request()
-            add_req.data = Entity(
-                description=f"Detected: {entity['name'].data}",
-                pose=transformed_pose,
-                pose_reference_frame=self.target_frame,
-                stamp=now,
+            shape_response: UpdShape.Response = self.client_upd_shape.call(
+                upd_shape_req
             )
-
-            response = self.client_add_entities.call(add_req)
-
-            if response is not None and hasattr(response, "entityid"):
-                saved_count += 1
-                self.get_logger().info(
-                    f"KB: Saved '{entity['name'].data}' (id={response.entityid})"
+            if shape_response.result.result_type != Result.SUCCESS:
+                self.get_logger().error(
+                    f"Failed to save entity in database: {shape_response.result.error}"
                 )
-                # Update shape (point cloud and bounding box) if available
-                has_pc = "pointcloud" in entity
-                has_bbox = "boundingbox2d" in entity
-                self.get_logger().info(
-                    f"KB: Entity '{entity['name'].data}' "
-                    f"has_pointcloud={has_pc}, has_bbox={has_bbox}"
-                )
-                if has_pc or has_bbox:
-                    try:
-                        # Transform point cloud if needed
-                        transformed_pc = None
-                        if "pointcloud" in entity:
-                            pc = entity["pointcloud"]
-                            # Point cloud is already in source_frame,
-                            # transform to target_frame
-                            if source_frame != self.target_frame:
-                                try:
-                                    # Point cloud already transformed
-                                    pc_copy = pc
-                                    # Ensure frame_id is correct
-                                    pc_copy.header.frame_id = self.target_frame
-                                    transformed_pc = pc_copy
-                                except Exception as e:
-                                    name = entity["name"].data
-                                    self.get_logger().warn(
-                                        f"KB: Failed to transform "
-                                        f"point cloud for '{name}': {e}"
-                                    )
-                                    transformed_pc = pc
-                            else:
-                                transformed_pc = pc
-
-                        # Create Shape message
-                        shape_msg = Shape()
-                        if transformed_pc is not None:
-                            shape_msg.has_pointcloud = True
-                            shape_msg.pointcloud = transformed_pc
-                        else:
-                            shape_msg.has_pointcloud = False
-
-                        if "boundingbox2d" in entity:
-                            shape_msg.has_boundingbox2d = True
-                            shape_msg.boundingbox2d = entity["boundingbox2d"]
-                        else:
-                            shape_msg.has_boundingbox2d = False
-
-                        # Update shape in KB
-                        upd_shape_req = UpdShape.Request()
-                        upd_shape_req.entityid = response.entityid
-                        upd_shape_req.shape = shape_msg
-                        upd_shape_req.stamp = now
-
-                        shape_response = self.client_upd_shape.call(upd_shape_req)
-                        if (
-                            shape_response is not None
-                            and shape_response.result.result_type == Result.SUCCESS
-                        ):
-                            self.get_logger().info(
-                                f"KB: Updated shape for "
-                                f"'{entity['name'].data}' "
-                                f"(id={response.entityid})"
-                            )
-                        else:
-                            error_msg = (
-                                shape_response.result.error
-                                if shape_response is not None
-                                else "Unknown error"
-                            )
-                            result_type = (
-                                shape_response.result.result_type
-                                if shape_response is not None
-                                else "None"
-                            )
-                            self.get_logger().error(
-                                f"KB: Failed to update shape for "
-                                f"'{entity['name'].data}': "
-                                f"result_type={result_type}, "
-                                f"error={error_msg}"
-                            )
-                    except Exception as e:
-                        self.get_logger().error(
-                            f"KB: Error updating shape for '{entity['name'].data}': {e}"
-                        )
+                continue
 
     def camera_info_callback(self, msg: CameraInfo) -> None:
         """Extract camera intrinsics from CameraInfo message.
@@ -1969,6 +1781,27 @@ def generate_entities_from_yolo_result(
     return entities
 
 
+def create_entity(
+    label: str, structured_points: NDArray, points_header: Header
+) -> Tuple[Entity, Shape]:
+    entity = Entity()
+    entity.entity_type.id = EntityType.PICKABLE
+    entity.stamp = points_header.stamp
+    entity.description = label
+    entity.pose_reference_frame = points_header.frame_id
+    entity.pose.position.x = float(np.average(structured_points["x"]))
+    entity.pose.position.y = float(np.average(structured_points["y"]))
+    entity.pose.position.z = float(np.average(structured_points["z"]))
+    entity.pickable.object_name = label
+    # TODO: update object category based om class
+    entity.pickable.object_category = EntityPickable.OBJECT_CATEGORY_CYLINDER
+    shape = Shape()
+    shape.has_pointcloud = True
+    shape.pointcloud = array_to_pointcloud2(structured_points)
+    shape.pointcloud.header = points_header
+    return (entity, shape)
+
+
 def main(args=None):
     """Entry point for the object_detection node."""
     from arlab_common.debugging import start_debugger
@@ -1976,18 +1809,22 @@ def main(args=None):
     start_debugger(wait_for_client=True)
 
     rclpy.init(args=args)
-    object_detection_node = ObjectDetection()
-    executor = AsyncIOExecutor(async_init=object_detection_node.async_init())
-    executor.add_node(object_detection_node)
 
-    object_detection_node.get_logger().info(
-        "Object detection node started. Shut down with CTRL-C"
-    )
+    # Executor with exactly two threads
+    # - One for the behavior tree tick timer
+    # - One for internal ros callback
+    # Note that this thread split is not enforced, but the two threads
+    #   are necessary to not deadlock the node when issuing service calls
+    # IMPORTANT: services must only be called
+    #   from inside the timer callback -> from inside the behaviours
+    executor = rclpy.executors.MultiThreadedExecutor(num_threads=2)
+
     try:
+        node = ObjectDetection()
+        executor.add_node(node)
         executor.spin()
-    finally:
-        # Visualization removed - no need to close windows
-        rclpy.shutdown()
+    except KeyboardInterrupt:
+        pass
 
 
 if __name__ == "__main__":

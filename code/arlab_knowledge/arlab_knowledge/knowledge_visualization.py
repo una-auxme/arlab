@@ -16,6 +16,7 @@ from arlab_common.parameters import update_attributes
 from arlab_knowledge_interfaces.msg import Result
 from arlab_knowledge_interfaces.srv import GetEntities, GetEntity, GetShape
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
+from rclpy.duration import Duration
 from rclpy.node import Node
 from rclpy.parameter import Parameter
 from rclpy.publisher import Publisher
@@ -242,6 +243,7 @@ class KnowledgeVisualization(Node):
         marker_array = debug_marker_array(
             namespace="knowledge",
             markers=markers,
+            lifetime=Duration(seconds=self.update_timer_period * 2.0).to_msg(),
             timestamp=self.get_clock().now().to_msg(),
         )
         self.marker_publisher.publish(marker_array)

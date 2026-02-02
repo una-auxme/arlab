@@ -165,8 +165,9 @@ class Entity(Base):
             marker.action = Marker.ADD  # Explicitly set to ADD
 
             # Larger point size for better visibility
-            marker.scale.x = 0.0005  # Point size in meters (2cm)
-            marker.scale.y = 0.0005
+            marker.scale.x = 0.001  # Point size in meters (2cm)
+            marker.scale.y = 0.001
+            marker.scale.z = 0.001
 
             # Generate a unique color for this entity based on its ID
             # This ensures each entity has a distinct, consistent color

@@ -216,13 +216,15 @@ class KnowledgeVisualization(Node):
                     self.get_logger().info(
                         f"Visualizing entity {entity_id} ('{entity.description}'): "
                         f"{marker_type} marker with {num_points} points "
-                        f"(frame: {frame_id})"
+                        f"(frame: {frame_id})",
+                        throttle_duration_sec=2.0,
                     )
                 else:
                     marker_type = "pose"
                     self.get_logger().info(
                         f"Visualizing entity {entity_id} ('{entity.description}'): "
-                        f"{marker_type} marker (frame: {frame_id})"
+                        f"{marker_type} marker (frame: {frame_id})",
+                        throttle_duration_sec=2.0,
                     )
             else:
                 self.get_logger().warn(
@@ -230,7 +232,8 @@ class KnowledgeVisualization(Node):
                 )
 
         self.get_logger().info(
-            f"Converted {len(result.entities)} entit(y/ies) to {len(markers)} marker(s)"
+            f"Converted {len(result.entities)} entit(y/ies) to {len(markers)} marker(s)",
+            throttle_duration_sec=2.0,
         )
         return markers
 
@@ -251,6 +254,10 @@ class KnowledgeVisualization(Node):
 
 
 def main(args=None):
+    # from arlab_common.debugging import start_debugger
+
+    # start_debugger(wait_for_client=True)
+
     rclpy.init(args=args)
 
     knowledge_visualization_node = KnowledgeVisualization()

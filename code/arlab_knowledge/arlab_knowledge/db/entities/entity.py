@@ -10,10 +10,9 @@ Maintainers:
 
 from typing import Any, Dict, List, Optional
 
+import arlab_common.markers
 import rclpy.logging
 from arlab_knowledge_interfaces import msg
-from geometry_msgs.msg import Point
-from sensor_msgs_py import point_cloud2 as pc2
 from sqlalchemy import Float, Integer, String
 from sqlalchemy.orm import (
     Mapped,
@@ -90,32 +89,25 @@ class Entity(Base):
         Args:
             entity_id: Optional entity ID to use as marker ID. If None, uses self.id.
         """
-        marker_id = entity_id if entity_id is not None else self.id
-        point_cloud_marker = self.get_point_cloud_marker(marker_id=marker_id)
+        markers = []
+
+        point_cloud_marker = self.get_point_cloud_marker()
         if point_cloud_marker is not None:
-            return [point_cloud_marker]
+            markers.append(point_cloud_marker)
 
-        # return [self.get_pose_marker(marker_id=marker_id)]
-        return []
+        markers.append(self.get_pose_marker())
+        markers.extend(self.get_meta_markers())
+        return markers
 
-    def get_pose_marker(self, marker_id: int | None = None) -> Marker:
-        import arlab_common.markers
-
-        marker = arlab_common.markers.debug_marker(
+    def get_pose_marker(self) -> Marker:
+        return arlab_common.markers.debug_marker(
             base=self.pose.pose,
             frame_id=self.pose_reference_frame,
-            color=(0.5, 0.5, 0.5, 0.9),
+            color=(0.5, 0.5, 0.5, 0.5),
+            size_modifier=0.05,
         )
-        # Ensure marker has unique ID and namespace
-        if marker_id is not None:
-            marker.id = marker_id
-        elif hasattr(self, "id"):
-            marker.id = self.id
-        marker.ns = "knowledge_entities"
-        marker.action = Marker.ADD
-        return marker
 
-    def get_point_cloud_marker(self, marker_id: int | None = None) -> Marker | None:
+    def get_point_cloud_marker(self) -> Optional[Marker]:
         """Create a POINTS marker from the entity's point cloud.
 
         Returns:
@@ -125,92 +117,25 @@ class Entity(Base):
         if not self.shape or not self.shape.pointcloud2:
             return None
 
-        try:
-            # Convert PointCloud2 (DB object) to ROS msg
-            pc2_msg = self.shape.pointcloud2.to_ros_msg()
-
-            # Extract points from PointCloud2
-            points: List[Point] = []
-            for p in pc2.read_points(
-                pc2_msg,
-                field_names=["x", "y", "z"],
-                skip_nans=True,
-            ):
-                points.append(Point(x=float(p[0]), y=float(p[1]), z=float(p[2])))
-
-            if not points:
-                return None
-
-            # Optional: simple downsampling if there are too many points
-            max_points = 10000
-            if len(points) > max_points:
-                step = max(1, len(points) // max_points)
-                points = points[::step]
-
-            # Create POINTS marker
-            marker = Marker()
-            marker.type = Marker.POINTS
-            marker.points = points
-            # Use pose_reference_frame (should be "world") for marker frame_id
-            # This ensures markers are displayed in the correct frame regardless of
-            # the point cloud's original frame_id
-            marker.header.frame_id = self.pose_reference_frame
-            marker_id_val = (
-                marker_id
-                if marker_id is not None
-                else (self.id if hasattr(self, "id") else 0)
-            )
-            marker.id = marker_id_val
-            marker.ns = "knowledge_entities"  # Namespace for markers
-            marker.action = Marker.ADD  # Explicitly set to ADD
-
-            # Larger point size for better visibility
-            marker.scale.x = 0.001  # Point size in meters (2cm)
-            marker.scale.y = 0.001
-            marker.scale.z = 0.001
-
-            # Generate a unique color for this entity based on its ID
-            # This ensures each entity has a distinct, consistent color
-            import colorsys
-            import hashlib
-
-            # Create a hash from the entity ID to get consistent colors
-            hash_obj = hashlib.md5(str(marker_id_val).encode())
-            hash_int = int(hash_obj.hexdigest()[:8], 16)
-
-            # Generate RGB values from hash using HSV color space
-            # for better color distribution
-            hue = (hash_int % 360) / 360.0  # 0.0 to 1.0
-            saturation = 0.7 + (hash_int % 30) / 100.0  # 0.7 to 1.0
-            value = 0.8 + (hash_int % 20) / 100.0  # 0.8 to 1.0
-
-            r, g, b = colorsys.hsv_to_rgb(hue, saturation, value)
-
-            # Apply single color to all points
-            marker.color.r = float(r)
-            marker.color.g = float(g)
-            marker.color.b = float(b)
-            marker.color.a = 0.9  # Less transparent for better visibility
-
-            # Debug: Log color for this entity
-            rclpy.logging.get_logger("Entity").info(
-                f"Point cloud marker for entity ID {marker_id_val}: "
-                f"color RGB=({r:.3f}, {g:.3f}, {b:.3f}), "
-                f"marker.id={marker.id}, marker.ns={marker.ns}, "
-                f"frame_id='{marker.header.frame_id}'"
-            )
-
-            return marker
-        except Exception as e:
-            # Log error but don't crash visualization
-            rclpy.logging.get_logger("Entity").warn(
-                f"Failed to create point cloud marker: {e}"
-            )
-            return None
+        # Convert PointCloud2 (DB object) to ROS msg
+        pc2_msg = self.shape.pointcloud2.to_ros_msg()
+        return arlab_common.markers.debug_marker(
+            base=pc2_msg,
+            frame_id=self.pose_reference_frame,
+            color=(1.0, 1.0, 1.0, 0.9),
+            size_modifier=0.005,  # 5mm
+        )
 
     def get_meta_markers(self) -> List[Marker]:
-        # TODO: Return attributes as text
-        return []
+        return [
+            arlab_common.markers.debug_marker(
+                base=self.description,
+                frame_id=self.pose_reference_frame,
+                pose=self.pose.pose,
+                color=(1.0, 1.0, 1.0, 0.9),
+                size_modifier=0.05,
+            )
+        ]
 
     @classmethod
     def from_ros_msg(cls, m: msg.Entity) -> "Entity":

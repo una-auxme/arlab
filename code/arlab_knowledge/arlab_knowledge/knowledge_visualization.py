@@ -233,7 +233,7 @@ class KnowledgeVisualization(Node):
                 )
 
         self.get_logger().info(
-            f"Converted {len(result.entities)} entit(y/ies) to {len(markers)} marker(s)",
+            f"Converted {len(result.entities)} entities to {len(markers)} marker(s)",
             throttle_duration_sec=2.0,
         )
         return markers

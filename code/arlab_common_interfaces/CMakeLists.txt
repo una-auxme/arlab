@@ -46,7 +46,6 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "action/MovementAction.action"
   "action/ManipulationAction.action"
   "action/OrchestratorAction.action"
-
   "action/VisionSnapshotAction.action"
   DEPENDENCIES
     geometry_msgs

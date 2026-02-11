@@ -12,10 +12,8 @@ Date: 2025-10-22
 """
 
 from threading import Event
-from time import sleep
 from typing import cast
 
-import numpy as np
 import rclpy
 import rclpy.executors
 import tf2_ros
@@ -25,15 +23,18 @@ from arlab_common_interfaces.srv import GrippingParameter
 from arlab_knowledge_interfaces.srv import GetEntity, GetShape
 from geometry_msgs.msg import Point, Pose, Quaternion
 from moveit_msgs.msg import PlanningScene
-from octomap_msgs.msg import Octomap, OctomapWithPose
+
+# from octomap_msgs.msg import Octomap, OctomapWithPose
 from rclpy.action.client import ActionClient
 from rclpy.action.server import ActionServer, GoalResponse
-from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.node import Node
 from std_msgs.msg import Float64, String
 
 from .utils.octomap_utils import find_placing_area
-from .utils.transform_utils import transform_bBox, transform_pointCloud, transform_pose
+from .utils.transform_utils import (
+    transform_pose,  # transform_bBox, transform_pointCloud,
+)
 
 
 class orchestrator(Node):

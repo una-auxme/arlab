@@ -17,7 +17,7 @@ from py_trees.common import ParallelPolicy
 from py_trees.composites import Parallel, Sequence
 from rclpy.node import Node
 
-from .behaviours import check_safety, task1, task2
+from .behaviours import task1, task2
 from .behaviours.common.speech import SpeechOutput
 from .behaviours.test_trees import (
     test_manipulation_dr6_video,

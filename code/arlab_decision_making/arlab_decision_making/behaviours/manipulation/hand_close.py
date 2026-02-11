@@ -1,5 +1,3 @@
-from math import pi
-
 from arlab_common_interfaces.action import ManipulationAction
 from arlab_common_interfaces.msg import ManipulationCommand, ManipulationResponse
 from py_trees.behaviour import Behaviour

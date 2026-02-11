@@ -14,7 +14,6 @@ Date: 2025-08-24
 
 import rclpy
 from arlab_common_interfaces.srv import GrippingParameter
-from geometry_msgs.msg import Point, Quaternion
 from rclpy.node import Node
 
 

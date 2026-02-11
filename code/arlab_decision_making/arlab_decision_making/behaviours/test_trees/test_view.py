@@ -6,7 +6,6 @@ from ..common import vision_snapshot
 from ..manipulation import (
     hand_close,
     home,
-    manipulator_pick,
     move,
 )
 

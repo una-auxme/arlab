@@ -31,7 +31,7 @@ def generate_launch_description():
         ],
         parameters=[
             {"log_level": "DEBUG"},  # Node-Parameter für Debug-Logs
-            {"sync_tolerance": 10.0},
+            {"sync_tolerance": 1.0},
             {"target_frame": "world"},
             {"snapshot_mode": True},
         ],

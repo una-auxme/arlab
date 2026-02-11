@@ -99,8 +99,6 @@ class ObjectDetection(Node):
         self.declare_parameter("sync_tolerance", 0.5)  # 500ms tolerance (default)
         # Enable/disable depth clustering (default: False for better performance)
         self.declare_parameter("use_clustering", True)
-        # Processing timeout (0.0 = disabled, use _processing_frame flag only)
-        self.declare_parameter("processing_timeout", 0.0)
         # Delete old entities before adding new ones
         self.declare_parameter("delete_old_entities", True)
         # Clear DB when no objects are detected (keeps DB in sync with camera)
@@ -113,6 +111,11 @@ class ObjectDetection(Node):
 
         # Enable snapshot mode
         self.declare_parameter("snapshot_mode", True)
+
+        # If the model output should be plotted and published
+        self.visualize = (
+            self.get_parameter("visualize").get_parameter_value().bool_value
+        )
 
         # Load parameters.
         yolo_weights = (
@@ -143,19 +146,6 @@ class ObjectDetection(Node):
         self.sync_tolerance = (
             self.get_parameter("sync_tolerance").get_parameter_value().double_value
         )
-
-        # Load processing timeout parameter (0.0 = disabled)
-        self._processing_timeout = (
-            self.get_parameter("processing_timeout").get_parameter_value().double_value
-        )
-        if self._processing_timeout > 0.0:
-            self.get_logger().info(
-                f"Processing timeout set to {self._processing_timeout}s"
-            )
-        else:
-            self.get_logger().info(
-                "Processing timeout disabled (using _processing_frame flag only)"
-            )
 
         # Load delete old entities parameter
         self._delete_old_entities = (
@@ -296,9 +286,6 @@ class ObjectDetection(Node):
         self.camera_intrinsics_matrix: Optional[NDArray] = None
         self.camera_intrinsics: dict[str, float] | None = None
         self._camera_intrinsics_set = False
-        # Separate depth camera intrinsics (if available)
-        self.depth_camera_intrinsics: dict[str, float] | None = None
-        self._depth_camera_intrinsics_set = False
         # Cached intrinsics values for faster access
         self._fx: float | None = None
         self._fy: float | None = None
@@ -497,9 +484,11 @@ class ObjectDetection(Node):
         result, num_detections = self._run_yolo_inference(yolo_image)
         inference_ms = (time.perf_counter() - t_yolo) * 1000
 
-        self.segmented_image_pub.publish(
-            self.bridge.cv2_to_imgmsg(result.plot(), "rgb8")
-        )
+        if self.visualize:
+            # Plot model result if enabled
+            self.segmented_image_pub.publish(
+                self.bridge.cv2_to_imgmsg(result.plot(), "rgb8")
+            )
 
         # === 3. POSTPROCESSING (CPU) ===
         t_post = time.perf_counter()
@@ -527,6 +516,7 @@ class ObjectDetection(Node):
                 and self.use_depth
                 and self.camera_intrinsics_matrix is not None
             ):
+                # Transform from depth frame to target(world) frame
                 depth_to_target_msg = self.tf_buffer.lookup_transform(
                     self.target_frame,
                     pointcloud_msg.header.frame_id,
@@ -551,7 +541,9 @@ class ObjectDetection(Node):
                 structured_points["x"] = target_sp[0]
                 structured_points["y"] = target_sp[1]
                 structured_points["z"] = target_sp[2]
+                # structured_points now contains the pointcloud in target coordinates
 
+                # Transform from depth frame to color image frame
                 depth_to_color_msg = self.tf_buffer.lookup_transform(
                     rgb_msg.header.frame_id,
                     pointcloud_msg.header.frame_id,
@@ -568,9 +560,11 @@ class ObjectDetection(Node):
                     [np_points, np.ones((1, np_points.shape[-1]))]
                 )
                 np_points = depth_to_color @ np_points
+                # np_points contains pointcloud in color frame coordinates
                 camera_points = self.camera_intrinsics_matrix @ np_points[:3]
                 camera_points = camera_points / camera_points[2]
                 camera_points = camera_points[:2]
+                # camera_points contains pointcloud in color image coordinates
                 camera_points_idxs = camera_points.astype(np.int32)
                 # x, y -> y, x
                 camera_points_idxs[[0, 1]] = camera_points_idxs[[1, 0]]
@@ -581,7 +575,12 @@ class ObjectDetection(Node):
                     camera_points_idxs[1], 0, original_width - 1
                 )
                 for i, mask in enumerate(masks):
+                    # Converts the image mask into a per point mask
                     point_mask = mask[camera_points_idxs[0], camera_points_idxs[1]]
+                    # Filters the points based on the mask.
+                    # The structured_points were already transformed
+                    # into the target frame.
+                    # -> Final points for the entity
                     entity_points = structured_points[point_mask > 0.5]
                     if len(entity_points) == 0:
                         continue
@@ -601,6 +600,7 @@ class ObjectDetection(Node):
                 if not self.use_depth:
                     self.get_logger().debug("use_depth is False")
 
+        # Update database
         if self._kb_services_available:
             self.kb_add_entities(entities)
         if delete_old_entities:
@@ -620,6 +620,8 @@ class ObjectDetection(Node):
         )
 
     def _kb_get_entities_for_deletion(self) -> List[int]:
+        if not self._kb_services_available:
+            return []
         get_req = GetEntities.Request()
         # Only delete pickables
         get_req.entity_type.id = EntityType.PICKABLE
@@ -632,6 +634,14 @@ class ObjectDetection(Node):
         return response.entities
 
     def _kb_delete_entities(self, ids: List[int]):
+        if not self._kb_services_available:
+            self.get_logger().warn(
+                "Not deleting entities: Kb services not available!",
+                throttle_duration_sec=2,
+            )
+            return
+        if len(ids) == 0:
+            return
         self.get_logger().info(f"Clearing {len(ids)} entities from kb")
 
         del_req = DelEntities.Request()
@@ -643,6 +653,12 @@ class ObjectDetection(Node):
             )
 
     def kb_add_entities(self, entities: List[Tuple[Entity, Shape]]):
+        if not self._kb_services_available:
+            self.get_logger().warn(
+                "Not adding entities: Kb services not available!",
+                throttle_duration_sec=2,
+            )
+            return
         # Add new entities
         for entity, shape in entities:
             add_req = AddEntity.Request()

@@ -7,6 +7,7 @@ Overview of the main components:
 """
 
 from collections.abc import Sequence
+from copy import deepcopy
 from typing import List, Optional, Tuple
 
 from builtin_interfaces.msg import Duration as DurationMsg
@@ -67,16 +68,22 @@ def debug_marker(
         marker = Marker(type=Marker.POINTS, points=[base])
     elif isinstance(base, PointCloud2):
         # Extract points from PointCloud2
-        structured_points = split_rgb_field(pointcloud2_to_array(base))
+        structured_points = pointcloud2_to_array(base)
+        colored_points = False
+        if "rgb" in structured_points.dtype.names:
+            structured_points = split_rgb_field(structured_points)
+            colored_points = True
 
         points: List[Point] = []
         colors: List[ColorRGBA] = []
         for p in structured_points:
-            print(p["r"])
             points.append(Point(x=float(p["x"]), y=float(p["y"]), z=float(p["z"])))
-            colors.append(
-                ColorRGBA(r=p["r"] / 255.0, g=p["g"] / 255.0, b=p["b"] / 255.0, a=1.0)
-            )
+            if colored_points:
+                colors.append(
+                    ColorRGBA(
+                        r=p["r"] / 255.0, g=p["g"] / 255.0, b=p["b"] / 255.0, a=1.0
+                    )
+                )
 
         marker = Marker(type=Marker.POINTS)
         marker.points = points
@@ -129,7 +136,7 @@ def debug_marker(
     if frame_id:
         marker.header.frame_id = frame_id
     if pose:
-        marker.pose = pose
+        marker.pose = deepcopy(pose)
     if offset:
         marker.pose.position.x += offset.x
         marker.pose.position.y += offset.y

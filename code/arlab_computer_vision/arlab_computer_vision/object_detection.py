@@ -88,7 +88,7 @@ class ObjectDetection(Node):
         default_yolo_weights = os.path.join(
             package_share_dir,
             "yolo_weights",
-            "yolo11n-seg-fruit-final.pt",  # 'yolo11n-trained.pt' for detection model
+            "yolo11n-seg_fruit_dataset_strong_geom_fruit.pt",  # 'yolo11n-trained.pt' for detection model
         )
 
         # Declare configurable parameters.
@@ -462,8 +462,7 @@ class ObjectDetection(Node):
 
         # === 1. PREPROCESSING (CPU) ===
         t_pre = time.perf_counter()
-        bgr_image = self.bridge.imgmsg_to_cv2(rgb_msg, desired_encoding="bgr8")
-        rgb_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2RGB)
+        rgb_image = self.bridge.imgmsg_to_cv2(rgb_msg, desired_encoding="bgr8")
         original_height, original_width = rgb_image.shape[:2]
 
         # Scale to YOLO input size
@@ -487,7 +486,7 @@ class ObjectDetection(Node):
         if self.visualize:
             # Plot model result if enabled
             self.segmented_image_pub.publish(
-                self.bridge.cv2_to_imgmsg(result.plot(), "rgb8")
+                self.bridge.cv2_to_imgmsg(result.plot(), "bgr8")
             )
 
         # === 3. POSTPROCESSING (CPU) ===
@@ -582,6 +581,14 @@ class ObjectDetection(Node):
                     # into the target frame.
                     # -> Final points for the entity
                     entity_points = structured_points[point_mask > 0.5]
+
+                    if (
+                        self.get_parameter("use_clustering")
+                        .get_parameter_value()
+                        .bool_value
+                    ):
+                        entity_points = self.cluster_entity_points(entity_points)
+
                     if len(entity_points) == 0:
                         continue
                     entity_pointcloud = array_to_pointcloud2(entity_points)
@@ -618,6 +625,29 @@ class ObjectDetection(Node):
             f"Total:{total_ms:.1f}ms | "
             # f"{queued_count} queued"
         )
+
+    def cluster_entity_points(self, entity_points):
+        if len(entity_points) == 0:
+            return []
+        # 1. Preparing data for sklearn dbscan
+        xyz = np.stack(
+            [entity_points["x"], entity_points["y"], entity_points["z"]], axis=1
+        )
+
+        # 2. Exectute DBSCAN clustering
+        # eps= max distance, min_samples= min density
+        db = DBSCAN(eps=0.01, min_samples=10).fit(xyz)
+        labels = db.labels_
+
+        # 3. Determine biggest cluster
+        unique_labels, counts = np.unique(labels[labels >= 0], return_counts=True)
+
+        if len(unique_labels) > 0:
+            best_cluster = unique_labels[np.argmax(counts)]
+            entity_points = entity_points[labels == best_cluster]
+            return entity_points
+        else:
+            return []
 
     def _kb_get_entities_for_deletion(self) -> List[int]:
         if not self._kb_services_available:

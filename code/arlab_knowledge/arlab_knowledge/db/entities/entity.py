@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional
 import arlab_common.markers
 import rclpy.logging
 from arlab_knowledge_interfaces import msg
+from geometry_msgs.msg import Vector3
 from sqlalchemy import Float, Integer, String
 from sqlalchemy.orm import (
     Mapped,
@@ -132,6 +133,7 @@ class Entity(Base):
                 base=self.description,
                 frame_id=self.pose_reference_frame,
                 pose=self.pose.pose,
+                offset=Vector3(x=0.0, y=0.0, z=0.05),
                 color=(1.0, 1.0, 1.0, 0.9),
                 size_modifier=0.05,
             )

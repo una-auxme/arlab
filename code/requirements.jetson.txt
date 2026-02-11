@@ -1,0 +1,5 @@
+# Custom-built wheels for Jetson
+# They were created with https://github.com/Zelberor/jetson-pytorch-builder. Run the build.sh script to build the wheels
+https://github.com/una-auxme/arlab/releases/download/jetson-pytorch-2.7.1/torch-2.7.1a0+gite2d141d-cp312-cp312-linux_aarch64.whl
+https://github.com/una-auxme/arlab/releases/download/jetson-pytorch-2.7.1/torchvision-0.22.1+59a3e1f-cp312-cp312-linux_aarch64.whl
+https://github.com/una-auxme/arlab/releases/download/jetson-pytorch-2.7.1/torchaudio-2.7.1a0+95c61b4-cp312-cp312-linux_aarch64.whl

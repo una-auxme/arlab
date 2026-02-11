@@ -45,6 +45,7 @@ from rclpy.executors import (
     Executor,
     ExternalShutdownException,
     ShutdownException,
+    TaskData,
     TimeoutException,
     TimeoutObject,
     WaitableEntityType,
@@ -236,9 +237,8 @@ class AsyncIOExecutor(Executor):
             executor=self,
         )
         with self._tasks_lock:
-            self._tasks.append((task, None, None))
-            self._guard.trigger()
-        # Task inherits from Future
+            self._pending_tasks[task] = TaskData()
+        self._call_task_in_next_spin(task)
         return task
 
     def _make_handler(
@@ -280,7 +280,7 @@ class AsyncIOExecutor(Executor):
             executor=self,
         )
         with self._tasks_lock:
-            self._tasks.append((task, entity, node))
+            self._pending_tasks[task] = TaskData(source_entity=entity, source_node=node)
         return task
 
     def start_spin_thread(self):

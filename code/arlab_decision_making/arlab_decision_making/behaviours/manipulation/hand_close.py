@@ -11,7 +11,7 @@ from .generic_manipulation import GenericManipulation
 
 def get_tree() -> Behaviour:
     return Sequence(
-        name="ManipulaterClose",
+        name="ManipulationClose",
         memory=True,
         children=[
             SetHandClose(),
@@ -27,7 +27,9 @@ class SetHandClose(Behaviour):
     def __init__(self):
         super().__init__(name=type(self).__name__)
         self.blackboard = self.attach_blackboard_client(name=self.name)
-        self.blackboard.register_key(key="/manipulation/close_goal", access=Access.WRITE)
+        self.blackboard.register_key(
+            key="/manipulation/close_goal", access=Access.WRITE
+        )
 
     def update(self):
         goal = ManipulationAction.Goal()

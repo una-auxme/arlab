@@ -1,4 +1,4 @@
-"""Base vehaviour for ROS2 action clients integrated with py_trees.
+"""Base behaviour for ROS2 action clients integrated with py_trees.
 
 Provides a wrapper around 'py_tree_ros.action_clients.FromBlackboard' to:
     - configure a ROS2 action client for a given action type and name

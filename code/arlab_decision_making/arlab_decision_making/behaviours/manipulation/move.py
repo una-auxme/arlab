@@ -42,7 +42,7 @@ class SetupManipulationMove(Behaviour):
 
     def update(self):
         goal = ManipulationAction.Goal()
-        goal.command.command_type = ManipulationCommand.COMMAND_MOVE_TO_BOX
+        goal.command.command_type = ManipulationCommand.COMMAND_MOVE
         goal.command.target_pose.position.x = self.x
         goal.command.target_pose.position.y = self.y
         goal.command.target_pose.position.z = self.z

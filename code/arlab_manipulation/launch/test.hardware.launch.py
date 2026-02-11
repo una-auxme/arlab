@@ -29,23 +29,18 @@ def generate_launch_description():
     """
     ld = LaunchDescription()
 
-    simulation_launch = PathJoinSubstitution(
+    manipulator_launch = PathJoinSubstitution(
         [
             FindPackageShare("manipulator_description"),
             "launch",
-            "manipulator_moveit.launch.py",
+            "manipulator.launch.py",
         ]
     )
 
-    use_sim_time = LaunchConfiguration("use_sim_time")
-    ld.add_action(DeclareLaunchArgument("use_sim_time", default_value="false"))
-
-    sim_include = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(simulation_launch),
+    manipulator_include = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(manipulator_launch),
         # Falls die Child-Launch Argumente erwartet, hier durchreichen:
-        launch_arguments={
-            "use_sim_time": use_sim_time,
-        }.items(),
+        launch_arguments={}.items(),
     )
 
     # Service node for providing gripping force recommendations
@@ -62,22 +57,10 @@ def generate_launch_description():
         package="arlab_manipulation_cpp", executable="Manipulation_CPP"
     )
 
-    # Video node from perception
-    Perception = Node(package="arlab_perception", executable="video_node")
-
-    # Video node from perception
-    KnowledgeBase = Node(package="arlab_knowledge", executable="database_node")
-
-    # Video node from perception
-    CompVision = Node(package="arlab_computer_vision", executable="object_detection")
-
     # Add nodes to the launch description
-    ld.add_action(sim_include)
+    ld.add_action(manipulator_include)
     ld.add_action(GetParameter)
     ld.add_action(Orchestrator)
     ld.add_action(Manipulation_CPP)
-    # ld.add_action(Perception)
-    ld.add_action(KnowledgeBase)
-    # ld.add_action(CompVision)
 
     return ld

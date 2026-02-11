@@ -204,15 +204,16 @@ class orchestrator(Node):
             self.point_cloud = shape.pointcloud if shape.has_pointcloud else None
             self.bounding_box = shape.boundingbox2d if shape.has_boundingbox2d else None
 
-            self.point_cloud, err, msg = transform_pointCloud(
-                self.tf_buffer, self.point_cloud, self.stamp, self.ref_frame
-            )
+            # TODO: FIX
+            # self.point_cloud, err, msg = transform_pointCloud(
+            #     self.tf_buffer, self.point_cloud, self.stamp, self.ref_frame
+            # )
 
-            self.bounding_box, err, msg = transform_bBox(
-                self.tf_buffer, self.bounding_box, self.stamp, self.ref_frame
-            )
+            # self.bounding_box, err, msg = transform_bBox(
+            #     self.tf_buffer, self.bounding_box, self.stamp, self.ref_frame
+            # )
 
-            if self.pickable and err == 1:
+            if self.pickable:
                 self.req_gripping_parameter = GrippingParameter.Request()
                 self.req_gripping_parameter.objectgroup = self.object_group
                 future_param = self.client_gripping_parameter.call_async(
@@ -220,8 +221,8 @@ class orchestrator(Node):
                 )
                 future_param.add_done_callback(self.handle_gripping_parameter_response)
             else:
-                self.err = err
-                self.msg = msg
+                # self.err = err
+                # self.msg = msg
                 self.finish_action()
 
         except Exception as e:

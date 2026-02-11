@@ -13,16 +13,20 @@ import rclpy
 import rclpy.callback_groups
 import rclpy.executors
 from py_trees.behaviour import Behaviour
-from py_trees.composites import Sequence
+from py_trees.common import ParallelPolicy
+from py_trees.composites import Parallel, Sequence
 from rclpy.node import Node
 
 from .behaviours import check_safety, task1, task2
+from .behaviours.common.speech import SpeechOutput
 from .behaviours.test_trees import (
+    test_manipulation_dr6_video,
     test_manipulation_home,
     test_manipulation_home_move_seq,
     test_manipulation_move,
+    test_manipulation_pick,
     test_manipulation_video_sequence,
-    test_manipulation_dr6_video,
+    test_view,
 )
 
 
@@ -60,15 +64,26 @@ def get_tree(task: str) -> Behaviour:
         chosen_task = test_manipulation_video_sequence
     elif task == "test_grab_dr6":
         chosen_task = test_manipulation_dr6_video
+    elif task == "test_pick":
+        chosen_task = test_manipulation_pick
+    elif task == "test_view":
+        chosen_task = test_view
     else:
         raise ValueError(f"Unknown task: {task}")
 
-    return Sequence(
-        name="DecisionMaker",
-        memory=False,
+    return Parallel(
+        name="DecisionMakerParallel",
+        policy=ParallelPolicy.SuccessOnOne(),
         children=[
-            # check_safety.get_tree(),
-            chosen_task.get_tree(),
+            Sequence(
+                name="DecisionMaker",
+                memory=False,
+                children=[
+                    # check_safety.get_tree(),
+                    chosen_task.get_tree(),
+                ],
+            ),
+            SpeechOutput(),
         ],
     )
 

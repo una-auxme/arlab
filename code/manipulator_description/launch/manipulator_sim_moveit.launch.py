@@ -66,9 +66,9 @@ def launch_setup(context, *args, **kwargs):
         PythonLaunchDescriptionSource(
             PathJoinSubstitution(
                 [
-                    FindPackageShare("manipulator_moveit_config"),
+                    FindPackageShare("manipulator_ur_moveit_config"),
                     "launch",
-                    "manipulator_moveit_config.launch.py",
+                    "ur_moveit.launch.py",
                 ]
             )
         ),

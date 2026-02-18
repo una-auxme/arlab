@@ -97,7 +97,7 @@ def declare_arguments():
             ),
             DeclareLaunchArgument(
                 "use_sim_time",
-                default_value="false",
+                default_value="true",
                 description="Using or not time from simulation",
             ),
             DeclareLaunchArgument(

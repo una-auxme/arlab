@@ -38,7 +38,7 @@ def generate_launch_description():
     )
 
     use_sim_time = LaunchConfiguration("use_sim_time")
-    ld.add_action(DeclareLaunchArgument("use_sim_time", default_value="false"))
+    ld.add_action(DeclareLaunchArgument("use_sim_time", default_value="true"))
 
     sim_include = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(simulation_launch),
@@ -62,18 +62,10 @@ def generate_launch_description():
         package="arlab_manipulation_cpp", executable="Manipulation_CPP", output="log"
     )
 
-    # Video node from perception
-    KnowledgeBase = Node(package="arlab_knowledge", executable="database_node")
-
-    # Video node from perception
-    CompVision = Node(package="arlab_computer_vision", executable="object_detection")
-
     # Add nodes to the launch description
     ld.add_action(sim_include)
     ld.add_action(GetParameter)
     ld.add_action(Orchestrator)
     ld.add_action(Manipulation_CPP)
-    ld.add_action(KnowledgeBase)
-    ld.add_action(CompVision)
 
     return ld

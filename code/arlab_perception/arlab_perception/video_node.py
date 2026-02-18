@@ -20,7 +20,7 @@ class VideoPublisher(Node):
         self.cap = cv2.VideoCapture(self.video_path)
 
         if not self.cap.isOpened():
-            # self.get_logger().error(f"Konnte Video nicht öffnen: {self.video_path}")
+            self.get_logger().error(f"Konnte Video nicht öffnen: {self.video_path}")
             return
 
         # Timer ruft `timer_callback` alle 0.033 Sekunden auf (ca. 30 FPS)
@@ -32,7 +32,7 @@ class VideoPublisher(Node):
         if self.cap.isOpened():
             ret, frame = self.cap.read()
             if not ret:
-                # self.get_logger().info("Ende des Videos erreicht")
+                self.get_logger().info("Ende des Videos erreicht")
                 self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)  # Wieder von vorne starten
                 return
 
@@ -41,10 +41,10 @@ class VideoPublisher(Node):
 
             msg.header = Header()
             msg.header.stamp = self.get_clock().now().to_msg()
-            # msg.header.frame_id = "video_frame"
+            msg.header.frame_id = "video_frame"
 
             self.video_pub.publish(msg)
-            # self.get_logger().info("Video-Frame veröffentlicht")
+            self.get_logger().info("Video-Frame veröffentlicht")
 
     def destroy_node(self):
         if self.cap.isOpened():

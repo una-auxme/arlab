@@ -71,7 +71,7 @@ class KinectAzurePublisher(Node):
             )
         )
         self.config.start()
-        # self.get_logger().info("Azure Kinect started")
+        self.get_logger().info("Azure Kinect started")
 
         # Start the image capture loop in a separate thread to avoid blocking
         self.running = True
@@ -115,7 +115,7 @@ class KinectAzurePublisher(Node):
         if self.capture_thread.is_alive():
             self.capture_thread.join()
         self.config.stop()
-        # self.get_logger().info("Azure Kinect stopped")
+        self.get_logger().info("Azure Kinect stopped")
 
 
 def main(args=None):

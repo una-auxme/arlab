@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot xmlns:xacro="http://wiki.ros.org/xacro" name="ur5e">
+
+  <!-- import ur5 macro -->
+  <xacro:include filename="$(find ur_description)/urdf/ur_macro.xacro"/>
+  <!-- import ur5 ROS2 control macro -->
+  <xacro:include filename="$(find ur_robot_driver)/urdf/ur.ros2_control.xacro"/>
+  <xacro:include filename="$(find ur_description)/urdf/inc/ur_transmissions.xacro" />
+
+  <!-- import Mia Hand macro -->
+  <xacro:include filename="$(find mia_hand_description)/urdf/mia_hand.urdf.xacro"/>
+  <!-- import Mia Hand ROS2 control macro -->
+  <xacro:include filename="$(find mia_hand_ros2_control)/description/ros2_control/mia_hand.ros2_control.xacro"/>
+
+  <!-- import Camera macro -->
+  <xacro:include filename="$(find realsense2_description)/urdf/_d435.urdf.xacro"/>
+
+  <!-- import Realsense Mount macro -->
+  <xacro:include filename="$(find manipulator_description)/urdf/ur_realsense_mount.xacro"/>
+
+  <!-- import Scene Objects macro -->
+  <xacro:include filename="$(find manipulator_description)/urdf/schrankregal.xacro"/>
+
+  <!-- ur5 parameters -->
+  <!-- possible 'ur_type' values: ur3, ur3e, ur5, ur5e, ur7e, ur10, ur10e, ur12e, ur16e, ur15, ur20, ur30 -->
+  <!-- the default value should raise an error in case this was called without defining the type -->
+  <xacro:arg name="ur_type" default="ur5e"/>
+
+  <xacro:arg name="tf_prefix" default="" />
+  <xacro:arg name="joint_limit_params" default="$(find manipulator_description)/config/ur_joint_limits.yaml"/>
+  <xacro:arg name="kinematics_params" default="$(find ur_description)/config/$(arg ur_type)/default_kinematics.yaml"/>
+  <xacro:arg name="physical_params" default="$(find ur_description)/config/$(arg ur_type)/physical_parameters.yaml"/>
+  <xacro:arg name="visual_params" default="$(find ur_description)/config/$(arg ur_type)/visual_parameters.yaml"/>
+  <xacro:arg name="transmission_hw_interface" default=""/>
+  <xacro:arg name="safety_limits" default="false"/>
+  <xacro:arg name="safety_pos_margin" default="0.15"/>
+  <xacro:arg name="safety_k_position" default="20"/>
+
+  <xacro:arg name="headless_mode" default="false" />
+  <xacro:arg name="robot_ip" default="0.0.0.0"/>
+  <xacro:arg name="script_filename" default=""/>
+  <xacro:arg name="output_recipe_filename" default=""/>
+  <xacro:arg name="input_recipe_filename" default=""/>
+  <xacro:arg name="reverse_ip" default="0.0.0.0"/>
+  <xacro:arg name="script_command_port" default="50004"/>
+  <xacro:arg name="reverse_port" default="50001"/>
+  <xacro:arg name="script_sender_port" default="50002"/>
+  <xacro:arg name="trajectory_port" default="50003"/>
+  <!--   tool communication related parameters-->
+  <xacro:arg name="use_tool_communication" default="false" />
+  <xacro:arg name="tool_voltage" default="0" />
+  <xacro:arg name="tool_parity" default="0" />
+  <xacro:arg name="tool_baud_rate" default="115200" />
+  <xacro:arg name="tool_stop_bits" default="1" />
+  <xacro:arg name="tool_rx_idle_chars" default="1.5" />
+  <xacro:arg name="tool_tx_idle_chars" default="3.5" />
+  <xacro:arg name="tool_device_name" default="/tmp/ttyUR" />
+  <xacro:arg name="tool_tcp_port" default="54321" />
+
+  <!-- Simulation parameters -->
+  <xacro:arg name="use_mock_hardware" default="false" />
+  <xacro:arg name="mock_sensor_commands" default="false" />
+  <xacro:arg name="simulation_controllers" default="" />
+
+  <!-- initial position for simulations (Mock Hardware, Gazebo, Ignition) -->
+  <xacro:arg name="initial_positions_file" default="$(find ur_description)/config/initial_positions.yaml"/>
+
+  <!-- convert to property to use substitution in function -->
+  <xacro:property name="initial_positions_file" default="$(arg initial_positions_file)"/>
+
+  <!-- mia hand parameters -->
+  <xacro:arg name="serial_port" default="/dev/ttyUSB0"/>
+  <xacro:arg name="laterality" default="right" />
+  <xacro:arg name="joint_limits_config_file" default="joint_limits_default.yaml"/>
+  <xacro:arg name="prefix" default=""/>
+  <xacro:arg name="mia_use_mock_hardware" default="true"/>
+
+  <!-- create link fixed to the "world" -->
+  <link name="world" />
+
+  <link name="ground_plane">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <box size="5 5 0"/>
+      </geometry>
+      <material name="ground_white">
+        <color rgba="1 1 1 0.5"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <box size="5 5 0"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="ground_plane_joint" type="fixed">
+    <origin xyz="0 0 -0.01" rpy="0 0 0"/>
+    <parent link="world"/>
+    <child link="ground_plane"/>
+  </joint>
+
+  <!-- scene -->
+  <xacro:schrankregal
+    name="unten"
+    parent_link="world"
+    xyz="-0.42 0.42 0"
+    rpy="1.571 0 -0.960">
+  </xacro:schrankregal>
+
+  <!-- scene -->
+  <xacro:schrankregal
+    name="mitte"
+    parent_link="world"
+    xyz="-0.42 0.42 0.46"
+    rpy="1.571 0 -0.960">
+  </xacro:schrankregal>
+
+  <!-- scene -->
+  <xacro:schrankregal
+    name="oben"
+    parent_link="world"
+    xyz="-0.42 0.42 0.92"
+    rpy="1.571 0 -0.960">
+  </xacro:schrankregal>
+
+  <!-- arm -->
+  <xacro:ur_robot
+    name="$(arg ur_type)"
+    tf_prefix="$(arg tf_prefix)"
+    parent="world"
+    joint_limits_parameters_file="$(arg joint_limit_params)"
+    kinematics_parameters_file="$(arg kinematics_params)"
+    physical_parameters_file="$(arg physical_params)"
+    visual_parameters_file="$(arg visual_params)"
+    safety_limits="$(arg safety_limits)"
+    safety_pos_margin="$(arg safety_pos_margin)"
+    safety_k_position="$(arg safety_k_position)">
+     <origin xyz="0 0 0" rpy="0 0 0" />          <!-- position robot in the world -->
+  </xacro:ur_robot>
+
+  <xacro:ur_realsense_mount
+    parent_link="tool0"
+    xyz="0 0 0"
+    rpy="0 0 0">
+  </xacro:ur_realsense_mount>
+
+  <!-- mia hand -->
+  <xacro:mia_hand
+    laterality="$(arg laterality)"
+    joint_limits_config_file="$(arg joint_limits_config_file)"
+    parent="tool0"
+    prefix="$(arg prefix)">
+    <xacro:if value="${'right' == '$(arg laterality)'}">
+      <origin xyz="0 0 0" rpy="1.59 0 1.59"/>
+    </xacro:if>
+    <xacro:if value="${'left' == '$(arg laterality)'}">
+      <origin xyz="0 0 0" rpy="1.57 3.14 0.1"/>
+    </xacro:if>
+  </xacro:mia_hand>
+
+   <!-- RealSense D435 Camera -->
+  <xacro:sensor_d435
+      name="camera_tower"
+      parent="base_link"
+      use_nominal_extrinsics="false"
+      add_plug="false"
+      use_mesh="true">
+    <origin xyz="0 0 1.30" rpy="0 1 1"/>
+  </xacro:sensor_d435>
+
+    <!-- RealSense D435 Camera Tool-->
+  <xacro:sensor_d435
+      name="camera_gripper"
+      parent="tool0"
+      use_nominal_extrinsics="false"
+      add_plug="false"
+      use_mesh="true">
+    <origin xyz="0 0.110 0.012" rpy="0 -1.57 -1.57"/>
+  </xacro:sensor_d435>
+
+  <!-- ros2 control instance -->
+  <xacro:ur_ros2_control
+    name="$(arg ur_type)"
+    tf_prefix="$(arg tf_prefix)"
+    kinematics_parameters_file="$(arg kinematics_params)"
+    transmission_hw_interface="$(arg transmission_hw_interface)"
+    use_mock_hardware="$(arg use_mock_hardware)"
+    mock_sensor_commands="$(arg mock_sensor_commands)"
+    headless_mode="$(arg headless_mode)"
+    initial_positions="${xacro.load_yaml(initial_positions_file)}"
+    use_tool_communication="$(arg use_tool_communication)"
+    tool_voltage="$(arg tool_voltage)"
+    tool_parity="$(arg tool_parity)"
+    tool_baud_rate="$(arg tool_baud_rate)"
+    tool_stop_bits="$(arg tool_stop_bits)"
+    tool_rx_idle_chars="$(arg tool_rx_idle_chars)"
+    tool_tx_idle_chars="$(arg tool_tx_idle_chars)"
+    tool_device_name="$(arg tool_device_name)"
+    tool_tcp_port="$(arg tool_tcp_port)"
+    robot_ip="$(arg robot_ip)"
+    script_filename="$(arg script_filename)"
+    output_recipe_filename="$(arg output_recipe_filename)"
+    input_recipe_filename="$(arg input_recipe_filename)"
+    reverse_ip="$(arg reverse_ip)"
+    script_command_port="$(arg script_command_port)"
+    reverse_port="$(arg reverse_port)"
+    script_sender_port="$(arg script_sender_port)"
+    trajectory_port="$(arg trajectory_port)"
+  />
+
+
+  <!-- mia hand ros2 control instance -->
+  <xacro:mia_hand_ros2_control
+    name="MiaHand"
+    prefix="$(arg prefix)"
+    serial_port="$(arg serial_port)"
+    use_mock_hardware="$(arg mia_use_mock_hardware)"
+  />
+
+
+</robot>

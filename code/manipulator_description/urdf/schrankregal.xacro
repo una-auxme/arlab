@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:macro name="schrankregal" params="name parent_link xyz rpy">
+
+    <!-- Neuer Link -->
+    <link name="${name}_schrankregal_link">
+      <visual>
+        <origin xyz="${xyz}" rpy="${rpy}"/>
+        <geometry>
+          <mesh filename="package://manipulator_description/meshes/SchrankRegal.stl" scale="0.001 0.001 0.001"/>
+        </geometry>
+        <material name="${name}_REGALCOLOR"/>
+      </visual>
+
+      <collision>
+        <origin xyz="${xyz}" rpy="${rpy}"/>
+        <geometry>
+          <mesh filename="package://manipulator_description/meshes/SchrankRegal.stl" scale="0.001 0.001 0.001"/>
+        </geometry>
+      </collision>
+
+    </link>
+
+    <!-- Fixed Joint -->
+    <joint name="${name}_schrankregal_joint" type="fixed">
+      <parent link="${parent_link}"/>
+      <child  link="${name}_schrankregal_link"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+
+    <material name="${name}_REGALCOLOR">
+		  <color rgba="1 0.1686 0.6 1"/>
+	  </material>
+
+  </xacro:macro>
+
+</robot>

@@ -11,11 +11,11 @@ Maintainer:
 import threading
 
 import rclpy
+from cv_bridge import CvBridge
+from pyk4a import ColorResolution, Config, DepthMode, PyK4A
 from rclpy.node import Node
 from sensor_msgs.msg import Image
 from std_msgs.msg import Header
-from cv_bridge import CvBridge
-from pyk4a import PyK4A, Config, ColorResolution, DepthMode
 
 
 class KinectAzurePublisher(Node):

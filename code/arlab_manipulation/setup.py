@@ -10,8 +10,9 @@ Date: 2025-08-24
 
 """
 
-from setuptools import setup  # ,find_packages
 from glob import glob
+
+from setuptools import setup  # ,find_packages
 
 package_name = "arlab_manipulation"
 
@@ -33,8 +34,8 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
-            "Orchestrator = arlab_manipulation.Orchestrator:main",
-            "GetGrippingForce = arlab_manipulation.GetGrippingForce:main",
+            "orchestrator = arlab_manipulation.orchestrator:main",
+            "gripping_parameter = arlab_manipulation.services.gripping_parameter:main",
         ],
     },
 )

@@ -7,45 +7,46 @@ from py_trees.composites import Sequence
 from .generic_manipulation import GenericManipulation
 
 
-def get_tree() -> Behaviour:
+def get_tree(id: int) -> Behaviour:
     return Sequence(
-        name="ManipulationHome",
+        name="ManipulationPick",
         memory=True,
         children=[
-            SetupManipulationHome(),
+            SetHandPick(id=id),
             GenericManipulation(
-                "Home", "/manipulation/home_goal", "/manipulation/home_result"
+                "Pick", "/manipulation/pick_goal", "/manipulation/pick_result"
             ),
-            CheckManipulationHome(),
+            CheckHandPick(),
         ],
     )
 
 
-class SetupManipulationHome(Behaviour):
-    def __init__(self):
+class SetHandPick(Behaviour):
+    def __init__(self, id: int):
         super().__init__(name=type(self).__name__)
+        self.id = id
         self.blackboard = self.attach_blackboard_client(name=self.name)
-        self.blackboard.register_key(key="/manipulation/home_goal", access=Access.WRITE)
+        self.blackboard.register_key(key="/manipulation/pick_goal", access=Access.WRITE)
 
     def update(self):
         goal = ManipulationAction.Goal()
-        goal.command.command_type = ManipulationCommand.COMMAND_HOME
-        goal.command.target_entityid = 1
-        self.blackboard.manipulation.home_goal = goal
+        goal.command.command_type = ManipulationCommand.COMMAND_PICK
+        goal.command.target_entityid = self.id
+        self.blackboard.manipulation.pick_goal = goal
         return Status.SUCCESS
 
 
-class CheckManipulationHome(Behaviour):
+class CheckHandPick(Behaviour):
     def __init__(self):
         super().__init__(name=type(self).__name__)
         self.blackboard = self.attach_blackboard_client(name=self.name)
         self.blackboard.register_key(
-            key="/manipulation/home_result", access=Access.READ
+            key="/manipulation/pick_result", access=Access.READ
         )
 
     def update(self):
-        result: ManipulationAction.Result = self.blackboard.manipulation.home_result
-        print(f"Move message: {result.response.message}")
+        result: ManipulationAction.Result = self.blackboard.manipulation.pick_result
+        print(f"pick message: {result.response.message}")
         if result.response.error_code != ManipulationResponse.SUCCESS:
             return Status.FAILURE
         return Status.SUCCESS

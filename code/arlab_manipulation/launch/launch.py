@@ -27,11 +27,11 @@ def generate_launch_description():
     # Service node for providing gripping force recommendations
     GetGrippingForce = Node(
         package="arlab_manipulation",
-        executable="GetGrippingForce",
+        executable="parameter_service",
     )
 
     # Python orchestrator node that handles perception and planning
-    Orchestrator = Node(package="arlab_manipulation", executable="Orchestrator")
+    Orchestrator = Node(package="arlab_manipulation", executable="orchestrator")
 
     # C++ subscriber node for orchestrator data (for MoveIt or robot control)
     OrchestratorSubscriber = Node(

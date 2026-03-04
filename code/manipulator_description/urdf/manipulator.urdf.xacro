@@ -2,7 +2,7 @@
 <robot xmlns:xacro="http://wiki.ros.org/xacro" name="ur5e">
 
   <xacro:arg name="use_mock_hardware" default="false" />
-  <xacro:property name="use_mock_hardware" default="$(arg use_mock_hardware)"/>
+  <xacro:property name="use_mock_hardware" value="$(arg use_mock_hardware)"/>
 
   <!-- import ur5 macro -->
   <xacro:include filename="$(find ur_description)/urdf/ur_macro.xacro"/>

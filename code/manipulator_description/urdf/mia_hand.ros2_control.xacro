@@ -15,8 +15,8 @@
       </xacro:unless>
       <xacro:if value="${use_mock_hardware}">
         <hardware>
-          <!-- <plugin>mock_components/GenericSystem</plugin> -->
-          <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+          <plugin>mock_components/GenericSystem</plugin>
+          <!-- <plugin>gz_ros2_control/GazeboSimSystem</plugin> -->
         </hardware>
 
         <joint name="j_thumb_opp">

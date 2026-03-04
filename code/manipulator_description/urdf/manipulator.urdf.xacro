@@ -18,7 +18,7 @@
   <!-- import Mia Hand macro -->
   <xacro:include filename="$(find mia_hand_description)/urdf/mia_hand.urdf.xacro"/>
   <!-- import Mia Hand ROS2 control macro -->
-  <xacro:include filename="$(find mia_hand_ros2_control)/description/ros2_control/mia_hand.ros2_control.xacro"/>
+  <xacro:include filename="$(find manipulator_description)/urdf/mia_hand.ros2_control.xacro"/>
 
   <!-- import Camera macro -->
   <xacro:include filename="$(find realsense2_description)/urdf/_d435.urdf.xacro"/>

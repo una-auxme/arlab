@@ -29,10 +29,10 @@
 #
 # Author: Felix Exner
 import os
-import yaml
-
 from pathlib import Path
 
+import yaml
+from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, RegisterEventHandler
 from launch.conditions import IfCondition
@@ -41,13 +41,9 @@ from launch.substitutions import (
     LaunchConfiguration,
     PathJoinSubstitution,
 )
-
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
-
 from moveit_configs_utils import MoveItConfigsBuilder
-
-from ament_index_python.packages import get_package_share_directory
 
 
 def load_yaml(package_name, file_path):
@@ -65,7 +61,7 @@ def declare_arguments():
     return LaunchDescription(
         [
             DeclareLaunchArgument(
-                "launch_rviz", default_value="true", description="Launch RViz?"
+                "launch_rviz_moveit", default_value="true", description="Launch RViz?"
             ),
             DeclareLaunchArgument(
                 "ur_type",
@@ -110,7 +106,7 @@ def declare_arguments():
 
 
 def generate_launch_description():
-    launch_rviz = LaunchConfiguration("launch_rviz")
+    launch_rviz_moveit = LaunchConfiguration("launch_rviz_moveit")
     ur_type = LaunchConfiguration("ur_type")
     warehouse_sqlite_path = LaunchConfiguration("warehouse_sqlite_path")
     launch_servo = LaunchConfiguration("launch_servo")
@@ -176,7 +172,7 @@ def generate_launch_description():
     )
     rviz_node = Node(
         package="rviz2",
-        condition=IfCondition(launch_rviz),
+        condition=IfCondition(launch_rviz_moveit),
         executable="rviz2",
         name="rviz2_moveit",
         output="log",

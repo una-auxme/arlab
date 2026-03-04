@@ -14,64 +14,63 @@ from launch_ros.substitutions import FindPackageShare
 
 def launch_setup(context, *args, **kwargs):
     launch_rviz = LaunchConfiguration("launch_rviz")
-    launch_rviz_moveit = LaunchConfiguration("launch_rviz_moveit")
     ur_type = LaunchConfiguration("ur_type")
     robot_ip = LaunchConfiguration("robot_ip")
+    use_mock_hardware = LaunchConfiguration("use_mock_hardware")
+    mock_sensor_commands = LaunchConfiguration("mock_sensor_commands")
+    initial_joint_controller = LaunchConfiguration("initial_joint_controller")
+    activate_joint_controller = LaunchConfiguration("activate_joint_controller")
     serial_port_arg = LaunchConfiguration("serial_port_arg")
 
-    manipulator_control_launch = IncludeLaunchDescription(
+    manipulator_driver_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution(
                 [
-                    FindPackageShare("manipulator_description"),
+                    FindPackageShare("manipulator_robot_driver"),
                     "launch",
-                    "manipulator.control.robot.launch.py",
+                    "ur_control.launch.py",
                 ]
             )
         ),
         launch_arguments={
             "launch_rviz": launch_rviz,
-            "robot_ip": robot_ip,
             "ur_type": ur_type,
-            "serial_port_arg": serial_port_arg,
+            "robot_ip": robot_ip,
+            "use_mock_hardware": use_mock_hardware,
+            "mock_sensor_commands": mock_sensor_commands,
+            "initial_joint_controller": initial_joint_controller,
+            "activate_joint_controller": activate_joint_controller,
         }.items(),
     )
 
-    manipulator_moveit_launch = IncludeLaunchDescription(
+    mia_hand_driver_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution(
                 [
-                    FindPackageShare("manipulator_description"),
+                    FindPackageShare("mia_hand_driver"),
                     "launch",
-                    "manipulator.moveit.robot.launch.py",
+                    "mia_hand_driver_launch.py",
                 ]
             )
         ),
         launch_arguments={
-            "ur_type": ur_type,
-            "launch_rviz_moveit": launch_rviz_moveit,
+            "serial_port": serial_port_arg,
         }.items(),
     )
 
     return [
-        manipulator_control_launch,
-        manipulator_moveit_launch,
+        manipulator_driver_launch,
+        mia_hand_driver_launch,
     ]
 
 
 def generate_launch_description():
     declared_arguments = []
+    # UR specific arguments
     declared_arguments.append(
         DeclareLaunchArgument(
             "launch_rviz",
             default_value="false",
-            description="Launch RViz.",
-        )
-    )
-    declared_arguments.append(
-        DeclareLaunchArgument(
-            "launch_rviz_moveit",
-            default_value="true",
             description="Launch RViz.",
         )
     )
@@ -100,27 +99,6 @@ def generate_launch_description():
     )
     declared_arguments.append(
         DeclareLaunchArgument(
-            "launch_servo",
-            default_value="false",
-            description="Launch servo.",
-        )
-    )
-    declared_arguments.append(
-        DeclareLaunchArgument(
-            "use_sim_time",
-            default_value="false",
-            description="Use simulation time.",
-        )
-    )
-    declared_arguments.append(
-        DeclareLaunchArgument(
-            "publish_robot_description_semantic",
-            default_value="true",
-            description="MoveGroup publishes robot description semantic",
-        ),
-    )
-    declared_arguments.append(
-        DeclareLaunchArgument(
             "robot_ip",
             default_value="10.135.245.20",  # put your robot's IP address here
             description="IP address by which the robot can be reached.",
@@ -130,16 +108,14 @@ def generate_launch_description():
         DeclareLaunchArgument(
             "use_mock_hardware",
             default_value="false",
-            description="Start robot with mock hardware "
-            "mirroring command to its states.",
+            description="Start robot with mock hardware mirroring command to its states.",
         )
     )
     declared_arguments.append(
         DeclareLaunchArgument(
             "mock_sensor_commands",
             default_value="false",
-            description="Enable mock command interfaces for sensors "
-            "used for simple simulations. "
+            description="Enable mock command interfaces for sensors used for simple simulations. "
             "Used only if 'use_mock_hardware' parameter is true.",
         )
     )

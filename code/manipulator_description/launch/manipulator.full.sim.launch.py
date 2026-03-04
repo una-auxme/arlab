@@ -49,7 +49,7 @@ def launch_setup(context, *args, **kwargs):
                 [
                     FindPackageShare("manipulator_description"),
                     "launch",
-                    "manipulator_sim_control.launch.py",
+                    "manipulator.control.sim.launch.py",
                 ]
             )
         ),

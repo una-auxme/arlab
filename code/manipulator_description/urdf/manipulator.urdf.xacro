@@ -39,7 +39,7 @@
   <xacro:arg name="tf_prefix" default="" />
 
   <xacro:arg name="joint_limit_params" default="$(find manipulator_description)/config/ur_joint_limits.yaml"/>
-  <xacro:arg name="kinematics_params" default="$(find manipulator_ur_movit_config)/config/$(arg ur_type)/default_kinematics.yaml"/>
+  <xacro:arg name="kinematics_params" default="$(find manipulator_ur_movit_config)/config/kinematics.yaml"/>
   <xacro:arg name="physical_params" default="$(find ur_description)/config/$(arg ur_type)/physical_parameters.yaml"/>
   <xacro:arg name="visual_params" default="$(find ur_description)/config/$(arg ur_type)/visual_parameters.yaml"/>
   <xacro:arg name="transmission_hw_interface" default=""/>

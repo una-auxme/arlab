@@ -161,7 +161,7 @@
     safety_limits="$(arg safety_limits)"
     safety_pos_margin="$(arg safety_pos_margin)"
     safety_k_position="$(arg safety_k_position)"
-    force_abs_paths="false">
+    force_abs_paths="true">
     <origin xyz="0 0 0.07" rpy="0 0 0" /> <!-- position robot in the world -->
   </xacro:ur_robot>
 

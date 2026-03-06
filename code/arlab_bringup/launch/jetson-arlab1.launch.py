@@ -1,5 +1,7 @@
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
+from launch.actions import (
+    IncludeLaunchDescription,
+)
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
@@ -11,7 +13,6 @@ def generate_launch_description():
     Returns:
         LaunchDescription: LaunchDescription object containing all nodes.
     """
-    ld = LaunchDescription()
 
     robot_control_launch = PathJoinSubstitution(
         [
@@ -26,7 +27,19 @@ def generate_launch_description():
         launch_arguments={}.items(),
     )
 
-    # Add nodes to the launch description
-    ld.add_action(robot_control_include)
+    gripper_camera_calibration_launch = PathJoinSubstitution(
+        [
+            FindPackageShare("arlab_calibration"),
+            "launch",
+            "gripper_camera_pose.launch.py",
+        ]
+    )
 
-    return ld
+    gripper_camera_calibration_include = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(gripper_camera_calibration_launch),
+        launch_arguments={}.items(),
+    )
+
+    return LaunchDescription(
+        [robot_control_include, gripper_camera_calibration_include]
+    )

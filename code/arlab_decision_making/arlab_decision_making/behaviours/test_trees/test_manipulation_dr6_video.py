@@ -31,7 +31,7 @@ def get_tree() -> Behaviour:
             move.get_tree(
                 x=-0.464,
                 y=0.056,
-                z=0.374,
+                z=0.424,
                 ox=0.786,
                 oy=-0.607,
                 oz=-0.106,
@@ -42,7 +42,7 @@ def get_tree() -> Behaviour:
             move.get_tree(
                 x=-0.481,
                 y=0.032,
-                z=0.205,
+                z=0.255,
                 ox=0.804,
                 oy=-0.536,
                 oz=-0.220,
@@ -55,7 +55,7 @@ def get_tree() -> Behaviour:
             move.get_tree(
                 x=-0.464,
                 y=0.056,
-                z=0.374,
+                z=0.424,
                 ox=0.786,
                 oy=-0.607,
                 oz=-0.106,
@@ -67,7 +67,7 @@ def get_tree() -> Behaviour:
             move.get_tree(
                 x=-0.138,
                 y=0.823,
-                z=0.210,
+                z=0.280,
                 ox=-0.203,
                 oy=0.666,
                 oz=0.707,
@@ -77,7 +77,7 @@ def get_tree() -> Behaviour:
             move.get_tree(
                 x=-0.162,
                 y=0.825,
-                z=0.164,
+                z=0.234,
                 ox=-0.548,
                 oy=0.434,
                 oz=0.655,
@@ -89,7 +89,7 @@ def get_tree() -> Behaviour:
             move.get_tree(
                 x=-0.138,
                 y=0.823,
-                z=0.210,
+                z=0.280,
                 ox=-0.203,
                 oy=0.666,
                 oz=0.707,
@@ -102,7 +102,7 @@ def get_tree() -> Behaviour:
             move.get_tree(
                 x=-0.370,
                 y=0.068,
-                z=0.296,
+                z=0.346,
                 ox=0.605,
                 oy=-0.367,
                 oz=-0.407,
@@ -114,7 +114,7 @@ def get_tree() -> Behaviour:
             move.get_tree(
                 x=-0.414,
                 y=-0.057,
-                z=0.0430,
+                z=0.0930,
                 ox=0.533,
                 oy=-0.429,
                 oz=-0.502,
@@ -127,7 +127,7 @@ def get_tree() -> Behaviour:
             move.get_tree(
                 x=-0.370,
                 y=0.068,
-                z=0.280,
+                z=0.330,
                 ox=0.605,
                 oy=-0.367,
                 oz=-0.407,
@@ -139,7 +139,7 @@ def get_tree() -> Behaviour:
             move.get_tree(
                 x=-0.352,
                 y=0.657,
-                z=0.200,
+                z=0.270,
                 ox=-0.270,
                 oy=0.6166,
                 oz=0.698,
@@ -149,7 +149,7 @@ def get_tree() -> Behaviour:
             move.get_tree(
                 x=-0.354,
                 y=0.66,
-                z=0.075,
+                z=0.145,
                 ox=-0.281,
                 oy=0.649,
                 oz=0.665,
@@ -161,7 +161,7 @@ def get_tree() -> Behaviour:
             move.get_tree(
                 x=-0.352,
                 y=0.657,
-                z=0.200,
+                z=0.270,
                 ox=-0.270,
                 oy=0.6166,
                 oz=0.698,

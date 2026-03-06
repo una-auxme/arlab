@@ -42,7 +42,7 @@ def get_tree() -> Behaviour:
             move.get_tree(
                 x=-0.481,
                 y=0.032,
-                z=0.255,
+                z=0.225,
                 ox=0.804,
                 oy=-0.536,
                 oz=-0.220,
@@ -114,7 +114,7 @@ def get_tree() -> Behaviour:
             move.get_tree(
                 x=-0.414,
                 y=-0.057,
-                z=0.0930,
+                z=0.0730,
                 ox=0.533,
                 oy=-0.429,
                 oz=-0.502,

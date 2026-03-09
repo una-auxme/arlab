@@ -130,7 +130,7 @@ class Entity(Base):
     def get_meta_markers(self) -> List[Marker]:
         return [
             arlab_common.markers.debug_marker(
-                base=self.description,
+                base=f"{self.description} ({self.id})",
                 frame_id=self.pose_reference_frame,
                 pose=self.pose.pose,
                 offset=Vector3(x=0.0, y=0.0, z=0.05),

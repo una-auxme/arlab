@@ -16,8 +16,7 @@
 
 #include <moveit/move_group_interface/move_group_interface.hpp>
 #include <moveit/robot_trajectory/robot_trajectory.hpp>
-#include <moveit/trajectory_processing/trajectory_tools.hpp>  // applyTOTGTimeParameterization
-
+#include <moveit/trajectory_processing/trajectory_tools.hpp> // applyTOTGTimeParameterization
 
 #include <rclcpp_action/rclcpp_action.hpp>
 
@@ -28,16 +27,17 @@
 ArmMotion::ArmMotion(const rclcpp::Node::SharedPtr &node, const std::string &group)
     : node_(node), mgi_(node_, group)
 {
-  if (!node_) {
+  if (!node_)
+  {
     throw ManipulationException(arlab_common_interfaces::msg::ManipulationResponse::ORCHESTRATOR_LISTENER_NODE_NULL);
   }
 
-  mgi_.setNumPlanningAttempts(20);
-  mgi_.setPlanningTime(5.0);
+  mgi_.setNumPlanningAttempts(100);
+  mgi_.setPlanningTime(10.0);
   mgi_.setGoalPositionTolerance(1e-2);
-  mgi_.setGoalOrientationTolerance(5e-2);
+  mgi_.setGoalOrientationTolerance(1e-2);
   mgi_.setPoseReferenceFrame("world");
-  // mgi_.setPlannerId("RRTConnectkConfigDefault");
+  mgi_.setPlannerId("RRTConnectkConfigDefault");
 
   move_group_client_ = rclcpp_action::create_client<moveit_msgs::action::MoveGroup>(node_, "move_action");
 
@@ -51,9 +51,9 @@ ArmMotion::ArmMotion(const rclcpp::Node::SharedPtr &node, const std::string &gro
 }
 
 geometry_msgs::msg::Pose ArmMotion::makeApproachPose(
-    const geometry_msgs::msg::Pose& target,
-    double dz_tool,   // Verschiebung entlang Tool-Z (in Tool-Richtung)
-    double dz_world)  // Verschiebung entlang World/Base-Z
+    const geometry_msgs::msg::Pose &target,
+    double dz_tool,  // Verschiebung entlang Tool-Z (in Tool-Richtung)
+    double dz_world) // Verschiebung entlang World/Base-Z
 {
   geometry_msgs::msg::Pose approach = target;
 
@@ -102,10 +102,10 @@ void ArmMotion::moveToPose(const geometry_msgs::msg::Pose &target)
   return;
 }
 
-void ArmMotion::moveLinearToPose(const geometry_msgs::msg::Pose& target,
-                                 double eef_step,        // z.B. 0.005
-                                 double jump_threshold,  // z.B. 0.0
-                                 double min_fraction)    // z.B. 0.95
+void ArmMotion::moveLinearToPose(const geometry_msgs::msg::Pose &target,
+                                 double eef_step,       // z.B. 0.005
+                                 double jump_threshold, // z.B. 0.0
+                                 double min_fraction)   // z.B. 0.95
 {
   mgi_.setStartStateToCurrentState();
 
@@ -119,7 +119,7 @@ void ArmMotion::moveLinearToPose(const geometry_msgs::msg::Pose& target,
       eef_step,
       jump_threshold,
       traj_msg,
-      true  // avoid_collisions
+      true // avoid_collisions
   );
 
   if (fraction < min_fraction)

@@ -10,3 +10,30 @@ response_adapters:
   - default_planning_response_adapters/AddTimeOptimalParameterization
   - default_planning_response_adapters/ValidateSolution
   - default_planning_response_adapters/DisplayMotionPath
+
+planner_configs:
+  RRTConnectkConfigDefault:
+    type: geometric::RRTConnect
+    # optimization_objective: MaximizeMinClearanceObjective
+    # termination_condition: CostConvergence[5,0.0001]
+    # range: 0.1
+  RRTstarkConfigDefault:
+    type: geometric::RRTstar
+    optimization_objective: MaximizeMinClearanceObjective
+    termination_condition: CostConvergence[10,.1]
+    range: 0.0
+    goal_bias: 0.05
+    delay_collision_checking: 1
+  SemiPersistentLazyPRMstar: # reuses roadmap during lifetime of node but doesn't save/load roadmap to/from disk
+    type: geometric::LazyPRMstar
+    multi_query_planning_enabled: 1
+    store_planner_data: 0
+    load_planner_data: 0
+
+ur_manipulator:
+  longest_valid_segment_fraction: 0.0005
+  # enforce_joint_model_state_space: true
+  planner_configs:
+    - RRTConnectkConfigDefault
+    - RRTstarkConfigDefault
+    - SemiPersistentLazyPRMstar

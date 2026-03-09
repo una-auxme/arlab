@@ -176,6 +176,7 @@ class KnowledgeVisualization(Node):
                 continue
             # Step 3: Convert entity to DB model
             entity = Entity.from_ros_msg(entity_rsp.data)
+            entity.id = entity_id
 
             # Step 4: Try to retrieve shape (including pointcloud / bbox2d)
             shape_req = GetShape.Request(entityid=entity_id)

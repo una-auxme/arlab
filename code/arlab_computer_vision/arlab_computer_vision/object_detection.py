@@ -847,6 +847,10 @@ class ObjectDetection(Node):
                     VisionSnapshotResponse.ERROR_NO_IMAGE_DATA
                 )
                 action_result.response.error_msg = "No image data"
+                self.get_logger().error(
+                    "Failed to take vision snapshot: "
+                    f"{action_result.response.error_msg}."
+                )
                 goal_handle.succeed()
                 return action_result
 

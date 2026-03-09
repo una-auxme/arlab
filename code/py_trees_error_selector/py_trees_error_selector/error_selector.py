@@ -48,6 +48,9 @@ class ErrorSelector(Selector):
 
     def tick(self) -> typing.Iterator[Behaviour]:
         self.logger.debug("%s.tick()" % self.__class__.__name__)
+        # initialise
+        if self.status != Status.RUNNING:
+            self.initialise()
 
         # nothing to do
         if not self.children:

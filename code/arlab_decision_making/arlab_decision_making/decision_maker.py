@@ -12,12 +12,13 @@ import py_trees_ros
 import rclpy
 import rclpy.callback_groups
 import rclpy.executors
+from arlab_common.exceptions import emsg_with_trace
 from py_trees.behaviour import Behaviour
 from py_trees.common import ParallelPolicy
 from py_trees.composites import Parallel, Sequence
 from rclpy.node import Node
 
-from .behaviours import task1, task2
+from .behaviours import task1, task2, tdi_demo
 from .behaviours.common.speech import SpeechOutput
 from .behaviours.test_trees import (
     test_manipulation_dr6_video,
@@ -68,6 +69,8 @@ def get_tree(task: str) -> Behaviour:
         chosen_task = test_manipulation_pick
     elif task == "test_view":
         chosen_task = test_view
+    elif task == "tdi_demo":
+        chosen_task = tdi_demo
     else:
         raise ValueError(f"Unknown task: {task}")
 
@@ -147,8 +150,7 @@ class DecisionMaker(Node):
         try:
             self.tick_tree()
         except Exception as e:
-            self.get_logger().fatal(f"{e}")
-            # self.get_logger().fatal(emsg_with_trace(e), throttle_duration_sec=2)
+            self.get_logger().fatal(emsg_with_trace(e), throttle_duration_sec=2)
 
     def tick_tree(self):
         """Tick the behavior tree once."""

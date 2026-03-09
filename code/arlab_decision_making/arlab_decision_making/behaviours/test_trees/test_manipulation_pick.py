@@ -24,6 +24,6 @@ def get_tree() -> Behaviour:
                 ow=0.0601985,
             ),
             Timer("Wait after picture", 0.5),
-            manipulator_pick.get_tree(id=35),
+            manipulator_pick.get_tree(fixed_id=35),
         ],
     )

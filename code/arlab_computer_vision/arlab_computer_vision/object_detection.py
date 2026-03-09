@@ -893,14 +893,15 @@ def main(args=None):
 
     rclpy.init(args=args)
 
-    # Executor with exactly two threads
-    # - One for the behavior tree tick timer
-    # - One for internal ros callback
+    # Executor with exactly three threads
+    # - One for the vision data callback
+    # - One for the snapshot execution callback
+    # - One for internal ros callback (action)
     # Note that this thread split is not enforced, but the two threads
     #   are necessary to not deadlock the node when issuing service calls
     # IMPORTANT: services must only be called
     #   from inside the timer callback -> from inside the behaviours
-    executor = rclpy.executors.MultiThreadedExecutor(num_threads=2)
+    executor = rclpy.executors.MultiThreadedExecutor(num_threads=3)
 
     try:
         node = ObjectDetection()

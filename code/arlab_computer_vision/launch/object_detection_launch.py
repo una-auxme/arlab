@@ -30,7 +30,7 @@ def generate_launch_description():
             ("camera_point_cloud", "/camera_gripper/depth/color/points"),
         ],
         parameters=[
-            {"log_level": "DEBUG"},  # Node-Parameter für Debug-Logs
+            {"log_level": "INFO"},  # Node-Parameter für Debug-Logs
             {"sync_tolerance": 5.0},
             {"target_frame": "world"},
             {"snapshot_mode": True},
@@ -38,7 +38,7 @@ def generate_launch_description():
         arguments=[
             "--ros-args",
             "--log-level",
-            "ObjectDetection:=debug",  # Nur unser Node auf DEBUG
+            "ObjectDetection:=info",  # Nur unser Node auf DEBUG
             "--log-level",
             "rcl:=warn",  # ROS2 interne Logs auf WARN
             "--log-level",

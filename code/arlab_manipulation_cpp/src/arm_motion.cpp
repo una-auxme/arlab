@@ -62,7 +62,7 @@ geometry_msgs::msg::Pose ArmMotion::makeApproachPose(
   tf2::fromMsg(target.orientation, q);
   tf2::Matrix3x3 R(q);
 
-  tf2::Vector3 tool_z_world = R * tf2::Vector3(0.0, 0.0, 1.0); // Tool-Z im Welt/Base-Frame
+  tf2::Vector3 tool_z_world = tf2::Vector3(0.0, 0.0, 1.0); // Tool-Z im Welt/Base-Frame
 
   approach.position.x += tool_z_world.x() * dz_tool;
   approach.position.y += tool_z_world.y() * dz_tool;

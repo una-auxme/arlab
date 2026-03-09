@@ -251,7 +251,14 @@ class orchestrator(Node):
         if self.command_type == "pick":
             if self.pose is not None:
                 self.gripping_point_pos = self.pose.position
-                self.gripping_point_orient = Quaternion(w=1.0)
+                # Just static offsets + orientation for now
+                self.gripping_point_pos.x += 0.03
+                self.gripping_point_pos.y -= 0.10
+                self.gripping_point_pos.z = 0.185
+                self.gripping_point_orient = Quaternion(
+                    x=0.623141, y=-0.57889, z=-0.458192, w=-0.258152
+                )
+                self.send_goal()
             else:
                 self.err = -52
                 self.msg = "No pose calculated"

@@ -515,7 +515,9 @@ class ObjectDetection(Node):
                         boxes.xywh[:, 3] /= scale_y
 
             # Extract masks
-            masks = self._extract_masks(result, original_height, original_width)
+            masks = self._extract_masks(
+                result, original_height, original_width, mask_hand=mask_hand
+            )
 
             # Depth processing
             if (

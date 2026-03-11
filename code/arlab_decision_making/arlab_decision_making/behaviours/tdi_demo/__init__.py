@@ -91,7 +91,7 @@ def _place_sequence():
                                 oz=0.661041,
                                 ow=-0.217315,
                             ),
-                            vision_snapshot.get_tree(clear=False),
+                            vision_snapshot.get_tree(clear=False, mask_hand=True),
                             move.get_tree(
                                 x=0.0548154,
                                 y=0.351128,
@@ -101,7 +101,7 @@ def _place_sequence():
                                 oz=0.680036,
                                 ow=-0.214193,
                             ),
-                            vision_snapshot.get_tree(clear=False),
+                            vision_snapshot.get_tree(clear=False, mask_hand=True),
                             ChoosePlacingPos(
                                 name="Choose placing position",
                                 place_approach_pose_key=place_approach_pose_key,

@@ -7,7 +7,7 @@ from py_trees.composites import Sequence
 from .action import RosActionBehaviour
 
 
-def get_tree(clear: bool) -> Behaviour:
+def get_tree(clear: bool, mask_hand: bool = False) -> Behaviour:
     return Sequence(
         name="VisionSnapshot",
         memory=True,
@@ -26,15 +26,17 @@ def get_tree(clear: bool) -> Behaviour:
 
 
 class SetupVisionSnapshot(Behaviour):
-    def __init__(self, clear: bool):
+    def __init__(self, clear: bool, mask_hand: bool = False):
         super().__init__(name=type(self).__name__)
         self.clear = clear
+        self.mask_hand = mask_hand
         self.blackboard = self.attach_blackboard_client(name=self.name)
         self.blackboard.register_key(key="/vision/snapshot_goal", access=Access.WRITE)
 
     def update(self):
         goal = VisionSnapshotAction.Goal()
         goal.command.clear_database = self.clear
+        goal.command.mask_hand = self.mask_hand
         self.blackboard.vision.snapshot_goal = goal
         return Status.SUCCESS
 

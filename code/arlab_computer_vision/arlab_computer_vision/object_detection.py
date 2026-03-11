@@ -456,6 +456,7 @@ class ObjectDetection(Node):
         rgb_msg: Image,
         pointcloud_msg: PointCloud2 | None = None,
         delete_old_entities: bool = False,
+        mask_hand: bool = False,
     ) -> None:
         """Fully synchronous frame processing - no async, no threads.
 
@@ -783,7 +784,7 @@ class ObjectDetection(Node):
         return result, num_detections
 
     def _extract_masks(
-        self, result: Any, image_height: int, image_width: int
+        self, result: Any, image_height: int, image_width: int, mask_hand: bool
     ) -> np.ndarray | None:
         """Extract segmentation masks from YOLO result.
 
@@ -794,6 +795,7 @@ class ObjectDetection(Node):
             result: YOLO result object.
             image_height: Height of the image.
             image_width: Width of the image.
+            mask_hand: ignore the hand portion of the image
 
         Returns:
             Binary masks as numpy array (N x H x W) or None if no masks.
@@ -808,6 +810,9 @@ class ObjectDetection(Node):
 
         # Keep masks on GPU for batch processing
         masks_gpu = result.masks.data.detach()  # Shape: [N, H, W]
+        n, h, w = masks_gpu.shape
+        if mask_hand:
+            masks_gpu[:, h * 0.8 : h, :] = 0.0
 
         if masks_gpu.shape[1] != image_height or masks_gpu.shape[2] != image_width:
             masks_resized = resize(
@@ -859,6 +864,7 @@ class ObjectDetection(Node):
                     self.color_image,
                     self.pointcloud,
                     delete_old_entities=goal_command.clear_database,
+                    mask_hand=goal_command.mask_hand,
                 )
                 action_result.response.result = VisionSnapshotResponse.SUCCESS
             except Exception as e:

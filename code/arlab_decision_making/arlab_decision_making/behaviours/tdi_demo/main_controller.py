@@ -1,3 +1,6 @@
+import math
+import random
+from copy import deepcopy
 from typing import Any, List, Tuple
 
 import py_trees
@@ -10,28 +13,15 @@ from arlab_knowledge_interfaces.msg import (
     Shape,
 )
 from arlab_knowledge_interfaces.srv import GetEntities, GetEntity
-from py_trees.behaviour import Behaviour
-from py_trees.composites import Sequence
-from py_trees.timers import Timer
-from py_trees_ros.action_clients import FromBlackboard
+from geometry_msgs.msg import Point, Pose, Quaternion
 from rclpy.node import Node
 
 
-class MainController(py_trees.behaviour.Behaviour):
-    def __init__(self, name: str, id_output_key: str):
-        super().__init__(name)
-        self.id_output_key = id_output_key
+def point_distance(p0: Point, p1: Point) -> float:
+    return math.sqrt((p1.x - p0.x) ** 2 + (p1.y - p0.y) ** 2 + (p1.z - p0.z) ** 2)
 
-        self.blackboard = self.attach_blackboard_client(name)
-        self.blackboard.register_key(
-            key="id_output",
-            access=py_trees.common.Access.WRITE,
-            # make sure to namespace it if not already
-            remap_to=py_trees.blackboard.Blackboard.absolute_name(
-                "/", self.id_output_key
-            ),
-        )
 
+class DatabaseBehaviour(py_trees.behaviour.Behaviour):
     def setup(self, **kwargs):
         try:
             self.node: Node = kwargs["node"]
@@ -53,6 +43,22 @@ class MainController(py_trees.behaviour.Behaviour):
                 )
 
         return super().setup(**kwargs)
+
+
+class ChoosePickable(DatabaseBehaviour):
+    def __init__(self, name: str, id_output_key: str):
+        super().__init__(name)
+        self.id_output_key = id_output_key
+
+        self.blackboard = self.attach_blackboard_client(name)
+        self.blackboard.register_key(
+            key="id_output",
+            access=py_trees.common.Access.WRITE,
+            # make sure to namespace it if not already
+            remap_to=py_trees.blackboard.Blackboard.absolute_name(
+                "/", self.id_output_key
+            ),
+        )
 
     def update(self) -> py_trees.common.Status:
         # Get all pickable entities
@@ -99,5 +105,114 @@ class MainController(py_trees.behaviour.Behaviour):
             return py_trees.common.Status.FAILURE
 
         self.blackboard.id_output = chosen_entity[0]
+
+        return py_trees.common.Status.SUCCESS
+
+
+class ChoosePlacingPos(DatabaseBehaviour):
+    def __init__(
+        self,
+        name: str,
+        place_approach_pose_key: str,
+        place_pose_key: str,
+        blacklisted_positions_key: str,
+        max_occupied_distance: float,
+        place_poses: List[Pose],
+        approach_z_offset: float,
+    ):
+        super().__init__(name)
+        self.place_approach_pose_key = place_approach_pose_key
+        self.place_pose_key = place_pose_key
+        self.blacklisted_positions_key = blacklisted_positions_key
+        self.max_occupied_distance = max_occupied_distance
+        self.place_poses = place_poses
+        self.approach_z_offset = approach_z_offset
+
+        self.blackboard = self.attach_blackboard_client(name)
+        self.blackboard.register_key(
+            key="place_pose",
+            access=py_trees.common.Access.WRITE,
+            # make sure to namespace it if not already
+            remap_to=py_trees.blackboard.Blackboard.absolute_name(
+                "/", self.place_pose_key
+            ),
+        )
+        self.blackboard.register_key(
+            key="place_approach_pose",
+            access=py_trees.common.Access.WRITE,
+            # make sure to namespace it if not already
+            remap_to=py_trees.blackboard.Blackboard.absolute_name(
+                "/", self.place_approach_pose_key
+            ),
+        )
+        self.blackboard.register_key(
+            key="blacklisted_positions",
+            access=py_trees.common.Access.READ,
+            # make sure to namespace it if not already
+            remap_to=py_trees.blackboard.Blackboard.absolute_name(
+                "/", self.blacklisted_positions_key
+            ),
+        )
+
+    def update(self) -> py_trees.common.Status:
+        blacklisted_positions: List[int] = self.blackboard.blacklisted_positions
+        shuffled_poses = random.sample(
+            list(enumerate(self.place_poses)), len(self.place_poses)
+        )
+
+        # Get all pickable entities
+        get_req = GetEntities.Request()
+        get_req.entity_type.id = EntityType.PICKABLE
+        response: GetEntities.Response = self._get_entities_cli.call(get_req)
+
+        if response.result.result_type != Result.SUCCESS:
+            self.node.get_logger().error(
+                f"Failed to get entities: {response.result.error}"
+            )
+            return py_trees.common.Status.FAILURE
+        entity_ids = response.entities
+        found_entities: List[Tuple[int, Entity]] = []
+        for entity_id in entity_ids:
+            get_ent_req = GetEntity.Request()
+            get_ent_req.entityid = entity_id
+            response_ent: GetEntity.Response = self._get_entity_cli.call(get_ent_req)
+            if response_ent.result.result_type != Result.SUCCESS:
+                self.node.get_logger().warn(
+                    f"Failed to get entity data: {response_ent.result.error}"
+                )
+                continue
+
+            entity = response_ent.data
+            if "mango" in entity.description.lower():
+                # mangos are meh (also tables)
+                continue
+            found_entities.append((entity_id, entity))
+
+        chosen_pose = None
+        for i, pose in shuffled_poses:
+            if i in blacklisted_positions:
+                continue
+
+            is_occupied = False
+            for _, entity in found_entities:
+                if (
+                    point_distance(pose.position, entity.pose.position)
+                    <= self.max_occupied_distance
+                ):
+                    is_occupied = True
+                    break
+
+            if not is_occupied:
+                chosen_pose = pose
+                break
+
+        if chosen_pose is None:
+            return py_trees.common.Status.FAILURE
+
+        place_pose = chosen_pose
+        self.blackboard.place_pose = place_pose
+        place_approach_pose = deepcopy(place_pose)
+        place_approach_pose.position.z += self.approach_z_offset
+        self.blackboard.place_approach_pose = place_approach_pose
 
         return py_trees.common.Status.SUCCESS

@@ -252,11 +252,11 @@ class orchestrator(Node):
             if self.pose is not None:
                 self.gripping_point_pos = self.pose.position
                 # Just static offsets + orientation for now
-                self.gripping_point_pos.x += 0.03
-                self.gripping_point_pos.y -= 0.10
-                self.gripping_point_pos.z = 0.185
+                self.gripping_point_pos.x += -0.085
+                self.gripping_point_pos.y += 0.01
+                self.gripping_point_pos.z = 0.19
                 self.gripping_point_orient = Quaternion(
-                    x=0.623141, y=-0.57889, z=-0.458192, w=-0.258152
+                    x=0.243005, y=0.808244, z=-0.0517573, w=0.533864
                 )
                 self.send_goal()
             else:

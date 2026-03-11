@@ -1,3 +1,4 @@
+import py_trees
 from arlab_common_interfaces.action import ManipulationAction
 from arlab_common_interfaces.msg import ManipulationCommand, ManipulationResponse
 from py_trees.behaviour import Behaviour
@@ -15,6 +16,20 @@ def get_tree(
         memory=True,
         children=[
             SetupManipulationMove(x=x, y=y, z=z, ox=ox, oy=oy, oz=oz, ow=ow),
+            GenericManipulation(
+                "Move", "/manipulation/move_goal", "/manipulation/move_result"
+            ),
+            CheckManipulationMove(),
+        ],
+    )
+
+
+def get_tree_blackboard(pose_input_key: str) -> Behaviour:
+    return Sequence(
+        name="ManipulationMove",
+        memory=True,
+        children=[
+            SetupManipulationMoveBlackboard(pose_input_key=pose_input_key),
             GenericManipulation(
                 "Move", "/manipulation/move_goal", "/manipulation/move_result"
             ),
@@ -46,6 +61,26 @@ class SetupManipulationMove(Behaviour):
         goal.command.target_pose.position.z = self.z
         quat = goal.command.target_pose.orientation
         (quat.x, quat.y, quat.z, quat.w) = (self.ox, self.oy, self.oz, self.ow)
+        self.blackboard.manipulation.move_goal = goal
+        return Status.SUCCESS
+
+
+class SetupManipulationMoveBlackboard(Behaviour):
+    def __init__(self, pose_input_key: str):
+        super().__init__(name=type(self).__name__)
+        self.blackboard = self.attach_blackboard_client(name=self.name)
+        self.blackboard.register_key(key="/manipulation/move_goal", access=Access.WRITE)
+        self.blackboard.register_key(
+            key="pose_input",
+            access=Access.READ,
+            # make sure to namespace it if not already
+            remap_to=py_trees.blackboard.Blackboard.absolute_name("/", pose_input_key),
+        )
+
+    def update(self):
+        goal = ManipulationAction.Goal()
+        goal.command.command_type = ManipulationCommand.COMMAND_MOVE
+        goal.command.target_pose = self.blackboard.pose_input
         self.blackboard.manipulation.move_goal = goal
         return Status.SUCCESS
 

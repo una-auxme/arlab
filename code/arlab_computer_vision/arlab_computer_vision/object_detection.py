@@ -14,6 +14,7 @@ Maintainers:
 import os
 import time
 from copy import deepcopy
+from threading import Lock
 from time import sleep
 from typing import Any, List, Optional, Tuple
 
@@ -184,13 +185,17 @@ class ObjectDetection(Node):
         self.get_logger().info(f"Snapshot mode: {self._snapshot_mode}")
 
         if self._snapshot_mode:
+            self._snapshot_group = MutuallyExclusiveCallbackGroup()
             self._action_server = ActionServer(
                 self,
                 VisionSnapshotAction,
                 "/vision/snapshot",
                 execute_callback=self._snapshot_execute_callback,
                 goal_callback=self._snapshot_goal_callback,
+                callback_group=self._snapshot_group,
             )
+
+        self.vision_data_mutex = Lock()
 
         # Check if using segmentation model based on filename
         self.use_segmentation = "-seg.pt" in yolo_weights
@@ -436,12 +441,15 @@ class ObjectDetection(Node):
         rgb_msg: Image,
         pointcloud_msg: PointCloud2 | None = None,
     ) -> None:
-        self.color_image = rgb_msg
-        self.pointcloud = pointcloud_msg
-        if not self._snapshot_mode:
-            self._process_data(
-                rgb_msg, pointcloud_msg, delete_old_entities=self._delete_old_entities
-            )
+        with self.vision_data_mutex:
+            self.color_image = rgb_msg
+            self.pointcloud = pointcloud_msg
+            if not self._snapshot_mode:
+                self._process_data(
+                    rgb_msg,
+                    pointcloud_msg,
+                    delete_old_entities=self._delete_old_entities,
+                )
 
     def _process_data(
         self,
@@ -821,29 +829,43 @@ class ObjectDetection(Node):
         return GoalResponse.ACCEPT
 
     def _snapshot_execute_callback(self, goal_handle):
+        with self.vision_data_mutex:
+            self.color_image = None
+            self.pointcloud = None
         # sleep to make sure position has stabilized
-        sleep(1.0)
+        for _ in range(5):
+            sleep(1.0)
+            with self.vision_data_mutex:
+                if self.color_image is not None and self.pointcloud is not None:
+                    break
 
-        goal_command: VisionSnapshotCommand = goal_handle.request.command
-        action_result = VisionSnapshotAction.Result()
-        if self.color_image is None or self.pointcloud is None:
-            action_result.response.result = VisionSnapshotResponse.ERROR_NO_IMAGE_DATA
-            action_result.response.error_msg = "No image data"
+        with self.vision_data_mutex:
+            goal_command: VisionSnapshotCommand = goal_handle.request.command
+            action_result = VisionSnapshotAction.Result()
+            if self.color_image is None or self.pointcloud is None:
+                action_result.response.result = (
+                    VisionSnapshotResponse.ERROR_NO_IMAGE_DATA
+                )
+                action_result.response.error_msg = "No image data"
+                self.get_logger().error(
+                    "Failed to take vision snapshot: "
+                    f"{action_result.response.error_msg}."
+                )
+                goal_handle.succeed()
+                return action_result
+
+            try:
+                self._process_data(
+                    self.color_image,
+                    self.pointcloud,
+                    delete_old_entities=goal_command.clear_database,
+                )
+                action_result.response.result = VisionSnapshotResponse.SUCCESS
+            except Exception as e:
+                action_result.response.result = VisionSnapshotResponse.ERROR_UNKNOWN
+                action_result.response.error_msg = f"Exception: {e}"
             goal_handle.succeed()
             return action_result
-
-        try:
-            self._process_data(
-                self.color_image,
-                self.pointcloud,
-                delete_old_entities=goal_command.clear_database,
-            )
-            action_result.response.result = VisionSnapshotResponse.SUCCESS
-        except Exception as e:
-            action_result.response.result = VisionSnapshotResponse.ERROR_UNKNOWN
-            action_result.response.error_msg = f"Exception: {e}"
-        goal_handle.succeed()
-        return action_result
 
 
 def create_entity(
@@ -875,14 +897,15 @@ def main(args=None):
 
     rclpy.init(args=args)
 
-    # Executor with exactly two threads
-    # - One for the behavior tree tick timer
-    # - One for internal ros callback
+    # Executor with exactly three threads
+    # - One for the vision data callback
+    # - One for the snapshot execution callback
+    # - One for internal ros callback (action)
     # Note that this thread split is not enforced, but the two threads
     #   are necessary to not deadlock the node when issuing service calls
     # IMPORTANT: services must only be called
     #   from inside the timer callback -> from inside the behaviours
-    executor = rclpy.executors.MultiThreadedExecutor(num_threads=2)
+    executor = rclpy.executors.MultiThreadedExecutor(num_threads=3)
 
     try:
         node = ObjectDetection()

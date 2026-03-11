@@ -812,9 +812,6 @@ class ObjectDetection(Node):
 
         # Keep masks on GPU for batch processing
         masks_gpu = result.masks.data.detach()  # Shape: [N, H, W]
-        n, h, w = masks_gpu.shape
-        if mask_hand:
-            masks_gpu[:, int(h * 0.8) : h, :] = 0.0
 
         if masks_gpu.shape[1] != image_height or masks_gpu.shape[2] != image_width:
             masks_resized = resize(
@@ -823,10 +820,15 @@ class ObjectDetection(Node):
             )
 
             # Single sync + transfer to CPU
-            return masks_resized.cpu().numpy().astype(np.uint8)
+            result_masks = masks_resized.cpu().numpy().astype(np.uint8)
         else:
             # No resize needed - single sync + transfer
-            return masks_gpu.cpu().numpy().astype(np.uint8)
+            result_masks = masks_gpu.cpu().numpy().astype(np.uint8)
+
+        if mask_hand:
+            n, h, w = result_masks.shape
+            result_masks[:, int(h * 0.8) : h, :] = 0.0
+        return result_masks
 
     def _snapshot_goal_callback(self, goal_request: VisionSnapshotAction.Goal):
         self.get_logger().info(

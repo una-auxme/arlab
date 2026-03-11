@@ -814,7 +814,7 @@ class ObjectDetection(Node):
         masks_gpu = result.masks.data.detach()  # Shape: [N, H, W]
         n, h, w = masks_gpu.shape
         if mask_hand:
-            masks_gpu[:, h * 0.8 : h, :] = 0.0
+            masks_gpu[:, int(h * 0.8) : h, :] = 0.0
 
         if masks_gpu.shape[1] != image_height or masks_gpu.shape[2] != image_width:
             masks_resized = resize(

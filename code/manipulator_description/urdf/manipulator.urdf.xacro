@@ -137,7 +137,7 @@
   <xacro:schrankregal
     name="mitte"
     parent_link="world"
-    xyz="-0.42 0.42 0.53"
+    xyz="-0.42 0.42 0.5"
     rpy="1.571 0 -0.785">
   </xacro:schrankregal>
 
@@ -145,7 +145,7 @@
   <xacro:schrankregal
     name="oben"
     parent_link="world"
-    xyz="-0.42 0.42 0.99"
+    xyz="-0.42 0.42 0.93"
     rpy="1.571 0 -0.785">
   </xacro:schrankregal>
 

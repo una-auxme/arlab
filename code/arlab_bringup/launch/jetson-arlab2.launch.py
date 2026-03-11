@@ -12,7 +12,12 @@ def generate_launch_description():
     voice_launch = Node(
         package="arlab_speech_controller",
         executable="moshi_tts",
-        parameters=[{"voice": "/workspace/src/arlab/Fast Lars opmitized 9s.wav"}],
+        parameters=[
+            {
+                "voice": "/workspace/src/arlab/Fast Lars opmitized 9s.wav",
+                "max_offset": 400,
+            }
+        ],
     )
 
     return LaunchDescription([voice_launch])

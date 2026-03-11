@@ -110,7 +110,7 @@ class ChoosePickable(DatabaseBehaviour):
         queue_speech(
             self.blackboard,
             f"I have found: {desc_str}. "
-            f"I choose to pick the {chosen_entity[1].description}",
+            f"I choose to pick the {chosen_entity[1].description}.",
         )
 
         self.blackboard.id_output = chosen_entity[0]

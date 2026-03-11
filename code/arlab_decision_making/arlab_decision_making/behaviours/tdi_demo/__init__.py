@@ -9,6 +9,7 @@ from py_trees_error_selector.error_selector import ErrorSelector
 from ..common import speech, vision_snapshot
 from ..manipulation import hand_close, hand_open, home, manipulator_pick, move
 from .main_controller import ChoosePickable, ChoosePlacingPos
+from .trivia_spammer import TriviaSpammer
 
 
 def _workspace_picture_pose():
@@ -29,6 +30,7 @@ def _pick_sequence():
         memory=True,
         children=[
             speech.QueueSpeech("I will move to the picture-taking position."),
+            TriviaSpammer(),
             _workspace_picture_pose(),
             ErrorSelector(
                 name="Pick",
@@ -56,7 +58,7 @@ def _pick_sequence():
                             speech.QueueSpeech(
                                 "Sorry, I encountered an error when picking a fruit."
                             ),
-                            Timer("PickErrorWait", 3.0),
+                            Timer("PickErrorWait", 12.0),
                             speech.QueueSpeech("I will try again."),
                         ],
                     ),
@@ -81,6 +83,11 @@ def _place_sequence():
                 variable_value=[],
                 overwrite=True,
             ),
+            speech.QueueSpeech(
+                "Now proceeding to the picture-taking "
+                "position in front of the cupboard."
+            ),
+            TriviaSpammer(),
             ErrorSelector(
                 name="Place",
                 children=[
@@ -88,10 +95,6 @@ def _place_sequence():
                         name="Place seq",
                         memory=True,
                         children=[
-                            speech.QueueSpeech(
-                                "Now proceeding to the picture-taking "
-                                "position in front of the cupboard."
-                            ),
                             move.get_tree(
                                 x=0.0581504,
                                 y=0.388174,
@@ -114,6 +117,7 @@ def _place_sequence():
                                 oz=0.680036,
                                 ow=-0.214193,
                             ),
+                            speech.QueueSpeech("I am taking the second picture."),
                             vision_snapshot.get_tree(clear=False, mask_hand=True),
                             ChoosePlacingPos(
                                 name="Choose placing position",
@@ -196,7 +200,7 @@ def _place_sequence():
                             speech.QueueSpeech(
                                 "Sorry, I encountered an error when placing the fruit."
                             ),
-                            Timer("PlaceErrorWait", 2.0),
+                            Timer("PlaceErrorWait", 12.0),
                             speech.QueueSpeech("I will try again."),
                         ],
                     ),

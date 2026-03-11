@@ -83,7 +83,6 @@ void JobRunner::run(const arlab_common_interfaces::msg::OrchestratorData &msg)
     arm_.moveToPose(msg.pose);
     hand_.close();
     arm_.moveToPose(approach_pose); // oberhalb
-    arm_.moveToHome();
     return;
   }
   if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PLACE)

@@ -1,6 +1,6 @@
 from geometry_msgs.msg import Point, Pose, Quaternion
 from py_trees.behaviour import Behaviour
-from py_trees.behaviours import Failure, SetBlackboardVariable
+from py_trees.behaviours import SetBlackboardVariable
 from py_trees.composites import Selector, Sequence
 from py_trees.decorators import SuccessIsRunning
 from py_trees.timers import Timer
@@ -28,8 +28,8 @@ def _pick_sequence():
         name="Vision + Pick",
         memory=True,
         children=[
+            speech.QueueSpeech("I will move to the picture-taking position."),
             _workspace_picture_pose(),
-            vision_snapshot.get_tree(clear=True),
             ErrorSelector(
                 name="Pick",
                 children=[
@@ -37,6 +37,7 @@ def _pick_sequence():
                         name="Pick seq",
                         memory=True,
                         children=[
+                            vision_snapshot.get_tree(clear=True),
                             ChoosePickable(
                                 "Choose pickable",
                                 id_output_key="/main_controller/chosen_id",
@@ -44,6 +45,7 @@ def _pick_sequence():
                             manipulator_pick.get_tree(
                                 id_input_key="/main_controller/chosen_id"
                             ),
+                            speech.QueueSpeech("Pick successful."),
                         ],
                     ),
                     Sequence(
@@ -51,7 +53,11 @@ def _pick_sequence():
                         memory=True,
                         children=[
                             ## TODO: choose another fruit
-                            Failure("TODO")
+                            speech.QueueSpeech(
+                                "Sorry, I encountered an error when picking a fruit."
+                            ),
+                            Timer("PickErrorWait", 3.0),
+                            speech.QueueSpeech("I will try again."),
                         ],
                     ),
                 ],
@@ -82,20 +88,27 @@ def _place_sequence():
                         name="Place seq",
                         memory=True,
                         children=[
+                            speech.QueueSpeech(
+                                "Now proceeding to the picture-taking "
+                                "position in front of the cupboard."
+                            ),
                             move.get_tree(
                                 x=0.0581504,
                                 y=0.388174,
-                                z=0.230927,
+                                z=0.200927,
                                 ox=-0.248759,
                                 oy=0.673734,
                                 oz=0.661041,
                                 ow=-0.217315,
                             ),
-                            vision_snapshot.get_tree(clear=False, mask_hand=True),
+                            speech.QueueSpeech(
+                                "I am looking for free positions in the cupboard."
+                            ),
+                            vision_snapshot.get_tree(clear=True, mask_hand=True),
                             move.get_tree(
                                 x=0.0548154,
                                 y=0.351128,
-                                z=0.681145,
+                                z=0.651145,
                                 ox=-0.257518,
                                 oy=0.652194,
                                 oz=0.680036,
@@ -122,13 +135,13 @@ def _place_sequence():
                                     ),
                                     Pose(  # oben rechts
                                         position=Point(
-                                            x=-0.123057, y=0.769686, z=0.648342
+                                            x=-0.0934028, y=0.725282, z=0.586661
                                         ),
                                         orientation=Quaternion(
-                                            x=-0.0596376,
-                                            y=0.627605,
-                                            z=0.773812,
-                                            w=-0.0614029,
+                                            x=-0.040452,
+                                            y=0.68262,
+                                            z=0.711818,
+                                            w=-0.16034,
                                         ),
                                     ),
                                     Pose(  # unten rechts
@@ -154,6 +167,12 @@ def _place_sequence():
                                         ),
                                     ),
                                 ],
+                                place_poses_names=[
+                                    "upper left",
+                                    "upper right",
+                                    "lower right",
+                                    "lower left",
+                                ],
                                 approach_z_offset=0.08,
                             ),
                             move.get_tree_blackboard(
@@ -164,13 +183,21 @@ def _place_sequence():
                             move.get_tree_blackboard(
                                 pose_input_key=place_approach_pose_key
                             ),
+                            speech.QueueSpeech(
+                                "Place successful. "
+                                "I will now restart the process to pick the next fruit."
+                            ),
                         ],
                     ),
                     Sequence(
                         name="Place error handler",
                         memory=True,
                         children=[
-                            ## TODO: choose another placing position
+                            speech.QueueSpeech(
+                                "Sorry, I encountered an error when placing the fruit."
+                            ),
+                            Timer("PlaceErrorWait", 2.0),
+                            speech.QueueSpeech("I will try again."),
                         ],
                     ),
                 ],
@@ -184,7 +211,9 @@ def get_tree() -> Behaviour:
         "TDI DEMO",
         memory=True,
         children=[
+            speech.QueueSpeech("Decision maker started!"),
             Timer("HomeWait", 1.0),
+            speech.QueueSpeech("I am homing the manipulator."),
             home.get_tree(),
             ErrorSelector(
                 "Main error handler",

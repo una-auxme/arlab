@@ -12,7 +12,7 @@ def get_tree(clear: bool, mask_hand: bool = False) -> Behaviour:
         name="VisionSnapshot",
         memory=True,
         children=[
-            SetupVisionSnapshot(clear=clear),
+            SetupVisionSnapshot(clear=clear, mask_hand=mask_hand),
             RosActionBehaviour(
                 name="VisionSnapshotAction",
                 action_type=VisionSnapshotAction,

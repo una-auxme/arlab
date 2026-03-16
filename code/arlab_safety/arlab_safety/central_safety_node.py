@@ -115,9 +115,7 @@ class CentralSafetyNode(Node):
             self.module_safety_table[module_id]["error_state"] = 0
             self.module_safety_table[module_id]["last_seen"] = self.now()
         else:
-            self.get_logger().warn(
-                f"Received 'working' from unknown module {module_id}. Registering now."
-            )
+            self.get_logger().warn(f"Received 'working' from unknown module {module_id}. Registering now.")
             self.register_module(module_id)
 
     def critical_error(self, module_id: int, module_state: int) -> None:
@@ -131,9 +129,7 @@ class CentralSafetyNode(Node):
             Updates the module's error_state in the table. Triggers a system
             freeze if the error state is not 0.
         """
-        self.get_logger().error(
-            f"Module {module_id} reports critical error: {module_state}"
-        )
+        self.get_logger().error(f"Module {module_id} reports critical error: {module_state}")
 
         if module_id not in self.module_safety_table:
             self.register_module(module_id)

@@ -23,9 +23,7 @@ class Furniture(Entity):
     """
 
     __tablename__ = "entity_furniture"
-    id: Mapped[int] = mapped_column(
-        ForeignKey("entity.id", ondelete="CASCADE"), primary_key=True
-    )
+    id: Mapped[int] = mapped_column(ForeignKey("entity.id", ondelete="CASCADE"), primary_key=True)
 
     pickables: Mapped[List["Pickable"]] = relationship(  # type: ignore # noqa: F821
         back_populates="located_on",
@@ -56,9 +54,7 @@ class Cupboard(Furniture):
     """
 
     __tablename__ = "entity_furniture_cupboard"
-    id: Mapped[int] = mapped_column(
-        ForeignKey("entity_furniture.id", ondelete="CASCADE"), primary_key=True
-    )
+    id: Mapped[int] = mapped_column(ForeignKey("entity_furniture.id", ondelete="CASCADE"), primary_key=True)
 
     shelves: Mapped[List["Shelf"]] = relationship(
         back_populates="cupboard",
@@ -99,9 +95,7 @@ class Door(Furniture):
     """
 
     __tablename__ = "entity_furniture_door"
-    id: Mapped[int] = mapped_column(
-        ForeignKey("entity_furniture.id", ondelete="CASCADE"), primary_key=True
-    )
+    id: Mapped[int] = mapped_column(ForeignKey("entity_furniture.id", ondelete="CASCADE"), primary_key=True)
 
     width: Mapped[float]
     open: Mapped[str]
@@ -132,16 +126,10 @@ class Shelf(Furniture):
     """
 
     __tablename__ = "entity_furniture_shelf"
-    id: Mapped[int] = mapped_column(
-        ForeignKey("entity_furniture.id", ondelete="CASCADE"), primary_key=True
-    )
+    id: Mapped[int] = mapped_column(ForeignKey("entity_furniture.id", ondelete="CASCADE"), primary_key=True)
 
-    cupboard_id: Mapped[int] = mapped_column(
-        ForeignKey("entity_furniture_cupboard.id", ondelete="CASCADE")
-    )
-    cupboard: Mapped["Cupboard"] = relationship(
-        back_populates="shelves", foreign_keys=cupboard_id
-    )
+    cupboard_id: Mapped[int] = mapped_column(ForeignKey("entity_furniture_cupboard.id", ondelete="CASCADE"))
+    cupboard: Mapped["Cupboard"] = relationship(back_populates="shelves", foreign_keys=cupboard_id)
     """The cupboard this shelf belongs to"""
 
     width: Mapped[float]
@@ -175,9 +163,7 @@ class Table(Furniture):
     """
 
     __tablename__ = "entity_furniture_table"
-    id: Mapped[int] = mapped_column(
-        ForeignKey("entity_furniture.id", ondelete="CASCADE"), primary_key=True
-    )
+    id: Mapped[int] = mapped_column(ForeignKey("entity_furniture.id", ondelete="CASCADE"), primary_key=True)
 
     height: Mapped[float]
     """Table height above the ground"""

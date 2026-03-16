@@ -148,8 +148,7 @@ class Entity(Base):
         entity_type = entities.entity_msg_type_to_class(m.entity_type)
         if entity_type is None:
             rclpy.logging.get_logger(db.DB_LOGGER_NAME).error(
-                f"Received entity type '{m.entity_type}' is not supported."
-                f"Base class 'Entity' will be used instead."
+                f"Received entity type '{m.entity_type}' is not supported.Base class 'Entity' will be used instead."
             )
             entity_type = Entity
 

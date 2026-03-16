@@ -28,18 +28,12 @@ class DatabaseBehaviour(py_trees.behaviour.Behaviour):
             error_message = "didn't find 'node' in setup's kwargs"
             raise KeyError(error_message) from e  # 'direct cause' traceability
 
-        self._get_entities_cli = self.node.create_client(
-            GetEntities, "/arlab/knowledge/get_entities"
-        )
-        self._get_entity_cli = self.node.create_client(
-            GetEntity, "/arlab/knowledge/get_entity"
-        )
+        self._get_entities_cli = self.node.create_client(GetEntities, "/arlab/knowledge/get_entities")
+        self._get_entity_cli = self.node.create_client(GetEntity, "/arlab/knowledge/get_entity")
 
         for client in self.node.clients:
             while not client.wait_for_service(timeout_sec=1.0):
-                self.node.get_logger().warn(
-                    f"Client {client.service_name} not available"
-                )
+                self.node.get_logger().warn(f"Client {client.service_name} not available")
 
         return super().setup(**kwargs)
 
@@ -54,9 +48,7 @@ class ChoosePickable(DatabaseBehaviour):
             key="id_output",
             access=py_trees.common.Access.WRITE,
             # make sure to namespace it if not already
-            remap_to=py_trees.blackboard.Blackboard.absolute_name(
-                "/", self.id_output_key
-            ),
+            remap_to=py_trees.blackboard.Blackboard.absolute_name("/", self.id_output_key),
         )
 
     def update(self) -> py_trees.common.Status:
@@ -66,9 +58,7 @@ class ChoosePickable(DatabaseBehaviour):
         response: GetEntities.Response = self._get_entities_cli.call(get_req)
 
         if response.result.result_type != Result.SUCCESS:
-            self.node.get_logger().error(
-                f"Failed to get entities: {response.result.error}"
-            )
+            self.node.get_logger().error(f"Failed to get entities: {response.result.error}")
             return py_trees.common.Status.FAILURE
         entity_ids = response.entities
         found_entities: List[Tuple[int, Entity]] = []
@@ -77,9 +67,7 @@ class ChoosePickable(DatabaseBehaviour):
             get_ent_req.entityid = entity_id
             response_ent: GetEntity.Response = self._get_entity_cli.call(get_ent_req)
             if response_ent.result.result_type != Result.SUCCESS:
-                self.node.get_logger().warn(
-                    f"Failed to get entity data: {response_ent.result.error}"
-                )
+                self.node.get_logger().warn(f"Failed to get entity data: {response_ent.result.error}")
                 continue
 
             entity = response_ent.data
@@ -109,8 +97,7 @@ class ChoosePickable(DatabaseBehaviour):
 
         queue_speech(
             self.blackboard,
-            f"I have found: {desc_str}. "
-            f"I choose to pick the {chosen_entity[1].description}.",
+            f"I have found: {desc_str}. I choose to pick the {chosen_entity[1].description}.",
         )
 
         self.blackboard.id_output = chosen_entity[0]
@@ -144,32 +131,24 @@ class ChoosePlacingPos(DatabaseBehaviour):
             key="place_pose",
             access=py_trees.common.Access.WRITE,
             # make sure to namespace it if not already
-            remap_to=py_trees.blackboard.Blackboard.absolute_name(
-                "/", self.place_pose_key
-            ),
+            remap_to=py_trees.blackboard.Blackboard.absolute_name("/", self.place_pose_key),
         )
         self.blackboard.register_key(
             key="place_approach_pose",
             access=py_trees.common.Access.WRITE,
             # make sure to namespace it if not already
-            remap_to=py_trees.blackboard.Blackboard.absolute_name(
-                "/", self.place_approach_pose_key
-            ),
+            remap_to=py_trees.blackboard.Blackboard.absolute_name("/", self.place_approach_pose_key),
         )
         self.blackboard.register_key(
             key="blacklisted_positions",
             access=py_trees.common.Access.READ,
             # make sure to namespace it if not already
-            remap_to=py_trees.blackboard.Blackboard.absolute_name(
-                "/", self.blacklisted_positions_key
-            ),
+            remap_to=py_trees.blackboard.Blackboard.absolute_name("/", self.blacklisted_positions_key),
         )
 
     def update(self) -> py_trees.common.Status:
         blacklisted_positions: List[int] = self.blackboard.blacklisted_positions
-        shuffled_poses = random.sample(
-            list(enumerate(self.place_poses)), len(self.place_poses)
-        )
+        shuffled_poses = random.sample(list(enumerate(self.place_poses)), len(self.place_poses))
 
         # Get all pickable entities
         get_req = GetEntities.Request()
@@ -177,9 +156,7 @@ class ChoosePlacingPos(DatabaseBehaviour):
         response: GetEntities.Response = self._get_entities_cli.call(get_req)
 
         if response.result.result_type != Result.SUCCESS:
-            self.node.get_logger().error(
-                f"Failed to get entities: {response.result.error}"
-            )
+            self.node.get_logger().error(f"Failed to get entities: {response.result.error}")
             return py_trees.common.Status.FAILURE
         entity_ids = response.entities
         found_entities: List[Tuple[int, Entity]] = []
@@ -188,9 +165,7 @@ class ChoosePlacingPos(DatabaseBehaviour):
             get_ent_req.entityid = entity_id
             response_ent: GetEntity.Response = self._get_entity_cli.call(get_ent_req)
             if response_ent.result.result_type != Result.SUCCESS:
-                self.node.get_logger().warn(
-                    f"Failed to get entity data: {response_ent.result.error}"
-                )
+                self.node.get_logger().warn(f"Failed to get entity data: {response_ent.result.error}")
                 continue
 
             entity = response_ent.data
@@ -207,10 +182,7 @@ class ChoosePlacingPos(DatabaseBehaviour):
 
             is_occupied = False
             for _, entity in found_entities:
-                if (
-                    point_distance(pose.position, entity.pose.position)
-                    <= self.max_occupied_distance
-                ):
+                if point_distance(pose.position, entity.pose.position) <= self.max_occupied_distance:
                     is_occupied = True
 
             if is_occupied:
@@ -221,8 +193,7 @@ class ChoosePlacingPos(DatabaseBehaviour):
         if chosen_pose is None:
             queue_speech(
                 self.blackboard,
-                "All positions seem to be occupied. "
-                "Please remove the fruit from at least one position.",
+                "All positions seem to be occupied. Please remove the fruit from at least one position.",
             )
             return py_trees.common.Status.FAILURE
 

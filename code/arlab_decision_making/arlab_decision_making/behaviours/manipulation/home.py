@@ -13,9 +13,7 @@ def get_tree() -> Behaviour:
         memory=True,
         children=[
             SetupManipulationHome(),
-            GenericManipulation(
-                "Home", "/manipulation/home_goal", "/manipulation/home_result"
-            ),
+            GenericManipulation("Home", "/manipulation/home_goal", "/manipulation/home_result"),
             CheckManipulationHome(),
         ],
     )
@@ -39,9 +37,7 @@ class CheckManipulationHome(Behaviour):
     def __init__(self):
         super().__init__(name=type(self).__name__)
         self.blackboard = self.attach_blackboard_client(name=self.name)
-        self.blackboard.register_key(
-            key="/manipulation/home_result", access=Access.READ
-        )
+        self.blackboard.register_key(key="/manipulation/home_result", access=Access.READ)
 
     def update(self):
         result: ManipulationAction.Result = self.blackboard.manipulation.home_result

@@ -141,13 +141,9 @@ class ComponentLifecycleTest(unittest.TestCase):
         command_interfaces = hardware_info.component[0].command_interfaces
         state_interfaces = hardware_info.component[0].state_interfaces
         for interface in command_interfaces:
-            self.assertFalse(
-                interface.is_available, f"Interface {interface.name} is available after shutdown"
-            )
+            self.assertFalse(interface.is_available, f"Interface {interface.name} is available after shutdown")
         for interface in state_interfaces:
-            self.assertFalse(
-                interface.is_available, f"Interface {interface.name} is available after shutdown"
-            )
+            self.assertFalse(interface.is_available, f"Interface {interface.name} is available after shutdown")
 
         self.assertTrue(
             self._controller_manager_interface.set_hardware_component_state(

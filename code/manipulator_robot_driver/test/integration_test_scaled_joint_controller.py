@@ -97,9 +97,7 @@ class SJTCTest(unittest.TestCase):
         time.sleep(1)
         self.assertTrue(self._io_status_controller_interface.resend_robot_program().success)
 
-        self._controller_manager_interface.wait_for_controller(
-            "scaled_joint_trajectory_controller", "active"
-        )
+        self._controller_manager_interface.wait_for_controller("scaled_joint_trajectory_controller", "active")
 
     #
     # Test functions
@@ -136,10 +134,7 @@ class SJTCTest(unittest.TestCase):
 
         trajectory = JointTrajectory(
             joint_names=[tf_prefix + joint for joint in ROBOT_JOINTS],
-            points=[
-                JointTrajectoryPoint(positions=test_pos, time_from_start=test_time)
-                for (test_time, test_pos) in test_trajectory
-            ],
+            points=[JointTrajectoryPoint(positions=test_pos, time_from_start=test_time) for (test_time, test_pos) in test_trajectory],
         )
 
         # Execute trajectory
@@ -171,10 +166,7 @@ class SJTCTest(unittest.TestCase):
 
         trajectory = JointTrajectory(
             joint_names=[tf_prefix + joint for joint in ROBOT_JOINTS],
-            points=[
-                JointTrajectoryPoint(positions=test_pos, time_from_start=test_time)
-                for (test_time, test_pos) in test_trajectory
-            ],
+            points=[JointTrajectoryPoint(positions=test_pos, time_from_start=test_time) for (test_time, test_pos) in test_trajectory],
         )
 
         last_joint_state = None
@@ -210,14 +202,7 @@ class SJTCTest(unittest.TestCase):
         logging.info("Joint states before sleep:\t %s", state_when_aborted.position.tolist())
         logging.info("Joint states after sleep:\t %s", state_after_sleep.position.tolist())
 
-        self.assertTrue(
-            all(
-                [
-                    abs(a - b) < 0.01
-                    for a, b in zip(state_after_sleep.position, state_when_aborted.position)
-                ]
-            )
-        )
+        self.assertTrue(all([abs(a - b) < 0.01 for a, b in zip(state_after_sleep.position, state_when_aborted.position)]))
 
     # TODO: uncomment when JTC starts taking into account goal_time_tolerance from goal message
     # see https://github.com/ros-controls/ros2_controllers/issues/249

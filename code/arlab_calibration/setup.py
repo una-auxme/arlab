@@ -20,9 +20,6 @@ setup(
     description="TODO: Package description",
     license="MIT",
     entry_points={
-        "console_scripts": [
-            "periodic_transform_publisher = "
-            "arlab_calibration.periodic_transform_publisher:main"
-        ],
+        "console_scripts": ["periodic_transform_publisher = arlab_calibration.periodic_transform_publisher:main"],
     },
 )

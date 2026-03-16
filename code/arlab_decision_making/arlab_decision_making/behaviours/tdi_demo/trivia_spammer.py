@@ -9,9 +9,7 @@ class TriviaSpammer(py_trees.behaviour.Behaviour):
     def __init__(self, name="TriviaSpammer"):
         super().__init__(name)
         self.blackboard = self.attach_blackboard_client(name)
-        self.blackboard.register_key(
-            key="/trivia/shuffled_messages", access=py_trees.common.Access.WRITE
-        )
+        self.blackboard.register_key(key="/trivia/shuffled_messages", access=py_trees.common.Access.WRITE)
 
         self.message_chance = 0.7
 
@@ -32,8 +30,7 @@ class TriviaSpammer(py_trees.behaviour.Behaviour):
             "I run on four Nvidia Jetson Nano embedded computers. "
             "They communicate using the Robot Operating System. "
             "It helps me to receive data of heterogeneous sensors and actuators.",  #
-            "I am a autonomous service robot. I can help you storing your groceries. "
-            "You only need to place them into my working space.",  #
+            "I am a autonomous service robot. I can help you storing your groceries. You only need to place them into my working space.",  #
             "I was programmed by Peter, Daniel, Meruna, Aleks, Leonie, "
             "Jonas, Sofia, and Lukas. They also designed my logo. "
             "I am proud to originate from Augsburg. "
@@ -51,9 +48,7 @@ class TriviaSpammer(py_trees.behaviour.Behaviour):
     def update(self):
         shuffled_messages = self.blackboard.trivia.shuffled_messages
         if len(shuffled_messages) == 0:
-            shuffled_messages = random.sample(
-                self.trivia_messages, len(self.trivia_messages)
-            )
+            shuffled_messages = random.sample(self.trivia_messages, len(self.trivia_messages))
 
         if random.random() > self.message_chance:
             message = shuffled_messages.pop()

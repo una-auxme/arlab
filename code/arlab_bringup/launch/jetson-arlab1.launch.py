@@ -40,6 +40,4 @@ def generate_launch_description():
         launch_arguments={}.items(),
     )
 
-    return LaunchDescription(
-        [robot_control_include, gripper_camera_calibration_include]
-    )
+    return LaunchDescription([robot_control_include, gripper_camera_calibration_include])

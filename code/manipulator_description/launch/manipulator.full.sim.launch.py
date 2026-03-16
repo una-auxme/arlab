@@ -42,7 +42,6 @@ def launch_setup(context, *args, **kwargs):
 
     controllers_file = LaunchConfiguration("controllers_file")
 
-
     manipulator_sim_control_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution(
@@ -122,9 +121,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "controllers_file",
-            default_value=PathJoinSubstitution(
-                [FindPackageShare("manipulator_description"), "config", "manipulator_controllers.yaml"]
-            ),
+            default_value=PathJoinSubstitution([FindPackageShare("manipulator_description"), "config", "manipulator_controllers.yaml"]),
             description="Absolute path to YAML file with the controllers configuration.",
         )
     )

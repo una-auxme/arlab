@@ -17,9 +17,7 @@ def launch_setup(context, *args, **kwargs):
     ur_type = LaunchConfiguration("ur_type")
     launch_servo = LaunchConfiguration("launch_servo")
     use_sim_time = LaunchConfiguration("use_sim_time")
-    publish_robot_description_semantic = LaunchConfiguration(
-        "publish_robot_description_semantic"
-    )
+    publish_robot_description_semantic = LaunchConfiguration("publish_robot_description_semantic")
 
     manipulator_moveit_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -100,6 +98,4 @@ def generate_launch_description():
         ),
     )
 
-    return LaunchDescription(
-        declared_arguments + [OpaqueFunction(function=launch_setup)]
-    )
+    return LaunchDescription(declared_arguments + [OpaqueFunction(function=launch_setup)])

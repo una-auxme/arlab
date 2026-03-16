@@ -18,9 +18,7 @@ class PoseData:
         self.pose = pose
 
     @classmethod
-    def _generate(
-        cls, x: float, y: float, z: float, ox: float, oy: float, oz: float, ow: float
-    ) -> "PoseData":
+    def _generate(cls, x: float, y: float, z: float, ox: float, oy: float, oz: float, ow: float) -> "PoseData":
         """Generate a Pose from a row"""
         point = Point()
         point.x = x

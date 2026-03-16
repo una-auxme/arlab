@@ -41,9 +41,7 @@ def start_debugger(
             import debugpy
 
             debugpy.listen((host, port))
-            get_logger().warn(
-                f"Started debugger on {host}:{port} for {node_module_name}"
-            )
+            get_logger().warn(f"Started debugger on {host}:{port} for {node_module_name}")
             if wait_for_client:
                 get_logger().warn("Waiting until debugging client is attached...")
                 debugpy.wait_for_client()

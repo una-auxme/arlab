@@ -22,9 +22,7 @@ def get_tree() -> Behaviour:
             hand_close.get_tree(),
             home.get_tree(),
             # 3 snapshots
-            QueueSpeech(
-                "I will now take three snapshots of the scene. Please hold still."
-            ),
+            QueueSpeech("I will now take three snapshots of the scene. Please hold still."),
             test_view.get_tree(),
             ### Grip mango subtree right front
             QueueSpeech("Alright. Preparing to grab the mango..."),

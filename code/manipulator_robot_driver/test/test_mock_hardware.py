@@ -95,9 +95,7 @@ class MockHWTest(unittest.TestCase):
     #
 
     def test_get_robot_software_version(self):
-        self.assertEqual(
-            self._configuration_controller_interface.get_robot_software_version().major, 1
-        )
+        self.assertEqual(self._configuration_controller_interface.get_robot_software_version().major, 1)
 
     def test_start_scaled_jtc_controller(self):
         # Deactivate controller, if it is not already

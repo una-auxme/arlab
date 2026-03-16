@@ -65,9 +65,7 @@ class ForceModeExample(Node):
 
         self.robot = Robot(self)
         # Add force mode service to service interfaces and re-init robot
-        self.robot.service_interfaces.update(
-            {"/force_mode_controller/start_force_mode": SetForceMode}
-        )
+        self.robot.service_interfaces.update({"/force_mode_controller/start_force_mode": SetForceMode})
         self.robot.service_interfaces.update({"/force_mode_controller/stop_force_mode": Trigger})
         self.robot.init_robot()
 
@@ -139,9 +137,7 @@ class ForceModeExample(Node):
         frame_stamp.pose.orientation.z = 0.0
         frame_stamp.pose.orientation.w = 1.0
 
-        wrench_vec = Wrench(
-            force=Vector3(x=0.0, y=0.0, z=10.0), torque=Vector3(x=0.0, y=0.0, z=0.0)
-        )
+        wrench_vec = Wrench(force=Vector3(x=0.0, y=0.0, z=10.0), torque=Vector3(x=0.0, y=0.0, z=0.0))
         type_spec = SetForceMode.Request.NO_TRANSFORM
 
         # Specify max speeds and deviations of force mode
@@ -183,16 +179,12 @@ class ForceModeExample(Node):
                 rclpy.time.Time(),
                 timeout=rclpy.time.Duration(seconds=10.0),
             )
-            self.get_logger().info(
-                f"[{t.transform.translation.x}, {t.transform.translation.y}, {t.transform.translation.z}]"
-            )
+            self.get_logger().info(f"[{t.transform.translation.x}, {t.transform.translation.y}, {t.transform.translation.z}]")
             direction_vec = Vector3Stamped()
             direction_vec.header.frame_id = from_frame_rel
             direction_vec.header.stamp = rclpy.time.Time()
             direction_vec.vector = self.direction
-            transformed_direction = self.tf_buffer.transform(
-                direction_vec, to_frame_rel, timeout=rclpy.time.Duration(seconds=1.0)
-            )
+            transformed_direction = self.tf_buffer.transform(direction_vec, to_frame_rel, timeout=rclpy.time.Duration(seconds=1.0))
         except TransformException as ex:
             self.get_logger().info(f"Could not transform {to_frame_rel} to {from_frame_rel}: {ex}")
             return

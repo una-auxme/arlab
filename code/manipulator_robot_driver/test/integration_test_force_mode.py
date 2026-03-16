@@ -217,9 +217,7 @@ class ForceModeTest(unittest.TestCase):
             ),
             header=trans_after.header,
         )
-        self.wait_for_lookup(
-            diff.header.frame_id, tf_prefix + "tool0_controller", diff.header.stamp
-        )
+        self.wait_for_lookup(diff.header.frame_id, tf_prefix + "tool0_controller", diff.header.stamp)
         diff_in_tool0_controller = self.tf_buffer.transform(
             diff,
             tf_prefix + "tool0_controller",
@@ -248,9 +246,7 @@ class ForceModeTest(unittest.TestCase):
             msg="Z translation should not change",
         )
         self.assertTrue(
-            are_quaternions_same(
-                trans_after.transform.rotation, trans_before.transform.rotation, 0.001
-            ),
+            are_quaternions_same(trans_after.transform.rotation, trans_before.transform.rotation, 0.001),
             msg="Rotation should not change",
         )
 
@@ -283,10 +279,7 @@ class ForceModeTest(unittest.TestCase):
         time_vec = [Duration(sec=5, nanosec=0)]
         test_trajectory = zip(time_vec, waypts)
         trajectory = JointTrajectory(
-            points=[
-                JointTrajectoryPoint(positions=pos, time_from_start=times)
-                for (times, pos) in test_trajectory
-            ],
+            points=[JointTrajectoryPoint(positions=pos, time_from_start=times) for (times, pos) in test_trajectory],
             joint_names=[tf_prefix + ROBOT_JOINTS[i] for i in range(len(ROBOT_JOINTS))],
         )
         goal_handle = self._passthrough_forward_joint_trajectory.send_goal(
@@ -294,9 +287,7 @@ class ForceModeTest(unittest.TestCase):
         )
         self.assertTrue(goal_handle.accepted)
         if goal_handle.accepted:
-            result = self._passthrough_forward_joint_trajectory.get_result(
-                goal_handle, TIMEOUT_EXECUTE_TRAJECTORY
-            )
+            result = self._passthrough_forward_joint_trajectory.get_result(goal_handle, TIMEOUT_EXECUTE_TRAJECTORY)
             self.assertEqual(result.error_code, FollowJointTrajectory.Result.SUCCESSFUL)
 
         self.assertTrue(
@@ -581,51 +572,35 @@ class ForceModeTest(unittest.TestCase):
         frame_stamp.header = header
         frame_stamp.pose = task_frame_pose
 
-        res = self._force_mode_controller_interface.start_force_mode(
-            task_frame=frame_stamp, gain_scaling=-0.1
-        )
+        res = self._force_mode_controller_interface.start_force_mode(task_frame=frame_stamp, gain_scaling=-0.1)
         self.assertFalse(res.success)
 
-        res = self._force_mode_controller_interface.start_force_mode(
-            task_frame=frame_stamp, gain_scaling=0.0
-        )
+        res = self._force_mode_controller_interface.start_force_mode(task_frame=frame_stamp, gain_scaling=0.0)
         self.assertTrue(res.success)
         res = self._force_mode_controller_interface.stop_force_mode()
         self.assertTrue(res.success)
 
-        res = self._force_mode_controller_interface.start_force_mode(
-            task_frame=frame_stamp, gain_scaling=2.0
-        )
+        res = self._force_mode_controller_interface.start_force_mode(task_frame=frame_stamp, gain_scaling=2.0)
         self.assertTrue(res.success)
         res = self._force_mode_controller_interface.stop_force_mode()
         self.assertTrue(res.success)
 
-        res = self._force_mode_controller_interface.start_force_mode(
-            task_frame=frame_stamp, gain_scaling=2.1
-        )
+        res = self._force_mode_controller_interface.start_force_mode(task_frame=frame_stamp, gain_scaling=2.1)
         self.assertFalse(res.success)
 
         # damping factor
-        res = self._force_mode_controller_interface.start_force_mode(
-            task_frame=frame_stamp, damping_factor=-0.1
-        )
+        res = self._force_mode_controller_interface.start_force_mode(task_frame=frame_stamp, damping_factor=-0.1)
         self.assertFalse(res.success)
 
-        res = self._force_mode_controller_interface.start_force_mode(
-            task_frame=frame_stamp, damping_factor=0.0
-        )
+        res = self._force_mode_controller_interface.start_force_mode(task_frame=frame_stamp, damping_factor=0.0)
         self.assertTrue(res.success)
         res = self._force_mode_controller_interface.stop_force_mode()
         self.assertTrue(res.success)
 
-        res = self._force_mode_controller_interface.start_force_mode(
-            task_frame=frame_stamp, damping_factor=1.0
-        )
+        res = self._force_mode_controller_interface.start_force_mode(task_frame=frame_stamp, damping_factor=1.0)
         self.assertTrue(res.success)
         res = self._force_mode_controller_interface.stop_force_mode()
         self.assertTrue(res.success)
 
-        res = self._force_mode_controller_interface.start_force_mode(
-            task_frame=frame_stamp, damping_factor=1.1
-        )
+        res = self._force_mode_controller_interface.start_force_mode(task_frame=frame_stamp, damping_factor=1.1)
         self.assertFalse(res.success)

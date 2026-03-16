@@ -72,18 +72,14 @@ class URScriptInterfaceTest(unittest.TestCase):
         self._controller_manager_interface = ControllerManagerInterface(self.node)
         self._io_status_controller_interface = IoStatusInterface(self.node)
 
-        self.urscript_pub = self.node.create_publisher(
-            StringMsg, "/urscript_interface/script_command", 1
-        )
+        self.urscript_pub = self.node.create_publisher(StringMsg, "/urscript_interface/script_command", 1)
 
     def setUp(self):
         self._dashboard_interface.start_robot()
         time.sleep(1)
         self.assertTrue(self._io_status_controller_interface.resend_robot_program().success)
 
-        self._controller_manager_interface.wait_for_controller(
-            "io_and_status_controller", target_state="active"
-        )
+        self._controller_manager_interface.wait_for_controller("io_and_status_controller", target_state="active")
 
     def test_set_io(self):
         """Test setting an IO using a direct program call."""
@@ -106,17 +102,13 @@ class URScriptInterfaceTest(unittest.TestCase):
             rclpy.qos.qos_profile_system_default,
         )
 
-        script_msg = StringMsg(
-            data="sec my_program():\n  set_digital_out(0, False)\n  set_digital_out(1,True)\nend"
-        )
+        script_msg = StringMsg(data="sec my_program():\n  set_digital_out(0, False)\n  set_digital_out(1,True)\nend")
         self.urscript_pub.publish(script_msg)
         self.check_pin_states([0, 1], [False, True])
 
         time.sleep(1)
 
-        script_msg = StringMsg(
-            data="sec my_program():\n  set_digital_out(0, True)\n  set_digital_out(1,False)\nend"
-        )
+        script_msg = StringMsg(data="sec my_program():\n  set_digital_out(0, True)\n  set_digital_out(1,False)\nend")
         self.urscript_pub.publish(script_msg)
         self.check_pin_states([0, 1], [True, False])
 

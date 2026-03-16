@@ -62,9 +62,7 @@ from test_common import (  # noqa: E402
     [("", "scaled_joint_trajectory_controller"), ("my_ur_", "passthrough_trajectory_controller")],
 )
 def generate_test_description(tf_prefix, initial_joint_controller):
-    return generate_driver_test_description(
-        tf_prefix=tf_prefix, initial_joint_controller=initial_joint_controller
-    )
+    return generate_driver_test_description(tf_prefix=tf_prefix, initial_joint_controller=initial_joint_controller)
 
 
 class RobotDriverTest(unittest.TestCase):
@@ -86,9 +84,7 @@ class RobotDriverTest(unittest.TestCase):
         self._dashboard_interface = DashboardInterface(self.node)
         self._controller_manager_interface = ControllerManagerInterface(self.node)
         self._io_status_controller_interface = IoStatusInterface(self.node)
-        self._trajectory_until_interface = ActionInterface(
-            self.node, "/trajectory_until_node/execute", FollowJointTrajectoryUntil
-        )
+        self._trajectory_until_interface = ActionInterface(self.node, "/trajectory_until_node/execute", FollowJointTrajectoryUntil)
         self.test_traj = {
             "waypts": [[1.5, -1.5, 0.0, -1.5, -1.5, -1.5], [2.1, -1.2, 0.0, -2.4, -1.5, -1.5]],
             "time_vec": [Duration(sec=3, nanosec=0), Duration(sec=6, nanosec=0)],
@@ -107,9 +103,7 @@ class RobotDriverTest(unittest.TestCase):
     # Tests
     #
 
-    def test_trajectory_with_tool_contact_no_trigger_succeeds(
-        self, tf_prefix, initial_joint_controller
-    ):
+    def test_trajectory_with_tool_contact_no_trigger_succeeds(self, tf_prefix, initial_joint_controller):
         self._controller_manager_interface.wait_for_controller(initial_joint_controller)
         self.assertTrue(
             self._controller_manager_interface.switch_controller(
@@ -121,9 +115,7 @@ class RobotDriverTest(unittest.TestCase):
         trajectory.joint_names = [tf_prefix + joint for joint in ROBOT_JOINTS]
 
         trajectory.points = [
-            JointTrajectoryPoint(
-                positions=self.test_traj["waypts"][i], time_from_start=self.test_traj["time_vec"][i]
-            )
+            JointTrajectoryPoint(positions=self.test_traj["waypts"][i], time_from_start=self.test_traj["time_vec"][i])
             for i in range(len(self.test_traj["waypts"]))
         ]
         goal_handle = self._trajectory_until_interface.send_goal(
@@ -131,13 +123,9 @@ class RobotDriverTest(unittest.TestCase):
         )
         self.assertTrue(goal_handle.accepted)
         if goal_handle.accepted:
-            result = self._trajectory_until_interface.get_result(
-                goal_handle, TIMEOUT_EXECUTE_TRAJECTORY
-            )
+            result = self._trajectory_until_interface.get_result(goal_handle, TIMEOUT_EXECUTE_TRAJECTORY)
         self.assertEqual(result.error_code, FollowJointTrajectoryUntil.Result.SUCCESSFUL)
-        self.assertEqual(
-            result.until_condition_result, FollowJointTrajectoryUntil.Result.NOT_TRIGGERED
-        )
+        self.assertEqual(result.until_condition_result, FollowJointTrajectoryUntil.Result.NOT_TRIGGERED)
 
     def test_trajectory_until_can_cancel(self, tf_prefix, initial_joint_controller):
         self._controller_manager_interface.wait_for_controller(initial_joint_controller)
@@ -151,9 +139,7 @@ class RobotDriverTest(unittest.TestCase):
         trajectory.joint_names = [tf_prefix + joint for joint in ROBOT_JOINTS]
 
         trajectory.points = [
-            JointTrajectoryPoint(
-                positions=self.test_traj["waypts"][i], time_from_start=self.test_traj["time_vec"][i]
-            )
+            JointTrajectoryPoint(positions=self.test_traj["waypts"][i], time_from_start=self.test_traj["time_vec"][i])
             for i in range(len(self.test_traj["waypts"]))
         ]
         goal_handle = self._trajectory_until_interface.send_goal(

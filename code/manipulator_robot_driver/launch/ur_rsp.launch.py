@@ -81,12 +81,8 @@ def generate_launch_description():
             "external_control.urscript",
         ]
     )
-    input_recipe_filename = PathJoinSubstitution(
-        [FindPackageShare("ur_robot_driver"), "resources", "rtde_input_recipe.txt"]
-    )
-    output_recipe_filename = PathJoinSubstitution(
-        [FindPackageShare("ur_robot_driver"), "resources", "rtde_output_recipe.txt"]
-    )
+    input_recipe_filename = PathJoinSubstitution([FindPackageShare("ur_robot_driver"), "resources", "rtde_input_recipe.txt"])
+    output_recipe_filename = PathJoinSubstitution([FindPackageShare("ur_robot_driver"), "resources", "rtde_output_recipe.txt"])
 
     robot_description_content = Command(
         [
@@ -186,9 +182,7 @@ def generate_launch_description():
             " ",
         ]
     )
-    robot_description = {
-        "robot_description": ParameterValue(robot_description_content, value_type=str)
-    }
+    robot_description = {"robot_description": ParameterValue(robot_description_content, value_type=str)}
 
     declared_arguments = []
     # UR specific arguments
@@ -214,11 +208,7 @@ def generate_launch_description():
             ],
         )
     )
-    declared_arguments.append(
-        DeclareLaunchArgument(
-            "robot_ip", description="IP address by which the robot can be reached."
-        )
-    )
+    declared_arguments.append(DeclareLaunchArgument("robot_ip", description="IP address by which the robot can be reached."))
     declared_arguments.append(
         DeclareLaunchArgument(
             "safety_limits",
@@ -351,40 +341,35 @@ def generate_launch_description():
         DeclareLaunchArgument(
             "tool_parity",
             default_value="0",
-            description="Parity configuration for serial communication. Only effective, if "
-            "use_tool_communication is set to True.",
+            description="Parity configuration for serial communication. Only effective, if use_tool_communication is set to True.",
         )
     )
     declared_arguments.append(
         DeclareLaunchArgument(
             "tool_baud_rate",
             default_value="115200",
-            description="Baud rate configuration for serial communication. Only effective, if "
-            "use_tool_communication is set to True.",
+            description="Baud rate configuration for serial communication. Only effective, if use_tool_communication is set to True.",
         )
     )
     declared_arguments.append(
         DeclareLaunchArgument(
             "tool_stop_bits",
             default_value="1",
-            description="Stop bits configuration for serial communication. Only effective, if "
-            "use_tool_communication is set to True.",
+            description="Stop bits configuration for serial communication. Only effective, if use_tool_communication is set to True.",
         )
     )
     declared_arguments.append(
         DeclareLaunchArgument(
             "tool_rx_idle_chars",
             default_value="1.5",
-            description="RX idle chars configuration for serial communication. Only effective, "
-            "if use_tool_communication is set to True.",
+            description="RX idle chars configuration for serial communication. Only effective, if use_tool_communication is set to True.",
         )
     )
     declared_arguments.append(
         DeclareLaunchArgument(
             "tool_tx_idle_chars",
             default_value="3.5",
-            description="TX idle chars configuration for serial communication. Only effective, "
-            "if use_tool_communication is set to True.",
+            description="TX idle chars configuration for serial communication. Only effective, if use_tool_communication is set to True.",
         )
     )
     declared_arguments.append(

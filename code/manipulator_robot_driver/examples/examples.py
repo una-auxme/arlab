@@ -65,9 +65,7 @@ def waitForService(node, srv_name, srv_type, timeout=TIMEOUT_WAIT_SERVICE):
 def waitForAction(node, action_name, action_type, timeout=TIMEOUT_WAIT_ACTION):
     client = ActionClient(node, action_type, action_name)
     if client.wait_for_server(timeout) is False:
-        raise Exception(
-            f"Could not reach action server '{action_name}' within timeout of {timeout}"
-        )
+        raise Exception(f"Could not reach action server '{action_name}' within timeout of {timeout}")
 
     node.get_logger().info(f"Successfully connected to action '{action_name}'")
     return client
@@ -85,8 +83,7 @@ class Robot:
 
     def init_robot(self):
         self.service_clients = {
-            srv_name: waitForService(self.node, srv_name, srv_type)
-            for (srv_name, srv_type) in self.service_interfaces.items()
+            srv_name: waitForService(self.node, srv_name, srv_type) for (srv_name, srv_type) in self.service_interfaces.items()
         }
 
         self.jtc_action_client = waitForAction(
@@ -124,9 +121,7 @@ class Robot:
             joint_trajectory.points.append(point)
 
         # Sending trajectory goal
-        goal_response = self.call_action(
-            action_client, FollowJointTrajectory.Goal(trajectory=joint_trajectory)
-        )
+        goal_response = self.call_action(action_client, FollowJointTrajectory.Goal(trajectory=joint_trajectory))
         if not goal_response.accepted:
             raise Exception("trajectory was not accepted")
 

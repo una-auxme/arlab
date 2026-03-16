@@ -133,9 +133,7 @@ class DecisionMaker(Node):
 
         self.behavior_tree.setup(node=self, timeout=15.0)
 
-        self.timer_callback_group = (
-            rclpy.callback_groups.MutuallyExclusiveCallbackGroup()
-        )
+        self.timer_callback_group = rclpy.callback_groups.MutuallyExclusiveCallbackGroup()
         self.loop_timer = self.create_timer(
             1.0 / self.update_rate,
             self.tick_tree_handler,

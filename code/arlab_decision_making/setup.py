@@ -21,8 +21,6 @@ setup(
     license="MIT",
     tests_require=["pytest"],
     entry_points={
-        "console_scripts": [
-            "decision_maker = arlab_decision_making.decision_maker:main"
-        ],
+        "console_scripts": ["decision_maker = arlab_decision_making.decision_maker:main"],
     },
 )

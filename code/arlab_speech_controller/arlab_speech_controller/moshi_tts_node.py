@@ -44,9 +44,7 @@ class MoshiTTS(Node):
                 "hf_repo",
                 "kyutai/tts-0.75b-en-public",
                 # DEFAULT_DSM_TTS_REPO,
-                descriptor=ParameterDescriptor(
-                    description="HF repo in which to look for the pretrained models."
-                ),
+                descriptor=ParameterDescriptor(description="HF repo in which to look for the pretrained models."),
             )
             .get_parameter_value()
             .string_value
@@ -55,10 +53,7 @@ class MoshiTTS(Node):
             self.declare_parameter(
                 "voice_repo",
                 DEFAULT_DSM_TTS_VOICE_REPO,
-                descriptor=ParameterDescriptor(
-                    description="HF repo in which to look for "
-                    "pre-computed voice embeddings."
-                ),
+                descriptor=ParameterDescriptor(description="HF repo in which to look for pre-computed voice embeddings."),
             )
             .get_parameter_value()
             .string_value
@@ -68,8 +63,7 @@ class MoshiTTS(Node):
                 "voice",
                 "unmute-prod-website/degaulle-2.wav",
                 descriptor=ParameterDescriptor(
-                    description="The voice to use, relative to the voice repo root. "
-                    f"See {DEFAULT_DSM_TTS_VOICE_REPO}"
+                    description=f"The voice to use, relative to the voice repo root. See {DEFAULT_DSM_TTS_VOICE_REPO}"
                 ),
             )
             .get_parameter_value()
@@ -80,10 +74,7 @@ class MoshiTTS(Node):
             self.declare_parameter(
                 "device",
                 "cuda",
-                descriptor=ParameterDescriptor(
-                    description="Device on which to run, defaults to 'cuda'."
-                    f"See {DEFAULT_DSM_TTS_VOICE_REPO}"
-                ),
+                descriptor=ParameterDescriptor(description=f"Device on which to run, defaults to 'cuda'.See {DEFAULT_DSM_TTS_VOICE_REPO}"),
             )
             .get_parameter_value()
             .string_value
@@ -149,9 +140,7 @@ class MoshiTTS(Node):
         # self.tts_model = TTSModel.from_checkpoint_info(
         #     checkpoint_info, n_q=32, temp=0.6, device=self.device
         # )
-        self.tts_model = TTSModel.from_checkpoint_info(
-            checkpoint_info, n_q=16, temp=0.6, cfg_coef=3, device=self.device
-        )
+        self.tts_model = TTSModel.from_checkpoint_info(checkpoint_info, n_q=16, temp=0.6, cfg_coef=3, device=self.device)
 
         if self.voice.endswith(".safetensors"):
             voice_path = self.voice
@@ -173,9 +162,7 @@ class MoshiTTS(Node):
             if self.audio_enabled:
                 self.pcms_audio_queue.put_nowait(audio_samples)
 
-        self.tts_gen = TTSGen(
-            self.tts_model, [], on_frame=_on_frame, prefixes=self.prefixes
-        )
+        self.tts_gen = TTSGen(self.tts_model, [], on_frame=_on_frame, prefixes=self.prefixes)
 
     def _step_timer_callback(self):
         if self.pcms_audio_queue.qsize() > 5:
@@ -192,10 +179,7 @@ class MoshiTTS(Node):
             self.sentence_buffer[0] = ""
 
         num_entries = len(self.tts_gen.state.entries)
-        if num_entries > 0 or (
-            self.tts_gen.state.end_step is not None
-            and self.tts_gen.offset < self.tts_gen.state.end_step
-        ):
+        if num_entries > 0 or (self.tts_gen.state.end_step is not None and self.tts_gen.offset < self.tts_gen.state.end_step):
             self.state_clean = False
             self.silent_steps = 0
             self.tts_gen.step()
@@ -224,10 +208,7 @@ class MoshiTTS(Node):
                 self._restore_model_state()
 
             # Start the next sentence
-            if (
-                len(self.sentence_buffer) > 0
-                and len(self.sentence_buffer[0].strip()) == 0
-            ):
+            if len(self.sentence_buffer) > 0 and len(self.sentence_buffer[0].strip()) == 0:
                 self.get_logger().info("Switched to new sentence.")
                 self.sentence_buffer.popleft()
 

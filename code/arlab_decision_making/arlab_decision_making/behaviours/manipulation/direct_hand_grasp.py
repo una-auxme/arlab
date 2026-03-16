@@ -37,9 +37,7 @@ class SetupHandGrasp(Behaviour):
         super().__init__(name=type(self).__name__)
         self.target_closure_percent = target_closure_percent
         self.blackboard = self.attach_blackboard_client(name=self.name)
-        self.blackboard.register_key(
-            key="/manipulation/hand/grasp_goal", access=Access.WRITE
-        )
+        self.blackboard.register_key(key="/manipulation/hand/grasp_goal", access=Access.WRITE)
 
     def update(self):
         goal = Grasp.Goal()
@@ -53,9 +51,7 @@ class CheckHandGrasp(Behaviour):
     def __init__(self):
         super().__init__(name=type(self).__name__)
         self.blackboard = self.attach_blackboard_client(name=self.name)
-        self.blackboard.register_key(
-            key="/manipulation/hand/grasp_result", access=Access.READ
-        )
+        self.blackboard.register_key(key="/manipulation/hand/grasp_result", access=Access.READ)
 
     def update(self):
         result: Grasp.Result = self.blackboard.manipulation.hand.grasp_result

@@ -53,9 +53,7 @@ class MoveUntilExample(rclpy.node.Node):
         self._send_goal_future = None
         self._get_result_future = None
         self._goal_handle = None
-        self._action_client = ActionClient(
-            self, FollowJointTrajectoryUntil, "/trajectory_until_node/execute"
-        )
+        self._action_client = ActionClient(self, FollowJointTrajectoryUntil, "/trajectory_until_node/execute")
         self._action_client.wait_for_server()
         self.test_traj = {
             "waypts": [[1.5, -1.5, 0.0, -1.5, -1.5, -1.5], [2.1, -1.2, 0.0, -2.4, -1.5, -1.5]],
@@ -81,14 +79,10 @@ class MoveUntilExample(rclpy.node.Node):
         trajectory.joint_names = ROBOT_JOINTS
 
         trajectory.points = [
-            JointTrajectoryPoint(
-                positions=self.test_traj["waypts"][i], time_from_start=self.test_traj["time_vec"][i]
-            )
+            JointTrajectoryPoint(positions=self.test_traj["waypts"][i], time_from_start=self.test_traj["time_vec"][i])
             for i in range(len(self.test_traj["waypts"]))
         ]
-        goal = FollowJointTrajectoryUntil.Goal(
-            trajectory=trajectory, until_type=FollowJointTrajectoryUntil.Goal.TOOL_CONTACT
-        )
+        goal = FollowJointTrajectoryUntil.Goal(trajectory=trajectory, until_type=FollowJointTrajectoryUntil.Goal.TOOL_CONTACT)
         self._send_goal_future = self._action_client.send_goal_async(goal)
         rclpy.spin_until_future_complete(self, self._send_goal_future)
         self._goal_handle = self._send_goal_future.result()
@@ -96,9 +90,7 @@ class MoveUntilExample(rclpy.node.Node):
             self.get_logger().error("Goal rejected :(")
             raise RuntimeError("Goal rejected :(")
 
-        self.get_logger().info(
-            f"Goal accepted with ID: {bytes(self._goal_handle.goal_id.uuid).hex()}\n"
-        )
+        self.get_logger().info(f"Goal accepted with ID: {bytes(self._goal_handle.goal_id.uuid).hex()}\n")
 
         result_future = self._goal_handle.get_result_async()
         rclpy.spin_until_future_complete(self, result_future)

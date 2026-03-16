@@ -8,14 +8,8 @@ class PeriodicTransformPublisher(Node):
     def __init__(self):
         super().__init__(type(self).__name__)
 
-        self.frame_id = (
-            self.declare_parameter("frame_id", "").get_parameter_value().string_value
-        )
-        self.child_frame_id = (
-            self.declare_parameter("child_frame_id", "")
-            .get_parameter_value()
-            .string_value
-        )
+        self.frame_id = self.declare_parameter("frame_id", "").get_parameter_value().string_value
+        self.child_frame_id = self.declare_parameter("child_frame_id", "").get_parameter_value().string_value
 
         self.x = self.declare_parameter("x", 0.0).get_parameter_value().double_value
         self.y = self.declare_parameter("y", 0.0).get_parameter_value().double_value
@@ -25,9 +19,7 @@ class PeriodicTransformPublisher(Node):
         self.qz = self.declare_parameter("qz", 0.0).get_parameter_value().double_value
         self.qw = self.declare_parameter("qw", 1.0).get_parameter_value().double_value
 
-        self.period = (
-            self.declare_parameter("period", 1.0).get_parameter_value().double_value
-        )
+        self.period = self.declare_parameter("period", 1.0).get_parameter_value().double_value
 
         self.transform = TransformStamped()
         self.transform.header.frame_id = self.frame_id

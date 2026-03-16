@@ -52,16 +52,10 @@ class KnowledgeVisualization(Node):
         super().__init__(type(self).__name__)
         self.get_logger().info(f"{type(self).__name__} node initializing...")
 
-        self.update_timer_period = (
-            self.declare_parameter("update_timer_period", 0.5)
-            .get_parameter_value()
-            .double_value
-        )
+        self.update_timer_period = self.declare_parameter("update_timer_period", 0.5).get_parameter_value().double_value
 
         # Setup publishers
-        self.marker_publisher: Publisher = self.create_publisher(
-            MarkerArray, f"{prefix}/visualization", qos_profile=1
-        )
+        self.marker_publisher: Publisher = self.create_publisher(MarkerArray, f"{prefix}/visualization", qos_profile=1)
 
         # Setup services
         self.service_cb = MutuallyExclusiveCallbackGroup()
@@ -106,9 +100,7 @@ class KnowledgeVisualization(Node):
             # Recreate timer
             self.timer.cancel()
             self.timer.destroy()
-            self.timer = self.create_timer(
-                self.update_timer_period, self.timer_callback
-            )
+            self.timer = self.create_timer(self.update_timer_period, self.timer_callback)
         return result
 
     async def timer_callback(self):
@@ -137,9 +129,7 @@ class KnowledgeVisualization(Node):
         """
         # Step 1: Get all entity IDs
         req = GetEntities.Request()
-        result: Optional[
-            GetEntities.Response
-        ] = await self.get_entities_client.call_async(req)
+        result: Optional[GetEntities.Response] = await self.get_entities_client.call_async(req)
 
         if result is None:
             self.get_logger().error("Service response was None")
@@ -162,17 +152,13 @@ class KnowledgeVisualization(Node):
         # Step 2: Get each entity and its shape, then convert to markers
         for entity_id in result.entities:
             req = GetEntity.Request(entityid=entity_id)
-            entity_rsp: Optional[
-                GetEntity.Response
-            ] = await self.get_entity_client.call_async(req)
+            entity_rsp: Optional[GetEntity.Response] = await self.get_entity_client.call_async(req)
 
             if entity_rsp is None:
                 self.get_logger().error("Service response was None")
                 continue
             if entity_rsp.result.result_type != Result.SUCCESS:
-                self.get_logger().error(
-                    f"Service call unsuccessful: {entity_rsp.result.error}"
-                )
+                self.get_logger().error(f"Service call unsuccessful: {entity_rsp.result.error}")
                 continue
             # Step 3: Convert entity to DB model
             entity = Entity.from_ros_msg(entity_rsp.data)
@@ -180,26 +166,19 @@ class KnowledgeVisualization(Node):
 
             # Step 4: Try to retrieve shape (including pointcloud / bbox2d)
             shape_req = GetShape.Request(entityid=entity_id)
-            shape_rsp: Optional[
-                GetShape.Response
-            ] = await self.get_shape_client.call_async(shape_req)
+            shape_rsp: Optional[GetShape.Response] = await self.get_shape_client.call_async(shape_req)
 
             if shape_rsp is None:
                 self.get_logger().error("GetShape response was None")
             elif shape_rsp.result.result_type != Result.SUCCESS:
                 # Shape is optional – log at debug to avoid spamming when most
                 # entities simply have no shape.
-                self.get_logger().debug(
-                    f"GetShape unsuccessful for entity {entity_id}: "
-                    f"{shape_rsp.result.error}"
-                )
+                self.get_logger().debug(f"GetShape unsuccessful for entity {entity_id}: {shape_rsp.result.error}")
             else:
                 try:
                     entity.shape = Shape.from_ros_msg(shape_rsp.shape)
                 except Exception as e:
-                    self.get_logger().error(
-                        f"Failed to convert Shape for entity {entity_id}: {e}"
-                    )
+                    self.get_logger().error(f"Failed to convert Shape for entity {entity_id}: {e}")
 
             # Step 5: Convert entity (with optional shape) to markers
             # Pass entity_id to ensure markers have unique IDs
@@ -212,9 +191,7 @@ class KnowledgeVisualization(Node):
                 frame_id = entity_markers[0].header.frame_id
                 if entity_markers[0].type == Marker.POINTS:
                     marker_type = "point cloud"
-                    num_points = (
-                        len(entity_markers[0].points) if entity_markers[0].points else 0
-                    )
+                    num_points = len(entity_markers[0].points) if entity_markers[0].points else 0
                     self.get_logger().info(
                         f"Visualizing entity {entity_id} ('{entity.description}'): "
                         f"{marker_type} marker with {num_points} points "
@@ -224,14 +201,11 @@ class KnowledgeVisualization(Node):
                 else:
                     marker_type = "pose"
                     self.get_logger().info(
-                        f"Visualizing entity {entity_id} ('{entity.description}'): "
-                        f"{marker_type} marker (frame: {frame_id})",
+                        f"Visualizing entity {entity_id} ('{entity.description}'): {marker_type} marker (frame: {frame_id})",
                         throttle_duration_sec=2.0,
                     )
             else:
-                self.get_logger().warn(
-                    f"Entity {entity_id} ('{entity.description}') produced no markers"
-                )
+                self.get_logger().warn(f"Entity {entity_id} ('{entity.description}') produced no markers")
 
         self.get_logger().info(
             f"Converted {len(result.entities)} entities to {len(markers)} marker(s)",
@@ -252,9 +226,7 @@ class KnowledgeVisualization(Node):
             timestamp=self.get_clock().now().to_msg(),
         )
         self.marker_publisher.publish(marker_array)
-        self.get_logger().info(
-            f"Published {len(markers)} marker(s) to RViz", throttle_duration_sec=2.0
-        )
+        self.get_logger().info(f"Published {len(markers)} marker(s) to RViz", throttle_duration_sec=2.0)
 
 
 def main(args=None):

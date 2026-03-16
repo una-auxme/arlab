@@ -38,9 +38,7 @@ from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
-    velocity_config = PathJoinSubstitution(
-        [FindPackageShare("ur_robot_driver"), "config", "test_velocity_goal_publishers_config.yaml"]
-    )
+    velocity_config = PathJoinSubstitution([FindPackageShare("ur_robot_driver"), "config", "test_velocity_goal_publishers_config.yaml"])
 
     return LaunchDescription(
         [

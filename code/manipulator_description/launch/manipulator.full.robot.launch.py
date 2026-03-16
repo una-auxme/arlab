@@ -130,8 +130,7 @@ def generate_launch_description():
         DeclareLaunchArgument(
             "use_mock_hardware",
             default_value="false",
-            description="Start robot with mock hardware "
-            "mirroring command to its states.",
+            description="Start robot with mock hardware mirroring command to its states.",
         )
     )
     declared_arguments.append(
@@ -173,6 +172,4 @@ def generate_launch_description():
         )
     )
 
-    return LaunchDescription(
-        declared_arguments + [OpaqueFunction(function=launch_setup)]
-    )
+    return LaunchDescription(declared_arguments + [OpaqueFunction(function=launch_setup)])

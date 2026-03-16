@@ -60,9 +60,7 @@ def load_yaml(package_name, file_path):
 def declare_arguments():
     return LaunchDescription(
         [
-            DeclareLaunchArgument(
-                "launch_rviz_moveit", default_value="true", description="Launch RViz?"
-            ),
+            DeclareLaunchArgument("launch_rviz_moveit", default_value="true", description="Launch RViz?"),
             DeclareLaunchArgument(
                 "ur_type",
                 description="Typo/series of used UR robot.",
@@ -88,9 +86,7 @@ def declare_arguments():
                 default_value=os.path.expanduser("~/.ros/warehouse_ros.sqlite"),
                 description="Path where the warehouse database should be stored",
             ),
-            DeclareLaunchArgument(
-                "launch_servo", default_value="false", description="Launch Servo?"
-            ),
+            DeclareLaunchArgument("launch_servo", default_value="false", description="Launch Servo?"),
             DeclareLaunchArgument(
                 "use_sim_time",
                 default_value="true",
@@ -111,17 +107,11 @@ def generate_launch_description():
     warehouse_sqlite_path = LaunchConfiguration("warehouse_sqlite_path")
     launch_servo = LaunchConfiguration("launch_servo")
     use_sim_time = LaunchConfiguration("use_sim_time")
-    publish_robot_description_semantic = LaunchConfiguration(
-        "publish_robot_description_semantic"
-    )
+    publish_robot_description_semantic = LaunchConfiguration("publish_robot_description_semantic")
 
     moveit_config = (
-        MoveItConfigsBuilder(
-            robot_name="ur", package_name="manipulator_ur_moveit_config"
-        )
-        .robot_description_semantic(
-            Path("srdf") / "manipulator.srdf.xacro", {"name": ur_type}
-        )
+        MoveItConfigsBuilder(robot_name="ur", package_name="manipulator_ur_moveit_config")
+        .robot_description_semantic(Path("srdf") / "manipulator.srdf.xacro", {"name": ur_type})
         .to_moveit_configs()
     )
 
@@ -167,9 +157,7 @@ def generate_launch_description():
         output="screen",
     )
 
-    rviz_config_file = PathJoinSubstitution(
-        [FindPackageShare("ur_moveit_config"), "config", "moveit.rviz"]
-    )
+    rviz_config_file = PathJoinSubstitution([FindPackageShare("ur_moveit_config"), "config", "moveit.rviz"])
     rviz_node = Node(
         package="rviz2",
         condition=IfCondition(launch_rviz_moveit),

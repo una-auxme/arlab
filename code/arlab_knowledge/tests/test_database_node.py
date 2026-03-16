@@ -94,9 +94,7 @@ class DatabaseServiceTester(Node):
         return self.get_clock().now().to_msg()
 
     async def call_service(self, srv_type, service_name, request):
-        client = self.create_client(
-            srv_type, service_name, callback_group=self.service_client_group
-        )
+        client = self.create_client(srv_type, service_name, callback_group=self.service_client_group)
         while not client.wait_for_service(timeout_sec=1.0):
             self.get_logger().info(f"Waiting for {service_name}...")
         future = client.call_async(request)
@@ -107,9 +105,7 @@ class DatabaseServiceTester(Node):
         if result.result_type == result.SUCCESS:
             self.get_logger().info(f"[{name}] ✅ SUCCESS")
         else:
-            self.get_logger().error(
-                f"[{name}] ❌ ERROR {result.result_type}: {result.error}"
-            )
+            self.get_logger().error(f"[{name}] ❌ ERROR {result.result_type}: {result.error}")
 
     async def generic_test_add_entity(self, gen_fn):
         request = AddEntity.Request()
@@ -117,12 +113,8 @@ class DatabaseServiceTester(Node):
         # For shelves:
         request.data.furniture.shelf.cupboard_id = self.cupboard_id
 
-        response = await self.call_service(
-            AddEntity, f"{self.prefix}/add_entity", request
-        )
-        class_name = entities.entity_msg_type_to_class(
-            request.data.entity_type
-        ).__name__
+        response = await self.call_service(AddEntity, f"{self.prefix}/add_entity", request)
+        class_name = entities.entity_msg_type_to_class(request.data.entity_type).__name__
         self.log_result(
             f"AddEntity: {class_name}",
             response.result,
@@ -165,12 +157,8 @@ class DatabaseServiceTester(Node):
     async def test_get_description(self):
         req = GetDescription.Request()
         req.entityid = self.entity_id
-        res = await self.call_service(
-            GetDescription, f"{self.prefix}/get_description", req
-        )
-        self.get_logger().info(
-            f"[GetDescription] ID: {req.entityid} → '{res.description}'"
-        )
+        res = await self.call_service(GetDescription, f"{self.prefix}/get_description", req)
+        self.get_logger().info(f"[GetDescription] ID: {req.entityid} → '{res.description}'")
         self.log_result("GetDescription", res.result)
 
     async def test_get_entities(self):
@@ -185,20 +173,14 @@ class DatabaseServiceTester(Node):
         req.entityid = self.entity_id
         res = await self.call_service(GetPose, f"{self.prefix}/get_pose", req)
         pos = res.pose.position
-        self.get_logger().info(
-            f"[GetPose] ID: {req.entityid} → (x={pos.x}, y={pos.y}, z={pos.z})"
-        )
+        self.get_logger().info(f"[GetPose] ID: {req.entityid} → (x={pos.x}, y={pos.y}, z={pos.z})")
         self.log_result("GetPose", res.result)
 
     async def test_furniture_get_pickable(self):
         req = GetReference.Request()
         req.entityid = self.furniture_id
-        res = await self.call_service(
-            GetReference, f"{self.prefix}/furniture_get_pickable", req
-        )
-        self.get_logger().info(
-            f"[GetReference] ID: {req.entityid} → refs: {res.entities}"
-        )
+        res = await self.call_service(GetReference, f"{self.prefix}/furniture_get_pickable", req)
+        self.get_logger().info(f"[GetReference] ID: {req.entityid} → refs: {res.entities}")
         self.log_result("GetReference", res.result)
 
     async def test_get_shape(self):
@@ -218,9 +200,7 @@ class DatabaseServiceTester(Node):
         req.backwards_index = 0
         res = await self.call_service(GetMap, f"{self.prefix}/get_map", req)
         has_data = bool(res.grid.data)
-        self.get_logger().info(
-            f"[GetMap] → has_data: {has_data} ({res.result.result_type}"
-        )
+        self.get_logger().info(f"[GetMap] → has_data: {has_data} ({res.result.result_type}")
         self.log_result("GetMap", res.result)
 
     async def generic_test_update_entity(self, req: UpdEntity.Request):
@@ -333,9 +313,7 @@ class DatabaseServiceTester(Node):
         req.childid = self.pickable_id
         req.delete_ref = False  # set to True to test deletion
         req.stamp = self.create_stamp()
-        res = await self.call_service(
-            UpdReference, f"{self.prefix}/furniture_update_pickable", req
-        )
+        res = await self.call_service(UpdReference, f"{self.prefix}/furniture_update_pickable", req)
         self.log_result("UpdReference: furniture_update_pickable", res.result)
 
     async def test_update_shape(self):
@@ -368,9 +346,7 @@ class DatabaseServiceTester(Node):
         req.event.stamp = self.create_stamp()
         req.event.status.is_ok = True
         req.event.status.status_type.id = StatusType.STATUS_SAFETY
-        res = await self.call_service(
-            AddStatusEvent, f"{self.prefix}/add_status_event", req
-        )
+        res = await self.call_service(AddStatusEvent, f"{self.prefix}/add_status_event", req)
         self.log_result("AddStatusEvent", res.result)
 
     async def test_get_status_events(self):
@@ -381,9 +357,7 @@ class DatabaseServiceTester(Node):
         req.min_age_stamp = now
         req.max_age_stamp = max_age_stamp
         req.status_type.id = StatusType.STATUS_SAFETY
-        res = await self.call_service(
-            GetStatusEvents, f"{self.prefix}/get_status_events", req
-        )
+        res = await self.call_service(GetStatusEvents, f"{self.prefix}/get_status_events", req)
         self.get_logger().info(f"[GetStatusEvents] Found: {res.events}")
         self.log_result("GetStatusEvents", res.result)
 

@@ -35,9 +35,7 @@ def generate_launch_description():
     Orchestrator = Node(package="arlab_manipulation", executable="orchestrator")
 
     # C++ subscriber node for orchestrator data (for MoveIt or robot control)
-    Manipulation_CPP = Node(
-        package="arlab_manipulation_cpp", executable="Manipulation_CPP"
-    )
+    Manipulation_CPP = Node(package="arlab_manipulation_cpp", executable="Manipulation_CPP")
 
     # Add nodes to the launch description
     ld.add_action(GetParameter)

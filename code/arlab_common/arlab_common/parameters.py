@@ -26,11 +26,7 @@ def update_attributes(obj: Node, params: List[Parameter]) -> SetParametersResult
         if hasattr(obj, param.name):
             new_value = param.value
             orig_value = getattr(obj, param.name)
-            if (
-                orig_value is not None
-                and not isinstance(new_value, type(orig_value))
-                and not isinstance(orig_value, type(new_value))
-            ):
+            if orig_value is not None and not isinstance(new_value, type(orig_value)) and not isinstance(orig_value, type(new_value)):
                 error_reason = "type mismatch"
             else:
                 setattr(obj, param.name, param.value)
@@ -41,8 +37,6 @@ def update_attributes(obj: Node, params: List[Parameter]) -> SetParametersResult
         if error_reason is not None:
             result.successful = False
             result.reason = error_reason
-            obj.get_logger().warn(
-                f"Failed to update parameter {param.name}: {result.reason}"
-            )
+            obj.get_logger().warn(f"Failed to update parameter {param.name}: {result.reason}")
 
     return result

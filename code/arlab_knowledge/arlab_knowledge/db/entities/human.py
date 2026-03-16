@@ -21,9 +21,7 @@ class Human(Entity):
     """
 
     __tablename__ = "entity_human"
-    id: Mapped[int] = mapped_column(
-        ForeignKey("entity.id", ondelete="CASCADE"), primary_key=True
-    )
+    id: Mapped[int] = mapped_column(ForeignKey("entity.id", ondelete="CASCADE"), primary_key=True)
 
     __mapper_args__ = {
         "polymorphic_identity": "entity_human",

@@ -79,11 +79,7 @@ def generate_test_description(launch_dashboard_client):
     }
 
     robot_driver = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            PathJoinSubstitution(
-                [FindPackageShare("ur_robot_driver"), "launch", "ur_control.launch.py"]
-            )
-        ),
+        PythonLaunchDescriptionSource(PathJoinSubstitution([FindPackageShare("ur_robot_driver"), "launch", "ur_control.launch.py"])),
         launch_arguments=launch_arguments.items(),
     )
     wait_dashboard_server = ExecuteProcess(
@@ -99,14 +95,9 @@ def generate_test_description(launch_dashboard_client):
         name="wait_dashboard_server",
         output="screen",
     )
-    driver_starter = RegisterEventHandler(
-        OnProcessExit(target_action=wait_dashboard_server, on_exit=robot_driver)
-    )
+    driver_starter = RegisterEventHandler(OnProcessExit(target_action=wait_dashboard_server, on_exit=robot_driver))
 
-    return LaunchDescription(
-        _declare_launch_arguments()
-        + [ReadyToTest(), wait_dashboard_server, _ursim_action(), driver_starter]
-    )
+    return LaunchDescription(_declare_launch_arguments() + [ReadyToTest(), wait_dashboard_server, _ursim_action(), driver_starter])
 
 
 class DashboardClientTest(unittest.TestCase):

@@ -138,15 +138,10 @@ class PassthroughControllerTest(unittest.TestCase):
             ).ok
         )
 
-        goal_tolerance = [
-            JointTolerance(position=0.01, name=tf_prefix + joint) for joint in ROBOT_JOINTS
-        ]
+        goal_tolerance = [JointTolerance(position=0.01, name=tf_prefix + joint) for joint in ROBOT_JOINTS]
         goal_time_tolerance = Duration(sec=1, nanosec=0)
         trajectory = JointTrajectory(
-            points=[
-                JointTrajectoryPoint(positions=pos, time_from_start=times)
-                for (times, pos) in TEST_TRAJECTORY
-            ],
+            points=[JointTrajectoryPoint(positions=pos, time_from_start=times) for (times, pos) in TEST_TRAJECTORY],
             joint_names=[tf_prefix + joint for joint in ROBOT_JOINTS],
         )
         goal_handle = self._passthrough_forward_joint_trajectory.send_goal(
@@ -156,9 +151,7 @@ class PassthroughControllerTest(unittest.TestCase):
         )
         self.assertTrue(goal_handle.accepted)
         if goal_handle.accepted:
-            result = self._passthrough_forward_joint_trajectory.get_result(
-                goal_handle, TIMEOUT_EXECUTE_TRAJECTORY
-            )
+            result = self._passthrough_forward_joint_trajectory.get_result(goal_handle, TIMEOUT_EXECUTE_TRAJECTORY)
             self.assertEqual(result.error_code, FollowJointTrajectory.Result.SUCCESSFUL)
 
     def test_quintic_trajectory(self, tf_prefix):
@@ -183,9 +176,7 @@ class PassthroughControllerTest(unittest.TestCase):
             joint_names=[tf_prefix + joint for joint in ROBOT_JOINTS],
         )
         goal_time_tolerance = Duration(sec=1, nanosec=0)
-        goal_tolerance = [
-            JointTolerance(position=0.01, name=tf_prefix + joint) for joint in ROBOT_JOINTS
-        ]
+        goal_tolerance = [JointTolerance(position=0.01, name=tf_prefix + joint) for joint in ROBOT_JOINTS]
         goal_handle = self._passthrough_forward_joint_trajectory.send_goal(
             trajectory=trajectory,
             goal_time_tolerance=goal_time_tolerance,
@@ -194,9 +185,7 @@ class PassthroughControllerTest(unittest.TestCase):
 
         self.assertTrue(goal_handle.accepted)
         if goal_handle.accepted:
-            result = self._passthrough_forward_joint_trajectory.get_result(
-                goal_handle, TIMEOUT_EXECUTE_TRAJECTORY
-            )
+            result = self._passthrough_forward_joint_trajectory.get_result(goal_handle, TIMEOUT_EXECUTE_TRAJECTORY)
             self.assertEqual(result.error_code, FollowJointTrajectory.Result.SUCCESSFUL)
 
     def test_impossible_goal_tolerance_fails(self, tf_prefix):
@@ -209,15 +198,10 @@ class PassthroughControllerTest(unittest.TestCase):
             ).ok
         )
         trajectory = JointTrajectory(
-            points=[
-                JointTrajectoryPoint(positions=pos, time_from_start=times)
-                for (times, pos) in TEST_TRAJECTORY
-            ],
+            points=[JointTrajectoryPoint(positions=pos, time_from_start=times) for (times, pos) in TEST_TRAJECTORY],
             joint_names=[tf_prefix + joint for joint in ROBOT_JOINTS],
         )
-        goal_tolerance = [
-            JointTolerance(position=0.000000001, name=tf_prefix + joint) for joint in ROBOT_JOINTS
-        ]
+        goal_tolerance = [JointTolerance(position=0.000000001, name=tf_prefix + joint) for joint in ROBOT_JOINTS]
         goal_time_tolerance = Duration(sec=1, nanosec=0)
         goal_handle = self._passthrough_forward_joint_trajectory.send_goal(
             trajectory=trajectory,
@@ -226,12 +210,8 @@ class PassthroughControllerTest(unittest.TestCase):
         )
         self.assertTrue(goal_handle.accepted)
         if goal_handle.accepted:
-            result = self._passthrough_forward_joint_trajectory.get_result(
-                goal_handle, TIMEOUT_EXECUTE_TRAJECTORY
-            )
-            self.assertEqual(
-                result.error_code, FollowJointTrajectory.Result.GOAL_TOLERANCE_VIOLATED
-            )
+            result = self._passthrough_forward_joint_trajectory.get_result(goal_handle, TIMEOUT_EXECUTE_TRAJECTORY)
+            self.assertEqual(result.error_code, FollowJointTrajectory.Result.GOAL_TOLERANCE_VIOLATED)
 
     def test_impossible_goal_time_tolerance_fails(self, tf_prefix):
         # Test impossible goal time
@@ -243,15 +223,10 @@ class PassthroughControllerTest(unittest.TestCase):
             ).ok
         )
 
-        goal_tolerance = [
-            JointTolerance(position=0.01, name=tf_prefix + joint) for joint in ROBOT_JOINTS
-        ]
+        goal_tolerance = [JointTolerance(position=0.01, name=tf_prefix + joint) for joint in ROBOT_JOINTS]
         goal_time_tolerance = Duration(sec=0, nanosec=10)
         trajectory = JointTrajectory(
-            points=[
-                JointTrajectoryPoint(positions=pos, time_from_start=times)
-                for (times, pos) in TEST_TRAJECTORY
-            ],
+            points=[JointTrajectoryPoint(positions=pos, time_from_start=times) for (times, pos) in TEST_TRAJECTORY],
             joint_names=[tf_prefix + joint for joint in ROBOT_JOINTS],
         )
         goal_handle = self._passthrough_forward_joint_trajectory.send_goal(
@@ -261,12 +236,8 @@ class PassthroughControllerTest(unittest.TestCase):
         )
         self.assertTrue(goal_handle.accepted)
         if goal_handle.accepted:
-            result = self._passthrough_forward_joint_trajectory.get_result(
-                goal_handle, TIMEOUT_EXECUTE_TRAJECTORY
-            )
-            self.assertEqual(
-                result.error_code, FollowJointTrajectory.Result.GOAL_TOLERANCE_VIOLATED
-            )
+            result = self._passthrough_forward_joint_trajectory.get_result(goal_handle, TIMEOUT_EXECUTE_TRAJECTORY)
+            self.assertEqual(result.error_code, FollowJointTrajectory.Result.GOAL_TOLERANCE_VIOLATED)
         self.assertTrue(
             self._controller_manager_interface.switch_controller(
                 strictness=SwitchController.Request.BEST_EFFORT,

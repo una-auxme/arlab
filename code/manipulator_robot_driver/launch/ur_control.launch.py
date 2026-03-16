@@ -80,9 +80,7 @@ def launch_setup(context):
     )
 
     dashboard_client_node = IncludeLaunchDescription(
-        condition=IfCondition(
-            AndSubstitution(launch_dashboard_client, NotSubstitution(use_mock_hardware))
-        ),
+        condition=IfCondition(AndSubstitution(launch_dashboard_client, NotSubstitution(use_mock_hardware))),
         launch_description_source=AnyLaunchDescriptionSource(
             PathJoinSubstitution(
                 [
@@ -271,11 +269,7 @@ def generate_launch_description():
             ],
         )
     )
-    declared_arguments.append(
-        DeclareLaunchArgument(
-            "robot_ip", description="IP address by which the robot can be reached."
-        )
-    )
+    declared_arguments.append(DeclareLaunchArgument("robot_ip", description="IP address by which the robot can be reached."))
     declared_arguments.append(
         DeclareLaunchArgument(
             "safety_limits",
@@ -301,9 +295,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "controllers_file",
-            default_value=PathJoinSubstitution(
-                [FindPackageShare("ur_robot_driver"), "config", "ur_controllers.yaml"]
-            ),
+            default_value=PathJoinSubstitution([FindPackageShare("ur_robot_driver"), "config", "ur_controllers.yaml"]),
             description="YAML file with the controllers configuration.",
         )
     )
@@ -382,17 +374,11 @@ def generate_launch_description():
             description="Activate loaded joint controller.",
         )
     )
-    declared_arguments.append(
-        DeclareLaunchArgument(
-            "launch_rviz", default_value="true", description="Launch RViz?"
-        )
-    )
+    declared_arguments.append(DeclareLaunchArgument("launch_rviz", default_value="true", description="Launch RViz?"))
     declared_arguments.append(
         DeclareLaunchArgument(
             "rviz_config_file",
-            default_value=PathJoinSubstitution(
-                [FindPackageShare("ur_description"), "rviz", "view_robot.rviz"]
-            ),
+            default_value=PathJoinSubstitution([FindPackageShare("ur_description"), "rviz", "view_robot.rviz"]),
             description="RViz config file (absolute path) to use when launching rviz.",
         )
     )
@@ -414,40 +400,35 @@ def generate_launch_description():
         DeclareLaunchArgument(
             "tool_parity",
             default_value="0",
-            description="Parity configuration for serial communication. Only effective, if "
-            "use_tool_communication is set to True.",
+            description="Parity configuration for serial communication. Only effective, if use_tool_communication is set to True.",
         )
     )
     declared_arguments.append(
         DeclareLaunchArgument(
             "tool_baud_rate",
             default_value="115200",
-            description="Baud rate configuration for serial communication. Only effective, if "
-            "use_tool_communication is set to True.",
+            description="Baud rate configuration for serial communication. Only effective, if use_tool_communication is set to True.",
         )
     )
     declared_arguments.append(
         DeclareLaunchArgument(
             "tool_stop_bits",
             default_value="1",
-            description="Stop bits configuration for serial communication. Only effective, if "
-            "use_tool_communication is set to True.",
+            description="Stop bits configuration for serial communication. Only effective, if use_tool_communication is set to True.",
         )
     )
     declared_arguments.append(
         DeclareLaunchArgument(
             "tool_rx_idle_chars",
             default_value="1.5",
-            description="RX idle chars configuration for serial communication. Only effective, "
-            "if use_tool_communication is set to True.",
+            description="RX idle chars configuration for serial communication. Only effective, if use_tool_communication is set to True.",
         )
     )
     declared_arguments.append(
         DeclareLaunchArgument(
             "tool_tx_idle_chars",
             default_value="3.5",
-            description="TX idle chars configuration for serial communication. Only effective, "
-            "if use_tool_communication is set to True.",
+            description="TX idle chars configuration for serial communication. Only effective, if use_tool_communication is set to True.",
         )
     )
     declared_arguments.append(
@@ -525,6 +506,4 @@ def generate_launch_description():
             ],
         )
     )
-    return LaunchDescription(
-        declared_arguments + [OpaqueFunction(function=launch_setup)]
-    )
+    return LaunchDescription(declared_arguments + [OpaqueFunction(function=launch_setup)])

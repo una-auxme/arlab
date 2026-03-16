@@ -32,8 +32,8 @@ request.
 interrupt other programs (such as the one controlling the robot). For a certain subset of functions,
 it is however possible to send them as secondary programs. See [UR
 documentation](https://www.universal-robots.com/articles/ur/programming/secondary-program/)
-on details.
-<br/>
+on details.  
+
 **Note to e-Series users:**
 The robot won't accept script code from a remote source unless the robot is put into
 *remote_control-mode*. However, if put into *remote_control-mode*, the program containing the

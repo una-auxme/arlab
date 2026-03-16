@@ -100,10 +100,7 @@ class TTSGen:
                 K, _ = prefix.shape
                 assert K == tts_model.lm.num_codebooks
                 text_prefixes.append(deque(prefix[0].cpu().tolist()))
-                delays = [
-                    d + tts_model.delay_steps
-                    for d in tts_model.lm.delays[tts_model.lm.audio_offset :]
-                ]
+                delays = [d + tts_model.delay_steps for d in tts_model.lm.delays[tts_model.lm.audio_offset :]]
                 delayed = _delayed(
                     prefix[tts_model.lm.audio_offset :],
                     delays,
@@ -114,9 +111,7 @@ class TTSGen:
 
         def _on_text_logits_hook(text_logits):
             if tts_model.padding_bonus:
-                text_logits[..., tts_model.machine.token_ids.pad] += (
-                    tts_model.padding_bonus
-                )
+                text_logits[..., tts_model.machine.token_ids.pad] += tts_model.padding_bonus
             return text_logits
 
         def _on_audio_hook(audio_tokens):
@@ -132,9 +127,7 @@ class TTSGen:
                     if audio_prefix:
                         audio_codes = audio_prefix.popleft()
                         mask = audio_codes != ungenerated
-                        audio_tokens[b] = torch.where(
-                            mask, audio_codes, audio_tokens[b]
-                        )
+                        audio_tokens[b] = torch.where(mask, audio_codes, audio_tokens[b])
 
         def _on_text_hook(text_tokens):
             tokens = text_tokens.tolist()
@@ -145,9 +138,7 @@ class TTSGen:
                 else:
                     out_token, _ = tts_model.machine.process(self.offset, state, token)
                 out_tokens.append(out_token)
-            text_tokens[:] = torch.tensor(
-                out_tokens, dtype=torch.long, device=text_tokens.device
-            )
+            text_tokens[:] = torch.tensor(out_tokens, dtype=torch.long, device=text_tokens.device)
 
         tts_model.lm.dep_q = tts_model.n_q
         self.lm_gen = LMGen(
@@ -192,9 +183,7 @@ class TTSGen:
                 ],
             )
         if self.lm_gen.lm_model._streaming_state is not None:
-            self.lm_model_state_backup = deepcopy(
-                self.lm_gen.lm_model.get_streaming_state()
-            )
+            self.lm_model_state_backup = deepcopy(self.lm_gen.lm_model.get_streaming_state())
         self.state_backup = deepcopy(self.state)
         self.offset_backup = self.offset
 

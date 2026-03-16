@@ -22,7 +22,7 @@ def get_tree() -> Behaviour:
             move.get_tree(  # picture 1
                 x=0.131,
                 y=0.021,
-                z=0.659,
+                z=0.729,
                 ox=-0.062,
                 oy=0.951,
                 oz=0.302,
@@ -32,7 +32,7 @@ def get_tree() -> Behaviour:
             move.get_tree(  # picture 2 (Schrank)
                 x=0.091,
                 y=0.087,
-                z=0.679,
+                z=0.749,
                 ox=-0.304,
                 oy=0.741,
                 oz=0.584,
@@ -42,7 +42,7 @@ def get_tree() -> Behaviour:
             move.get_tree(  # picture 3
                 x=-0.039,
                 y=0.119,
-                z=0.659,
+                z=0.729,
                 ox=0.768,
                 oy=-0.557,
                 oz=-0.202,

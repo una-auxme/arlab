@@ -13,9 +13,7 @@ def get_tree() -> Behaviour:
         memory=True,
         children=[
             SetHandClose(),
-            GenericManipulation(
-                "Close", "/manipulation/close_goal", "/manipulation/close_result"
-            ),
+            GenericManipulation("Close", "/manipulation/close_goal", "/manipulation/close_result"),
             CheckHandClose(),
         ],
     )
@@ -25,9 +23,7 @@ class SetHandClose(Behaviour):
     def __init__(self):
         super().__init__(name=type(self).__name__)
         self.blackboard = self.attach_blackboard_client(name=self.name)
-        self.blackboard.register_key(
-            key="/manipulation/close_goal", access=Access.WRITE
-        )
+        self.blackboard.register_key(key="/manipulation/close_goal", access=Access.WRITE)
 
     def update(self):
         goal = ManipulationAction.Goal()
@@ -40,9 +36,7 @@ class CheckHandClose(Behaviour):
     def __init__(self):
         super().__init__(name=type(self).__name__)
         self.blackboard = self.attach_blackboard_client(name=self.name)
-        self.blackboard.register_key(
-            key="/manipulation/close_result", access=Access.READ
-        )
+        self.blackboard.register_key(key="/manipulation/close_result", access=Access.READ)
 
     def update(self):
         result: ManipulationAction.Result = self.blackboard.manipulation.close_result

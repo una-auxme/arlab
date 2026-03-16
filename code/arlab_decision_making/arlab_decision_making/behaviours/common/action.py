@@ -52,9 +52,7 @@ class RosActionBehaviour(FromBlackboard):
             key="result_output",
             access=py_trees.common.Access.WRITE,
             # make sure to namespace it if not already
-            remap_to=py_trees.blackboard.Blackboard.absolute_name(
-                "/", result_output_key
-            ),
+            remap_to=py_trees.blackboard.Blackboard.absolute_name("/", result_output_key),
         )
         self.blackboard.result_output = None
 

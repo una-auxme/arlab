@@ -41,13 +41,14 @@ class ErrorSelector(Selector):
         super().__init__(name, memory=True, children=children)
 
     def initialise(self):
-        self.logger.debug(
-            "%s.tick() [!RUNNING->reset current_child]" % self.__class__.__name__
-        )
+        self.logger.debug("%s.tick() [!RUNNING->reset current_child]" % self.__class__.__name__)
         self.current_child = self.children[0] if self.children else None
 
     def tick(self) -> typing.Iterator[Behaviour]:
         self.logger.debug("%s.tick()" % self.__class__.__name__)
+        # initialise
+        if self.status != Status.RUNNING:
+            self.initialise()
 
         # nothing to do
         if not self.children:

@@ -79,11 +79,7 @@ def debug_marker(
         for p in structured_points:
             points.append(Point(x=float(p["x"]), y=float(p["y"]), z=float(p["z"])))
             if colored_points:
-                colors.append(
-                    ColorRGBA(
-                        r=p["r"] / 255.0, g=p["g"] / 255.0, b=p["b"] / 255.0, a=1.0
-                    )
-                )
+                colors.append(ColorRGBA(r=p["r"] / 255.0, g=p["g"] / 255.0, b=p["b"] / 255.0, a=1.0))
 
         marker = Marker(type=Marker.POINTS)
         marker.points = points
@@ -114,9 +110,7 @@ def debug_marker(
             p0 = base[0]
             p1 = base[1]
             if not (isinstance(p0, Point) and isinstance(p1, Point)):
-                raise TypeError(
-                    f"Unsupported debug marker base sequence: '{type(p0)}, {type(p1)}'"
-                )
+                raise TypeError(f"Unsupported debug marker base sequence: '{type(p0)}, {type(p1)}'")
             marker = Marker(type=Marker.ARROW)
             marker.pose.position = p0
             # Scale xy controls arrow shaft and head thickness
@@ -127,9 +121,7 @@ def debug_marker(
             v = Point(x=p1.x - p0.x, y=p1.y - p0.y, z=p1.z - p0.z)
             marker.points.append(v)
         else:
-            raise TypeError(
-                f"Unsupported debug marker base sequence length: '{len(base)}'"
-            )
+            raise TypeError(f"Unsupported debug marker base sequence length: '{len(base)}'")
     else:
         raise TypeError(f"Unsupported debug marker base type: '{type(base)}'")
 
@@ -179,9 +171,7 @@ def debug_marker_array(
     if lifetime is None:
         lifetime = Duration(seconds=0.5).to_msg()
 
-    marker_array = MarkerArray(
-        markers=[Marker(id=0, ns=namespace, action=Marker.DELETEALL)]
-    )
+    marker_array = MarkerArray(markers=[Marker(id=0, ns=namespace, action=Marker.DELETEALL)])
     for id, marker in enumerate(markers):
         marker.header.stamp = timestamp
         marker.ns = namespace

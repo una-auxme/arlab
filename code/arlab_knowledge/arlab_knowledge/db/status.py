@@ -68,9 +68,7 @@ class RobotStatus(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     type: Mapped[str]
 
-    event: Mapped["RobotStatusEvent"] = relationship(
-        back_populates="status", cascade="all, delete"
-    )
+    event: Mapped["RobotStatusEvent"] = relationship(back_populates="status", cascade="all, delete")
 
     is_ok: Mapped[bool]
     """If the robot is in an ok state (no fatal error).
@@ -91,8 +89,7 @@ class RobotStatus(Base):
         status_type = status_msg_type_to_class(m.status_type)
         if status_type is None:
             rclpy.logging.get_logger(db.DB_LOGGER_NAME).error(
-                f"Received entity type '{m.status_type}' is not supported."
-                f"Base class 'Entity' will be used instead."
+                f"Received entity type '{m.status_type}' is not supported.Base class 'Entity' will be used instead."
             )
             status_type = RobotStatus
 
@@ -113,18 +110,14 @@ class RobotStatus(Base):
         return {"is_ok": m.is_ok}
 
     def to_ros_msg(self) -> msg.RobotStatus:
-        return msg.RobotStatus(
-            status_type=status_extract_type_msg(self), is_ok=self.is_ok
-        )
+        return msg.RobotStatus(status_type=status_extract_type_msg(self), is_ok=self.is_ok)
 
 
 class MovementStatus(RobotStatus):
     """Status message from the movement subsystem"""
 
     __tablename__ = "robot_status_movement"
-    id: Mapped[int] = mapped_column(
-        ForeignKey("robot_status.id", ondelete="CASCADE"), primary_key=True
-    )
+    id: Mapped[int] = mapped_column(ForeignKey("robot_status.id", ondelete="CASCADE"), primary_key=True)
 
     __mapper_args__ = {
         "polymorphic_identity": "robot_status_movement",
@@ -146,9 +139,7 @@ class ManipulationStatus(RobotStatus):
     """Status message from the manipulation subsystem"""
 
     __tablename__ = "robot_status_manipulation"
-    id: Mapped[int] = mapped_column(
-        ForeignKey("robot_status.id", ondelete="CASCADE"), primary_key=True
-    )
+    id: Mapped[int] = mapped_column(ForeignKey("robot_status.id", ondelete="CASCADE"), primary_key=True)
 
     __mapper_args__ = {
         "polymorphic_identity": "robot_status_manipulation",
@@ -170,9 +161,7 @@ class SafetyStatus(RobotStatus):
     """Status message from the safety subsystem"""
 
     __tablename__ = "robot_status_safety"
-    id: Mapped[int] = mapped_column(
-        ForeignKey("robot_status.id", ondelete="CASCADE"), primary_key=True
-    )
+    id: Mapped[int] = mapped_column(ForeignKey("robot_status.id", ondelete="CASCADE"), primary_key=True)
 
     __mapper_args__ = {
         "polymorphic_identity": "robot_status_safety",
@@ -206,12 +195,8 @@ class RobotStatusEvent(Base):
     sender: Mapped[str] = mapped_column(String(100))
     """Node name that sent this event"""
 
-    status_id: Mapped[int] = mapped_column(
-        ForeignKey("robot_status.id", ondelete="CASCADE")
-    )
-    status: Mapped["RobotStatus"] = relationship(
-        back_populates="event", cascade="all, delete", single_parent=True
-    )
+    status_id: Mapped[int] = mapped_column(ForeignKey("robot_status.id", ondelete="CASCADE"))
+    status: Mapped["RobotStatus"] = relationship(back_populates="event", cascade="all, delete", single_parent=True)
     """The status message associated with this event"""
 
     @classmethod
@@ -222,6 +207,4 @@ class RobotStatusEvent(Base):
 
     def to_ros_msg(self) -> msg.RobotStatusEvent:
         status = self.status.to_ros_msg()
-        return msg.RobotStatusEvent(
-            stamp=self.stamp.time, sender=self.sender, status=status
-        )
+        return msg.RobotStatusEvent(stamp=self.stamp.time, sender=self.sender, status=status)

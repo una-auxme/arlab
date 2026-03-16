@@ -35,15 +35,11 @@ class Shape(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
-    entity_id: Mapped[int] = mapped_column(
-        ForeignKey("entity.id", ondelete="CASCADE"), unique=True
-    )
+    entity_id: Mapped[int] = mapped_column(ForeignKey("entity.id", ondelete="CASCADE"), unique=True)
     entity: Mapped["Entity"] = relationship(back_populates="shape", single_parent=True)  # type: ignore # noqa: F821
     """Entity this shape belongs to"""
 
-    boundingbox2d: Mapped[Optional["BoundingBox2D"]] = relationship(
-        back_populates="shape", cascade="all, delete-orphan"
-    )
+    boundingbox2d: Mapped[Optional["BoundingBox2D"]] = relationship(back_populates="shape", cascade="all, delete-orphan")
     """2D Camera bounding box"""
 
     pointcloud2: Mapped[Optional["PointCloud2"]] = relationship(
@@ -78,12 +74,8 @@ class BoundingBox2D(Base):
 
     __tablename__ = "boundingbox2d"
 
-    id: Mapped[int] = mapped_column(
-        ForeignKey("shape.id", ondelete="CASCADE"), primary_key=True
-    )
-    shape: Mapped["Shape"] = relationship(
-        back_populates="boundingbox2d", single_parent=True
-    )
+    id: Mapped[int] = mapped_column(ForeignKey("shape.id", ondelete="CASCADE"), primary_key=True)
+    shape: Mapped["Shape"] = relationship(back_populates="boundingbox2d", single_parent=True)
 
     center: Mapped[Pose2DData] = composite(
         Pose2DData._generate,
@@ -113,12 +105,8 @@ class PointCloud2(Base):
 
     __tablename__ = "pointcloud2"
 
-    id: Mapped[int] = mapped_column(
-        ForeignKey("shape.id", ondelete="CASCADE"), primary_key=True
-    )
-    shape: Mapped["Shape"] = relationship(
-        back_populates="pointcloud2", single_parent=True
-    )
+    id: Mapped[int] = mapped_column(ForeignKey("shape.id", ondelete="CASCADE"), primary_key=True)
+    shape: Mapped["Shape"] = relationship(back_populates="pointcloud2", single_parent=True)
 
     height: Mapped[int]
     width: Mapped[int]

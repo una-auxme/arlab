@@ -43,15 +43,10 @@ class SpeechOutput(Behaviour):
             error_message = "didn't find 'node' in setup's kwargs"
             raise KeyError(error_message) from e  # 'direct cause' traceability
 
-        self.speech_pub = self.node.create_publisher(
-            String, "/tts_output", qos_profile=10
-        )
+        self.speech_pub = self.node.create_publisher(String, "/tts_output", qos_profile=10)
 
     def update(self):
-        if (
-            self.blackboard.exists(BLACKBOARD_SPEECH_KEY)
-            and self.blackboard.speech_queue is not None
-        ):
+        if self.blackboard.exists(BLACKBOARD_SPEECH_KEY) and self.blackboard.speech_queue is not None:
             queue = self.blackboard.speech_queue
             while len(queue) > 0:
                 text = queue.popleft()

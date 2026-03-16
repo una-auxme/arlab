@@ -14,6 +14,7 @@ Maintainers:
 import os
 import time
 from copy import deepcopy
+from threading import Lock
 from time import sleep
 from typing import Any, List, Optional, Tuple
 
@@ -113,18 +114,12 @@ class ObjectDetection(Node):
         self.declare_parameter("snapshot_mode", True)
 
         # If the model output should be plotted and published
-        self.visualize = (
-            self.get_parameter("visualize").get_parameter_value().bool_value
-        )
+        self.visualize = self.get_parameter("visualize").get_parameter_value().bool_value
 
         # Load parameters.
-        yolo_weights = (
-            self.get_parameter("yolo_weights").get_parameter_value().string_value
-        )
+        yolo_weights = self.get_parameter("yolo_weights").get_parameter_value().string_value
         # Visualization parameter removed for performance reasons
-        log_level_str = (
-            self.get_parameter("log_level").get_parameter_value().string_value
-        )
+        log_level_str = self.get_parameter("log_level").get_parameter_value().string_value
 
         # Set logger level
         from rclpy.impl.logging_severity import LoggingSeverity
@@ -140,57 +135,40 @@ class ObjectDetection(Node):
         self.get_logger().set_level(log_level)
         self.get_logger().info(f"Log level set to: {log_level_str.upper()}")
 
-        self.use_depth = (
-            self.get_parameter("use_depth").get_parameter_value().bool_value
-        )
-        self.sync_tolerance = (
-            self.get_parameter("sync_tolerance").get_parameter_value().double_value
-        )
+        self.use_depth = self.get_parameter("use_depth").get_parameter_value().bool_value
+        self.sync_tolerance = self.get_parameter("sync_tolerance").get_parameter_value().double_value
 
         # Load delete old entities parameter
-        self._delete_old_entities = (
-            self.get_parameter("delete_old_entities").get_parameter_value().bool_value
-        )
+        self._delete_old_entities = self.get_parameter("delete_old_entities").get_parameter_value().bool_value
         self.get_logger().info(f"Delete old entities: {self._delete_old_entities}")
 
         # Load clear DB on no detection parameter
-        self._clear_db_on_no_detection = (
-            self.get_parameter("clear_db_on_no_detection")
-            .get_parameter_value()
-            .bool_value
-        )
-        self.get_logger().info(
-            f"Clear DB on no detection: {self._clear_db_on_no_detection}"
-        )
+        self._clear_db_on_no_detection = self.get_parameter("clear_db_on_no_detection").get_parameter_value().bool_value
+        self.get_logger().info(f"Clear DB on no detection: {self._clear_db_on_no_detection}")
 
         # Load max image width parameter
-        self.max_image_width = (
-            self.get_parameter("max_image_width").get_parameter_value().integer_value
-        )
+        self.max_image_width = self.get_parameter("max_image_width").get_parameter_value().integer_value
         if self.max_image_width > 0:
-            self.get_logger().info(
-                f"YOLO input size: {self.max_image_width}x{self.max_image_width} "
-                f"(images will be scaled to square size)"
-            )
+            self.get_logger().info(f"YOLO input size: {self.max_image_width}x{self.max_image_width} (images will be scaled to square size)")
         else:
-            self.get_logger().info(
-                "Image scaling disabled - using original image size for YOLO"
-            )
+            self.get_logger().info("Image scaling disabled - using original image size for YOLO")
 
         # Enable snapshot mode?
-        self._snapshot_mode = (
-            self.get_parameter("snapshot_mode").get_parameter_value().bool_value
-        )
+        self._snapshot_mode = self.get_parameter("snapshot_mode").get_parameter_value().bool_value
         self.get_logger().info(f"Snapshot mode: {self._snapshot_mode}")
 
         if self._snapshot_mode:
+            self._snapshot_group = MutuallyExclusiveCallbackGroup()
             self._action_server = ActionServer(
                 self,
                 VisionSnapshotAction,
                 "/vision/snapshot",
                 execute_callback=self._snapshot_execute_callback,
                 goal_callback=self._snapshot_goal_callback,
+                callback_group=self._snapshot_group,
             )
+
+        self.vision_data_mutex = Lock()
 
         # Check if using segmentation model based on filename
         self.use_segmentation = "-seg.pt" in yolo_weights
@@ -215,9 +193,7 @@ class ObjectDetection(Node):
         if device == "cuda":
             # Verify CUDA is actually available
             if not torch.cuda.is_available():
-                self.get_logger().warn(
-                    "CUDA not available despite device='cuda'. Falling back to CPU."
-                )
+                self.get_logger().warn("CUDA not available despite device='cuda'. Falling back to CPU.")
                 self.device = "cpu"
             else:
                 # Explicitly move model to GPU
@@ -226,9 +202,7 @@ class ObjectDetection(Node):
                 try:
                     gpu_name = torch.cuda.get_device_name(0)
                     gpu_memory = torch.cuda.get_device_properties(0).total_memory / 1e9
-                    self.get_logger().info(
-                        f"GPU detected: {gpu_name} ({gpu_memory:.1f} GB total memory)"
-                    )
+                    self.get_logger().info(f"GPU detected: {gpu_name} ({gpu_memory:.1f} GB total memory)")
                 except Exception as e:
                     self.get_logger().warn(f"GPU verification failed: {e}")
 
@@ -248,9 +222,7 @@ class ObjectDetection(Node):
                     else:
                         warmup_size = (640, 640, 3)
 
-                    self.get_logger().debug(
-                        f"Warmup image size: {warmup_size[1]}x{warmup_size[0]}"
-                    )
+                    self.get_logger().debug(f"Warmup image size: {warmup_size[1]}x{warmup_size[0]}")
 
                     # Create dummy input and run warmup inference
                     # This loads the model on GPU and compiles CUDA kernels
@@ -262,20 +234,12 @@ class ObjectDetection(Node):
 
                     # Verify GPU was actually used
                     if torch.cuda.is_available():
-                        model_device = (
-                            self.model.device
-                            if hasattr(self.model, "device")
-                            else "unknown"
-                        )
+                        model_device = self.model.device if hasattr(self.model, "device") else "unknown"
                         self.get_logger().info(
-                            f"Model warmup completed on GPU "
-                            f"(device: {model_device}, "
-                            f"warmup size: {warmup_size[1]}x{warmup_size[0]})"
+                            f"Model warmup completed on GPU (device: {model_device}, warmup size: {warmup_size[1]}x{warmup_size[0]})"
                         )
                     else:
-                        self.get_logger().warn(
-                            "Model warmup completed but GPU not verified"
-                        )
+                        self.get_logger().warn("Model warmup completed but GPU not verified")
                 except Exception as e:
                     self.get_logger().warn(f"Model warmup failed: {e}")
 
@@ -327,12 +291,8 @@ class ObjectDetection(Node):
         self._kb_services_available = False
 
         # Load target frame parameter
-        self.target_frame = (
-            self.get_parameter("target_frame").get_parameter_value().string_value
-        )
-        self.get_logger().info(
-            f"Target frame for TF transformations: '{self.target_frame}'"
-        )
+        self.target_frame = self.get_parameter("target_frame").get_parameter_value().string_value
+        self.get_logger().info(f"Target frame for TF transformations: '{self.target_frame}'")
 
         # TF2 Buffer for coordinate frame transformations
         self.tf_buffer = Buffer()
@@ -362,10 +322,7 @@ class ObjectDetection(Node):
                 slop=self.sync_tolerance,
             )
             self.sync.registerCallback(self._image_data_callback)
-            self.get_logger().info(
-                f"Subscribed to synchronized RGB and depth topics "
-                f"(tolerance: {self.sync_tolerance}s)"
-            )
+            self.get_logger().info(f"Subscribed to synchronized RGB and depth topics (tolerance: {self.sync_tolerance}s)")
         else:
             # Subscribe to RGB image stream only.
             self.create_subscription(
@@ -378,21 +335,13 @@ class ObjectDetection(Node):
         self.color_image: Optional[Image] = None
         self.pointcloud: Optional[PointCloud2] = None
 
-        self.segmented_image_pub = self.create_publisher(
-            Image, "/vision/segmented_image", qos_profile=1
-        )
-        self.debug_pointcloud_pub = self.create_publisher(
-            PointCloud2, "/vision/debug_pc", qos_profile=1
-        )
+        self.segmented_image_pub = self.create_publisher(Image, "/vision/segmented_image", qos_profile=1)
+        self.debug_pointcloud_pub = self.create_publisher(PointCloud2, "/vision/debug_pc", qos_profile=1)
 
-        self._knowledge_timer = self.create_timer(
-            timer_period_sec=5.0, callback=self._check_kb_services
-        )
+        self._knowledge_timer = self.create_timer(timer_period_sec=5.0, callback=self._check_kb_services)
         # Check services availability initially
         self._check_kb_services()
-        self.create_timer(
-            timer_period_sec=5.0, callback=self._frame_statistics_reporter
-        )
+        self.create_timer(timer_period_sec=5.0, callback=self._frame_statistics_reporter)
 
     def _check_kb_services(self) -> bool:
         """Check if all KB services are available.
@@ -410,9 +359,7 @@ class ObjectDetection(Node):
             self.get_logger().info("Knowledge base services are available.")
             self._knowledge_timer.cancel()
         else:
-            self.get_logger().warn(
-                "Knowledge base services not available. Will retry periodically."
-            )
+            self.get_logger().warn("Knowledge base services not available. Will retry periodically.")
         return available
 
     def _frame_statistics_reporter(self):
@@ -436,18 +383,22 @@ class ObjectDetection(Node):
         rgb_msg: Image,
         pointcloud_msg: PointCloud2 | None = None,
     ) -> None:
-        self.color_image = rgb_msg
-        self.pointcloud = pointcloud_msg
-        if not self._snapshot_mode:
-            self._process_data(
-                rgb_msg, pointcloud_msg, delete_old_entities=self._delete_old_entities
-            )
+        with self.vision_data_mutex:
+            self.color_image = rgb_msg
+            self.pointcloud = pointcloud_msg
+            if not self._snapshot_mode:
+                self._process_data(
+                    rgb_msg,
+                    pointcloud_msg,
+                    delete_old_entities=self._delete_old_entities,
+                )
 
     def _process_data(
         self,
         rgb_msg: Image,
         pointcloud_msg: PointCloud2 | None = None,
         delete_old_entities: bool = False,
+        mask_hand: bool = False,
     ) -> None:
         """Fully synchronous frame processing - no async, no threads.
 
@@ -470,9 +421,7 @@ class ObjectDetection(Node):
             yolo_size = self.max_image_width
             scale_x = yolo_size / original_width
             scale_y = yolo_size / original_height
-            yolo_image = cv2.resize(
-                rgb_image, (yolo_size, yolo_size), interpolation=cv2.INTER_LINEAR
-            )
+            yolo_image = cv2.resize(rgb_image, (yolo_size, yolo_size), interpolation=cv2.INTER_LINEAR)
         else:
             yolo_image = rgb_image
             scale_x = scale_y = 1.0
@@ -485,9 +434,7 @@ class ObjectDetection(Node):
 
         if self.visualize:
             # Plot model result if enabled
-            self.segmented_image_pub.publish(
-                self.bridge.cv2_to_imgmsg(result.plot(), "bgr8")
-            )
+            self.segmented_image_pub.publish(self.bridge.cv2_to_imgmsg(result.plot(), "bgr8"))
 
         # === 3. POSTPROCESSING (CPU) ===
         t_post = time.perf_counter()
@@ -506,15 +453,10 @@ class ObjectDetection(Node):
                         boxes.xywh[:, 3] /= scale_y
 
             # Extract masks
-            masks = self._extract_masks(result, original_height, original_width)
+            masks = self._extract_masks(result, original_height, original_width, mask_hand=mask_hand)
 
             # Depth processing
-            if (
-                pointcloud_msg is not None
-                and masks is not None
-                and self.use_depth
-                and self.camera_intrinsics_matrix is not None
-            ):
+            if pointcloud_msg is not None and masks is not None and self.use_depth and self.camera_intrinsics_matrix is not None:
                 # Transform from depth frame to target(world) frame
                 depth_to_target_msg = self.tf_buffer.lookup_transform(
                     self.target_frame,
@@ -522,9 +464,7 @@ class ObjectDetection(Node):
                     Time(seconds=0.0),
                     timeout=Duration(seconds=1.0),
                 )
-                depth_to_target: NDArray = ros2_numpy.numpify(
-                    depth_to_target_msg.transform
-                )
+                depth_to_target: NDArray = ros2_numpy.numpify(depth_to_target_msg.transform)
 
                 structured_points = deepcopy(pointcloud2_to_array(pointcloud_msg))
                 sp_np = np.stack(
@@ -549,15 +489,11 @@ class ObjectDetection(Node):
                     Time.from_msg(rgb_msg.header.stamp),
                     timeout=Duration(seconds=1.0),
                 )
-                depth_to_color: NDArray = ros2_numpy.numpify(
-                    depth_to_color_msg.transform
-                )
+                depth_to_color: NDArray = ros2_numpy.numpify(depth_to_color_msg.transform)
 
                 np_points = pointcloud2_to_xyz_array(pointcloud_msg)
                 np_points = np_points.transpose(1, 0)
-                np_points = np.concatenate(
-                    [np_points, np.ones((1, np_points.shape[-1]))]
-                )
+                np_points = np.concatenate([np_points, np.ones((1, np_points.shape[-1]))])
                 np_points = depth_to_color @ np_points
                 # np_points contains pointcloud in color frame coordinates
                 camera_points = self.camera_intrinsics_matrix @ np_points[:3]
@@ -567,12 +503,8 @@ class ObjectDetection(Node):
                 camera_points_idxs = camera_points.astype(np.int32)
                 # x, y -> y, x
                 camera_points_idxs[[0, 1]] = camera_points_idxs[[1, 0]]
-                camera_points_idxs[0] = np.clip(
-                    camera_points_idxs[0], 0, original_height - 1
-                )
-                camera_points_idxs[1] = np.clip(
-                    camera_points_idxs[1], 0, original_width - 1
-                )
+                camera_points_idxs[0] = np.clip(camera_points_idxs[0], 0, original_height - 1)
+                camera_points_idxs[1] = np.clip(camera_points_idxs[1], 0, original_width - 1)
                 for i, mask in enumerate(masks):
                     # Converts the image mask into a per point mask
                     point_mask = mask[camera_points_idxs[0], camera_points_idxs[1]]
@@ -582,11 +514,7 @@ class ObjectDetection(Node):
                     # -> Final points for the entity
                     entity_points = structured_points[point_mask > 0.5]
 
-                    if (
-                        self.get_parameter("use_clustering")
-                        .get_parameter_value()
-                        .bool_value
-                    ):
+                    if self.get_parameter("use_clustering").get_parameter_value().bool_value:
                         entity_points = self.cluster_entity_points(entity_points)
 
                     if len(entity_points) == 0:
@@ -598,9 +526,7 @@ class ObjectDetection(Node):
 
                     # Extract label
                     label = result.names[int(result.boxes.cls[i].item())]
-                    entities.append(
-                        create_entity(label, entity_points, entity_pointcloud.header)
-                    )
+                    entities.append(create_entity(label, entity_points, entity_pointcloud.header))
             else:
                 if pointcloud_msg is None:
                     self.get_logger().debug("No pointcloud message available")
@@ -619,10 +545,7 @@ class ObjectDetection(Node):
         # Timing summary
         total_ms = (time.perf_counter() - t_start) * 1000
         self.get_logger().info(
-            f"[Timing] Pre:{preprocess_ms:.1f}ms | "
-            f"YOLO:{inference_ms:.1f}ms | "
-            f"Post:{postprocess_ms:.1f}ms | "
-            f"Total:{total_ms:.1f}ms | "
+            f"[Timing] Pre:{preprocess_ms:.1f}ms | YOLO:{inference_ms:.1f}ms | Post:{postprocess_ms:.1f}ms | Total:{total_ms:.1f}ms | "
             # f"{queued_count} queued"
         )
 
@@ -630,9 +553,7 @@ class ObjectDetection(Node):
         if len(entity_points) == 0:
             return []
         # 1. Preparing data for sklearn dbscan
-        xyz = np.stack(
-            [entity_points["x"], entity_points["y"], entity_points["z"]], axis=1
-        )
+        xyz = np.stack([entity_points["x"], entity_points["y"], entity_points["z"]], axis=1)
 
         # 2. Exectute DBSCAN clustering
         # eps= max distance, min_samples= min density
@@ -678,9 +599,7 @@ class ObjectDetection(Node):
         del_req.entityids = ids
         del_response: DelEntities.Response = self.client_del_entities.call(del_req)
         if del_response.result.result_type != Result.SUCCESS:
-            self.get_logger().error(
-                f"Failed to delete entities: {del_response.result.error}"
-            )
+            self.get_logger().error(f"Failed to delete entities: {del_response.result.error}")
 
     def kb_add_entities(self, entities: List[Tuple[Entity, Shape]]):
         if not self._kb_services_available:
@@ -697,9 +616,7 @@ class ObjectDetection(Node):
             response: AddEntity.Response = self.client_add_entities.call(add_req)
 
             if response.result.result_type != Result.SUCCESS:
-                self.get_logger().error(
-                    f"Failed to save entity in database: {response.result.error}"
-                )
+                self.get_logger().error(f"Failed to save entity in database: {response.result.error}")
                 continue
 
             # Update shape in KB
@@ -708,13 +625,9 @@ class ObjectDetection(Node):
             upd_shape_req.shape = shape
             upd_shape_req.stamp = shape.pointcloud.header.stamp
 
-            shape_response: UpdShape.Response = self.client_upd_shape.call(
-                upd_shape_req
-            )
+            shape_response: UpdShape.Response = self.client_upd_shape.call(upd_shape_req)
             if shape_response.result.result_type != Result.SUCCESS:
-                self.get_logger().error(
-                    f"Failed to update shape in database: {shape_response.result.error}"
-                )
+                self.get_logger().error(f"Failed to update shape in database: {shape_response.result.error}")
                 continue
 
     def camera_info_callback(self, msg: CameraInfo) -> None:
@@ -744,10 +657,7 @@ class ObjectDetection(Node):
             self._fy = new_intrinsics["fy"]
             self._cx = new_intrinsics["cx"]
             self._cy = new_intrinsics["cy"]
-            self.get_logger().info(
-                f"Camera intrinsics set: {msg.width}x{msg.height}, "
-                f"fx={K[0, 0]:.1f}, fy={K[1, 1]:.1f}"
-            )
+            self.get_logger().info(f"Camera intrinsics set: {msg.width}x{msg.height}, fx={K[0, 0]:.1f}, fy={K[1, 1]:.1f}")
         else:
             # Update silently (intrinsics shouldn't change, but update just in case)
             self.camera_intrinsics = new_intrinsics
@@ -774,9 +684,7 @@ class ObjectDetection(Node):
         num_detections = len(result.boxes) if hasattr(result, "boxes") else 0
         return result, num_detections
 
-    def _extract_masks(
-        self, result: Any, image_height: int, image_width: int
-    ) -> np.ndarray | None:
+    def _extract_masks(self, result: Any, image_height: int, image_width: int, mask_hand: bool) -> np.ndarray | None:
         """Extract segmentation masks from YOLO result.
 
         Optimized version: Performs batch resize on GPU before transferring
@@ -786,15 +694,12 @@ class ObjectDetection(Node):
             result: YOLO result object.
             image_height: Height of the image.
             image_width: Width of the image.
+            mask_hand: ignore the hand portion of the image
 
         Returns:
             Binary masks as numpy array (N x H x W) or None if no masks.
         """
-        has_masks = (
-            hasattr(result, "masks")
-            and result.masks is not None
-            and len(result.masks) > 0
-        )
+        has_masks = hasattr(result, "masks") and result.masks is not None and len(result.masks) > 0
         if not has_masks:
             return None
 
@@ -808,47 +713,57 @@ class ObjectDetection(Node):
             )
 
             # Single sync + transfer to CPU
-            return masks_resized.cpu().numpy().astype(np.uint8)
+            result_masks = masks_resized.cpu().numpy().astype(np.uint8)
         else:
             # No resize needed - single sync + transfer
-            return masks_gpu.cpu().numpy().astype(np.uint8)
+            result_masks = masks_gpu.cpu().numpy().astype(np.uint8)
+
+        if mask_hand:
+            n, h, w = result_masks.shape
+            result_masks[:, int(h * 0.8) : h, :] = 0.0
+        return result_masks
 
     def _snapshot_goal_callback(self, goal_request: VisionSnapshotAction.Goal):
-        self.get_logger().info(
-            "Received goal from Decision Making. "
-            f"Delete old: {goal_request.command.clear_database}"
-        )
+        self.get_logger().info(f"Received goal from Decision Making. Delete old: {goal_request.command.clear_database}")
         return GoalResponse.ACCEPT
 
     def _snapshot_execute_callback(self, goal_handle):
+        with self.vision_data_mutex:
+            self.color_image = None
+            self.pointcloud = None
         # sleep to make sure position has stabilized
-        sleep(1.0)
+        for _ in range(5):
+            sleep(1.0)
+            with self.vision_data_mutex:
+                if self.color_image is not None and self.pointcloud is not None:
+                    break
 
-        goal_command: VisionSnapshotCommand = goal_handle.request.command
-        action_result = VisionSnapshotAction.Result()
-        if self.color_image is None or self.pointcloud is None:
-            action_result.response.result = VisionSnapshotResponse.ERROR_NO_IMAGE_DATA
-            action_result.response.error_msg = "No image data"
+        with self.vision_data_mutex:
+            goal_command: VisionSnapshotCommand = goal_handle.request.command
+            action_result = VisionSnapshotAction.Result()
+            if self.color_image is None or self.pointcloud is None:
+                action_result.response.result = VisionSnapshotResponse.ERROR_NO_IMAGE_DATA
+                action_result.response.error_msg = "No image data"
+                self.get_logger().error(f"Failed to take vision snapshot: {action_result.response.error_msg}.")
+                goal_handle.succeed()
+                return action_result
+
+            try:
+                self._process_data(
+                    self.color_image,
+                    self.pointcloud,
+                    delete_old_entities=goal_command.clear_database,
+                    mask_hand=goal_command.mask_hand,
+                )
+                action_result.response.result = VisionSnapshotResponse.SUCCESS
+            except Exception as e:
+                action_result.response.result = VisionSnapshotResponse.ERROR_UNKNOWN
+                action_result.response.error_msg = f"Exception: {e}"
             goal_handle.succeed()
             return action_result
 
-        try:
-            self._process_data(
-                self.color_image,
-                self.pointcloud,
-                delete_old_entities=goal_command.clear_database,
-            )
-            action_result.response.result = VisionSnapshotResponse.SUCCESS
-        except Exception as e:
-            action_result.response.result = VisionSnapshotResponse.ERROR_UNKNOWN
-            action_result.response.error_msg = f"Exception: {e}"
-        goal_handle.succeed()
-        return action_result
 
-
-def create_entity(
-    label: str, structured_points: NDArray, points_header: Header
-) -> Tuple[Entity, Shape]:
+def create_entity(label: str, structured_points: NDArray, points_header: Header) -> Tuple[Entity, Shape]:
     entity = Entity()
     entity.entity_type.id = EntityType.PICKABLE
     entity.stamp = points_header.stamp
@@ -875,14 +790,15 @@ def main(args=None):
 
     rclpy.init(args=args)
 
-    # Executor with exactly two threads
-    # - One for the behavior tree tick timer
-    # - One for internal ros callback
+    # Executor with exactly three threads
+    # - One for the vision data callback
+    # - One for the snapshot execution callback
+    # - One for internal ros callback (action)
     # Note that this thread split is not enforced, but the two threads
     #   are necessary to not deadlock the node when issuing service calls
     # IMPORTANT: services must only be called
     #   from inside the timer callback -> from inside the behaviours
-    executor = rclpy.executors.MultiThreadedExecutor(num_threads=2)
+    executor = rclpy.executors.MultiThreadedExecutor(num_threads=3)
 
     try:
         node = ObjectDetection()

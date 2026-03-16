@@ -19,18 +19,14 @@ from tf2_geometry_msgs.tf2_geometry_msgs import do_transform_pose_stamped
 target_frame = "base_link"
 
 
-def transform_pose(
-    tf_buffer, pose: Pose, stamp, ref_frame: str
-) -> Tuple[Optional[Pose], int, str]:
+def transform_pose(tf_buffer, pose: Pose, stamp, ref_frame: str) -> Tuple[Optional[Pose], int, str]:
     try:
         pose_stamped = PoseStamped()
         pose_stamped.header.frame_id = ref_frame
         pose_stamped.header.stamp = stamp
         pose_stamped.pose = pose
 
-        transform_stamped = tf_buffer.lookup_transform(
-            target_frame, ref_frame, stamp, timeout=rclpy.duration.Duration(seconds=1.0)
-        )
+        transform_stamped = tf_buffer.lookup_transform(target_frame, ref_frame, stamp, timeout=rclpy.duration.Duration(seconds=1.0))
 
         transformed_pose = do_transform_pose_stamped(pose_stamped, transform_stamped)
 
@@ -45,9 +41,7 @@ def transform_pointCloud(tf_buffer, pointCloud, stamp, ref_frame: str):
     try:
         transformed_points = []
 
-        transform_stamped = tf_buffer.lookup_transform(
-            target_frame, ref_frame, stamp, timeout=rclpy.duration.Duration(seconds=1.0)
-        )
+        transform_stamped = tf_buffer.lookup_transform(target_frame, ref_frame, stamp, timeout=rclpy.duration.Duration(seconds=1.0))
 
         t = transform_stamped.transform.translation
         q = transform_stamped.transform.rotation
@@ -74,9 +68,7 @@ def transform_pointCloud(tf_buffer, pointCloud, stamp, ref_frame: str):
         )
         translation = np.array([t.x, t.y, t.z])
 
-        for pt in pc2.read_points(
-            pointCloud, field_names=["x", "y", "z"], skip_nans=True
-        ):
+        for pt in pc2.read_points(pointCloud, field_names=["x", "y", "z"], skip_nans=True):
             p = np.array([pt[0], pt[1], pt[2]])
             p_transformed = R @ p + translation
             transformed_points.append(tuple(p_transformed))

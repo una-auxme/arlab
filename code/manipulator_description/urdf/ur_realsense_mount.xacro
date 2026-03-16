@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:macro name="ur_realsense_mount" params="parent_link xyz rpy">
+
+    <!-- Neuer Link -->
+    <link name="ur_realsense_mount_link">
+      <visual>
+        <origin xyz="${xyz}" rpy="${rpy}"/>
+        <geometry>
+          <mesh filename="package://manipulator_description/meshes/halterung_realsense.stl" scale="0.001 0.001 0.001"/>
+        </geometry>
+        <material name="MYBLACK"/>
+      </visual>
+
+      <collision>
+        <origin xyz="${xyz}" rpy="${rpy}"/>
+        <geometry>
+          <mesh filename="package://manipulator_description/meshes/halterung_realsense.stl" scale="0.001 0.001 0.001"/>
+        </geometry>
+      </collision>
+
+      <inertial>
+        <mass value="0.1"/>
+        <inertia
+          ixx="0.001" ixy="0" ixz="0"
+          iyy="0.001" iyz="0"
+          izz="0.001"/>
+      </inertial>
+    </link>
+
+    <!-- Fixed Joint -->
+    <joint name="ur_realsense_mount_joint" type="fixed">
+      <parent link="${parent_link}"/>
+      <child  link="ur_realsense_mount_link"/>
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+    </joint>
+
+    <material name="MYBLACK">
+		  <color rgba="0.01568627450980392 0.01568627450980392 0.01568627450980392 1.0"/>
+	  </material>
+
+  </xacro:macro>
+
+</robot>

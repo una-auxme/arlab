@@ -1,14 +1,15 @@
 """launch.py
 
-Launch file for the ARLab Manipulation orchestrator system.
+Launch file for testing the ARLab Manipulation orchestrator system.
 
 This launch file starts:
 1. GetGrippingForce service node.
 2. Orchestrator Python node.
 3. OrchestratorSubscriber C++ node.
+4. ...
 
 Author: Sofia Öttl
-Date: 2025-08-24
+Date: 2025-11-02
 
 """
 
@@ -25,22 +26,20 @@ def generate_launch_description():
     ld = LaunchDescription()
 
     # Service node for providing gripping force recommendations
-    GetGrippingForce = Node(
+    GetParameter = Node(
         package="arlab_manipulation",
-        executable="parameter_service",
+        executable="gripping_parameter",
     )
 
     # Python orchestrator node that handles perception and planning
     Orchestrator = Node(package="arlab_manipulation", executable="orchestrator")
 
     # C++ subscriber node for orchestrator data (for MoveIt or robot control)
-    OrchestratorSubscriber = Node(
-        package="arlab_manipulation_cpp", executable="OrchestratorSubscriber"
-    )
+    Manipulation_CPP = Node(package="arlab_manipulation_cpp", executable="Manipulation_CPP")
 
     # Add nodes to the launch description
-    ld.add_action(GetGrippingForce)
+    ld.add_action(GetParameter)
     ld.add_action(Orchestrator)
-    ld.add_action(OrchestratorSubscriber)
+    ld.add_action(Manipulation_CPP)
 
     return ld

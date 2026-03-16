@@ -14,9 +14,7 @@ class VideoPublisher(Node):
         self.bridge = CvBridge()
 
         # Lokales Video laden (Pfad anpassen)
-        self.video_path = (
-            "/workspace/src/arlab/code/arlab_perception/test_videos/vid1.mp4"
-        )
+        self.video_path = "/workspace/src/arlab/code/arlab_perception/test_videos/vid1.mp4"
         self.cap = cv2.VideoCapture(self.video_path)
 
         if not self.cap.isOpened():

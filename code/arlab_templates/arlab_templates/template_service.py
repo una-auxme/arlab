@@ -13,15 +13,11 @@ class MyRos2Service(Node):
 
     def __init__(self):
         super().__init__(type(self).__name__)
-        self.srv = self.create_service(
-            AddThreeInts, "/add_three_ints", self.add_three_ints_callback
-        )
+        self.srv = self.create_service(AddThreeInts, "/add_three_ints", self.add_three_ints_callback)
 
     def add_three_ints_callback(self, request, response):
         response.sum = request.a + request.b + request.c
-        self.get_logger().info(
-            f"Incoming request\na: {request.a} b: {request.b} c: {request.c}"
-        )
+        self.get_logger().info(f"Incoming request\na: {request.a} b: {request.b} c: {request.c}")
 
         return response
 

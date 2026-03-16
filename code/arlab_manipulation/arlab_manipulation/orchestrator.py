@@ -63,19 +63,11 @@ class orchestrator(Node):
 
         prefix = "/arlab/knowledge"
 
-        self.client_get_entity = self.create_client(
-            GetEntity, f"{prefix}/get_entity", callback_group=self.service_group
-        )
-        self.client_get_shape = self.create_client(
-            GetShape, f"{prefix}/get_shape", callback_group=self.service_group
-        )
-        self.client_gripping_parameter = self.create_client(
-            GrippingParameter, "GetGrippingParameter", callback_group=self.service_group
-        )
+        self.client_get_entity = self.create_client(GetEntity, f"{prefix}/get_entity", callback_group=self.service_group)
+        self.client_get_shape = self.create_client(GetShape, f"{prefix}/get_shape", callback_group=self.service_group)
+        self.client_gripping_parameter = self.create_client(GrippingParameter, "GetGrippingParameter", callback_group=self.service_group)
 
-        self.subscription = self.create_subscription(
-            PlanningScene, "/monitored_planning_scene", self.octomap_callback, 10
-        )
+        self.subscription = self.create_subscription(PlanningScene, "/monitored_planning_scene", self.octomap_callback, 10)
 
         # Inits
         self.tf_buffer = tf2_ros.Buffer()
@@ -113,8 +105,7 @@ class orchestrator(Node):
     # Accept Goal from ManipulationAction
     def goal_callback(self, goal_request):
         self.get_logger().info(
-            f"Data from Decision Making: cmd={goal_request.command.command_type}, "
-            f"entity_id={goal_request.command.target_entityid}"
+            f"Data from Decision Making: cmd={goal_request.command.command_type}, entity_id={goal_request.command.target_entityid}"
         )
         return GoalResponse.ACCEPT
 
@@ -157,12 +148,7 @@ class orchestrator(Node):
         try:
             response = future.result()
             entity = response.data
-            self.get_logger().info(
-                (
-                    f"Entity info received: name={entity.pickable.object_name},\n"
-                    f"pose={entity.pose}"
-                )
-            )
+            self.get_logger().info((f"Entity info received: name={entity.pickable.object_name},\npose={entity.pose}"))
 
             if entity.entity_type.PICKABLE == 2:
                 self.pickable = True
@@ -177,9 +163,7 @@ class orchestrator(Node):
             self.ref_frame = entity.pose_reference_frame
             self.stamp = entity.stamp
 
-            self.pose, err, msg = transform_pose(
-                self.tf_buffer, cast(Pose, self.pose), self.stamp, self.ref_frame
-            )
+            self.pose, err, msg = transform_pose(self.tf_buffer, cast(Pose, self.pose), self.stamp, self.ref_frame)
 
             if err == 1:
                 self.req_get_shape = GetShape.Request()
@@ -217,9 +201,7 @@ class orchestrator(Node):
             if self.pickable:
                 self.req_gripping_parameter = GrippingParameter.Request()
                 self.req_gripping_parameter.objectgroup = self.object_group
-                future_param = self.client_gripping_parameter.call_async(
-                    self.req_gripping_parameter
-                )
+                future_param = self.client_gripping_parameter.call_async(self.req_gripping_parameter)
                 future_param.add_done_callback(self.handle_gripping_parameter_response)
             else:
                 # self.err = err
@@ -251,7 +233,12 @@ class orchestrator(Node):
         if self.command_type == "pick":
             if self.pose is not None:
                 self.gripping_point_pos = self.pose.position
-                self.gripping_point_orient = Quaternion(w=1.0)
+                # Just static offsets + orientation for now
+                self.gripping_point_pos.x += -0.085
+                self.gripping_point_pos.y += 0.01
+                self.gripping_point_pos.z = 0.19
+                self.gripping_point_orient = Quaternion(x=0.243005, y=0.808244, z=-0.0517573, w=0.533864)
+                self.send_goal()
             else:
                 self.err = -52
                 self.msg = "No pose calculated"
@@ -268,9 +255,7 @@ class orchestrator(Node):
                     offset_y=0.05,  # offset gripper front
                 )
                 if err == 1:
-                    self.placing_point_pos = Point(
-                        x=pose.position.x, y=pose.position.y, z=pose.position.z
-                    )
+                    self.placing_point_pos = Point(x=pose.position.x, y=pose.position.y, z=pose.position.z)
                     self.placing_point_orient = self.gripping_point_orient
                     self.send_goal()
                 else:
@@ -317,9 +302,7 @@ class orchestrator(Node):
                 self.finish_action()
 
             self.get_logger().info("Orchestrator goal accepted")
-            self.goal_handle.get_result_async().add_done_callback(
-                self.handle_orchestrator_result
-            )
+            self.goal_handle.get_result_async().add_done_callback(self.handle_orchestrator_result)
 
         except Exception as e:
             self.get_logger().error(f"Failed to receive orchestrator goal: {e}")

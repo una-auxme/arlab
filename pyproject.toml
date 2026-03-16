@@ -2,7 +2,7 @@
 
 [tool.ruff]
 # Same as Black.
-line-length = 88
+line-length = 140
 indent-width = 4
 
 target-version = "py312"

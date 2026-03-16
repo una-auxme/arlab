@@ -15,8 +15,8 @@ setup(
     ],
     install_requires=["setuptools"],
     zip_safe=True,
-    maintainer="arlab",
-    maintainer_email="peter.viechter@uni-a.de",
+    maintainer="sofia",
+    maintainer_email="sofia.oettl@gmail.com",
     description="TODO: Package description",
     license="MIT",
     entry_points={

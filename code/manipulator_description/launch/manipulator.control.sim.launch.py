@@ -28,14 +28,14 @@
 #
 # Author: Denis Stogl
 
+from os.path import exists
+
 from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
     IncludeLaunchDescription,
     OpaqueFunction,
     RegisterEventHandler,
-    TimerAction,
-    ExecuteProcess,
 )
 from launch.conditions import IfCondition, UnlessCondition
 from launch.event_handlers import OnProcessExit
@@ -43,20 +43,16 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import (
     Command,
     FindExecutable,
+    IfElseSubstitution,
     LaunchConfiguration,
     PathJoinSubstitution,
-    IfElseSubstitution,
     TextSubstitution,
 )
 from launch_ros.actions import Node
-from launch_ros.parameter_descriptions import ParameterValue, ParameterFile
 from launch_ros.substitutions import FindPackageShare
-
-from os.path import exists
 
 
 def launch_setup(context, *args, **kwargs):
-
     ur_type = LaunchConfiguration("ur_type")
     safety_limits = LaunchConfiguration("safety_limits")
     safety_pos_margin = LaunchConfiguration("safety_pos_margin")
@@ -98,7 +94,6 @@ def launch_setup(context, *args, **kwargs):
         transmissions_config_file = "transmission_config.yaml"
     else:
         transmissions_config_file = "transmission_config_default.yaml"
-
 
     # Load description with necessary parameters
     robot_description_content = Command(
@@ -247,7 +242,6 @@ def launch_setup(context, *args, **kwargs):
         ],
     )
 
-
     # --- GZ nodes ---
 
     gz_spawn_entity = Node(
@@ -268,9 +262,7 @@ def launch_setup(context, *args, **kwargs):
     )
 
     gz_launch_description = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            [FindPackageShare("ros_gz_sim"), "/launch/gz_sim.launch.py"]
-        ),
+        PythonLaunchDescriptionSource([FindPackageShare("ros_gz_sim"), "/launch/gz_sim.launch.py"]),
         launch_arguments={
             "gz_args": IfElseSubstitution(
                 gazebo_gui,
@@ -309,7 +301,6 @@ def launch_setup(context, *args, **kwargs):
             ],
         )
     )
-
 
     nodes_to_launch = [
         robot_state_publisher_node,
@@ -373,9 +364,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "controllers_file",
-            default_value=PathJoinSubstitution(
-                [FindPackageShare("manipulator_description"), "config", "manipulator_controllers.yaml"]
-            ),
+            default_value=PathJoinSubstitution([FindPackageShare("manipulator_description"), "config", "manipulator_controllers.yaml"]),
             description="Absolute path to YAML file with the controllers configuration.",
         )
     )
@@ -403,29 +392,19 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "description_file",
-            default_value=PathJoinSubstitution(
-                [FindPackageShare("manipulator_description"), "urdf", "manipulator.urdf.xacro"]
-            ),
+            default_value=PathJoinSubstitution([FindPackageShare("manipulator_description"), "urdf", "manipulator.urdf.xacro"]),
             description="URDF/XACRO description file (absolute path) with the robot.",
         )
     )
-    declared_arguments.append(
-        DeclareLaunchArgument("launch_rviz", default_value="true", description="Launch RViz?")
-    )
+    declared_arguments.append(DeclareLaunchArgument("launch_rviz", default_value="true", description="Launch RViz?"))
     declared_arguments.append(
         DeclareLaunchArgument(
             "rviz_config_file",
-            default_value=PathJoinSubstitution(
-                [FindPackageShare("ur_description"), "rviz", "view_robot.rviz"]
-            ),
+            default_value=PathJoinSubstitution([FindPackageShare("ur_description"), "rviz", "view_robot.rviz"]),
             description="Rviz config file (absolute path) to use when launching rviz.",
         )
     )
-    declared_arguments.append(
-        DeclareLaunchArgument(
-            "gazebo_gui", default_value="true", description="Start gazebo with GUI?"
-        )
-    )
+    declared_arguments.append(DeclareLaunchArgument("gazebo_gui", default_value="true", description="Start gazebo with GUI?"))
     declared_arguments.append(
         DeclareLaunchArgument(
             "world_file",
@@ -451,8 +430,7 @@ def generate_launch_description():
         DeclareLaunchArgument(
             "prefix",
             default_value="",
-            description="Prefix to be added before Mia Hand link and joint names."
-            "Useful for multi-robot scenarios.",
+            description="Prefix to be added before Mia Hand link and joint names.Useful for multi-robot scenarios.",
         )
     )
     declared_arguments.append(

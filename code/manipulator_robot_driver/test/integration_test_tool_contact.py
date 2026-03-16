@@ -27,28 +27,26 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+import logging
 import os
 import sys
 import time
 import unittest
-import logging
-
-import pytest
 
 import launch_testing
+import pytest
 import rclpy
-from rclpy.node import Node
-
-from controller_manager_msgs.srv import SwitchController
-from ur_msgs.action import ToolContact
 from action_msgs.msg import GoalStatus
+from controller_manager_msgs.srv import SwitchController
+from rclpy.node import Node
+from ur_msgs.action import ToolContact
 
 sys.path.append(os.path.dirname(__file__))
 from test_common import (  # noqa: E402
+    ActionInterface,
     ControllerManagerInterface,
     DashboardInterface,
     IoStatusInterface,
-    ActionInterface,
     generate_driver_test_description,
 )
 
@@ -81,9 +79,7 @@ class ToolContactTest(unittest.TestCase):
         self._dashboard_interface = DashboardInterface(self.node)
         self._controller_manager_interface = ControllerManagerInterface(self.node)
         self._io_status_controller_interface = IoStatusInterface(self.node)
-        self._tool_contact_interface = ActionInterface(
-            self.node, "/tool_contact_controller/detect_tool_contact", ToolContact
-        )
+        self._tool_contact_interface = ActionInterface(self.node, "/tool_contact_controller/detect_tool_contact", ToolContact)
 
     def setUp(self):
         self._dashboard_interface.start_robot()
@@ -140,12 +136,11 @@ class ToolContactTest(unittest.TestCase):
 
         if future_res.result() is not None:
             logging.info("  Received result: %s", future_res.result().result)
-            # Check status of goal handle, as result does not contain information about the status of the action. Only the empty result definition.
+            # Check status of goal handle, as result does not contain information about the status of the action.
+            # Only the empty result definition.
             self.assertEqual(future_res.result().status, GoalStatus.STATUS_ABORTED)
         else:
-            raise Exception(
-                f"Exception while calling action '{self.__action_name}': {future_res.exception()}"
-            )
+            raise Exception(f"Exception while calling action '{self.__action_name}': {future_res.exception()}")
 
     def test_inactive_controller_rejects_actions(self):
         self.assertTrue(

@@ -29,13 +29,15 @@ import logging
 import time
 
 import rclpy
+from builtin_interfaces.msg import Duration
+from control_msgs.action import FollowJointTrajectory
 from controller_manager_msgs.srv import (
     ListControllers,
-    SwitchController,
-    LoadController,
-    UnloadController,
-    SetHardwareComponentState,
     ListHardwareComponents,
+    LoadController,
+    SetHardwareComponentState,
+    SwitchController,
+    UnloadController,
 )
 from launch import LaunchDescription
 from launch.actions import (
@@ -51,6 +53,7 @@ from launch_ros.substitutions import FindPackagePrefix, FindPackageShare
 from launch_testing.actions import ReadyToTest
 from rclpy.action import ActionClient
 from std_srvs.srv import Trigger
+from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from ur_dashboard_msgs.msg import RobotMode
 from ur_dashboard_msgs.srv import (
     GetLoadedProgram,
@@ -59,13 +62,12 @@ from ur_dashboard_msgs.srv import (
     IsProgramRunning,
     Load,
 )
-from ur_msgs.srv import SetIO, GetRobotSoftwareVersion, SetForceMode
-from builtin_interfaces.msg import Duration
-from control_msgs.action import FollowJointTrajectory
-from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
+from ur_msgs.srv import GetRobotSoftwareVersion, SetForceMode, SetIO
 
 TIMEOUT_WAIT_SERVICE = 10
-TIMEOUT_WAIT_SERVICE_INITIAL = 120  # If we download the docker image simultaneously to the tests, it can take quite some time until the dashboard server is reachable and usable.
+# If we download the docker image simultaneously to the tests,
+# it can take quite some time until the dashboard server is reachable and usable.
+TIMEOUT_WAIT_SERVICE_INITIAL = 120
 TIMEOUT_WAIT_ACTION = 10
 TIMEOUT_EXECUTE_TRAJECTORY = 30
 
@@ -97,9 +99,7 @@ def _wait_for_action(node, action_name, action_type, timeout):
 
     logging.info("Waiting for action server '%s' with timeout %fs...", action_name, timeout)
     if client.wait_for_server(timeout) is False:
-        raise Exception(
-            f"Could not reach action server '{action_name}' within timeout of {timeout}"
-        )
+        raise Exception(f"Could not reach action server '{action_name}' within timeout of {timeout}")
 
     logging.info("  Successfully connected to action server '%s'", action_name)
     return client
@@ -123,9 +123,7 @@ def _call_service(node, client, request):
 
 
 class _ServiceInterface:
-    def __init__(
-        self, node, initial_timeout=TIMEOUT_WAIT_SERVICE_INITIAL, timeout=TIMEOUT_WAIT_SERVICE
-    ):
+    def __init__(self, node, initial_timeout=TIMEOUT_WAIT_SERVICE_INITIAL, timeout=TIMEOUT_WAIT_SERVICE):
         self.__node = node
 
         self.__service_clients = {
@@ -145,12 +143,8 @@ class _ServiceInterface:
     def __init_subclass__(mcs, namespace="", initial_services={}, services={}, **kwargs):
         super().__init_subclass__(**kwargs)
 
-        mcs.__initial_services = {
-            namespace + "/" + srv_name: srv_type for srv_name, srv_type in initial_services.items()
-        }
-        mcs.__services = {
-            namespace + "/" + srv_name: srv_type for srv_name, srv_type in services.items()
-        }
+        mcs.__initial_services = {namespace + "/" + srv_name: srv_type for srv_name, srv_type in initial_services.items()}
+        mcs.__services = {namespace + "/" + srv_name: srv_type for srv_name, srv_type in services.items()}
 
         for srv_name, srv_type in list(initial_services.items()) + list(services.items()):
             full_srv_name = namespace + "/" + srv_name
@@ -190,18 +184,14 @@ class ActionInterface:
     def get_result(self, goal_handle, timeout):
         future_res = goal_handle.get_result_async()
 
-        logging.info(
-            "Waiting for action result from '%s' with timeout %fs", self.__action_name, timeout
-        )
+        logging.info("Waiting for action result from '%s' with timeout %fs", self.__action_name, timeout)
         rclpy.spin_until_future_complete(self.__node, future_res, timeout_sec=timeout)
 
         if future_res.result() is not None:
             logging.info("  Received result: %s", future_res.result().result)
             return future_res.result().result
         else:
-            raise Exception(
-                f"Exception while calling action '{self.__action_name}': {future_res.exception()}"
-            )
+            raise Exception(f"Exception while calling action '{self.__action_name}': {future_res.exception()}")
 
     def cancel_goal(self, goal_handle, timeout=2):
         future_res = goal_handle.cancel_goal_async()
@@ -211,9 +201,7 @@ class ActionInterface:
             logging.info("  Received result: %s", future_res.result())
             return future_res.result()
         else:
-            raise Exception(
-                f"Exception while calling action '{self.__action_name}': {future_res.exception()}"
-            )
+            raise Exception(f"Exception while calling action '{self.__action_name}': {future_res.exception()}")
 
 
 class DashboardInterface(
@@ -254,9 +242,7 @@ class DashboardInterface(
                 self._check_call(self.stop())
                 return
             time.sleep(0.1)
-        raise Exception(
-            f"Incorrect robot mode: Expected {RobotMode.RUNNING}, got {robot_mode.robot_mode.mode}"
-        )
+        raise Exception(f"Incorrect robot mode: Expected {RobotMode.RUNNING}, got {robot_mode.robot_mode.mode}")
 
     def _check_call(self, result):
         if not result.success:
@@ -286,10 +272,7 @@ class ControllerManagerInterface(
                     if (target_state is None) or (controller.state == target_state):
                         return
             time.sleep(1)
-        raise Exception(
-            "Controller '%s' not found or not in state '%s' within %fs"
-            % (controller_name, target_state, timeout)
-        )
+        raise Exception("Controller '%s' not found or not in state '%s' within %fs" % (controller_name, target_state, timeout))
 
 
 class IoStatusInterface(
@@ -339,10 +322,7 @@ def sjtc_trajectory_test(tester, tf_prefix):
 
     trajectory = JointTrajectory(
         joint_names=[tf_prefix + joint for joint in ROBOT_JOINTS],
-        points=[
-            JointTrajectoryPoint(positions=test_pos, time_from_start=test_time)
-            for (test_time, test_pos) in test_trajectory
-        ],
+        points=[JointTrajectoryPoint(positions=test_pos, time_from_start=test_time) for (test_time, test_pos) in test_trajectory],
     )
 
     # Sending trajectory goal
@@ -351,9 +331,7 @@ def sjtc_trajectory_test(tester, tf_prefix):
     tester.assertTrue(goal_handle.accepted)
 
     # Verify execution
-    result = tester._scaled_follow_joint_trajectory.get_result(
-        goal_handle, TIMEOUT_EXECUTE_TRAJECTORY
-    )
+    result = tester._scaled_follow_joint_trajectory.get_result(goal_handle, TIMEOUT_EXECUTE_TRAJECTORY)
     tester.assertEqual(result.error_code, FollowJointTrajectory.Result.SUCCESSFUL)
 
 
@@ -378,10 +356,7 @@ def sjtc_illegal_trajectory_test(tester, tf_prefix):
 
     trajectory = JointTrajectory(
         joint_names=[tf_prefix + joint for joint in ROBOT_JOINTS],
-        points=[
-            JointTrajectoryPoint(positions=test_pos, time_from_start=test_time)
-            for (test_time, test_pos) in test_trajectory
-        ],
+        points=[JointTrajectoryPoint(positions=test_pos, time_from_start=test_time) for (test_time, test_pos) in test_trajectory],
     )
 
     # Send illegal goal
@@ -461,9 +436,7 @@ def generate_dashboard_test_description():
         }.items(),
     )
 
-    return LaunchDescription(
-        _declare_launch_arguments() + [ReadyToTest(), dashboard_client, _ursim_action()]
-    )
+    return LaunchDescription(_declare_launch_arguments() + [ReadyToTest(), dashboard_client, _ursim_action()])
 
 
 def generate_mock_hardware_test_description(
@@ -471,7 +444,6 @@ def generate_mock_hardware_test_description(
     initial_joint_controller="scaled_joint_trajectory_controller",
     controller_spawner_timeout=TIMEOUT_WAIT_SERVICE_INITIAL,
 ):
-
     ur_type = LaunchConfiguration("ur_type")
 
     launch_arguments = {
@@ -490,11 +462,7 @@ def generate_mock_hardware_test_description(
         launch_arguments["tf_prefix"] = tf_prefix
 
     robot_driver = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            PathJoinSubstitution(
-                [FindPackageShare("ur_robot_driver"), "launch", "ur_control.launch.py"]
-            )
-        ),
+        PythonLaunchDescriptionSource(PathJoinSubstitution([FindPackageShare("ur_robot_driver"), "launch", "ur_control.launch.py"])),
         launch_arguments=launch_arguments.items(),
     )
 
@@ -522,27 +490,14 @@ def generate_driver_test_description(
         launch_arguments["tf_prefix"] = tf_prefix
 
     robot_driver = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            PathJoinSubstitution(
-                [FindPackageShare("ur_robot_driver"), "launch", "ur_control.launch.py"]
-            )
-        ),
+        PythonLaunchDescriptionSource(PathJoinSubstitution([FindPackageShare("ur_robot_driver"), "launch", "ur_control.launch.py"])),
         launch_arguments=launch_arguments.items(),
     )
     wait_dashboard_server = ExecuteProcess(
-        cmd=[
-            PathJoinSubstitution(
-                [FindPackagePrefix("ur_robot_driver"), "bin", "wait_dashboard_server.sh"]
-            )
-        ],
+        cmd=[PathJoinSubstitution([FindPackagePrefix("ur_robot_driver"), "bin", "wait_dashboard_server.sh"])],
         name="wait_dashboard_server",
         output="screen",
     )
-    driver_starter = RegisterEventHandler(
-        OnProcessExit(target_action=wait_dashboard_server, on_exit=robot_driver)
-    )
+    driver_starter = RegisterEventHandler(OnProcessExit(target_action=wait_dashboard_server, on_exit=robot_driver))
 
-    return LaunchDescription(
-        _declare_launch_arguments()
-        + [ReadyToTest(), wait_dashboard_server, _ursim_action(), driver_starter]
-    )
+    return LaunchDescription(_declare_launch_arguments() + [ReadyToTest(), wait_dashboard_server, _ursim_action(), driver_starter])

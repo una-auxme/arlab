@@ -4,8 +4,8 @@ This package contains the actual driver for UR robots. It is part of the *univer
 repository and requires other packages from that repository. Also, see the [main repository's
 README](../README.md) for information on how to install and startup this driver.
 
-
 ## Technical details
+
 The following image shows a very coarse overview of the driver's architecture.
 
 ![Architecture overview](doc/architecture_coarse.svg "Architecture overview")
@@ -53,10 +53,12 @@ recommend using the controllers from the `ur_controllers` package. See it's
 available using the controllers from `ur_controllers`**
 
 ## A note about modes
+
 The term **mode** is used in different meanings inside this driver. See [Operation
 Modes](doc/operation_modes.rst) for details.
 
 ## controller_stopper
+
 A small helper node that stops and restarts ROS controllers based on a boolean status topic. When
 the status goes to `false`, all running controllers except a set of predefined
 *consistent_controllers* gets stopped. If status returns to `true` the stopped controllers are

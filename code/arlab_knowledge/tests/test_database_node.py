@@ -103,9 +103,9 @@ class DatabaseServiceTester(Node):
 
     def log_result(self, name, result):
         if result.result_type == result.SUCCESS:
-            self.get_logger().info(f"[{name}] ✅ SUCCESS")
+            self.get_logger().info(f"[{name}] SUCCESS")
         else:
-            self.get_logger().error(f"[{name}] ❌ ERROR {result.result_type}: {result.error}")
+            self.get_logger().error(f"[{name}] ERROR {result.result_type}: {result.error}")
 
     async def generic_test_add_entity(self, gen_fn):
         request = AddEntity.Request()

@@ -1,12 +1,25 @@
+"""Speech controller launch file
+
+Launch configuration:
+    Starts the `moshi_tts` node from `arlab_speech_controller`
+    Configures the voice file used for speech synthesis
+    Sets the maximum offset parameter for playback
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-augsburg.de>
+    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+"""
+
 from launch import LaunchDescription
 from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    """Generate a ROS2 launch description for orchestrator nodes.
+    """Generate the launch description for the speech controller running on Jetson 2.
 
     Returns:
-        LaunchDescription: LaunchDescription object containing all nodes.
+        LaunchDescription: Launch description that starts the `moshi_tts` node with
+        the configured voice file and playback parameters.
     """
 
     voice_launch = Node(

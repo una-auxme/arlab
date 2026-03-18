@@ -1,3 +1,15 @@
+"""Trivia speech behaviour for py_trees blackboard-based speech output.
+
+Provides a behaviour to:
+    - manage a shuffled list of predefined trivia messages
+    - occasionally enqueue a trivia message on the py_trees blackboard
+    - support spoken filler output during longer robot actions
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-augsburg.de>
+    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+"""
+
 import random
 
 import py_trees
@@ -6,7 +18,19 @@ from ..common.speech import queue_speech
 
 
 class TriviaSpammer(py_trees.behaviour.Behaviour):
+    """Behaviour that occasionally queues trivia speech messages.
+
+    This behaviour maintains a shuffled list of predefined trivia messages
+    and, with a configurable probability, appends one of them to the speech
+    queue on the blackboard.
+    """
     def __init__(self, name="TriviaSpammer"):
+        """Initialise the trivia speech behaviour.
+
+        Args:
+            name (str, optional): Name of the behaviour node. Defaults to
+                `"TriviaSpammer"`.
+        """
         super().__init__(name)
         self.blackboard = self.attach_blackboard_client(name)
         self.blackboard.register_key(key="/trivia/shuffled_messages", access=py_trees.common.Access.WRITE)
@@ -46,6 +70,14 @@ class TriviaSpammer(py_trees.behaviour.Behaviour):
         self.blackboard.trivia.shuffled_messages = []
 
     def update(self):
+        """Optionally queue a trivia message and update the shuffled list.
+
+        Reinitialises the shuffled message list when it is empty. A message is
+        appended to the speech queue based on the configured random threshold.
+
+        Returns:
+            py_trees.common.Status: Always `Status.SUCCESS`.
+        """
         shuffled_messages = self.blackboard.trivia.shuffled_messages
         if len(shuffled_messages) == 0:
             shuffled_messages = random.sample(self.trivia_messages, len(self.trivia_messages))

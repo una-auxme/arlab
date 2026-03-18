@@ -1,3 +1,17 @@
+"""Database-backed selection behaviours for py_trees.
+
+Provides helper functions and behaviours to:
+    - query pickable entities from the knowledge database
+    - choose a pickable object and write its entity ID to the blackboard
+    - select a free placement position based on occupied database entities
+    - write placement and approach poses to the blackboard
+    - queue spoken feedback for selection and error cases
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-augsburg.de>
+    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+"""
+
 import math
 import random
 from copy import deepcopy
@@ -17,11 +31,38 @@ from ..common.speech import queue_speech
 
 
 def point_distance(p0: Point, p1: Point) -> float:
+    """Compute the Euclidean distance between two 3D points.
+
+    Args:
+        p0 (Point): First point.
+        p1 (Point): Second point.
+
+    Returns:
+        float: Euclidean distance between the two points.
+    """
     return math.sqrt((p1.x - p0.x) ** 2 + (p1.y - p0.y) ** 2 + (p1.z - p0.z) ** 2)
 
 
 class DatabaseBehaviour(py_trees.behaviour.Behaviour):
+    """Base behaviour for py_trees nodes that query the knowledge database.
+
+    This class sets up ROS2 service clients for retrieving entity lists and
+    entity details from the knowledge database and makes the ROS2 node
+    available to derived behaviours.
+    """
     def setup(self, **kwargs):
+        """Set up the database service clients for the behaviour.
+
+        Args:
+            **kwargs: Keyword arguments expected to contain a ROS2 node under
+                the key `'node'`.
+
+        Raises:
+            KeyError: If no ROS2 node is provided in `kwargs`.
+
+        Returns:
+            Any: Result of the parent `setup()` implementation.
+        """
         try:
             self.node: Node = kwargs["node"]
         except KeyError as e:
@@ -39,7 +80,20 @@ class DatabaseBehaviour(py_trees.behaviour.Behaviour):
 
 
 class ChoosePickable(DatabaseBehaviour):
+    """Behaviour that selects a pickable entity from the knowledge database.
+
+    This behaviour queries all pickable entities, filters unsuitable entries,
+    chooses one candidate, announces the result via speech, and writes the
+    selected entity ID to the blackboard.
+    """
     def __init__(self, name: str, id_output_key: str):
+        """Initialise the pickable selection behaviour.
+
+        Args:
+            name (str): Name of the behaviour node.
+            id_output_key (str): Blackboard key under which the selected
+                entity ID is written.
+        """
         super().__init__(name)
         self.id_output_key = id_output_key
 
@@ -52,6 +106,12 @@ class ChoosePickable(DatabaseBehaviour):
         )
 
     def update(self) -> py_trees.common.Status:
+        """Query pickable entities, choose one, and write its ID to the blackboard.
+
+        Returns:
+            py_trees.common.Status: `Status.SUCCESS` if a pickable entity was
+                selected successfully, otherwise `Status.FAILURE`.
+        """
         # Get all pickable entities
         get_req = GetEntities.Request()
         get_req.entity_type.id = EntityType.PICKABLE
@@ -106,6 +166,13 @@ class ChoosePickable(DatabaseBehaviour):
 
 
 class ChoosePlacingPos(DatabaseBehaviour):
+    """Behaviour that selects a free placement pose from predefined candidates.
+
+    This behaviour queries current pickable entities from the knowledge
+    database, checks which candidate placement poses are already occupied,
+    chooses a free pose, announces the result via speech, and writes both the
+    placement pose and an approach pose to the blackboard.
+    """
     def __init__(
         self,
         name: str,
@@ -117,6 +184,24 @@ class ChoosePlacingPos(DatabaseBehaviour):
         approach_z_offset: float,
         place_poses_names: Optional[List[str]] = None,
     ):
+        """Initialise the placing position selection behaviour.
+
+        Args:
+            name (str): Name of the behaviour node.
+            place_approach_pose_key (str): Blackboard key for the generated
+                approach pose.
+            place_pose_key (str): Blackboard key for the selected placement
+                pose.
+            blacklisted_positions_key (str): Blackboard key for positions that
+                must not be selected.
+            max_occupied_distance (float): Maximum distance below which a
+                placement pose is considered occupied by an entity.
+            place_poses (List[Pose]): Candidate placement poses.
+            approach_z_offset (float): Vertical offset added to the selected
+                placement pose to create the approach pose.
+            place_poses_names (Optional[List[str]], optional): Optional names
+                for the candidate placement poses. Defaults to None.
+        """
         super().__init__(name)
         self.place_approach_pose_key = place_approach_pose_key
         self.place_pose_key = place_pose_key

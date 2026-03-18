@@ -43,6 +43,10 @@ def get_tree(task: str) -> Behaviour:
             - "test_manipulation_move": Execute manipulation move test tree.
             - "test_manipulation_home_move_seq": Execute manipulation test tree.
             - "test_grab_seq": Execute test_manipulation_video_seq test tree.
+            - "test_grab_dr6": Execute test_manipulation_dr6_video test tree.
+            - "test_pick": Execute test_manipulation_pick test tree.
+            - "test_view": Execute test_view test tree.
+            - "tdi_demo": Execute TDI demo behavior tree.
 
     Raises:
         ValueError: If an unknown task name is provided.

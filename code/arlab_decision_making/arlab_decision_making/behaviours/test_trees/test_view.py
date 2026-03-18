@@ -1,3 +1,17 @@
+"""Vision snapshot demo behaviour tree for py_trees.
+
+Provides a predefined behaviour tree sequence to:
+    - wait before starting execution
+    - prepare and home the manipulator
+    - move to predefined snapshot poses
+    - execute multiple vision snapshot actions
+    - optionally clear the vision database before the first snapshot
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-augsburg.de>
+    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+"""
+
 from py_trees.behaviour import Behaviour
 from py_trees.composites import Sequence
 from py_trees.timers import Timer
@@ -11,6 +25,17 @@ from ..manipulation import (
 
 
 def get_tree() -> Behaviour:
+    """Create the vision snapshot demo behaviour tree.
+
+    This tree waits briefly, prepares and homes the manipulator, moves to
+    three predefined observation poses, and executes vision snapshot actions
+    at each pose. The first snapshot clears the vision database, while the
+    following snapshots extend the current scene information.
+
+    Returns:
+        Behaviour: Root behaviour of the configured vision snapshot demo
+            sequence.
+    """
     return Sequence(
         "GrabSequence",
         memory=True,

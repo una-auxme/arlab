@@ -1,3 +1,17 @@
+"""Direct hand grasp demo behaviour tree for py_trees.
+
+Provides a predefined behaviour tree sequence to:
+    - wait before starting execution
+    - home the manipulator and execute direct hand grasp commands
+    - move through predefined pick, transport, and placement poses
+    - open and close the hand at specific stages of the demo
+    - perform a scripted grasp-and-place demonstration
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-augsburg.de>
+    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+"""
+
 from py_trees.behaviour import Behaviour
 from py_trees.composites import Sequence
 from py_trees.timers import Timer
@@ -10,6 +24,16 @@ from ..manipulation import (
 
 
 def get_tree() -> Behaviour:
+    """Create the scripted direct hand grasp demo behaviour tree.
+
+    This tree executes a fixed demonstration sequence including homing,
+    moving to predefined poses, grasping and releasing objects with the
+    direct hand grasp behaviour, and performing a scripted place action.
+
+    Returns:
+        Behaviour: Root behaviour of the configured direct hand grasp demo
+            sequence.
+    """
     return Sequence(
         "GrabSequence",
         memory=True,

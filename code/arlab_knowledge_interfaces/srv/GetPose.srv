@@ -1,0 +1,13 @@
+# ===== Request =====
+# ID of the entity to retrieve pose information for
+int64 entityid
+---
+# ===== Response =====
+# Pose of the entity
+geometry_msgs/Pose pose
+# Reference frame of the pose (e.g., "map", "base_link")
+string pose_frame_id
+# Result of the get operation (success/failure with error code)
+Result result
+# Time stamp when the entity was last updated
+builtin_interfaces/Time stamp

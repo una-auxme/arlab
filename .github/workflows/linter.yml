@@ -21,7 +21,7 @@ jobs:
       - name: Run the markdown linter
         uses: addnab/docker-run-action@v3
         with:
-          image: peterdavehello/markdownlint:0.32.2
+          image: peterdavehello/markdownlint:0.44.0
           options: -v ${{ github.workspace }}:/md
           run: markdownlint .
       # Execute the python linter (runs even when the previous step failed)

@@ -25,19 +25,33 @@ endif()
 
 find_package(rosidl_default_generators REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(tf2_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 
 # Add all your interface files here:
 rosidl_generate_interfaces(${PROJECT_NAME}
+  "srv/GrippingParameter.srv"
+
+  "msg/OrchestratorData.msg"
   "msg/Destination.msg"
-  "msg/ActionResponse.msg"
+  "msg/ManipulationResponse.msg"
+  "msg/MovementResponse.msg"
+  "msg/VisionSnapshotResponse.msg"
 
   "msg/MovementCommand.msg"
   "msg/ManipulationCommand.msg"
+  "msg/VisionSnapshotCommand.msg"
 
   "action/MovementAction.action"
   "action/ManipulationAction.action"
-  DEPENDENCIES # Add packages that above messages depend on
-  geometry_msgs
+  "action/OrchestratorAction.action"
+  "action/VisionSnapshotAction.action"
+  DEPENDENCIES
+    geometry_msgs
+    std_msgs
+    tf2_msgs
+    sensor_msgs
 )
 
 ament_package()

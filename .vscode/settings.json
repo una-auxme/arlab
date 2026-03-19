@@ -1,6 +1,9 @@
 {
   "[python]": {
-    "editor.defaultFormatter": "charliermarsh.ruff"
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.codeActionsOnSave": {
+      "source.organizeImports.ruff": "explicit"
+    }
   },
   "[markdown]": {
     "editor.defaultFormatter": "DavidAnson.vscode-markdownlint"
@@ -11,4 +14,10 @@
   "cmake.configureOnEdit": false,
   "cmake.configureOnOpen": false,
   "flake8.enabled": false,
+  "cSpell.words": [
+    "Behaviour",
+    "behaviours",
+    "rclpy"
+  ],
+  "files.insertFinalNewline": true
 }

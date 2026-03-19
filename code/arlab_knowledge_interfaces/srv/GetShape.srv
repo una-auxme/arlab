@@ -1,0 +1,11 @@
+# ===== Request =====
+# ID of the entity to retrieve shape information for
+int64 entityid
+---
+# ===== Response =====
+# Shape of the entity
+Shape shape
+# Result of the get operation (success/failure with error code)
+Result result
+# Time stamp when the entity was last updated
+builtin_interfaces/Time stamp

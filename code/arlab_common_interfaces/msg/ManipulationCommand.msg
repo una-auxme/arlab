@@ -4,6 +4,7 @@ string COMMAND_PLACE="place"
 string COMMAND_OPEN="open"
 string COMMAND_CLOSE="close"
 string COMMAND_MOVE="move"
+string COMMAND_MOVE_TO_BOX="move_to_box"
 string COMMAND_HOME="home"
 # Type of the command to run
 string command_type

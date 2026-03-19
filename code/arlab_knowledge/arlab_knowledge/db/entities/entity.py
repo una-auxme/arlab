@@ -10,8 +10,10 @@ Maintainers:
 
 from typing import Any, Dict, List, Optional
 
+import arlab_common.markers
 import rclpy.logging
 from arlab_knowledge_interfaces import msg
+from geometry_msgs.msg import Vector3
 from sqlalchemy import Float, Integer, String
 from sqlalchemy.orm import (
     Mapped,
@@ -79,21 +81,63 @@ class Entity(Base):
         "polymorphic_on": "type",
     }
 
-    def get_all_markers(self) -> List[Marker]:
-        return [self.get_pose_marker()]
+    def get_all_markers(self, entity_id: int | None = None) -> List[Marker]:
+        """Return markers for visualization.
+
+        Prefer a point cloud marker if available; otherwise, fall back to
+        a simple pose marker.
+
+        Args:
+            entity_id: Optional entity ID to use as marker ID. If None, uses self.id.
+        """
+        markers = []
+
+        point_cloud_marker = self.get_point_cloud_marker()
+        if point_cloud_marker is not None:
+            markers.append(point_cloud_marker)
+
+        markers.append(self.get_pose_marker())
+        markers.extend(self.get_meta_markers())
+        return markers
 
     def get_pose_marker(self) -> Marker:
-        import arlab_common.markers
-
         return arlab_common.markers.debug_marker(
             base=self.pose.pose,
             frame_id=self.pose_reference_frame,
-            color=(0.5, 0.5, 0.5, 0.9),
+            color=(0.5, 0.5, 0.5, 0.5),
+            size_modifier=0.05,
+        )
+
+    def get_point_cloud_marker(self) -> Optional[Marker]:
+        """Create a POINTS marker from the entity's point cloud.
+
+        Returns:
+            Marker with type POINTS containing the point cloud data, or None
+            if no point cloud is available or conversion fails.
+        """
+        if not self.shape or not self.shape.pointcloud2:
+            return None
+
+        # Convert PointCloud2 (DB object) to ROS msg
+        pc2_msg = self.shape.pointcloud2.to_ros_msg()
+        return arlab_common.markers.debug_marker(
+            base=pc2_msg,
+            frame_id=self.pose_reference_frame,
+            color=(1.0, 1.0, 1.0, 0.9),
+            size_modifier=0.005,  # 5mm
         )
 
     def get_meta_markers(self) -> List[Marker]:
-        # TODO: Return attributes as text
-        return []
+        return [
+            arlab_common.markers.debug_marker(
+                base=f"{self.description} ({self.id})",
+                frame_id=self.pose_reference_frame,
+                pose=self.pose.pose,
+                offset=Vector3(x=0.0, y=0.0, z=0.05),
+                color=(1.0, 1.0, 1.0, 0.9),
+                size_modifier=0.05,
+            )
+        ]
 
     @classmethod
     def from_ros_msg(cls, m: msg.Entity) -> "Entity":
@@ -104,8 +148,7 @@ class Entity(Base):
         entity_type = entities.entity_msg_type_to_class(m.entity_type)
         if entity_type is None:
             rclpy.logging.get_logger(db.DB_LOGGER_NAME).error(
-                f"Received entity type '{m.entity_type}' is not supported."
-                f"Base class 'Entity' will be used instead."
+                f"Received entity type '{m.entity_type}' is not supported.Base class 'Entity' will be used instead."
             )
             entity_type = Entity
 

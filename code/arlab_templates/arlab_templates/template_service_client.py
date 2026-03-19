@@ -45,10 +45,7 @@ class MyRos2Client(Node):
             if result is None:
                 self.get_logger().error("Service response was None")
                 return
-            self.get_logger().info(
-                f"Result of add_three_ints: for {self.req.a} "
-                + f"+ {self.req.b} + {self.req.b} = {result.sum}"
-            )
+            self.get_logger().info(f"Result of add_three_ints: for {self.req.a} " + f"+ {self.req.b} + {self.req.b} = {result.sum}")
 
 
 def main(args=None):

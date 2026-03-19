@@ -18,6 +18,6 @@ setup(
     license="MIT",
     tests_require=["pytest"],
     entry_points={
-        "console_scripts": ["dummy = arlab_speech_controller.dummy:main"],
+        "console_scripts": ["moshi_tts = arlab_speech_controller.moshi_tts_node:main"],
     },
 )

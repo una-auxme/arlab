@@ -45,6 +45,7 @@ from rclpy.executors import (
     Executor,
     ExternalShutdownException,
     ShutdownException,
+    TaskData,
     TimeoutException,
     TimeoutObject,
     WaitableEntityType,
@@ -96,11 +97,7 @@ class AsyncIORosTask(RosTask):
 
         The return value of the handler is stored as the task result.
         """
-        if (
-            not self._pending()
-            or self._executing
-            or not self._task_lock.acquire(blocking=False)
-        ):
+        if not self._pending() or self._executing or not self._task_lock.acquire(blocking=False):
             return
 
         if not self._pending():
@@ -125,9 +122,7 @@ class AsyncIORosTask(RosTask):
             if not self._asyncio_future:
                 # Only start the task if it has not already been started
                 self._executing = True
-                self._asyncio_future = asyncio.run_coroutine_threadsafe(
-                    wrapped_handler(), self._asyncio_loop
-                )
+                self._asyncio_future = asyncio.run_coroutine_threadsafe(wrapped_handler(), self._asyncio_loop)
         else:
             # Execute a normal function
             self._executing = True
@@ -155,9 +150,7 @@ class AsyncIOExecutor(Executor):
     Based on the rclpy MultiThreadedExecutor
     """
 
-    def __init__(
-        self, async_init: Coroutine, *, context: Optional[Context] = None
-    ) -> None:
+    def __init__(self, async_init: Coroutine, *, context: Optional[Context] = None) -> None:
         """Initializes the executor
 
         Args:
@@ -222,9 +215,7 @@ class AsyncIOExecutor(Executor):
         except queue.Empty:
             pass
 
-    def create_task(
-        self, callback: Union[Callable, Coroutine], *args, **kwargs
-    ) -> RosTask:
+    def create_task(self, callback: Union[Callable, Coroutine], *args, **kwargs) -> RosTask:
         # This function is the same as super().create_task,
         # it just creates an AsyncIORosTask instead.
         task = AsyncIORosTask(
@@ -236,9 +227,8 @@ class AsyncIOExecutor(Executor):
             executor=self,
         )
         with self._tasks_lock:
-            self._tasks.append((task, None, None))
-            self._guard.trigger()
-        # Task inherits from Future
+            self._pending_tasks[task] = TaskData()
+        self._call_task_in_next_spin(task)
         return task
 
     def _make_handler(
@@ -280,7 +270,7 @@ class AsyncIOExecutor(Executor):
             executor=self,
         )
         with self._tasks_lock:
-            self._tasks.append((task, entity, node))
+            self._pending_tasks[task] = TaskData(source_entity=entity, source_node=node)
         return task
 
     def start_spin_thread(self):
@@ -320,9 +310,7 @@ class AsyncIOExecutor(Executor):
         # Only any task exception handling was removed here because
         # exceptions are handled by the main thread not the spin_thread.
         try:
-            task, entity, node = self.wait_for_ready_callbacks(
-                timeout_sec, None, wait_condition
-            )
+            task, entity, node = self.wait_for_ready_callbacks(timeout_sec, None, wait_condition)
         except ExternalShutdownException:
             pass
         except ShutdownException:

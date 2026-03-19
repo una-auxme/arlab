@@ -87,19 +87,12 @@ class DatabaseNode(Node):
         database_name = os.getenv("KNOWLEDGE_BASE_POSTGRES_DB")
         database_user = os.getenv("KNOWLEDGE_BASE_POSTGRES_USER")
         database_password = os.getenv("KNOWLEDGE_BASE_POSTGRES_PASSWORD")
-        if (
-            database_host is None
-            or database_name is None
-            or database_user is None
-            or database_password is None
-        ):
+        if database_host is None or database_name is None or database_user is None or database_password is None:
             msg = "Database environment variables not set"
             self.get_logger().error(msg)
             raise RuntimeError(msg)
 
-        host, port = (
-            database_host.split(":") if ":" in database_host else (database_host, 5432)
-        )
+        host, port = database_host.split(":") if ":" in database_host else (database_host, 5432)
         self.db_url = sqlalchemy.engine.URL.create(
             "postgresql+asyncpg",
             username=database_user,
@@ -109,14 +102,10 @@ class DatabaseNode(Node):
             database=database_name,
         )
 
-        self.echo = (
-            self.declare_parameter("echo", False).get_parameter_value().bool_value
-        )
+        self.echo = self.declare_parameter("echo", False).get_parameter_value().bool_value
         self.add_on_set_parameters_callback(self._set_parameters_callback)
         self.db_engine = create_async_engine(self.db_url, echo=self.echo)
-        self.db_sessionmaker = async_sessionmaker(
-            self.db_engine, expire_on_commit=False
-        )
+        self.db_sessionmaker = async_sessionmaker(self.db_engine, expire_on_commit=False)
 
         self.reentrant_callback_group = ReentrantCallbackGroup()
 
@@ -316,18 +305,11 @@ class DatabaseNode(Node):
                 f"Error in database service: \n{emsg_with_trace(e)}",
                 throttle_duration_sec=2,
             )
-        if (
-            response.result.result_type == Result.ERROR_ID_NOT_FOUND
-            and not response.result.error
-        ):
+        if response.result.result_type == Result.ERROR_ID_NOT_FOUND and not response.result.error:
             response.result.error = "Id not found"
-            self.get_logger().info(
-                "Client tried to access non-existing id", throttle_duration_sec=2
-            )
+            self.get_logger().info("Client tried to access non-existing id", throttle_duration_sec=2)
 
-    async def get_entities_callback(
-        self, request: GetEntities.Request, response: GetEntities.Response
-    ):
+    async def get_entities_callback(self, request: GetEntities.Request, response: GetEntities.Response):
         """Callback for the GetEntities service
 
         Available at {prefix}/get_entities
@@ -361,9 +343,7 @@ class DatabaseNode(Node):
                 response.stamp = latest[1].time
         return response
 
-    async def del_entities_callback(
-        self, request: DelEntities.Request, response: DelEntities.Response
-    ):
+    async def del_entities_callback(self, request: DelEntities.Request, response: DelEntities.Response):
         """Callback for the DelEntities service
 
         Available at {prefix}/del_entities
@@ -389,9 +369,7 @@ class DatabaseNode(Node):
             await session.commit()
         return response
 
-    async def get_entity_callback(
-        self, request: GetEntity.Request, response: GetEntity.Response
-    ):
+    async def get_entity_callback(self, request: GetEntity.Request, response: GetEntity.Response):
         """Callback for the GetEntity service
 
         Available at {prefix}/get_entity
@@ -417,9 +395,7 @@ class DatabaseNode(Node):
             response.data = entity.to_ros_msg()
         return response
 
-    async def get_shape_callback(
-        self, request: GetShape.Request, response: GetShape.Response
-    ):
+    async def get_shape_callback(self, request: GetShape.Request, response: GetShape.Response):
         """Callback for the GetShape service
 
         Available at {prefix}/get_shape
@@ -451,9 +427,7 @@ class DatabaseNode(Node):
                 response.shape = shape.to_ros_msg()
                 response.stamp = stamp
                 response.shape.pointcloud.header.stamp = stamp
-                response.shape.pointcloud.header.frame_id = (
-                    shape.entity.pose_reference_frame
-                )
+                response.shape.pointcloud.header.frame_id = shape.entity.pose_reference_frame
         return response
 
     async def get_pose_callback(
@@ -483,9 +457,7 @@ class DatabaseNode(Node):
                 response.pose = pose.pose
         return response
 
-    async def get_description_callback(
-        self, request: GetDescription.Request, response: GetDescription.Response
-    ):
+    async def get_description_callback(self, request: GetDescription.Request, response: GetDescription.Response):
         """Callback for the GetDescription service
 
         Available at {prefix}/get_description
@@ -508,9 +480,7 @@ class DatabaseNode(Node):
                 response.description = description
         return response
 
-    async def add_entity_callback(
-        self, request: AddEntity.Request, response: AddEntity.Response
-    ):
+    async def add_entity_callback(self, request: AddEntity.Request, response: AddEntity.Response):
         """Callback for the AddEntity service
 
         Available at {prefix}/add_entity
@@ -530,9 +500,7 @@ class DatabaseNode(Node):
             response.entityid = entity.id
         return response
 
-    async def update_entity_callback(
-        self, request: UpdEntity.Request, response: UpdEntity.Response
-    ):
+    async def update_entity_callback(self, request: UpdEntity.Request, response: UpdEntity.Response):
         """Callback for the UpdEntity service
 
         Available at {prefix}/upd_entity
@@ -550,9 +518,7 @@ class DatabaseNode(Node):
             if entity is None:
                 response.result.result_type = Result.ERROR_ID_NOT_FOUND
                 return response
-            msg_entity_class = entities.entity_msg_type_to_class(
-                request.data.entity_type
-            )
+            msg_entity_class = entities.entity_msg_type_to_class(request.data.entity_type)
             if msg_entity_class is None or not isinstance(entity, msg_entity_class):
                 # Type mismatch
                 response.result.result_type = Result.ERROR_INVALID_INPUT
@@ -562,9 +528,7 @@ class DatabaseNode(Node):
             await session.commit()
         return response
 
-    async def update_pose_callback(
-        self, request: UpdPose.Request, response: UpdPose.Response
-    ):
+    async def update_pose_callback(self, request: UpdPose.Request, response: UpdPose.Response):
         """Callback for the UpdPose service
 
         Available at {prefix}/upd_pose
@@ -588,9 +552,7 @@ class DatabaseNode(Node):
             await session.commit()
         return response
 
-    async def update_shape_callback(
-        self, request: UpdShape.Request, response: UpdShape.Response
-    ):
+    async def update_shape_callback(self, request: UpdShape.Request, response: UpdShape.Response):
         """Callback for the UpdShape service
 
         Available at {prefix}/upd_shape
@@ -604,9 +566,7 @@ class DatabaseNode(Node):
             response: Response object to populate with result/error data
         """
         async with self.Session(response) as session:
-            entity_shape = await session.get(
-                Entity, request.entityid, options=(joinedload(Entity.shape),)
-            )
+            entity_shape = await session.get(Entity, request.entityid, options=(joinedload(Entity.shape),))
             if entity_shape is None:
                 response.result.result_type = Result.ERROR_ID_NOT_FOUND
                 return response
@@ -615,9 +575,7 @@ class DatabaseNode(Node):
             await session.commit()
         return response
 
-    async def furniture_update_pickable_callback(
-        self, request: UpdReference.Request, response: UpdReference.Response
-    ):
+    async def furniture_update_pickable_callback(self, request: UpdReference.Request, response: UpdReference.Response):
         """Callback for the UpdReference service
 
         Available at {prefix}/furniture_update_pickable
@@ -633,10 +591,7 @@ class DatabaseNode(Node):
         async with self.Session(response) as session:
             furniture_id = request.parentid
             furniture = await session.execute(
-                select(Furniture)
-                .where(Furniture.id == furniture_id)
-                .options(joinedload(Furniture.pickables))
-                .limit(1)
+                select(Furniture).where(Furniture.id == furniture_id).options(joinedload(Furniture.pickables)).limit(1)
             )
             furniture = furniture.unique().scalar_one_or_none()
 
@@ -663,9 +618,7 @@ class DatabaseNode(Node):
             await session.commit()
         return response
 
-    async def furniture_get_pickable_callback(
-        self, request: GetReference.Request, response: GetReference.Response
-    ):
+    async def furniture_get_pickable_callback(self, request: GetReference.Request, response: GetReference.Response):
         """Callback for the GetReference service
 
         Available at {prefix}/furniture_get_pickable
@@ -680,22 +633,16 @@ class DatabaseNode(Node):
         """
         async with self.Session(response) as session:
             furniture = await session.execute(
-                select(Furniture)
-                .where(Furniture.id == request.entityid)
-                .options(joinedload(Furniture.pickables))
+                select(Furniture).where(Furniture.id == request.entityid).options(joinedload(Furniture.pickables))
             )
             furniture = furniture.unique().scalar_one_or_none()
             if furniture is None:
                 response.result.result_type = Result.ERROR_ID_NOT_FOUND
                 return response
-            response.entities = list(
-                map(lambda pickable: pickable.id, furniture.pickables)
-            )
+            response.entities = list(map(lambda pickable: pickable.id, furniture.pickables))
         return response
 
-    async def pickable_get_furniture_callback(
-        self, request: GetReference.Request, response: GetReference.Response
-    ):
+    async def pickable_get_furniture_callback(self, request: GetReference.Request, response: GetReference.Response):
         """Callback for the GetReference service
 
         Available at {prefix}/pickable_get_furniture
@@ -710,9 +657,7 @@ class DatabaseNode(Node):
         """
         async with self.Session(response) as session:
             pickable = await session.execute(
-                select(Pickable)
-                .where(Pickable.id == request.entityid)
-                .options(joinedload(Pickable.located_on_id))
+                select(Pickable).where(Pickable.id == request.entityid).options(joinedload(Pickable.located_on_id))
             )
             pickable = pickable.scalar_one_or_none()
             if pickable is None:
@@ -721,9 +666,7 @@ class DatabaseNode(Node):
             response.entities = [pickable.located_on_id]
         return response
 
-    async def cupboard_get_shelf_callback(
-        self, request: GetReference.Request, response: GetReference.Response
-    ):
+    async def cupboard_get_shelf_callback(self, request: GetReference.Request, response: GetReference.Response):
         """Callback for the GetReference service
 
         Available at {prefix}/cupboard_get_shelf
@@ -737,11 +680,7 @@ class DatabaseNode(Node):
             response: Response object to populate with result/error data
         """
         async with self.Session(response) as session:
-            cupboard = await session.execute(
-                select(Cupboard)
-                .where(Cupboard.id == request.entityid)
-                .options(joinedload(Cupboard.shelves))
-            )
+            cupboard = await session.execute(select(Cupboard).where(Cupboard.id == request.entityid).options(joinedload(Cupboard.shelves)))
             cupboard = cupboard.scalar_one_or_none()
             if cupboard is None:
                 response.result.result_type = Result.ERROR_ID_NOT_FOUND
@@ -749,9 +688,7 @@ class DatabaseNode(Node):
             response.entities = list(map(lambda shelf: shelf.id, cupboard.shelves))
         return response
 
-    async def shelf_get_cupboard_callback(
-        self, request: GetReference.Request, response: GetReference.Response
-    ):
+    async def shelf_get_cupboard_callback(self, request: GetReference.Request, response: GetReference.Response):
         """Callback for the GetReference service
 
         Available at {prefix}/shelf_get_cupboard
@@ -765,11 +702,7 @@ class DatabaseNode(Node):
             response: Response object to populate with result/error data
         """
         async with self.Session(response) as session:
-            shelf = await session.execute(
-                select(Shelf)
-                .where(Shelf.id == request.entityid)
-                .options(joinedload(Shelf.cupboard))
-            )
+            shelf = await session.execute(select(Shelf).where(Shelf.id == request.entityid).options(joinedload(Shelf.cupboard)))
             shelf = shelf.scalar_one_or_none()
             if shelf is None:
                 response.result.result_type = Result.ERROR_ID_NOT_FOUND
@@ -777,9 +710,7 @@ class DatabaseNode(Node):
             response.entities = [shelf.cupboard_id]
         return response
 
-    async def add_map_callback(
-        self, request: AddMap.Request, response: AddMap.Response
-    ):
+    async def add_map_callback(self, request: AddMap.Request, response: AddMap.Response):
         """Callback for the AddMap service
 
         Available at {prefix}/add_map
@@ -799,9 +730,7 @@ class DatabaseNode(Node):
             response.mapid = map.id
         return response
 
-    async def get_map_callback(
-        self, request: GetMap.Request, response: GetMap.Response
-    ):
+    async def get_map_callback(self, request: GetMap.Request, response: GetMap.Response):
         """Callback for the GetMap service
 
         Available at {prefix}/get_map
@@ -847,9 +776,7 @@ class DatabaseNode(Node):
             response.grid = map.grid.grid
         return response
 
-    async def add_status_event_callback(
-        self, request: AddStatusEvent.Request, response: AddStatusEvent.Response
-    ):
+    async def add_status_event_callback(self, request: AddStatusEvent.Request, response: AddStatusEvent.Response):
         """Callback for the AddStatusEvent service
 
         Available at {prefix}/add_status_event
@@ -873,9 +800,7 @@ class DatabaseNode(Node):
         asyncio.run(self.db_engine.dispose())
         super().destroy_node()
 
-    async def get_status_events_callback(
-        self, request: GetStatusEvents.Request, response: GetStatusEvents.Response
-    ):
+    async def get_status_events_callback(self, request: GetStatusEvents.Request, response: GetStatusEvents.Response):
         """Callback for the GetStatusEvents service
 
         Available at {prefix}/get_status_events
@@ -905,8 +830,7 @@ class DatabaseNode(Node):
                         request.min_age_stamp.sec > RobotStatusEvent.stamp_sec,
                         and_(
                             request.min_age_stamp.sec == RobotStatusEvent.stamp_sec,
-                            request.min_age_stamp.nanosec
-                            >= RobotStatusEvent.stamp_nanosec,
+                            request.min_age_stamp.nanosec >= RobotStatusEvent.stamp_nanosec,
                         ),
                     )
                 )
@@ -915,8 +839,7 @@ class DatabaseNode(Node):
                         request.max_age_stamp.sec < RobotStatusEvent.stamp_sec,
                         and_(
                             request.max_age_stamp.sec == RobotStatusEvent.stamp_sec,
-                            request.max_age_stamp.nanosec
-                            <= RobotStatusEvent.stamp_nanosec,
+                            request.max_age_stamp.nanosec <= RobotStatusEvent.stamp_nanosec,
                         ),
                     )
                 )

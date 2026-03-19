@@ -74,10 +74,7 @@ def dict2rosmsg(msg, d: Dict | List | Any, type_dict: Dict[str, Type]):
     """
     if hasattr(msg, "get_fields_and_field_types"):
         if not isinstance(d, Dict):
-            raise ValueError(
-                f"Unable to convert json: msg {type(msg).__name__} "
-                f"does not match json {d}"
-            )
+            raise ValueError(f"Unable to convert json: msg {type(msg).__name__} does not match json {d}")
         fields: Dict[str, str] = msg.get_fields_and_field_types()
         for field in fields.keys():
             value = getattr(msg, field)
@@ -91,23 +88,14 @@ def dict2rosmsg(msg, d: Dict | List | Any, type_dict: Dict[str, Type]):
             setattr(msg, field, new_value)
     elif isinstance(msg, List) and not isinstance(msg, str):
         if not isinstance(d, List):
-            raise ValueError(
-                f"Unable to convert json: msg {type(msg).__name__} "
-                f"does not match json {d}"
-            )
+            raise ValueError(f"Unable to convert json: msg {type(msg).__name__} does not match json {d}")
         if len(d) > 0:
             if TYPENAME_ENTRY not in d[0]:
-                raise ValueError(
-                    f"{TYPENAME_ENTRY} not found in json. "
-                    "It is required for sequences/arrays"
-                )
+                raise ValueError(f"{TYPENAME_ENTRY} not found in json. It is required for sequences/arrays")
 
             msg_type_name = d[0][TYPENAME_ENTRY]
             if msg_type_name not in type_dict:
-                raise ValueError(
-                    f"{msg_type_name} not found in type_list. "
-                    "It is required for sequences/arrays. Please add it"
-                )
+                raise ValueError(f"{msg_type_name} not found in type_list. It is required for sequences/arrays. Please add it")
             msg_type = type_dict[msg_type_name]
             for item in d:
                 msg.append(dict2rosmsg(msg_type(), item, type_dict))

@@ -8,6 +8,7 @@ int32 error_code
 string message
 bool success
 
+MovementResponse response
 ---
 # Feedback
 string status

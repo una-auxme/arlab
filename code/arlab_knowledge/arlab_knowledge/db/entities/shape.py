@@ -35,15 +35,11 @@ class Shape(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
-    entity_id: Mapped[int] = mapped_column(
-        ForeignKey("entity.id", ondelete="CASCADE"), unique=True
-    )
+    entity_id: Mapped[int] = mapped_column(ForeignKey("entity.id", ondelete="CASCADE"), unique=True)
     entity: Mapped["Entity"] = relationship(back_populates="shape", single_parent=True)  # type: ignore # noqa: F821
     """Entity this shape belongs to"""
 
-    boundingbox2d: Mapped[Optional["BoundingBox2D"]] = relationship(
-        back_populates="shape", cascade="all, delete-orphan"
-    )
+    boundingbox2d: Mapped[Optional["BoundingBox2D"]] = relationship(back_populates="shape", cascade="all, delete-orphan")
     """2D Camera bounding box"""
 
     pointcloud2: Mapped[Optional["PointCloud2"]] = relationship(
@@ -78,12 +74,8 @@ class BoundingBox2D(Base):
 
     __tablename__ = "boundingbox2d"
 
-    id: Mapped[int] = mapped_column(
-        ForeignKey("shape.id", ondelete="CASCADE"), primary_key=True
-    )
-    shape: Mapped["Shape"] = relationship(
-        back_populates="boundingbox2d", single_parent=True
-    )
+    id: Mapped[int] = mapped_column(ForeignKey("shape.id", ondelete="CASCADE"), primary_key=True)
+    shape: Mapped["Shape"] = relationship(back_populates="boundingbox2d", single_parent=True)
 
     center: Mapped[Pose2DData] = composite(
         Pose2DData._generate,
@@ -113,12 +105,8 @@ class PointCloud2(Base):
 
     __tablename__ = "pointcloud2"
 
-    id: Mapped[int] = mapped_column(
-        ForeignKey("shape.id", ondelete="CASCADE"), primary_key=True
-    )
-    shape: Mapped["Shape"] = relationship(
-        back_populates="pointcloud2", single_parent=True
-    )
+    id: Mapped[int] = mapped_column(ForeignKey("shape.id", ondelete="CASCADE"), primary_key=True)
+    shape: Mapped["Shape"] = relationship(back_populates="pointcloud2", single_parent=True)
 
     height: Mapped[int]
     width: Mapped[int]
@@ -155,6 +143,13 @@ class PointCloud2(Base):
         m.is_bigendian = self.is_bigendian
         m.point_step = self.point_step
         m.row_step = self.row_step
-        m.data = self.data
+        # Convert signed byte array to unsigned byte array
+        # DBInt8Data stores data as signed bytes ('b'),
+        # but ROS expects unsigned bytes ('B')
+        if isinstance(self.data, array.array) and self.data.typecode == "b":
+            # Convert signed bytes (-128 to 127) to unsigned bytes (0 to 255)
+            m.data = array.array("B", (b & 0xFF for b in self.data))
+        else:
+            m.data = self.data
         m.is_dense = self.is_dense
         return m

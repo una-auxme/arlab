@@ -23,13 +23,9 @@ class Pickable(Entity):
     """
 
     __tablename__ = "entity_pickable"
-    id: Mapped[int] = mapped_column(
-        ForeignKey("entity.id", ondelete="CASCADE"), primary_key=True
-    )
+    id: Mapped[int] = mapped_column(ForeignKey("entity.id", ondelete="CASCADE"), primary_key=True)
 
-    located_on_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("entity_furniture.id", ondelete="CASCADE")
-    )
+    located_on_id: Mapped[Optional[int]] = mapped_column(ForeignKey("entity_furniture.id", ondelete="CASCADE"))
     located_on: Mapped[Optional["Furniture"]] = relationship(  # type: ignore # noqa: F821
         back_populates="pickables", foreign_keys=located_on_id
     )

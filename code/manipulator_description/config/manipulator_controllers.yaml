@@ -1,0 +1,254 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 50  # Hz
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    io_and_status_controller:
+      type: ur_controllers/GPIOController
+
+    speed_scaling_state_broadcaster:
+      type: ur_controllers/SpeedScalingStateBroadcaster
+
+    joint_trajectory_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+    scaled_joint_trajectory_controller:
+      type: ur_controllers/ScaledJointTrajectoryController
+
+    forward_velocity_controller:
+      type: velocity_controllers/JointGroupVelocityController
+
+    forward_position_controller:
+      type: position_controllers/JointGroupPositionController
+
+    mia_joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    thumb_joint_position_controller:
+      type: position_controllers/JointGroupPositionController
+
+    index_joint_position_controller:
+      type: position_controllers/JointGroupPositionController
+
+    mrl_joint_position_controller:
+      type: position_controllers/JointGroupPositionController
+
+    thumb_joint_velocity_controller:
+      type: velocity_controllers/JointGroupVelocityController
+
+    index_joint_velocity_controller:
+      type: velocity_controllers/JointGroupVelocityController
+
+    mrl_joint_velocity_controller:
+      type: velocity_controllers/JointGroupVelocityController
+
+    mia_joint_trajectory_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+    mia_index_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+    mia_mrl_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+    mia_thumb_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+
+speed_scaling_state_broadcaster:
+  ros__parameters:
+    state_publish_rate: 100.0
+
+joint_trajectory_controller:
+  ros__parameters:
+    joints:
+      - shoulder_pan_joint
+      - shoulder_lift_joint
+      - elbow_joint
+      - wrist_1_joint
+      - wrist_2_joint
+      - wrist_3_joint
+    command_interfaces:
+      - position
+    state_interfaces:
+      - position
+      - velocity
+    state_publish_rate: 100.0
+    action_monitor_rate: 20.0
+    allow_partial_joints_goal: false
+    constraints:
+      stopped_velocity_tolerance: 0.2
+      goal_time: 0.0
+      shoulder_pan_joint: { trajectory: 0.2, goal: 0.1 }
+      shoulder_lift_joint: { trajectory: 0.2, goal: 0.1 }
+      elbow_joint: { trajectory: 0.2, goal: 0.1 }
+      wrist_1_joint: { trajectory: 0.2, goal: 0.1 }
+      wrist_2_joint: { trajectory: 0.2, goal: 0.1 }
+      wrist_3_joint: { trajectory: 0.2, goal: 0.1 }
+
+# The mia_joint_trajectory_controller parameters differ from the main arm controllers
+# because the MIA hand joints have different dynamics and control requirements,
+# such as slower movements, finer position control, and specific constraints tailored
+# for finger actuation rather than large robotic arm joints.
+mia_joint_trajectory_controller:
+  ros__parameters:
+    action_monitor_rate: 50.0  # Hz
+
+    joints:
+      - j_thumb_fle
+      - j_index_fle
+      - j_mrl_fle
+
+    command_interfaces:
+      - position
+
+    state_interfaces:
+      - position
+      - velocity
+
+    constraints:
+      goal_time: 10.0
+      stopped_velocity_tolerance: 0.01
+      j_thumb_fle:
+        goal: 0.1
+        trajectory: 0.1
+      j_index_fle:
+        goal: 0.1
+        trajectory: 0.1
+      j_mrl_fle:
+        goal: 0.1
+        trajectory: 0.1
+
+scaled_joint_trajectory_controller:
+  ros__parameters:
+    joints:
+      - shoulder_pan_joint
+      - shoulder_lift_joint
+      - elbow_joint
+      - wrist_1_joint
+      - wrist_2_joint
+      - wrist_3_joint
+    command_interfaces:
+      - position
+    state_interfaces:
+      - position
+      - velocity
+    speed_scaling_interface_name: ""
+    state_publish_rate: 100.0
+    action_monitor_rate: 20.0
+    allow_partial_joints_goal: false
+    constraints:
+      stopped_velocity_tolerance: 0.2
+      goal_time: 0.0
+      shoulder_pan_joint: { trajectory: 0.2, goal: 0.1 }
+      shoulder_lift_joint: { trajectory: 0.2, goal: 0.1 }
+      elbow_joint: { trajectory: 0.2, goal: 0.1 }
+      wrist_1_joint: { trajectory: 0.2, goal: 0.1 }
+      wrist_2_joint: { trajectory: 0.2, goal: 0.1 }
+      wrist_3_joint: { trajectory: 0.2, goal: 0.1 }
+
+forward_velocity_controller:
+  ros__parameters:
+    joints:
+      - shoulder_pan_joint
+      - shoulder_lift_joint
+      - elbow_joint
+      - wrist_1_joint
+      - wrist_2_joint
+      - wrist_3_joint
+    interface_name: velocity
+
+forward_position_controller:
+  ros__parameters:
+    joints:
+      - shoulder_pan_joint
+      - shoulder_lift_joint
+      - elbow_joint
+      - wrist_1_joint
+      - wrist_2_joint
+      - wrist_3_joint
+
+thumb_joint_position_controller:
+  ros__parameters:
+    joints:
+      - j_thumb_fle
+
+index_joint_position_controller:
+  ros__parameters:
+    joints:
+      - j_index_fle
+
+mrl_joint_position_controller:
+  ros__parameters:
+    joints:
+      - j_mrl_fle
+
+thumb_joint_velocity_controller:
+  ros__parameters:
+    joints:
+      - j_thumb_fle
+
+index_joint_velocity_controller:
+  ros__parameters:
+    joints:
+      - j_index_fle
+
+mrl_joint_velocity_controller:
+  ros__parameters:
+    joints:
+      - j_mrl_fle
+
+    gains:
+      j_thumb_fle:
+        p: 4.2
+        i: 3.0
+        d: 0.2
+        i_clamp: 0.5
+        ff_velocity_scale: 1.4
+      j_index_fle:
+        p: 4.2
+        i: 1.0
+        d: 0.24
+        i_clamp: 0.5
+        ff_velocity_scale: 1.4
+      j_mrl_fle:
+        p: 4.0
+        i: 1.05
+        d: 0.2
+        i_clamp: 0.5
+        ff_velocity_scale: 1.7
+
+mia_index_controller:
+  ros__parameters:
+    joints:
+      - j_index_fle
+    command_interfaces:
+      - position
+    state_interfaces:
+      - position
+      - velocity
+    allow_nonzero_velocity_at_trajectory_end: true
+
+mia_mrl_controller:
+  ros__parameters:
+    joints:
+      - j_mrl_fle
+    command_interfaces:
+      - position
+    state_interfaces:
+      - position
+      - velocity
+    allow_nonzero_velocity_at_trajectory_end: true
+
+mia_thumb_controller:
+  ros__parameters:
+    joints:
+      - j_thumb_fle
+    command_interfaces:
+      - position
+    state_interfaces:
+      - position
+      - velocity
+    allow_nonzero_velocity_at_trajectory_end: true

@@ -10,27 +10,34 @@ find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(moveit_ros_planning_interface REQUIRED)
 find_package(std_msgs REQUIRED)
-# find_package(moveit_visual_tools REQUIRED)
 find_package(arlab_common_interfaces REQUIRED)
+find_package(mia_hand_msgs REQUIRED)
+# find_package(urdf_tutorial REQUIRED)
 
-add_executable(OrchestratorSubscriber src/OrchestratorSubscriber.cpp src/utils.cpp src/job_runner.cpp)
+add_executable(Manipulation_CPP src/orchestrator_listener.cpp src/job_runner.cpp src/arm_motion.cpp src/hand_motion.cpp src/manipulator_exception.cpp)
 
-target_include_directories(OrchestratorSubscriber PUBLIC
+target_include_directories(Manipulation_CPP PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include/${PROJECT_NAME}>)
 
-target_compile_features(OrchestratorSubscriber PUBLIC cxx_std_17)
+target_compile_features(Manipulation_CPP PUBLIC cxx_std_17)
 
 ament_target_dependencies(
-  OrchestratorSubscriber
+  Manipulation_CPP
+  moveit_core
   moveit_ros_planning_interface
   rclcpp
+  rclcpp_action
   geometry_msgs
   std_msgs
   arlab_common_interfaces
+  mia_hand_msgs
+  tf2
+  tf2_geometry_msgs
+  tf2_ros
 )
 
-install(TARGETS OrchestratorSubscriber
+install(TARGETS Manipulation_CPP
   DESTINATION lib/${PROJECT_NAME})
 
 ament_package()

@@ -138,7 +138,12 @@ class NavigationStackManager(Node):
         """
         if msg.data:
             if self.slam_process is None or self.slam_process.poll() is not None:
-                self.slam_process = self.start_process(["ros2", "launch", "slam_toolbox", "online_async_launch.py"], "SLAM Toolbox")
+                self.slam_process = self.start_process(
+                    # ["ros2", "run", "slam_toolbox", "sync_slam_toolbox_node"], "SLAM Toolbox" # old start command without using launchfile
+                    # ["ros2", "launch", "arlab_movement", "slam_launch.py"], "SLAM Toolbox"
+                    ["ros2", "launch", "slam_toolbox", "online_async_launch.py"],
+                    "SLAM Toolbox",
+                )
             else:
                 self.get_logger().info("SLAM already running.")
         else:
@@ -148,7 +153,11 @@ class NavigationStackManager(Node):
         """Starts/stops the Nav2 navigation stack based on /nav_bool messages."""
         if msg.data:
             if self.nav_process is None or self.nav_process.poll() is not None:
-                self.nav_process = self.start_process(["ros2", "run", "nav2_bringup", "navigation_launch.py"], "Nav2 Stack")
+                self.nav_process = self.start_process(
+                    # ["ros2", "launch", "arlab_movement", "nav_stack_launch.py"], "Nav2 Stack"
+                    ["ros2", "run", "nav2_bringup", "navigation_launch.py"],
+                    "Nav2 Stack",
+                )
             else:
                 self.get_logger().info("Nav2 already running.")
         else:

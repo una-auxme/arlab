@@ -12,13 +12,11 @@ setup(
     data_files=[
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
         ("share/" + package_name, ["package.xml"]),
-        ("share/" + package_name + "/launch", ["launch/deprecated_arlab_movement.launch.py"]),
-        ("share/" + package_name + "/launch", ["launch/deprecated_arlab_simulation.launch.py"]),
+        ("share/" + package_name + "/launch", ["launch/arlab_movement.launch.py"]),
+        ("share/" + package_name + "/launch", ["launch/arlab_simulation.launch.py"]),
         ("share/" + package_name + "/launch", ["launch/custom_spawn_turtlebot3.launch.py"]),
         ("share/" + package_name + "/launch", ["launch/nav2.launch.py"]),
         ("share/" + package_name + "/launch", ["launch/slam_async.launch.py"]),
-        ("share/" + package_name + "/launch", ["launch/arlab_navigation.launch.py"]),
-        ("share/" + package_name + "/launch", ["launch/localization.launch.py"]),
         # entries for arlab_simulation
         (os.path.join("share", package_name, "launch"), glob("launch/*.launch.py")),
         (os.path.join("share", package_name, "worlds"), glob("worlds/*.sdf")),

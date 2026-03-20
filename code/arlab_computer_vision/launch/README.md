@@ -26,4 +26,3 @@ Typical usage:
 ```bash
 ros2 launch arlab_computer_vision object_detection_launch.py
 ```
-

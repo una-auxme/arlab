@@ -78,4 +78,3 @@ Notes:
 - `launch/object_detection_launch.py`: topic remappings + default parameter set
 - `yolo_weights/`: shipped `.pt` weights
 - `object_detection.py`: the complete CV -> geometry -> KB pipeline
-

@@ -46,4 +46,3 @@ With the current repository setup, those nodes are no longer required:
 
 `code/arlab_perception/setup.py` console-scripts may not be aligned with the currently present modules.
 For the current repo state, focus on the implementation files themselves (e.g. `arlab_perception/lidar_data.py`) and align `entry_points` if you want to start nodes via `ros2 run` immediately.
-

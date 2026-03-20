@@ -1,6 +1,7 @@
 # arlab_computer_vision (ROS 2)
 
 ## Maintainers
+
 - Aleksander Michalak <aleksander1.michalak@uni-a.de>
 - Meruna Yugarajah <m.yugarajah@gmail.com>
 
@@ -11,6 +12,7 @@ YOLO-based object detection/segmentation integrated with the project’s knowled
 Implementation: `arlab_computer_vision/object_detection.py`
 
 High-level dataflow:
+
 1. Receive `camera_color_image` (+ `camera_info` and optionally `camera_point_cloud`)
 2. Run Ultralytics YOLO on the incoming frame
 3. Convert detections to 3D geometry using TF + (when enabled) point cloud + camera intrinsics
@@ -19,6 +21,7 @@ High-level dataflow:
 ## Expected Inputs
 
 The node subscribes to these *logical* topics:
+
 - `camera_color_image`: `sensor_msgs/Image`
 - `camera_info`: `sensor_msgs/CameraInfo`
 - `camera_point_cloud`: `sensor_msgs/PointCloud2` (required when `use_depth=true`)
@@ -30,6 +33,7 @@ Concrete namespaces are provided via ROS topic remappings in the launch files.
 Service prefix is hard-coded in the node as `/arlab/knowledge`.
 
 Used services:
+
 - `/arlab/knowledge/get_entities`
 - `/arlab/knowledge/add_entity`
 - `/arlab/knowledge/del_entities`
@@ -38,6 +42,7 @@ Used services:
 ## Outputs (debug / visualization)
 
 Depending on parameters, the node can publish:
+
 - `/vision/segmented_image` (when `visualize=true`)
 - `/vision/debug_pc` (entity point cloud used for geometry)
 
@@ -58,15 +63,18 @@ Depending on parameters, the node can publish:
 ## Launch / Quick Start
 
 Integrated launch:
+
 ```bash
 ros2 launch arlab_computer_vision object_detection_launch.py
 ```
 
 Notes:
+
 - The launch file configures `snapshot_mode: True` (action-driven processing).
 - It remaps the logical camera topics under the `/camera_gripper/...` namespace.
 
 ## Where to Look (fast navigation)
+
 - `launch/object_detection_launch.py`: topic remappings + default parameter set
 - `yolo_weights/`: shipped `.pt` weights
 - `object_detection.py`: the complete CV -> geometry -> KB pipeline

@@ -1,6 +1,7 @@
 # Computer Vision Launch Files (ROS 2)
 
 ## Maintainers
+
 - Aleksander Michalak <aleksander1.michalak@uni-a.de>
 - Meruna Yugarajah <m.yugarajah@gmail.com>
 
@@ -11,6 +12,7 @@ This folder contains launch files for the `arlab_computer_vision` package.
 This launch file starts the `ObjectDetection` node configured for the integrated workflow (Behavior Tree / decision-making triggers).
 
 What it configures:
+
 - `snapshot_mode: True`
   - The node processes frames only after an action request to `/vision/snapshot`.
 - Topic remappings (logical node inputs):
@@ -20,6 +22,7 @@ What it configures:
 - TF: `target_frame: world`
 
 Typical usage:
+
 ```bash
 ros2 launch arlab_computer_vision object_detection_launch.py
 ```

@@ -2,14 +2,9 @@
 import os
 import signal
 import subprocess
-import threading
 from datetime import datetime
 
 import rclpy
-from arlab_knowledge_interfaces.srv import (
-    AddMap,
-)
-from nav_msgs.msg import OccupancyGrid
 from rclpy.node import Node
 from std_msgs.msg import Bool
 
@@ -23,47 +18,20 @@ class NavigationStackManager(Node):
 
         self.declare_parameter("map_path", "/workspace/src/arlab/code/arlab_movement/map/my_map")
         self.declare_parameter("use_timestamp", False)
-        self.declare_parameter("save_to_database", False)
-        self.declare_parameter("map_topic", "/map")
-        self.declare_parameter("database_service", "/arlab/knowledge/add_map")
-        self.declare_parameter("database_timeout", 10.0)
 
         self.map_path = self.get_parameter("map_path").value
         self.use_timestamp = self.get_parameter("use_timestamp").value
-        self.save_to_database = self.get_parameter("save_to_database").value
-        self.map_topic = self.get_parameter("map_topic").value
-        self.database_service = self.get_parameter("database_service").value
-        self.database_timeout = self.get_parameter("database_timeout").value
 
         self.create_subscription(Bool, "localization_bool", self.localization_callback, 10)
         self.create_subscription(Bool, "mapping_bool", self.mapping_callback, 10)
         self.create_subscription(Bool, "nav_bool", self.nav_callback, 10)
         self.create_subscription(Bool, "map_save", self.map_save_callback, 10)
 
-        # Subscription to get current map
-        self.current_map = None
-        self.map_subscription = self.create_subscription(OccupancyGrid, self.map_topic, self.map_callback, 10)
-
-        # Service client for database
-        self.database_client = None
-        if self.save_to_database:
-            self.database_client = self.create_client(AddMap, self.database_service)
-            self.get_logger().info(f"Created database service client for {self.database_service}")
-
         self.amcl_process = None
         self.slam_process = None
         self.nav_process = None
 
         self.get_logger().info("Navigation Stack Manager 2 (subprocess mode) started.")
-        self.get_logger().info(f"Map path: {self.map_path}")
-        self.get_logger().info(f"Use timestamp: {self.use_timestamp}")
-        self.get_logger().info(f"Save to database: {self.save_to_database}")
-        self.get_logger().info(f"Map topic: {self.map_topic}")
-
-    def map_callback(self, msg):
-        """Callback for map topic - stores the latest map"""
-        self.current_map = msg
-        self.get_logger().debug(f"Received map update: {msg.header.frame_id}")
 
     def start_process(self, cmd, name):
         """Starts a subprocess through a given command
@@ -88,6 +56,8 @@ class NavigationStackManager(Node):
             text=True,
         )
 
+        # Read a bit of output after a short delay
+        # rclpy.get_default_context().create_timer(1.0, lambda: self.read_process_logs(process, name))
         return process
 
     def read_process_logs(self, process, name):
@@ -117,7 +87,7 @@ class NavigationStackManager(Node):
 
     def localization_callback(self, msg):
         """Gets called when a bool message arrives on topic localization_bool. Starts localization if true,
-          otherwise shuts localization down
+        otherwise shuts localization down
 
         Args:
             msg (Bool): message from topic
@@ -171,16 +141,6 @@ class NavigationStackManager(Node):
             self.get_logger().debug("Map save request with False value, ignoring")
 
     def save_map(self):
-        """Save map to either file or database based on configuration"""
-        # Save to file first for backup
-        self.save_map_to_file()
-
-        # Save to db if enabled
-        if self.save_to_database:
-            self.save_map_to_database()
-
-    def save_map_to_file(self):
-        """Save map to file"""
         try:
             map_path = self.map_path
 
@@ -191,7 +151,7 @@ class NavigationStackManager(Node):
             else:
                 self.get_logger().info(f"Using fixed map name: {map_path}")
 
-            self.get_logger().info(f"Saving map to file: {map_path}")
+            self.get_logger().info(f"Saving map to: {map_path}")
 
             cmd = ["ros2", "run", "nav2_map_server", "map_saver_cli", "-f", map_path]
 
@@ -207,100 +167,14 @@ class NavigationStackManager(Node):
             )
 
             if result.returncode == 0:
-                self.get_logger().info(f"Map saved successfully to file: {map_path}")
+                self.get_logger().info(f"Map saved successfully to {map_path}")
                 if result.stdout:
-                    self.get_logger().debug(f"Map saver output: {result.stdout}")
+                    self.get_logger().info(f"Map saver output: {result.stdout}")
             else:
-                self.get_logger().error(f"Failed to save map to file. Error: {result.stderr}")
+                self.get_logger().error(f"Failed to save map. Error: {result.stderr}")
 
         except Exception as e:
-            self.get_logger().error(f"Exception while saving map to file: {str(e)}")
-
-    def save_map_to_database(self):
-        """Save map to database via service call"""
-        try:
-            if self.current_map is None:
-                self.get_logger().error("No map available to save. Make sure map topic is publishing correctly.")
-                self.get_logger().info("Attempting to get current map...")
-                self.get_map_once()
-                if self.current_map is None:
-                    self.get_logger().error("Failed to get map. Cannot save to database.")
-                    return
-
-            self.get_logger().info("Saving map to database...")
-
-            # Wait for service to be available
-            if not self.database_client.wait_for_service(timeout_sec=self.database_timeout):
-                self.get_logger().error(f"Service {self.database_service} not available after {self.database_timeout}s")
-                return
-
-            request = AddMap.Request()
-            request.grid = self.current_map
-            request.grid.header.stamp = self.get_clock().now().to_msg()
-
-            self.get_logger().info(f"Sending map to database service: {self.database_service}")
-            self.get_logger().info(f"  Frame ID: {request.grid.header.frame_id}")
-            self.get_logger().info(f"  Resolution: {request.grid.info.resolution:.3f}m")
-            self.get_logger().info(f"  Dimensions: {request.grid.info.width}x{request.grid.info.height}")
-            self.get_logger().info(f"  Origin: [{request.grid.info.origin.position.x:.2f}, {request.grid.info.origin.position.y:.2f}]")
-
-            future = self.database_client.call_async(request)
-            future.add_done_callback(self.database_service_callback)
-
-        except Exception as e:
-            self.get_logger().error(f"Exception while saving map to database: {str(e)}")
-
-    def database_service_callback(self, future):
-        """Callback for database service response"""
-        try:
-            response = future.result()
-
-            if hasattr(response, "success") and response.success:
-                self.get_logger().info("✅ Map successfully saved to database.")
-                if hasattr(response, "map_id"):
-                    self.get_logger().info(f"Map ID: {response.map_id}")
-                elif hasattr(response, "mapid"):
-                    self.get_logger().info(f"Map ID: {response.mapid}")
-            elif hasattr(response, "result") and response.result:
-                self.get_logger().info("✅ Map successfully saved to database.")
-                if hasattr(response, "mapid"):
-                    self.get_logger().info(f"Map ID: {response.mapid}")
-            else:
-                error_msg = "Unknown error"
-                if hasattr(response, "error_message"):
-                    error_msg = response.error_message
-                elif hasattr(response, "message"):
-                    error_msg = response.message
-                elif hasattr(response, "error"):
-                    error_msg = response.error
-                self.get_logger().error(f"❌ Failed to save map to database: {error_msg}")
-
-        except Exception as e:
-            self.get_logger().error(f"❌ Service call failed: {str(e)}")
-
-    def get_map_once(self):
-        """Try to get the current map once"""
-        try:
-            received_map = None
-            event = threading.Event()
-
-            def temp_callback(msg):
-                nonlocal received_map
-                received_map = msg
-                event.set()
-
-            temp_sub = self.create_subscription(OccupancyGrid, self.map_topic, temp_callback, 1)
-
-            if event.wait(timeout=2.0):
-                self.current_map = received_map
-                self.get_logger().info("Successfully retrieved current map")
-            else:
-                self.get_logger().warning("Timeout waiting for map message")
-
-            self.destroy_subscription(temp_sub)
-
-        except Exception as e:
-            self.get_logger().error(f"Error getting map: {str(e)}")
+            self.get_logger().error(f"Exception while saving map: {str(e)}")
 
     def destroy_node(self):
         """cleanup to properly stop all subprocesses"""
@@ -316,7 +190,7 @@ def main(args=None):
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
-        node.get_logger().info("Shutting down navigation stack manager...")
+        pass
     finally:
         node.destroy_node()
         rclpy.shutdown()

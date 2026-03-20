@@ -24,14 +24,13 @@ from typing import Optional, Tuple
 
 import rclpy
 import rclpy.executors
+from arlab_common_interfaces.action import MovementAction
+from arlab_knowledge_interfaces.srv import AddMap
 from nav_msgs.msg import OccupancyGrid
-from rclpy.action.server import ActionServer, GoalResponse, CancelResponse
+from rclpy.action.server import ActionServer, CancelResponse, GoalResponse
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
 from rclpy.node import Node
 from std_msgs.msg import Bool
-
-from arlab_common_interfaces.action import MovementAction
-from arlab_knowledge_interfaces.srv import AddMap
 
 
 class NavErr:
@@ -81,16 +80,12 @@ class NavigationOrchestrator(Node):
         self.nav_process: Optional[subprocess.Popen] = None
 
         # ---- Subscriptions ----
-        self.map_subscription = self.create_subscription(
-            OccupancyGrid, self.map_topic, self.map_callback, 10
-        )
+        self.map_subscription = self.create_subscription(OccupancyGrid, self.map_topic, self.map_callback, 10)
 
         # ---- Database client ----
         self.database_client = None
         if self.save_to_database:
-            self.database_client = self.create_client(
-                AddMap, self.database_service, callback_group=self.service_group
-            )
+            self.database_client = self.create_client(AddMap, self.database_service, callback_group=self.service_group)
             self.get_logger().info(f"Database client created: {self.database_service}")
 
         # ---- Action server ----
@@ -303,9 +298,7 @@ class NavigationOrchestrator(Node):
         if enable:
             if self.amcl_process is None or self.amcl_process.poll() is not None:
                 publish_status("Starting localization (AMCL)")
-                self.amcl_process, err, msg = self._start_process(
-                    ["ros2", "run", "nav2_amcl", "amcl"], "AMCL"
-                )
+                self.amcl_process, err, msg = self._start_process(["ros2", "run", "nav2_amcl", "amcl"], "AMCL")
                 return err, msg
             return NavErr.OK, "AMCL already running"
         publish_status("Stopping localization (AMCL)")
@@ -452,9 +445,7 @@ class NavigationOrchestrator(Node):
             return NavErr.DB_SAVE_FAILED, "No map received to save"
 
         if not self.database_client.wait_for_service(timeout_sec=self.database_timeout):
-            return NavErr.DB_SERVICE_UNAVAILABLE, (
-                f"Service {self.database_service} not available"
-            )
+            return NavErr.DB_SERVICE_UNAVAILABLE, (f"Service {self.database_service} not available")
 
         req = AddMap.Request()
         req.grid = self.current_map
@@ -487,7 +478,7 @@ class NavigationOrchestrator(Node):
                 return NavErr.DB_SAVE_FAILED, f"Database save failed: {getattr(resp, msg_field)}"
 
         return NavErr.DB_SAVE_FAILED, "Database save failed"
-    
+
     # ----------------------
     # Legacy topic callbacks
     # ----------------------

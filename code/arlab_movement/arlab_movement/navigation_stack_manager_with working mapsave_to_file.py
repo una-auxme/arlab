@@ -1,31 +1,31 @@
 #!/usr/bin/env python3
+import os
+import signal
+import subprocess
+from datetime import datetime
+
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Bool
-import subprocess
-import signal
-import os
-from datetime import datetime
 
 
 class NavigationStackManager(Node):
     """This Node starts and stops the navigation nodes for localization and mapping according to the movement orchestrator"""
 
     def __init__(self):
-        """Subscribes to the topics that the orchestrator publishes to and creates handles for the subprocesses
-        """
-        super().__init__('navigation_stack_manager')
+        """Subscribes to the topics that the orchestrator publishes to and creates handles for the subprocesses"""
+        super().__init__("navigation_stack_manager")
 
-        self.declare_parameter('map_path', '/workspace/src/arlab/code/arlab_movement/map/my_map')
-        self.declare_parameter('use_timestamp', False)
+        self.declare_parameter("map_path", "/workspace/src/arlab/code/arlab_movement/map/my_map")
+        self.declare_parameter("use_timestamp", False)
 
-        self.map_path = self.get_parameter('map_path').value
-        self.use_timestamp = self.get_parameter('use_timestamp').value
+        self.map_path = self.get_parameter("map_path").value
+        self.use_timestamp = self.get_parameter("use_timestamp").value
 
-        self.create_subscription(Bool, 'localization_bool', self.localization_callback, 10)
-        self.create_subscription(Bool, 'mapping_bool', self.mapping_callback, 10)
-        self.create_subscription(Bool, 'nav_bool', self.nav_callback, 10)
-        self.create_subscription(Bool, 'map_save', self.map_save_callback, 10)
+        self.create_subscription(Bool, "localization_bool", self.localization_callback, 10)
+        self.create_subscription(Bool, "mapping_bool", self.mapping_callback, 10)
+        self.create_subscription(Bool, "nav_bool", self.nav_callback, 10)
+        self.create_subscription(Bool, "map_save", self.map_save_callback, 10)
 
         self.amcl_process = None
         self.slam_process = None
@@ -57,7 +57,7 @@ class NavigationStackManager(Node):
         )
 
         # Read a bit of output after a short delay
-        #rclpy.get_default_context().create_timer(1.0, lambda: self.read_process_logs(process, name))
+        # rclpy.get_default_context().create_timer(1.0, lambda: self.read_process_logs(process, name))
         return process
 
     def read_process_logs(self, process, name):
@@ -93,9 +93,7 @@ class NavigationStackManager(Node):
         """
         if msg.data:
             if self.amcl_process is None:
-                self.amcl_process = self.start_process(
-                    ["ros2", "run", "nav2_amcl", "amcl"], "AMCL"
-                )
+                self.amcl_process = self.start_process(["ros2", "run", "nav2_amcl", "amcl"], "AMCL")
             else:
                 self.get_logger().info("AMCL already running.")
         else:
@@ -110,10 +108,11 @@ class NavigationStackManager(Node):
         if msg.data:
             if self.slam_process is None or self.slam_process.poll() is not None:
                 self.slam_process = self.start_process(
-                    #["ros2", "run", "slam_toolbox", "sync_slam_toolbox_node"], "SLAM Toolbox" # old start command without using launchfile
-                    #["ros2", "launch", "arlab_movement", "slam_launch.py"], "SLAM Toolbox"
-                    #["ros2", "launch", "slam_toolbox", "online_sync_launch.py", "--ros-args", "-p", "use_pose_graph_slam:=true"], "SLAM Toolbox"
-                    ["ros2", "launch", "slam_toolbox", "online_async_launch.py"], "SLAM Toolbox"
+                    # ["ros2", "run", "slam_toolbox", "sync_slam_toolbox_node"], "SLAM Toolbox" # old start command without using launchfile
+                    # ["ros2", "launch", "arlab_movement", "slam_launch.py"], "SLAM Toolbox"
+                    # ["ros2", "launch", "slam_toolbox", "online_sync_launch.py", "--ros-args", "-p", "use_pose_graph_slam:=true"], "SLAM Toolbox"
+                    ["ros2", "launch", "slam_toolbox", "online_async_launch.py"],
+                    "SLAM Toolbox",
                 )
             else:
                 self.get_logger().info("SLAM already running.")
@@ -125,8 +124,9 @@ class NavigationStackManager(Node):
         if msg.data:
             if self.nav_process is None or self.nav_process.poll() is not None:
                 self.nav_process = self.start_process(
-                    #["ros2", "launch", "arlab_movement", "nav_stack_launch.py"], "Nav2 Stack"
-                    ["ros2", "run", "nav2_bringup", "navigation_launch.py"], "Nav2 Stack"
+                    # ["ros2", "launch", "arlab_movement", "nav_stack_launch.py"], "Nav2 Stack"
+                    ["ros2", "run", "nav2_bringup", "navigation_launch.py"],
+                    "Nav2 Stack",
                 )
             else:
                 self.get_logger().info("Nav2 already running.")
@@ -177,8 +177,7 @@ class NavigationStackManager(Node):
             self.get_logger().error(f"Exception while saving map: {str(e)}")
 
     def destroy_node(self):
-        """cleanup to properly stop all subprocesses
-        """
+        """cleanup to properly stop all subprocesses"""
         self.amcl_process = self.stop_process(self.amcl_process, "AMCL")
         self.slam_process = self.stop_process(self.slam_process, "SLAM Toolbox")
         self.nav_process = self.stop_process(self.nav_process, "Nav2 Stack")
@@ -197,5 +196,5 @@ def main(args=None):
         rclpy.shutdown()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

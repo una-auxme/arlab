@@ -237,6 +237,9 @@ class MoshiTTS(Node):
             self.sentence_buffer[0] = ""
 
         num_entries = len(self.tts_gen.state.entries)
+        # Case 1: Active generation - there are entries in the generation state
+        # or we're still within the end_step of a previous entry.
+        # Continue generating audio and set up delay steps for audio processing.
         if num_entries > 0 or (self.tts_gen.state.end_step is not None and self.tts_gen.offset < self.tts_gen.state.end_step):
             self.state_clean = False
             self.silent_steps = 0
@@ -248,11 +251,16 @@ class MoshiTTS(Node):
                 # Now we just wait until the output is silent
                 self.tts_model.delay_steps + max(self.tts_model.lm.delays)
             )
+        # Case 2: Waiting for audio to drain - we have pending delay steps
+        # to wait out before processing the next generation step.
         elif self.delay_steps > 0:
             self.state_clean = False
             self.silent_steps = 0
             self.tts_gen.step()
             self.delay_steps -= 1
+        # Case 3: Checking for silence - no active entries and no pending delays,
+        # so we step to check if audio output has become silent. Increment
+        # silent_steps counter if silence is detected, reset if audio plays.
         elif self.silent_steps < self.tts_gen.audio_silent_steps:
             samples = self.tts_gen.step()
             if samples is not None:
@@ -260,6 +268,9 @@ class MoshiTTS(Node):
                     self.silent_steps += 1
                 else:
                     self.silent_steps = 0
+        # Case 4: Generation complete - no active entries, no pending delays,
+        # and silence threshold exceeded. Clean up state and prepare for
+        # the next sentence from the buffer.
         else:
             if not self.state_clean:
                 self.state_clean = True

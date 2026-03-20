@@ -2,10 +2,10 @@ from py_trees.behaviour import Behaviour
 from py_trees.composites import Sequence
 from py_trees.timers import Timer
 
-from ..common.speech import QueueSpeech
+# from ..common.speech import QueueSpeech
 from ..manipulation import (
-    hand_close,
-    hand_open,
+    # hand_close,
+    # hand_open,
     home,
     move,
 )
@@ -17,15 +17,15 @@ def get_tree() -> Behaviour:
         "GrabSequence",
         memory=True,
         children=[
-            QueueSpeech("Hello. I am homing the arm."),
+            # QueueSpeech("Hello. I am homing the arm."),
             Timer("InitialWait", 3.0),
-            hand_close.get_tree(),
+            # hand_close.get_tree(),
             home.get_tree(),
             # 3 snapshots
-            QueueSpeech("I will now take three snapshots of the scene. Please hold still."),
+            # QueueSpeech("I will now take three snapshots of the scene. Please hold still."),
             test_view.get_tree(),
             ### Grip mango subtree right front
-            QueueSpeech("Alright. Preparing to grab the mango..."),
+            # QueueSpeech("Alright. Preparing to grab the mango..."),
             move.get_tree(
                 x=-0.464,
                 y=0.056,
@@ -36,7 +36,7 @@ def get_tree() -> Behaviour:
                 ow=0.023,
             ),
             Timer("MoveWait", 1.0),
-            hand_open.get_tree(),
+            # hand_open.get_tree(),
             move.get_tree(
                 x=-0.481,
                 y=0.032,
@@ -47,8 +47,8 @@ def get_tree() -> Behaviour:
                 ow=-0.129,
             ),
             Timer("MoveWait", 1.0),
-            hand_close.get_tree(),
-            QueueSpeech("Moving to the cupboard"),
+            # hand_close.get_tree(),
+            # QueueSpeech("Moving to the cupboard"),
             Timer("GripWait", 1.0),
             move.get_tree(
                 x=-0.464,
@@ -82,7 +82,7 @@ def get_tree() -> Behaviour:
                 ow=0.284,
             ),
             Timer("MoveWaite", 1.0),
-            hand_open.get_tree(),
+            # hand_open.get_tree(),
             Timer("ReleaseWait", 1.0),
             move.get_tree(
                 x=-0.138,
@@ -93,9 +93,9 @@ def get_tree() -> Behaviour:
                 oz=0.707,
                 ow=-0.119,
             ),
-            QueueSpeech("Now homing the arm again."),
+            # QueueSpeech("Now homing the arm again."),
             home.get_tree(),
-            QueueSpeech("Alright. Preparing to grab the apple."),
+            # QueueSpeech("Alright. Preparing to grab the apple."),
             ### Left side front subtree
             move.get_tree(
                 x=-0.370,
@@ -107,7 +107,7 @@ def get_tree() -> Behaviour:
                 ow=0.576,
             ),
             Timer("MoveWaite", 1.0),
-            hand_open.get_tree(),
+            # hand_open.get_tree(),
             Timer("MoveWaite", 1.0),
             move.get_tree(
                 x=-0.414,
@@ -119,8 +119,8 @@ def get_tree() -> Behaviour:
                 ow=0.527,
             ),
             Timer("MoveWaite", 1.0),
-            hand_close.get_tree(),
-            QueueSpeech("I will now move to the cupboard."),
+            # hand_close.get_tree(),
+            # QueueSpeech("I will now move to the cupboard."),
             Timer("MoveWaite", 1.0),
             move.get_tree(
                 x=-0.370,
@@ -154,7 +154,7 @@ def get_tree() -> Behaviour:
                 ow=-0.235,
             ),
             Timer("MoveWaite", 1.0),
-            hand_open.get_tree(),
+            # hand_open.get_tree(),
             Timer("MoveWaite", 1.0),
             move.get_tree(
                 x=-0.352,
@@ -165,9 +165,9 @@ def get_tree() -> Behaviour:
                 oz=0.698,
                 ow=-0.243,
             ),
-            QueueSpeech("Homing."),
+            # QueueSpeech("Homing."),
             Timer("MoveWaite", 1.0),
             home.get_tree(),
-            QueueSpeech("And I am done. Thank you for your attention."),
+            # QueueSpeech("And I am done. Thank you for your attention."),
         ],
     )

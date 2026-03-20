@@ -2,7 +2,6 @@
 
 import rclpy
 from arlab_common_interfaces.msg import Destination, MovementCommand
-from geometry_msgs.msg import PoseStamped
 from rclpy.node import Node
 from std_msgs.msg import Bool, String
 

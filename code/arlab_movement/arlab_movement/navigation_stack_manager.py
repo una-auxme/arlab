@@ -6,23 +6,8 @@ import threading
 from datetime import datetime
 
 import rclpy
-from arlab_knowledge_interfaces.msg import EntityPickable, EntityType, StatusType
 from arlab_knowledge_interfaces.srv import (
-    AddEntity,
     AddMap,
-    AddStatusEvent,
-    DelEntities,
-    GetDescription,
-    GetEntities,
-    GetMap,
-    GetPose,
-    GetReference,
-    GetShape,
-    GetStatusEvents,
-    UpdEntity,
-    UpdPose,
-    UpdReference,
-    UpdShape,
 )
 from nav_msgs.msg import OccupancyGrid
 from rclpy.node import Node
@@ -131,7 +116,8 @@ class NavigationStackManager(Node):
         return None
 
     def localization_callback(self, msg):
-        """Gets called when a bool message arrives on topic localization_bool. Starts localization if true, otherwise shuts localization down
+        """Gets called when a bool message arrives on topic localization_bool. Starts localization if true,
+          otherwise shuts localization down
 
         Args:
             msg (Bool): message from topic

@@ -1,21 +1,17 @@
 import json
 import math
-import subprocess
-import tkinter as tk
-from tkinter import ttk
-from pathlib import Path
-
-import threading
 import queue
-
-from rclpy.qos import QoSProfile, QoSDurabilityPolicy, QoSReliabilityPolicy
+import subprocess
+import threading
+import tkinter as tk
+from pathlib import Path
+from tkinter import ttk
 
 import rclpy
-from rclpy.node import Node
-from std_msgs.msg import String
-
 from rcl_interfaces.msg import Log
-
+from rclpy.node import Node
+from rclpy.qos import QoSDurabilityPolicy, QoSProfile, QoSReliabilityPolicy
+from std_msgs.msg import String
 
 CONFIG_PATH = Path("/workspace/src/arlab/code/arlab_ui/config/buttons.json")
 
@@ -54,8 +50,6 @@ class RosBridge(Node):
             rosout_qos,
         )
 
-
-
         self.timer = self.create_timer(0.05, self._drain_outgoing)
 
     def _on_msg(self, msg: String):
@@ -86,7 +80,6 @@ class App(tk.Tk):
         self._app_icon = tk.PhotoImage(file="src/arlab/code/arlab_ui/assets/Zirbi.png")
         self.iconphoto(True, self._app_icon)
 
-
         self.buttons_data = []
         self.secondary_enabled = tk.BooleanVar(value=False)
 
@@ -97,7 +90,7 @@ class App(tk.Tk):
         self.outgoing_queue: "queue.Queue[str]" = queue.Queue()
 
         self.ros_error_queue: "queue.Queue[str]" = queue.Queue()
-        self.ros_error_buffer: list[str] = [] 
+        self.ros_error_buffer: list[str] = []
 
         self.ros_node = None
 
@@ -117,7 +110,6 @@ class App(tk.Tk):
 
         # Touchscreens sometimes behave like mouse button events; this covers most cases.
         self._reset_screensaver_timer()
-
 
         # ROS thread + Tk polling
         self.ros_thread = threading.Thread(target=self._ros_spin, daemon=True)
@@ -145,9 +137,7 @@ class App(tk.Tk):
         chat.columnconfigure(0, weight=1)
         chat.rowconfigure(1, weight=1)
 
-        ttk.Label(chat, text=f"Sub: {self.sub_topic}   Pub: {self.pub_topic}").grid(
-            row=0, column=0, sticky="w"
-        )
+        ttk.Label(chat, text=f"Sub: {self.sub_topic}   Pub: {self.pub_topic}").grid(row=0, column=0, sticky="w")
 
         self.chat_text = tk.Text(chat, wrap="word", height=6)
         self.chat_text.grid(row=1, column=0, sticky="nsew", pady=(6, 6))
@@ -242,7 +232,7 @@ class App(tk.Tk):
             end = min(start + per_tab, total)
             chunk = self.buttons_data[start:end]
             tab = self._make_tab_frame(tab_buttons=chunk)
-            self.notebook.add(tab, text=f"Tab {t+1}")
+            self.notebook.add(tab, text=f"Tab {t + 1}")
 
         self.notebook.select(min(current_index, num_tabs - 1))
 
@@ -300,7 +290,7 @@ class App(tk.Tk):
 
             if i < len(button_items):
                 item = button_items[i]
-                name = str(item.get("name", f"Button {i+1}"))
+                name = str(item.get("name", f"Button {i + 1}"))
                 cmd = str(item.get("cmd", ""))
 
                 btn = ttk.Button(
@@ -317,9 +307,7 @@ class App(tk.Tk):
 
     # --------- Screensaver ----------
     def _build_screensaver(self, image_path: str):
-        self._screensaver_frame = tk.Frame(
-            self, bg="white", bd=0, highlightthickness=0, relief="flat"
-        )
+        self._screensaver_frame = tk.Frame(self, bg="white", bd=0, highlightthickness=0, relief="flat")
         self._screensaver_frame.place_forget()
 
         self._screensaver_label = tk.Label(
@@ -349,10 +337,7 @@ class App(tk.Tk):
             except Exception:
                 pass
 
-        self._screensaver_after_id = self.after(
-            int(self.screensaver_seconds * 1000),
-            self._show_screensaver
-        )
+        self._screensaver_after_id = self.after(int(self.screensaver_seconds * 1000), self._show_screensaver)
 
     def _show_screensaver(self):
         self._screensaver_on = True
@@ -362,9 +347,8 @@ class App(tk.Tk):
 
     def _hide_screensaver(self):
         self._screensaver_on = False
-        self._stop_gif()   # stop animation timer
+        self._stop_gif()  # stop animation timer
         self._screensaver_frame.place_forget()
-
 
     def _on_user_activity(self, event=None):
         # Wake on first interaction
@@ -430,8 +414,6 @@ class App(tk.Tk):
             except Exception:
                 pass
             self._gif_after_id = None
-
-
 
     # ---------- ROS errors -> error box (when visible) ----------
     def _append_error(self, line: str):

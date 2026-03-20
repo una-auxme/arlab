@@ -1,6 +1,8 @@
 import time
+
 import rclpy
 from rclpy.node import Node
+
 
 class ErrorTest(Node):
     def __init__(self):
@@ -12,6 +14,7 @@ class ErrorTest(Node):
         self.count += 1
         self.get_logger().error(f"TEST ERROR {self.count}: hello from error_test")
 
+
 def main():
     rclpy.init()
     node = ErrorTest()
@@ -22,6 +25,7 @@ def main():
 
     node.destroy_node()
     rclpy.shutdown()
+
 
 if __name__ == "__main__":
     main()

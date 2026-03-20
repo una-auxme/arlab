@@ -1,3 +1,10 @@
+"""Package setup for `arlab_computer_vision`.
+
+Maintainers:
+    Aleksander Michalak <aleksander1.michalak@uni-a.de>
+    Meruna Yugarajah <m.yugarajah@gmail.com>
+"""
+
 from glob import glob
 
 from setuptools import find_packages, setup

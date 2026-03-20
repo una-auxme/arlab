@@ -1,10 +1,13 @@
 """launch.py
 
-Launch file for the ARLab Computer Vision object detection node.
+Launch file for the ARLab Computer Vision `ObjectDetection` node.
 
-This launch file starts the object_detection node with topic remapping
-from camera_color_image to /camera/color/image_raw.
+This launch file starts the node configured for the integrated workflow,
+including topic remapping under the `/camera_gripper/...` namespace.
 
+Maintainers:
+    Aleksander Michalak <aleksander1.michalak@uni-a.de>
+    Peter Viechter <peter.viechter@uni-a.de>
 """
 
 from launch import LaunchDescription
@@ -30,7 +33,7 @@ def generate_launch_description():
             ("camera_point_cloud", "/camera_gripper/depth/color/points"),
         ],
         parameters=[
-            {"log_level": "INFO"},  # Node-Parameter für Debug-Logs
+            {"log_level": "INFO"},  # Node parameter for logging verbosity
             {"sync_tolerance": 5.0},
             {"target_frame": "world"},
             {"snapshot_mode": True},
@@ -38,11 +41,11 @@ def generate_launch_description():
         arguments=[
             "--ros-args",
             "--log-level",
-            "ObjectDetection:=info",  # Nur unser Node auf DEBUG
+            "ObjectDetection:=info",  # Set only this node log level to INFO
             "--log-level",
-            "rcl:=warn",  # ROS2 interne Logs auf WARN
+            "rcl:=warn",  # ROS 2 internal logs at WARN
             "--log-level",
-            "rclpy:=warn",  # ROS2 Python Logs auf WARN
+            "rclpy:=warn",  # ROS 2 Python logs at WARN
         ],
     )
 

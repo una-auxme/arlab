@@ -1,3 +1,21 @@
+"""Entity database schema modules for the ARLab knowledge database.
+
+This submodule contains all SQLAlchemy database models for representing physical
+entities around the robot, including:
+- Entity: Base class for all entities
+- Furniture: Abstract base for furniture objects (tables, cupboards, etc.)
+- Human: Human entities
+- Pickable: Objects that can be manipulated by the robot
+- Shape: Shape information for entities (bounding boxes, point clouds)
+
+The entity type conversion functions enable polymorphic behavior:
+- entity_msg_type_to_class: Converts EntityType messages to corresponding classes
+- entity_extract_type_msg: Extracts EntityType messages from entity instances
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-a.de>
+"""
+
 from arlab_knowledge_interfaces import msg
 
 # Import all database schema modules so that they are available to the orm
@@ -11,7 +29,19 @@ from . import (
 )
 
 
-def entity_msg_type_to_class(msg_type: msg.EntityType):
+def entity_msg_type_to_class(msg_type: msg.EntityType) -> type | None:
+    """Converts an EntityType message to a corresponding entity class.
+
+    This function enables polymorphic instantiation of entity subclasses
+    based on the ROS message type. When a ROS message arrives, this function
+    determines which Python class to instantiate.
+
+    Args:
+        msg_type: The EntityType message to convert
+
+    Returns:
+        The corresponding entity class, or None if the type is not supported
+    """
     if msg_type.id == msg.EntityType.ENTITY:
         return entity.Entity
     if msg_type.id == msg.EntityType.PICKABLE:
@@ -33,6 +63,18 @@ def entity_msg_type_to_class(msg_type: msg.EntityType):
 
 
 def entity_extract_type_msg(e: entity.Entity) -> msg.EntityType:
+    """Extracts an EntityType message from an entity instance.
+
+    This function enables polymorphic serialization of entities back to ROS
+    messages. It determines the appropriate EntityType based on the entity's
+    actual class type.
+
+    Args:
+        e: The entity instance to extract the type from
+
+    Returns:
+        A populated EntityType message with the appropriate id
+    """
     m = msg.EntityType()
     m.id = msg.EntityType.ENTITY
     if isinstance(e, human.Human):

@@ -16,7 +16,7 @@ def get_tree() -> Behaviour:
         memory=True,
         children=[
             Timer("InitialWait", 3.0),
-            hand_close.get_tree(),
+            # hand_close.get_tree(),
             home.get_tree(),
             Timer("MoveWait", 2.5),
             move.get_tree(  # picture 1
@@ -28,7 +28,7 @@ def get_tree() -> Behaviour:
                 oz=0.302,
                 ow=0.018,
             ),
-            vision_snapshot.get_tree(clear=True),
+            # vision_snapshot.get_tree(clear=True),
             move.get_tree(  # picture 2 (Schrank)
                 x=0.091,
                 y=0.087,
@@ -38,7 +38,7 @@ def get_tree() -> Behaviour:
                 oz=0.584,
                 ow=-0.127,
             ),
-            vision_snapshot.get_tree(clear=False),
+            # vision_snapshot.get_tree(clear=False),
             move.get_tree(  # picture 3
                 x=-0.039,
                 y=0.119,
@@ -48,6 +48,6 @@ def get_tree() -> Behaviour:
                 oz=-0.202,
                 ow=0.240,
             ),
-            vision_snapshot.get_tree(clear=False),
+            # vision_snapshot.get_tree(clear=False),
         ],
     )

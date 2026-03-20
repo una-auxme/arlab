@@ -247,13 +247,13 @@ class NavigationStackManager(Node):
             response = future.result()
 
             if hasattr(response, "success") and response.success:
-                self.get_logger().info(f"✅ Map successfully saved to database.")
+                self.get_logger().info("✅ Map successfully saved to database.")
                 if hasattr(response, "map_id"):
                     self.get_logger().info(f"Map ID: {response.map_id}")
                 elif hasattr(response, "mapid"):
                     self.get_logger().info(f"Map ID: {response.mapid}")
             elif hasattr(response, "result") and response.result:
-                self.get_logger().info(f"✅ Map successfully saved to database.")
+                self.get_logger().info("✅ Map successfully saved to database.")
                 if hasattr(response, "mapid"):
                     self.get_logger().info(f"Map ID: {response.mapid}")
             else:

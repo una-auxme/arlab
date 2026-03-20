@@ -86,7 +86,8 @@ class NavigationStackManager(Node):
         return None
 
     def localization_callback(self, msg):
-        """Gets called when a bool message arrives on topic localization_bool. Starts localization if true, otherwise shuts localization down
+        """Gets called when a bool message arrives on topic localization_bool. Starts localization if true,
+        otherwise shuts localization down
 
         Args:
             msg (Bool): message from topic
@@ -110,7 +111,6 @@ class NavigationStackManager(Node):
                 self.slam_process = self.start_process(
                     # ["ros2", "run", "slam_toolbox", "sync_slam_toolbox_node"], "SLAM Toolbox" # old start command without using launchfile
                     # ["ros2", "launch", "arlab_movement", "slam_launch.py"], "SLAM Toolbox"
-                    # ["ros2", "launch", "slam_toolbox", "online_sync_launch.py", "--ros-args", "-p", "use_pose_graph_slam:=true"], "SLAM Toolbox"
                     ["ros2", "launch", "slam_toolbox", "online_async_launch.py"],
                     "SLAM Toolbox",
                 )

@@ -9,64 +9,49 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     # Get the urdf file
-    TURTLEBOT3_MODEL = os.environ['TURTLEBOT3_MODEL']
-    model_folder = 'turtlebot3_' + TURTLEBOT3_MODEL
-    urdf_path = os.path.join(
-        get_package_share_directory('turtlebot3_gazebo'),
-        'models',
-        model_folder,
-        'model.sdf'
-    )
+    TURTLEBOT3_MODEL = os.environ["TURTLEBOT3_MODEL"]
+    model_folder = "turtlebot3_" + TURTLEBOT3_MODEL
+    urdf_path = os.path.join(get_package_share_directory("turtlebot3_gazebo"), "models", model_folder, "model.sdf")
 
     # Launch configuration variables specific to simulation
-    x_pose = LaunchConfiguration('x_pose', default='0.0')
-    y_pose = LaunchConfiguration('y_pose', default='0.0')
+    x_pose = LaunchConfiguration("x_pose", default="0.0")
+    y_pose = LaunchConfiguration("y_pose", default="0.0")
 
     # Declare the launch arguments
-    declare_x_position_cmd = DeclareLaunchArgument(
-        'x_pose', default_value='0.0',
-        description='Specify namespace of the robot')
+    declare_x_position_cmd = DeclareLaunchArgument("x_pose", default_value="0.0", description="Specify namespace of the robot")
 
-    declare_y_position_cmd = DeclareLaunchArgument(
-        'y_pose', default_value='0.0',
-        description='Specify namespace of the robot')
+    declare_y_position_cmd = DeclareLaunchArgument("y_pose", default_value="0.0", description="Specify namespace of the robot")
 
     start_gazebo_ros_spawner_cmd = Node(
-        package='ros_gz_sim',
-        executable='create',
-        arguments=[
-            '-name', TURTLEBOT3_MODEL,
-            '-file', urdf_path,
-            '-x', x_pose,
-            '-y', y_pose,
-            '-z', '0.01'
-        ],
-        output='screen',
+        package="ros_gz_sim",
+        executable="create",
+        arguments=["-name", TURTLEBOT3_MODEL, "-file", urdf_path, "-x", x_pose, "-y", y_pose, "-z", "0.01"],
+        output="screen",
     )
 
-    #bridge_params = os.path.join(
+    # bridge_params = os.path.join(
     #    get_package_share_directory('turtlebot3_gazebo'),
     #    'params',
     #    model_folder+'_bridge.yaml'
-    #)
-    bridge_params = '/workspace/build/arlab_movement/params/bridge_params.yaml'
+    # )
+    bridge_params = "/workspace/build/arlab_movement/params/bridge_params.yaml"
 
     start_gazebo_ros_bridge_cmd = Node(
-        package='ros_gz_bridge',
-        executable='parameter_bridge',
+        package="ros_gz_bridge",
+        executable="parameter_bridge",
         arguments=[
-            '--ros-args',
-            '-p',
-            f'config_file:={bridge_params}',
+            "--ros-args",
+            "-p",
+            f"config_file:={bridge_params}",
         ],
-        output='screen',
+        output="screen",
     )
 
     start_gazebo_ros_image_bridge_cmd = Node(
-        package='ros_gz_image',
-        executable='image_bridge',
-        arguments=['/camera/image_raw'],
-        output='screen',
+        package="ros_gz_image",
+        executable="image_bridge",
+        arguments=["/camera/image_raw"],
+        output="screen",
     )
     ld = LaunchDescription()
 
@@ -77,6 +62,6 @@ def generate_launch_description():
     # Add any conditioned actions
     ld.add_action(start_gazebo_ros_spawner_cmd)
     ld.add_action(start_gazebo_ros_bridge_cmd)
-    ld.add_action(start_gazebo_ros_image_bridge_cmd) if TURTLEBOT3_MODEL != 'burger' else None
+    ld.add_action(start_gazebo_ros_image_bridge_cmd) if TURTLEBOT3_MODEL != "burger" else None
 
     return ld

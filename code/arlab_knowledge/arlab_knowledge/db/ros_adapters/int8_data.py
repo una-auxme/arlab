@@ -1,7 +1,7 @@
 """Db adapter for byte arrays
 
 Maintainers:
-    Peter Viechter <peter.viechter@uni-augsburg.de>
+    Peter Viechter <peter.viechter@uni-a.de>
 """
 
 import array

@@ -5,7 +5,7 @@ A Shape contains the shape of an entity
 More documentation in the corresponding ros definitions: Shape.msg
 
 Maintainers:
-    Peter Viechter <peter.viechter@uni-augsburg.de>
+    Peter Viechter <peter.viechter@uni-a.de>
 """
 
 import array

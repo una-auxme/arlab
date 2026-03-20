@@ -8,8 +8,8 @@ Provides helper functions and behaviours to:
     - queue spoken feedback for selection and error cases
 
 Maintainers:
-    Peter Viechter <peter.viechter@uni-augsburg.de>
-    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+    Peter Viechter <peter.viechter@uni-a.de>
+    Daniel Gabler <daniel.gabler@uni-a.de>
 """
 
 import math
@@ -50,6 +50,7 @@ class DatabaseBehaviour(py_trees.behaviour.Behaviour):
     entity details from the knowledge database and makes the ROS2 node
     available to derived behaviours.
     """
+
     def setup(self, **kwargs):
         """Set up the database service clients for the behaviour.
 
@@ -86,6 +87,7 @@ class ChoosePickable(DatabaseBehaviour):
     chooses one candidate, announces the result via speech, and writes the
     selected entity ID to the blackboard.
     """
+
     def __init__(self, name: str, id_output_key: str):
         """Initialise the pickable selection behaviour.
 
@@ -173,6 +175,7 @@ class ChoosePlacingPos(DatabaseBehaviour):
     chooses a free pose, announces the result via speech, and writes both the
     placement pose and an approach pose to the blackboard.
     """
+
     def __init__(
         self,
         name: str,

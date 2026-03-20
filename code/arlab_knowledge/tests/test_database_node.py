@@ -4,8 +4,8 @@ These tests are not compatible with `pytest`/`colcon test` and need to be manual
 executed via `python3 test_database_node.py`.
 
 Maintainers:
-    Peter Viechter <peter.viechter@uni-augsburg.de>
-    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+    Peter Viechter <peter.viechter@uni-a.de>
+    Daniel Gabler <daniel.gabler@uni-a.de>
 """
 
 import arlab_knowledge.db.entities as entities

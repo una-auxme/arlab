@@ -8,8 +8,8 @@ Provides a predefined behaviour tree sequence to:
     - optionally clear the vision database before the first snapshot
 
 Maintainers:
-    Peter Viechter <peter.viechter@uni-augsburg.de>
-    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+    Peter Viechter <peter.viechter@uni-a.de>
+    Daniel Gabler <daniel.gabler@uni-a.de>
 """
 
 from py_trees.behaviour import Behaviour

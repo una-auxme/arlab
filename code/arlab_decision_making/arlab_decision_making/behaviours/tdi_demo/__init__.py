@@ -10,8 +10,8 @@ Provides a composed py_trees behaviour tree to:
     - loop the overall demo procedure continuously
 
 Maintainers:
-    Peter Viechter <peter.viechter@uni-augsburg.de>
-    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+    Peter Viechter <peter.viechter@uni-a.de>
+    Daniel Gabler <daniel.gabler@uni-a.de>
 """
 
 from geometry_msgs.msg import Point, Pose, Quaternion

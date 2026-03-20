@@ -5,7 +5,7 @@
   <version>0.0.0</version>
   <description>TODO: Package description</description>
    <maintainer email="aleksander.michalak@web.de">Aleksander Michalak</maintainer>
-  <maintainer email="daniel.gabler@uni-augsburg.de">Daniel Gabler</maintainer>
+  <maintainer email="daniel.gabler@uni-a.de">Daniel Gabler</maintainer>
   <license>MIT</license>
 
   <test_depend>python3-pytest</test_depend>

@@ -7,8 +7,8 @@ Provides helper functions and behaviours to:
     - publish queued speech text to the ROS2 topic '/tts_output'
 
 Maintainers:
-    Peter Viechter <peter.viechter@uni-augsburg.de>
-    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+    Peter Viechter <peter.viechter@uni-a.de>
+    Daniel Gabler <daniel.gabler@uni-a.de>
 """
 
 from collections import deque
@@ -47,6 +47,7 @@ class QueueSpeech(Behaviour):
     This behaviour is intended for use in behaviour trees where speech output
     should be requested asynchronously through a shared queue.
     """
+
     def __init__(self, text: str):
         """Initialise the behaviour with the text to be queued.
 
@@ -77,6 +78,7 @@ class SpeechOutput(Behaviour):
     publishes them sequentially to the `/tts_output` topic as `std_msgs/String`
     messages.
     """
+
     def __init__(self):
         """Initialise the speech output behaviour and blackboard access."""
         super().__init__(name=type(self).__name__)

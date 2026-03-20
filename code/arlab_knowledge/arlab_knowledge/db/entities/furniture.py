@@ -5,7 +5,7 @@ A Furniture is an Entity that can contain Pickables
 More documentation in the corresponding ros definitions: EntityFurniture.msg
 
 Maintainers:
-    Peter Viechter <peter.viechter@uni-augsburg.de>
+    Peter Viechter <peter.viechter@uni-a.de>
 """
 
 from typing import Dict, List

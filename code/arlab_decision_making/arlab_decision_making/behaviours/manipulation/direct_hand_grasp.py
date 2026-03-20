@@ -7,8 +7,8 @@ Provides a behaviour tree subtree to:
     - validate the returned grasp result
 
 Maintainers:
-    Peter Viechter <peter.viechter@uni-augsburg.de>
-    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+    Peter Viechter <peter.viechter@uni-a.de>
+    Daniel Gabler <daniel.gabler@uni-a.de>
 """
 
 from mia_hand_msgs.action import Grasp
@@ -65,6 +65,7 @@ class SetupHandGrasp(Behaviour):
     and stores it under the blackboard key
     `/manipulation/hand/grasp_goal`.
     """
+
     def __init__(self, target_closure_percent: int):
         """Initialise the hand grasp goal setup behaviour.
 
@@ -97,6 +98,7 @@ class CheckHandGrasp(Behaviour):
     This behaviour reads the grasp result from the blackboard and returns
     success only if the action completed without an error message.
     """
+
     def __init__(self):
         """Initialise the hand grasp result checking behaviour."""
         super().__init__(name=type(self).__name__)

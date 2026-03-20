@@ -4,8 +4,8 @@ Provides a simple wrapper to:
     - expose the manipulator home behaviour as a subtree entry point
 
 Maintainers:
-    Peter Viechter <peter.viechter@uni-augsburg.de>
-    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+    Peter Viechter <peter.viechter@uni-a.de>
+    Daniel Gabler <daniel.gabler@uni-a.de>
 """
 
 from py_trees.behaviour import Behaviour

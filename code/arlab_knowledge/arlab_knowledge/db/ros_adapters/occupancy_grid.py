@@ -1,7 +1,7 @@
 """Db adapter the OccupancyGrid ros message
 
 Maintainers:
-    Peter Viechter <peter.viechter@uni-augsburg.de>
+    Peter Viechter <peter.viechter@uni-a.de>
 """
 
 import array

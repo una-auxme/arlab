@@ -6,8 +6,8 @@ Provides a behaviour tree subtree to:
     - validate the returned manipulation result
 
 Maintainers:
-    Peter Viechter <peter.viechter@uni-augsburg.de>
-    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+    Peter Viechter <peter.viechter@uni-a.de>
+    Daniel Gabler <daniel.gabler@uni-a.de>
 """
 
 from arlab_common_interfaces.action import ManipulationAction
@@ -47,6 +47,7 @@ class SetHandClose(Behaviour):
     This behaviour prepares the goal message for the close manipulation action
     and stores it under the blackboard key `/manipulation/close_goal`.
     """
+
     def __init__(self):
         """Initialise the close manipulation goal setup behaviour."""
         super().__init__(name=type(self).__name__)
@@ -72,6 +73,7 @@ class CheckHandClose(Behaviour):
     This behaviour reads the close manipulation result from the blackboard and
     returns success only if the action completed without an error message.
     """
+
     def __init__(self):
         """Initialise the close manipulation result checking behaviour."""
         super().__init__(name=type(self).__name__)

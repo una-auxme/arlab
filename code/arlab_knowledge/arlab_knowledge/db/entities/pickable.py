@@ -5,7 +5,7 @@ A Pickable is an object that can by manipulated by the manipulator
 More documentation in the corresponding ros definitions: EntityPickable.msg
 
 Maintainers:
-    Peter Viechter <peter.viechter@uni-augsburg.de>
+    Peter Viechter <peter.viechter@uni-a.de>
 """
 
 from typing import Dict, Optional

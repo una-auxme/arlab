@@ -9,8 +9,8 @@ Launch configuration:
     Sets the fixed translation and rotation parameters for the transform
 
 Maintainers:
-    Peter Viechter <peter.viechter@uni-augsburg.de>
-    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+    Peter Viechter <peter.viechter@uni-a.de>
+    Daniel Gabler <daniel.gabler@uni-a.de>
 """
 
 from launch import LaunchDescription

@@ -6,8 +6,8 @@ Node functionality:
     from ROS2 parameters
 
 Maintainers:
-    Peter Viechter <peter.viechter@uni-augsburg.de>
-    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+    Peter Viechter <peter.viechter@uni-a.de>
+    Daniel Gabler <daniel.gabler@uni-a.de>
 """
 
 import rclpy
@@ -23,6 +23,7 @@ class PeriodicTransformPublisher(Node):
     creates a TransformStamped message, and republishes it periodically
     using a static transform broadcaster.
     """
+
     def __init__(self):
         """Initialize the transform publisher node.
 

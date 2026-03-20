@@ -6,8 +6,8 @@ Provides a behaviour to:
     - support spoken filler output during longer robot actions
 
 Maintainers:
-    Peter Viechter <peter.viechter@uni-augsburg.de>
-    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+    Peter Viechter <peter.viechter@uni-a.de>
+    Daniel Gabler <daniel.gabler@uni-a.de>
 """
 
 import random
@@ -24,6 +24,7 @@ class TriviaSpammer(py_trees.behaviour.Behaviour):
     and, with a configurable probability, appends one of them to the speech
     queue on the blackboard.
     """
+
     def __init__(self, name="TriviaSpammer"):
         """Initialise the trivia speech behaviour.
 

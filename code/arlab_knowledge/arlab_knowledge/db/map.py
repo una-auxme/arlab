@@ -3,7 +3,7 @@
 More documentation in the corresponding ros definitions: GetMap.srv
 
 Maintainers:
-    Peter Viechter <peter.viechter@uni-augsburg.de>
+    Peter Viechter <peter.viechter@uni-a.de>
 """
 
 from sqlalchemy import Float, Integer, LargeBinary, String

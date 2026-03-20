@@ -6,8 +6,8 @@ Launch configuration:
     Starts the required nodes for robot motion planning and manipulation
 
 Maintainers:
-    Peter Viechter <peter.viechter@uni-augsburg.de>
-    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+    Peter Viechter <peter.viechter@uni-a.de>
+    Daniel Gabler <daniel.gabler@uni-a.de>
 """
 
 from launch import LaunchDescription

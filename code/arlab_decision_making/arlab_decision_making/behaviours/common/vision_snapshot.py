@@ -7,8 +7,8 @@ Provides a behaviour tree subtree to:
     - validate the returned snapshot result
 
 Maintainers:
-    Peter Viechter <peter.viechter@uni-augsburg.de>
-    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+    Peter Viechter <peter.viechter@uni-a.de>
+    Daniel Gabler <daniel.gabler@uni-a.de>
 """
 
 from arlab_common_interfaces.action import VisionSnapshotAction
@@ -58,6 +58,7 @@ class SetupVisionSnapshot(Behaviour):
     This behaviour prepares the goal message for the vision snapshot action
     and stores it under the blackboard key `/vision/snapshot_goal`.
     """
+
     def __init__(self, clear: bool, mask_hand: bool = False):
         """Initialise the snapshot goal setup behaviour.
 
@@ -93,6 +94,7 @@ class CheckVisionSnapshot(Behaviour):
     This behaviour reads the action result from the blackboard and returns
     success only if the snapshot action completed successfully.
     """
+
     def __init__(self):
         """Initialise the snapshot result checking behaviour."""
         super().__init__(name=type(self).__name__)

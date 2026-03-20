@@ -7,8 +7,8 @@ This class is typically used inside behavior trees or higher-level task
 coordination nodes to trigger motion primitives in a uniform way.
 
 Maintainers:
-    Peter Viechter <peter.viechter@uni-augsburg.de>
-    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+    Peter Viechter <peter.viechter@uni-a.de>
+    Daniel Gabler <daniel.gabler@uni-a.de>
 """
 
 from arlab_common_interfaces.action import ManipulationAction

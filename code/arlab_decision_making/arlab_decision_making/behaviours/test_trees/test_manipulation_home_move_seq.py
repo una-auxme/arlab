@@ -7,8 +7,8 @@ Provides a simple behaviour tree sequence to:
     - execute a move behaviour
 
 Maintainers:
-    Peter Viechter <peter.viechter@uni-augsburg.de>
-    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+    Peter Viechter <peter.viechter@uni-a.de>
+    Daniel Gabler <daniel.gabler@uni-a.de>
 """
 
 from py_trees.behaviour import Behaviour

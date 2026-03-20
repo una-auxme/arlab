@@ -4,8 +4,8 @@ and task execution for the robot. It supports the safety check and different
 tasks that can be selected via parameters.
 
 Maintainers:
-    Peter Viechter <peter.viechter@uni-augsburg.de>
-    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+    Peter Viechter <peter.viechter@uni-a.de>
+    Daniel Gabler <daniel.gabler@uni-a.de>
 """
 
 import py_trees_ros

@@ -7,8 +7,8 @@ Provides behaviour tree subtrees to:
     - validate the returned manipulation result
 
 Maintainers:
-    Peter Viechter <peter.viechter@uni-augsburg.de>
-    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+    Peter Viechter <peter.viechter@uni-a.de>
+    Daniel Gabler <daniel.gabler@uni-a.de>
 """
 
 import py_trees
@@ -85,6 +85,7 @@ class SetupManipulationMove(Behaviour):
     action from fixed pose values and stores it under the blackboard key
     `/manipulation/move_goal`.
     """
+
     def __init__(self, x: float, y: float, z: float, ox: float, oy: float, oz: float, ow):
         """Initialise the fixed move goal setup behaviour.
 
@@ -133,6 +134,7 @@ class SetupManipulationMoveBlackboard(Behaviour):
     stores the corresponding move action goal under
     `/manipulation/move_goal`.
     """
+
     def __init__(self, pose_input_key: str):
         """Initialise the blackboard-based move goal setup behaviour.
 
@@ -170,6 +172,7 @@ class CheckManipulationMove(Behaviour):
     This behaviour reads the manipulation result from the blackboard and
     returns success only if the action completed successfully.
     """
+
     def __init__(self):
         """Initialise the move manipulation result checking behaviour."""
         super().__init__(name=type(self).__name__)

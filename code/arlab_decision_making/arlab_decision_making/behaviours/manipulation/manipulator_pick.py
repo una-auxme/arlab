@@ -7,8 +7,8 @@ Provides a behaviour tree subtree to:
     - validate the returned manipulation result
 
 Maintainers:
-    Peter Viechter <peter.viechter@uni-augsburg.de>
-    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+    Peter Viechter <peter.viechter@uni-a.de>
+    Daniel Gabler <daniel.gabler@uni-a.de>
 """
 
 from typing import Optional
@@ -64,6 +64,7 @@ class SetHandPick(Behaviour):
     The target entity ID is taken either from a configured blackboard key
     or from a fixed ID passed during initialisation.
     """
+
     def __init__(self, id_input_key: Optional[str] = None, fixed_id: Optional[int] = None):
         """Initialise the pick manipulation goal setup behaviour.
 
@@ -113,6 +114,7 @@ class CheckHandPick(Behaviour):
     This behaviour reads the manipulation result from the blackboard and
     returns success only if the action completed successfully.
     """
+
     def __init__(self):
         """Initialise the pick manipulation result checking behaviour."""
         super().__init__(name=type(self).__name__)

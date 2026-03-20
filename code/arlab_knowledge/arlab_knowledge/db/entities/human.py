@@ -3,7 +3,7 @@
 More documentation in the corresponding ros definitions: EntityHuman.msg
 
 Maintainers:
-    Peter Viechter <peter.viechter@uni-augsburg.de>
+    Peter Viechter <peter.viechter@uni-a.de>
 """
 
 from typing import Dict

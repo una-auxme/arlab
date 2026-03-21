@@ -1,23 +1,36 @@
+"""Parameter update utilities for ROS2 nodes.
+
+This module provides helper functions for updating node attributes from
+ROS2 parameters, with type checking and error handling.
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-a.de>
+"""
+
 from typing import List
 
-from rclpy.node import Node
-from rclpy.parameter import Parameter
 from rcl_interfaces.msg import (
     SetParametersResult,
 )
+from rclpy.node import Node
+from rclpy.parameter import Parameter
 
 
 def update_attributes(obj: Node, params: List[Parameter]) -> SetParametersResult:
-    """Update attributes of obj with params
+    """Update node attributes from ROS2 parameters.
 
-    Important: Attribute names must match parameter names
+    Updates the attributes of a node object with values from the provided
+    ROS2 parameters. Attribute names must match parameter names.
 
     Args:
-        obj (Node): Node which attributes are updated
-        params (List[Parameter]): parameters with new values
+        obj (Node): The node whose attributes should be updated.
+        params (List[Parameter]): List of parameters with new values.
 
     Returns:
-        SetParametersResult:
+        SetParametersResult: Result object indicating success or failure.
+            The successful attribute is set to True if all parameters were
+            updated successfully, False otherwise. The reason attribute
+            contains error messages for failed updates.
     """
     result = SetParametersResult()
     result.successful = True

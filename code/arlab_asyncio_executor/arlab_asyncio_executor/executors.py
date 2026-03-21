@@ -24,7 +24,7 @@ Classes:
     with asyncio to improve throughput
 
 Maintainers:
-    Peter Viechter <peter.viechter@uni-augsburg.de>
+    Peter Viechter <peter.viechter@uni-a.de>
 """
 
 import asyncio

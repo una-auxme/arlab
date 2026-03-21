@@ -1,3 +1,19 @@
+"""TDI demo behaviour tree for coordinated pick-and-place execution.
+
+Provides a composed py_trees behaviour tree to:
+    - initialise the manipulator and speech output
+    - move to predefined picture-taking poses
+    - detect and choose pickable objects
+    - execute pick and place actions
+    - select free placement positions in the cupboard
+    - handle pick and place errors with recovery behaviour
+    - loop the overall demo procedure continuously
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-a.de>
+    Daniel Gabler <daniel.gabler@uni-a.de>
+"""
+
 from geometry_msgs.msg import Point, Pose, Quaternion
 from py_trees.behaviour import Behaviour
 from py_trees.behaviours import SetBlackboardVariable
@@ -13,6 +29,11 @@ from .trivia_spammer import TriviaSpammer
 
 
 def _workspace_picture_pose():
+    """Create the move subtree for the workspace picture-taking pose.
+
+    Returns:
+        Behaviour: Move behaviour configured for the workspace snapshot pose.
+    """
     return move.get_tree(
         x=0.512326,
         y=-0.054071,
@@ -25,6 +46,15 @@ def _workspace_picture_pose():
 
 
 def _pick_sequence():
+    """Create the pick sequence subtree for the demo workflow.
+
+    This subtree moves the manipulator to the picture-taking pose, captures
+    a vision snapshot, selects a pickable object, executes the pick action,
+    and handles pick errors with a retry sequence.
+
+    Returns:
+        Behaviour: Root behaviour of the configured pick sequence.
+    """
     return Sequence(
         name="Vision + Pick",
         memory=True,
@@ -65,6 +95,16 @@ def _pick_sequence():
 
 
 def _place_sequence():
+    """Create the place sequence subtree for the demo workflow.
+
+    This subtree resets the placement blacklist, moves to cupboard
+    observation poses, captures vision snapshots, selects a free placement
+    position, executes the placing motion, opens the hand, and handles place
+    errors with a retry sequence.
+
+    Returns:
+        Behaviour: Root behaviour of the configured place sequence.
+    """
     place_approach_pose_key = "/main_controller/place_approach_pose"
     place_pose_key = "/main_controller/place_pose"
     blacklisted_positions_key = "/main_controller/blacklisted_positions"
@@ -185,6 +225,15 @@ def _place_sequence():
 
 
 def get_tree() -> Behaviour:
+    """Create the main TDI demo behaviour tree.
+
+    This tree initialises the system, homes the manipulator, repeatedly
+    executes pick-and-place cycles, and uses error handlers to recover from
+    failures during the demo workflow.
+
+    Returns:
+        Behaviour: Root behaviour of the configured TDI demo tree.
+    """
     return Sequence(
         "TDI DEMO",
         memory=True,

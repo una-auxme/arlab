@@ -1,3 +1,15 @@
+"""Periodic transform publisher node
+
+Node functionality:
+    Periodically broadcasts a static transform between two TF frames
+    Reads parent frame, child frame, translation, rotation, and period
+    from ROS2 parameters
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-a.de>
+    Daniel Gabler <daniel.gabler@uni-a.de>
+"""
+
 import rclpy
 from geometry_msgs.msg import TransformStamped
 from rclpy.node import Node
@@ -5,7 +17,31 @@ from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
 
 
 class PeriodicTransformPublisher(Node):
+    """ROS2 node for periodically broadcasting a transform.
+
+    This node reads transform parameters from the ROS2 parameter server,
+    creates a TransformStamped message, and republishes it periodically
+    using a static transform broadcaster.
+    """
+
     def __init__(self):
+        """Initialize the transform publisher node.
+
+        Declares and reads all transform-related ROS2 parameters, creates the
+        transform message, initializes the static transform broadcaster, and
+        starts a timer for periodic broadcasting.
+        Parameters:
+            frame_id (str): The parent frame ID for the transform.
+            child_frame_id (str): The child frame ID for the transform.
+            x (float): Translation in x direction.
+            y (float): Translation in y direction.
+            z (float): Translation in z direction.
+            qx (float): Rotation quaternion x component.
+            qy (float): Rotation quaternion y component.
+            qz (float): Rotation quaternion z component.
+            qw (float): Rotation quaternion w component.
+            period (float): Time interval in seconds between broadcasts.
+        """
         super().__init__(type(self).__name__)
 
         self.frame_id = self.declare_parameter("frame_id", "").get_parameter_value().string_value
@@ -39,13 +75,14 @@ class PeriodicTransformPublisher(Node):
         self.create_timer(self.period, callback=self._broadcast_transform)
 
     def _broadcast_transform(self):
+        """Broadcast the configured transform with the current timestamp."""
         self.transform.header.stamp = self.get_clock().now().to_msg()
         self.broadcaster.sendTransform(self.transform)
 
 
 def main(args=None):
+    """Initialize ROS, start the transform publisher node, and spin it."""
     # from arlab_common.debugging import start_debugger
-
     # start_debugger(wait_for_client=True)
 
     rclpy.init(args=args)

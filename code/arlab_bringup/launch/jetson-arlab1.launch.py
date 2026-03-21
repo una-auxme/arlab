@@ -1,3 +1,15 @@
+"""Robot control and gripper camera calibration launch file
+
+Launch configuration:
+    Includes the robot control launch file from `manipulator_description`
+    Includes the gripper camera calibration launch file from `arlab_calibration`
+    Starts the robot control and calibration-related nodes
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-a.de>
+    Daniel Gabler <daniel.gabler@uni-a.de>
+"""
+
 from launch import LaunchDescription
 from launch.actions import (
     IncludeLaunchDescription,
@@ -8,10 +20,11 @@ from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
-    """Generate a ROS2 launch description for orchestrator nodes.
+    """Generate the launch description for robot control and calibration running on Jetson 1.
 
     Returns:
-        LaunchDescription: LaunchDescription object containing all nodes.
+        LaunchDescription: Launch description that includes the robot control launch
+        configuration and the gripper camera calibration.
     """
 
     robot_control_launch = PathJoinSubstitution(

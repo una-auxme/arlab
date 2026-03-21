@@ -10,7 +10,7 @@ TODO:
 
 Maintainers:
     Aleksander Michalak <aleksander.michalak@web.de>
-    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+    Daniel Gabler <daniel.gabler@uni-a.de>
 """
 
 import rclpy

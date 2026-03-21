@@ -1,5 +1,14 @@
-MovementCommand command
+# Goal
+string cmd        # "localization"|"mapping"|"nav"|"map_save"|"stop_all"
+bool enable       # used for start/stop commands; ignored for "map_save"/"stop_all"
+
 ---
+# Result
+int32 error_code
+string message
+bool success
+
 MovementResponse response
 ---
-# No feedback, action will be cancelled with ActionResponse if an error occurs
+# Feedback
+string status

@@ -1,3 +1,16 @@
+"""Pick demo behaviour tree for py_trees.
+
+Provides a predefined behaviour tree sequence to:
+    - wait before starting execution
+    - prepare and home the manipulator
+    - move to a predefined observation or pre-pick pose
+    - execute a pick action for a fixed target entity
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-a.de>
+    Daniel Gabler <daniel.gabler@uni-a.de>
+"""
+
 from py_trees.behaviour import Behaviour
 from py_trees.composites import Sequence
 from py_trees.timers import Timer
@@ -6,6 +19,14 @@ from ..manipulation import hand_close, home, manipulator_pick, move
 
 
 def get_tree() -> Behaviour:
+    """Create the predefined pick demo behaviour tree.
+
+    This tree waits briefly, closes the hand, homes the manipulator, moves
+    to a predefined pose, and executes a pick action for a fixed entity ID.
+
+    Returns:
+        Behaviour: Root behaviour of the configured pick demo sequence.
+    """
     return Sequence(
         "GrabSequence",
         memory=True,

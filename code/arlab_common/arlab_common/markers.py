@@ -1,9 +1,12 @@
-"""Contains functions to easily create debug markers that can be visualized in RViz
+"""Contains functions to easily create debug markers that can be visualized in RViz.
 
 Overview of the main components:
 - debug_marker(): Creates a ROS Marker based on different objects
 - debug_marker_array(): Creates a ROS MarkerArray
   based on list of ROS Markers
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-a.de>
 """
 
 from collections.abc import Sequence

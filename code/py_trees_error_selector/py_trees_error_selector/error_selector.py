@@ -12,8 +12,8 @@ The ErrorSelector is a subclass of Selector with the following modifications:
 - If all children return FAILURE, it returns FAILURE as usual
 
 Maintainers:
-    Peter Viechter <peter.viechter@uni-augsburg.de>
-    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+    Peter Viechter <peter.viechter@uni-a.de>
+    Daniel Gabler <daniel.gabler@uni-a.de>
 """
 
 import itertools

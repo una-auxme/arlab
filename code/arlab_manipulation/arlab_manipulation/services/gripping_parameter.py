@@ -25,8 +25,8 @@ class GrippingParameterNode(Node):
     easy updates.
 
     Topic Interface:
-        * **Input**: objectname, objectgroup
-        * **Output**: gripforce, grippos_mode, griporient_mode, object_weight
+        * **Input**: objectname, objectgroup.
+        * **Output**: gripforce, grippos_mode, griporient_mode, object_weight.
 
     Notes:
         - Unknown objects fall back to default parameters to ensure safe gripping.
@@ -34,8 +34,8 @@ class GrippingParameterNode(Node):
           allows similar-shaped objects to share parameters.
 
     Attributes:
-        group_parameter_table: Mapping from object group → [grip force, pos mode, orient mode]
-        object_weight_table: Mapping from object name → weight [kg]
+        group_parameter_table: Mapping from object group → [grip force, pos mode, orient mode].
+        object_weight_table: Mapping from object name → weight [kg].
     """
 
     def __init__(self):

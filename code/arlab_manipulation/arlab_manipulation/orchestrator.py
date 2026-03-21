@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """
-orchestrator.py
----------------
+Orchestrator Node for Robotic Manipulation (ROS2).
 
-ROS2 Node 'orchestrator' that subscribes to manipulation commands via Action,
-queries the gripping force service, computes gripping poses, and publishes orchestrator
-data.
+This node subscribes to manipulation commands via Action, queries gripping
+parameters, computes gripping poses, and publishes orchestrator data for
+execution by MoveIt or other downstream nodes.
 
-Author: Sofia Öttl
-Date: 2025-10-22
+Maintainer:
+    Sofia Öttl <sofia.oettl@uni-a.de>
 """
 
 from threading import Event
@@ -38,12 +37,38 @@ from .utils.transform_utils import (
 
 
 class orchestrator(Node):
-    """ROS2 Node for orchestrating robotic manipulation."""
+    """ROS2 Node for orchestrating robotic manipulation actions.
+
+    Responsibilities:
+        - Accept manipulation commands via ManipulationAction.
+        - Query object properties (GetEntity, GetShape) from the knowledge base.
+        - Request gripping parameters via GrippingParameter service.
+        - Compute pick/place poses considering octomap occupancy.
+        - Send orchestrator goals to downstream MoveIt Action server.
+
+    Attributes:
+        action_done_event: Threading event to synchronize asynchronous callbacks.
+        tf_buffer / tf_listener: TF2 utilities for frame transforms.
+        object_name, object_group: Semantic object info.
+        pickable: Flag if object is manipulable.
+        pose / gripping / placing points: Computed target poses.
+        octomap: Latest PlanningScene octomap data.
+        force / grip modes: Parameters from GrippingParameter service.
+        err / msg: Status code and message for manipulation responses.
+    """
 
     def __init__(self):
+        """Initialize ROS2 node, Action servers/clients, service clients, and subscriptions.
+
+        Side Effects:
+            - Registers multiple asynchronous callbacks.
+            - Initializes TF2 buffer and listener.
+            - Subscribes to /monitored_planning_scene to receive octomap updates.
+        """
         super().__init__("orchestrator")
         self.service_group = MutuallyExclusiveCallbackGroup()
 
+        # Action Clients / Servers
         self._orchestrator_client = ActionClient(
             self,
             OrchestratorAction,
@@ -59,20 +84,24 @@ class orchestrator(Node):
             goal_callback=self.goal_callback,
         )
 
+        # Synchronization event for async callbacks
         self.action_done_event = Event()
 
         prefix = "/arlab/knowledge"
 
+        # Knowledge base service clients
         self.client_get_entity = self.create_client(GetEntity, f"{prefix}/get_entity", callback_group=self.service_group)
         self.client_get_shape = self.create_client(GetShape, f"{prefix}/get_shape", callback_group=self.service_group)
         self.client_gripping_parameter = self.create_client(GrippingParameter, "GetGrippingParameter", callback_group=self.service_group)
 
+        # Subscribe to octomap updates
         self.subscription = self.create_subscription(PlanningScene, "/monitored_planning_scene", self.octomap_callback, 10)
 
-        # Inits
+        # TF2 initialization
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
 
+        # Default state initialization
         self.entity_id = None
         self.command_type = "home"
         self.object_name = "default"
@@ -89,8 +118,15 @@ class orchestrator(Node):
         self.err = ManipulationResponse.UNDEFINED
         self.msg = ""
 
-    # Get Octomap from MoveIt Node
+
     def octomap_callback(self, msg: PlanningScene):
+        """Callback to receive the octomap from the MoveIt planning scene.
+
+        Updates self.octomap for later placement computations.
+
+        Args:
+            msg: PlanningScene message containing octomap.
+        """
         octomap_with_pose = msg.world.octomap
         octomap_msg = octomap_with_pose.octomap
         self.octomap = octomap_msg.data
@@ -102,16 +138,39 @@ class orchestrator(Node):
             return
         self.get_logger().info("Octomap received")
 
-    # Accept Goal from ManipulationAction
+
     def goal_callback(self, goal_request):
+        """Accept incoming ManipulationAction goals.
+
+        Logs command and entity information for debugging.
+
+        Args:
+            goal_request: Action goal request containing manipulation command.
+
+        Returns:
+            GoalResponse.ACCEPT to accept all incoming goals.
+        """
         self.get_logger().info(
             f"Data from Decision Making: cmd={goal_request.command.command_type}, entity_id={goal_request.command.target_entityid}"
         )
         return GoalResponse.ACCEPT
 
-    # Get data from ManipulationAction
+
     def execute_callback(self, goal_handle):
-        """Execute the manipulation command action."""
+        """Execute the manipulation command asynchronously.
+
+        Sequence:
+            1. Query GetEntity service for object info.
+            2. Transform pose to reference frame.
+            3. Query GetShape service for object geometry.
+            4. Request GrippingParameter if pickable.
+            5. Compute pick/place pose.
+            6. Send orchestrator goal to MoveIt.
+
+        Side Effects:
+            Sets self.err / self.msg for ManipulationResponse.
+            Uses threading event to wait for async service responses.
+        """
 
         self.action_result = ManipulationAction.Result()
         self.action_result.response = ManipulationResponse()
@@ -143,8 +202,21 @@ class orchestrator(Node):
 
         return self.action_result
 
-    # GetEntity Response
+
     def handle_get_entity_response(self, future):
+        """Handle asynchronous response from GetEntity service.
+
+        Extracts object information (pickable, name, category, pose) and
+        transforms the pose to the reference frame using TF2.
+
+        Side Effects:
+            - Updates self.pickable, self.object_name, self.object_group, self.pose
+            - Requests GetShape service if pickable
+            - Updates self.err / self.msg if service fails or transform fails
+
+        Args:
+            future: Future object from async GetEntity service call.
+        """
         try:
             response = future.result()
             entity = response.data
@@ -181,15 +253,28 @@ class orchestrator(Node):
             self.msg = "GetEntity from Knowledgebase failed"
             self.finish_action()
 
-    # GetShape Response
+
     def handle_get_shape_response(self, future):
+        """Handle asynchronous response from GetShape service.
+
+        Extracts point cloud or bounding box geometry and initiates
+        GrippingParameter request if object is pickable.
+
+        Side Effects:
+            - Updates self.point_cloud, self.bounding_box
+            - Requests GrippingParameter service if pickable
+            - Updates self.err / self.msg if service fails
+
+        Args:
+            future: Future object from async GetShape service call.
+        """
         try:
             response = future.result()
             shape = response.shape
             self.point_cloud = shape.pointcloud if shape.has_pointcloud else None
             self.bounding_box = shape.boundingbox2d if shape.has_boundingbox2d else None
 
-            # TODO: FIX
+            # Experimental (TODO): TF transform of point cloud and bounding box not testet in utils
             # self.point_cloud, err, msg = transform_pointCloud(
             #     self.tf_buffer, self.point_cloud, self.stamp, self.ref_frame
             # )

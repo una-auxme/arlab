@@ -3,7 +3,7 @@
 This module defines a ROS 2 node that subscribes to ``/scan`` and republishes
 incoming ``sensor_msgs.msg.LaserScan`` messages unchanged to ``/relay_scan``.
 
-Maintainers:
+Maintainer:
     Meruna Yugarajah <m.yugarajah@gmail.com>
 """
 

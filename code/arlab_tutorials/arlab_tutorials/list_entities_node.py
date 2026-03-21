@@ -11,8 +11,6 @@ Maintainers:
 from threading import Thread
 
 import rclpy
-from arlab_knowledge_interfaces.msg import EntityType, Result
-from arlab_knowledge_interfaces.srv import GetEntities
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.node import Node
 
@@ -40,11 +38,7 @@ class ListEntitiesNode(Node):
         self.service_client_group = MutuallyExclusiveCallbackGroup()
         self.prefix = "/arlab/knowledge"
 
-        self.client_get_entities = self.create_client(
-            GetEntities,
-            f"{self.prefix}/get_entities",
-            callback_group=self.service_client_group,
-        )
+        ### TODO: Create the service client here ###
 
         # Wait for service to be available
         for client in self.clients:
@@ -60,22 +54,7 @@ class ListEntitiesNode(Node):
         """
         self.get_logger().info("Fetching all entity IDs from the database...")
 
-        # Create request
-        request = GetEntities.Request()
-        request.entity_type = EntityType(id=EntityType.ENTITY)  # All kinds of entity
-
-        # Call service
-        response: GetEntities.Response = self.client_get_entities.call(request)
-
-        # Check result
-        if response.result.result_type == Result.SUCCESS:
-            if response.entities:
-                self.get_logger().info(f"{len(response.entities)} entities found")
-                self.get_logger().info(f"Entity ids: {response.entities}")
-            else:
-                self.get_logger().info("No entities found")
-        else:
-            self.get_logger().error(f"Error fetching entities: {response.result.error}")
+        ### TODO: Get all entity ids and log them ###
 
     def run(self) -> None:
         """Run the node and execute the main task."""

@@ -54,13 +54,13 @@ class LidarPubSub(Node):
             msg_type=LaserScan,
             topic="/scan",
             callback=self.lidar_callback,
-            qos_profile=10,  # depth; leave other QoS settings at defaults
+            qos_profile=10,  # queue depth; leave other QoS settings at defaults
         )
 
         self.lidar_pub = self.create_publisher(
             msg_type=LaserScan,
             topic="/relay_scan",
-            qos_profile=10,  # depth; leave other QoS settings at defaults
+            qos_profile=10,  # queue depth; leave other QoS settings at defaults
         )
 
     def lidar_callback(self, msg: LaserScan) -> None:

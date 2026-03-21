@@ -1,4 +1,5 @@
 #include "arlab_manipulation_cpp/arm_motion.hpp"
+
 #include "arlab_manipulation_cpp/orchestrator_listener.hpp"
 #include "arlab_manipulation_cpp/manipulator_exception.hpp"
 
@@ -16,7 +17,8 @@
 
 #include <moveit/move_group_interface/move_group_interface.hpp>
 #include <moveit/robot_trajectory/robot_trajectory.hpp>
-#include <moveit/trajectory_processing/trajectory_tools.hpp> // applyTOTGTimeParameterization
+#include <moveit/trajectory_processing/trajectory_tools.hpp>
+
 
 #include <rclcpp_action/rclcpp_action.hpp>
 
@@ -24,89 +26,96 @@
 #include <shape_msgs/msg/solid_primitive.hpp>
 #include <geometry_msgs/msg/pose.hpp>
 
-ArmMotion::ArmMotion(const rclcpp::Node::SharedPtr &node, const std::string &group)
-    : node_(node), mgi_(node_, group)
-{
-  if (!node_)
-  {
-    throw ManipulationException(arlab_common_interfaces::msg::ManipulationResponse::ORCHESTRATOR_LISTENER_NODE_NULL);
-  }
+namespace {
 
-  mgi_.setNumPlanningAttempts(100);
-  mgi_.setPlanningTime(10.0);
-  mgi_.setGoalPositionTolerance(1e-2);
-  mgi_.setGoalOrientationTolerance(1e-2);
-  mgi_.setPoseReferenceFrame("world");
-  mgi_.setPlannerId("RRTConnectkConfigDefault");
+  constexpr char kMoveActionName[] = "move_action";
+  constexpr char kDefaultReferenceFrame[] = "world";
+  constexpr char kDefaultEndEffectorLink[] = "tool0";
+  constexpr int kPlanningAttempts = 20;
+  constexpr double kPlanningTimeSeconds = 5.0;
+  constexpr double kGoalPositionTolerance = 1e-2;
+  constexpr double kGoalOrientationTolerance = 5e-2;
+  constexpr int kActionServerWaitSeconds = 3;
 
-  move_group_client_ = rclcpp_action::create_client<moveit_msgs::action::MoveGroup>(node_, "move_action");
-
-  joints_home_ = {
+  const std::map<std::string, double> kHomeJoints = {
       {"shoulder_pan_joint", -1.6},
       {"shoulder_lift_joint", -1.1449},
       {"elbow_joint", -2.4225},
       {"wrist_1_joint", -3.4335},
       {"wrist_2_joint", -1.6580},
-      {"wrist_3_joint", -0.0698}};
+      {"wrist_3_joint", -0.0698},
+  };
+}  // namespace
+
+ArmMotion::ArmMotion(const rclcpp::Node::SharedPtr& node,
+                    const std::string& group)
+    : node_(node), mgi_(node_, group) {
+  if (!node_) {
+    throw ManipulationException(
+      arlab_common_interfaces::msg::ManipulationResponse::
+      ORCHESTRATOR_LISTENER_NODE_NULL);
+  }
+
+  mgi_.setNumPlanningAttempts(kPlanningAttempts);
+  mgi_.setPlanningTime(kPlanningTimeSeconds);
+  mgi_.setGoalPositionTolerance(kGoalPositionTolerance);
+  mgi_.setGoalOrientationTolerance(kGoalOrientationTolerance);
+  mgi_.setPoseReferenceFrame(kDefaultReferenceFrame);
+
+  move_group_client_ =
+      rclcpp_action::create_client<moveit_msgs::action::MoveGroup>(
+        node_, kMoveActionName);
+
+  joints_home_ = kHomeJoints;
 }
 
-geometry_msgs::msg::Pose ArmMotion::makeApproachPose(
-    const geometry_msgs::msg::Pose &target,
-    double dz_tool,  // Verschiebung entlang Tool-Z (in Tool-Richtung)
-    double dz_world) // Verschiebung entlang World/Base-Z
-{
+geometry_msgs::msg::Pose ArmMotion::MakeApproachPose(
+    const geometry_msgs::msg::Pose& target,
+    double dz_tool,
+    double dz_world) {
   geometry_msgs::msg::Pose approach = target;
 
-  // Tool-Z Achse (0,0,1) in Zielorientierung in das Referenz-Frame drehen
   tf2::Quaternion q;
   tf2::fromMsg(target.orientation, q);
-  tf2::Matrix3x3 R(q);
+  tf2::Matrix3x3 rotation(q);
 
-  tf2::Vector3 tool_z_world = tf2::Vector3(0.0, 0.0, 1.0); // Tool-Z im Welt/Base-Frame
+  const tf2::Vector3 tool_z_world =
+        rotation * tf2::Vector3(0.0, 0.0, 1.0);
 
   approach.position.x += tool_z_world.x() * dz_tool;
   approach.position.y += tool_z_world.y() * dz_tool;
   approach.position.z += tool_z_world.z() * dz_tool;
-
-  // zusätzlich World/Base +Z
   approach.position.z += dz_world;
 
   return approach;
 }
 
-void ArmMotion::moveToPose(const geometry_msgs::msg::Pose &target)
+void ArmMotion::MoveToPose(const geometry_msgs::msg::Pose& target)
 {
   mgi_.clearPoseTargets();
   mgi_.setStartStateToCurrentState();
-  if (!mgi_.setPoseTarget(target, "tool0"))
-  {
+  if (!mgi_.setPoseTarget(target, "tool0")) {
     RCLCPP_ERROR(node_->get_logger(), "Set pose target failed");
   }
 
   moveit::planning_interface::MoveGroupInterface::Plan plan;
   auto plan_result = mgi_.plan(plan);
-  if (plan_result != moveit::core::MoveItErrorCode::SUCCESS)
-  {
+  if (plan_result != moveit::core::MoveItErrorCode::SUCCESS) {
     RCLCPP_ERROR(node_->get_logger(), "MoveIt planning failed: %s", plan_result.message.c_str());
     throw ManipulationException(plan_result);
-    return;
   }
 
   auto execute_result = mgi_.execute(plan);
-  if (execute_result != moveit::core::MoveItErrorCode::SUCCESS)
-  {
+  if (execute_result != moveit::core::MoveItErrorCode::SUCCESS) {
     RCLCPP_ERROR(node_->get_logger(), "MoveIt execution failed: %s", execute_result.message.c_str());
     throw ManipulationException(execute_result);
-    return;
   }
   return;
 }
 
-void ArmMotion::moveLinearToPose(const geometry_msgs::msg::Pose &target,
-                                 double eef_step,       // z.B. 0.005
-                                 double jump_threshold, // z.B. 0.0
-                                 double min_fraction)   // z.B. 0.95
-{
+void ArmMotion::MoveLinearToPose(const geometry_msgs::msg::Pose& target,
+                                 double eef_step, double jump_threshold,
+                                 double min_fraction) {
   mgi_.setStartStateToCurrentState();
 
   std::vector<geometry_msgs::msg::Pose> waypoints;
@@ -115,63 +124,51 @@ void ArmMotion::moveLinearToPose(const geometry_msgs::msg::Pose &target,
   moveit_msgs::msg::RobotTrajectory traj_msg;
 
   const double fraction = mgi_.computeCartesianPath(
-      waypoints,
-      eef_step,
-      jump_threshold,
-      traj_msg,
-      true // avoid_collisions
+      waypoints, eef_step, jump_threshold,
+      traj_msg, true
   );
 
-  if (fraction < min_fraction)
-  {
+  if (fraction < min_fraction) {
     RCLCPP_ERROR(node_->get_logger(),
                  "Cartesian path fraction too low: %.3f (min %.3f)", fraction, min_fraction);
     throw ManipulationException(moveit::core::MoveItErrorCode::PLANNING_FAILED);
   }
 
-  // RobotTrajectory bauen
   robot_trajectory::RobotTrajectory rt(mgi_.getRobotModel(), mgi_.getName());
   rt.setRobotTrajectoryMsg(*mgi_.getCurrentState(), traj_msg);
 
-  // Zeitparameter (TOTG) berechnen
   const double vel = mgi_.getMaxVelocityScalingFactor();
   const double acc = mgi_.getMaxAccelerationScalingFactor();
 
   const bool time_ok = trajectory_processing::applyTOTGTimeParameterization(rt, vel, acc);
-  if (!time_ok)
-  {
+  if (!time_ok){
     RCLCPP_ERROR(node_->get_logger(), "TOTG time parameterization failed");
     throw ManipulationException(moveit::core::MoveItErrorCode::FAILURE);
   }
 
-  // zurück in msg + ausführen
   rt.getRobotTrajectoryMsg(traj_msg);
 
   moveit::planning_interface::MoveGroupInterface::Plan plan;
   plan.trajectory = traj_msg;
 
   auto exec_res = mgi_.execute(plan);
-  if (exec_res != moveit::core::MoveItErrorCode::SUCCESS)
-  {
+  if (exec_res != moveit::core::MoveItErrorCode::SUCCESS){
     RCLCPP_ERROR(node_->get_logger(), "Cartesian execution failed: %s", exec_res.message.c_str());
     throw ManipulationException(exec_res);
   }
 }
 
-void ArmMotion::moveToPoseBoxGoal(const geometry_msgs::msg::Pose &target,
-                                  double pos_tol,
-                                  bool use_orientation,
-                                  double ori_tol,
-                                  const std::string &eef_link,
-                                  const std::string &frame_id,
-                                  const std::string &planner_id)
-{
+void ArmMotion::MoveToPoseBoxGoal(const geometry_msgs::msg::Pose& target,
+                                  double pos_tol, bool use_orientation,
+                                  double ori_tol, const std::string& eef_link,
+                                  const std::string& frame_id,
+                                  const std::string& planner_id) {
   using MoveGroup = moveit_msgs::action::MoveGroup;
 
-  // Ensure server is up
-  if (!move_group_client_->wait_for_action_server(std::chrono::seconds(3)))
-  {
-    throw ManipulationException(arlab_common_interfaces::msg::ManipulationResponse::TIMED_OUT);
+  if (!move_group_client_->wait_for_action_server(std::chrono::seconds(3))) {
+    throw ManipulationException(
+      arlab_common_interfaces::msg::ManipulationResponse::
+      TIMED_OUT);
   }
 
   // -----------------------------
@@ -186,7 +183,7 @@ void ArmMotion::moveToPoseBoxGoal(const geometry_msgs::msg::Pose &target,
 
   geometry_msgs::msg::Pose box_pose;
   box_pose.position = target.position;
-  box_pose.orientation.w = 1.0; // axis-aligned box
+  box_pose.orientation.w = 1.0;
 
   moveit_msgs::msg::BoundingVolume bv;
   bv.primitives.push_back(box);
@@ -207,9 +204,7 @@ void ArmMotion::moveToPoseBoxGoal(const geometry_msgs::msg::Pose &target,
   moveit_msgs::msg::Constraints cons;
   cons.position_constraints.push_back(pc);
 
-  // Optional OrientationConstraint
-  if (use_orientation)
-  {
+  if (use_orientation){
     moveit_msgs::msg::OrientationConstraint oc;
     oc.header.frame_id = frame_id;
     oc.link_name = eef_link;
@@ -227,8 +222,9 @@ void ArmMotion::moveToPoseBoxGoal(const geometry_msgs::msg::Pose &target,
   moveit_msgs::msg::MotionPlanRequest req;
   req.group_name = mgi_.getName();
   req.allowed_planning_time = mgi_.getPlanningTime();
-  if (!planner_id.empty())
+  if (!planner_id.empty()) {
     req.planner_id = planner_id;
+  }
 
   // IMPORTANT: goal_constraints is a list of Constraints (each a conjunction)
   req.goal_constraints.clear();
@@ -237,8 +233,7 @@ void ArmMotion::moveToPoseBoxGoal(const geometry_msgs::msg::Pose &target,
   // Start state = current state from MoveGroupInterface
   // (MoveIt will also accept empty start_state and use current, but explicit is safer)
   auto current_state = mgi_.getCurrentState(1.0);
-  if (current_state)
-  {
+  if (current_state) {
     moveit::core::robotStateToRobotStateMsg(*current_state, req.start_state);
     req.start_state.is_diff = true;
   }
@@ -255,72 +250,63 @@ void ArmMotion::moveToPoseBoxGoal(const geometry_msgs::msg::Pose &target,
 
   auto goal_handle_future = move_group_client_->async_send_goal(goal_msg);
   auto goal_handle = goal_handle_future.get();
-  if (!goal_handle)
-  {
-    throw ManipulationException(arlab_common_interfaces::msg::ManipulationResponse::UNKNOWN_FAILURE, std::string{"Failed to send MoveGroup goal."});
+  if (!goal_handle) {
+    throw ManipulationException(
+      arlab_common_interfaces::msg::ManipulationResponse::
+      UNKNOWN_FAILURE, std::string{"Failed to send MoveGroup goal."});
   }
 
   auto result_future = move_group_client_->async_get_result(goal_handle);
   auto wrapped_result = result_future.get();
 
-  auto code_to_str = [](rclcpp_action::ResultCode c)
-  {
-    switch (c)
-    {
-    case rclcpp_action::ResultCode::SUCCEEDED:
-      return "SUCCEEDED";
-    case rclcpp_action::ResultCode::ABORTED:
-      return "ABORTED";
-    case rclcpp_action::ResultCode::CANCELED:
-      return "CANCELED";
-    default:
-      return "UNKNOWN";
+  auto code_to_str = [](rclcpp_action::ResultCode c) {
+    switch (c) {
+      case rclcpp_action::ResultCode::SUCCEEDED:
+        return "SUCCEEDED";
+      case rclcpp_action::ResultCode::ABORTED:
+        return "ABORTED";
+      case rclcpp_action::ResultCode::CANCELED:
+        return "CANCELED";
+      default:
+        return "UNKNOWN";
     }
   };
 
-  if (wrapped_result.code != rclcpp_action::ResultCode::SUCCEEDED)
-  {
+  if (wrapped_result.code != rclcpp_action::ResultCode::SUCCEEDED) {
     std::stringstream ss;
     ss << "MoveGroup action result_code=" << code_to_str(wrapped_result.code);
 
-    // Oft ist result trotzdem gesetzt → MoveItErrorCodes mitloggen
     if (wrapped_result.result)
       ss << ", moveit_error_code=" << wrapped_result.result->error_code.val;
 
     RCLCPP_ERROR(node_->get_logger(), "%s", ss.str().c_str());
     throw ManipulationException(arlab_common_interfaces::msg::ManipulationResponse::UNKNOWN_FAILURE, ss.str());
   }
-
-  // const auto &res = wrapped_result.result;
-  // if (res->error_code.val != moveit_msgs::msg::MoveItErrorCodes::SUCCESS)
-  // {
-  //   throw ManipulationException(res->error_code.val);
-  // }
 }
 
-void ArmMotion::moveToJointPos(const std::map<std::string, double> &joints)
+void ArmMotion::MoveToJointPos(const std::map<std::string, double>& joints)
 {
   mgi_.setJointValueTarget(joints);
   moveit::planning_interface::MoveGroupInterface::Plan plan;
   auto plan_result = mgi_.plan(plan);
-  if (plan_result != moveit::core::MoveItErrorCode::SUCCESS)
-  {
-    RCLCPP_ERROR(node_->get_logger(), "MoveIt planning (Joints) failed: %s", plan_result.message.c_str());
+  if (plan_result != moveit::core::MoveItErrorCode::SUCCESS) {
+    RCLCPP_ERROR(node_->get_logger(),
+      "MoveIt planning (Joints) failed: %s", plan_result.message.c_str());
     throw ManipulationException(plan_result);
     return;
   }
 
   auto execute_result = mgi_.execute(plan);
-  if (execute_result != moveit::core::MoveItErrorCode::SUCCESS)
-  {
-    RCLCPP_ERROR(node_->get_logger(), "MoveIt execution (Joints) failed: %s", execute_result.message.c_str());
+  if (execute_result != moveit::core::MoveItErrorCode::SUCCESS) {
+    RCLCPP_ERROR(node_->get_logger(),
+      "MoveIt execution (Joints) failed: %s", execute_result.message.c_str());
     throw ManipulationException(execute_result);
     return;
   }
   return;
 }
 
-void ArmMotion::moveToHome()
+void ArmMotion::MoveToHome()
 {
-  moveToJointPos(joints_home_);
+  MoveToJointPos(joints_home_);
 }

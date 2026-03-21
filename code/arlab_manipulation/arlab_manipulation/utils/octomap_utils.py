@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-octomap_utils.py
-----------------------
+Octomap Utilities (Python-only)
 
-Author: Sofia Öttl
-Date: 2025-12-10
+This module provides ROS-independent utilities for working with 3D octomap
+data represented as numpy arrays. Functions include detecting shelf floors,
+checking box occupancy, and finding free placement areas.
 
-Python-only Octomap utilities
+Maintainer:
+    Sofia Öttl <sofia.oettl@uni-a.de>
 """
 
 import numpy as np
@@ -14,11 +15,22 @@ from geometry_msgs.msg import Pose
 
 
 def detect_shelf_floor(octo_data, resolution=0.01):
-    """
-    Find the lowest occupied layer in the octomap (assumed to be shelf floor)
-    octo_data: numpy 3D array of occupancy (True=occupied, False=free)
-    resolution: voxel size in meters
-    Returns floor_z in world coordinates
+    """Estimate the lowest occupied layer in the octomap as the shelf floor.
+
+    Scans each vertical column to find the first occupied voxel. Returns the median
+    of all first-occupied voxels to reduce the influence of outliers or noise.
+
+    Args:
+        octo_data: 3D numpy array representing occupancy (True=occupied, False=free)
+        resolution: Voxel size in meters
+
+    Returns:
+        floor_z: Estimated z-coordinate of the shelf floor in world coordinates
+
+    Notes:
+        - Experimental function: **not fully tested** in real-world scenarios
+        - If no occupied voxels are found, returns a safe default floor height
+        - Median ensures robustness against isolated high/low voxels
     """
 
     floor_candidates = []
@@ -35,12 +47,24 @@ def detect_shelf_floor(octo_data, resolution=0.01):
 
 
 def is_box_free(octo_data, center, size, resolution=0.01):
-    """
-    Check if a box at 'center' with 'size' (dx, dy, dz) is free
-    octo_data: numpy 3D array
-    center: [x, y, z] in world coordinates
-    size: [dx, dy, dz] in meters
-    resolution: voxel size in meters
+    """Check whether a 3D box at the given location is free of obstacles.
+
+    Iterates over voxels inside the box. Returns False if any occupied voxel
+    is detected. This is used for safe collision checking before placing an object.
+
+    Args:
+        octo_data: 3D numpy array representing occupancy
+        center: [x, y, z] coordinates of the box center in world frame
+        size: [dx, dy, dz] dimensions of the box in meters
+        resolution: Voxel size in meters
+
+    Returns:
+        True if all voxels are free, False otherwise
+
+    Notes:
+        - Experimental function: **not fully tested** in real-world scenarios
+        - Out-of-bounds voxels are assumed free to avoid false negatives
+        - Conservative check ensures no collisions with unknown areas
     """
 
     dx, dy, dz = size
@@ -74,11 +98,30 @@ def find_placing_area(
     offset_y=0.05,
     resolution=0.01,
 ):
-    """
-    Find a free placement area above the shelf floor (Python-only version).
-    octo_data: 3D numpy array
-    bbox: object with size_x, size_y, size_z in meters
-    Returns: geometry_msgs.msg.Pose
+    """Search for a free placement area above the shelf floor.
+
+    Iterates over candidate positions and returns the first valid placement
+    that fits the object's bounding box without collisions.
+
+    Args:
+        octo_data: 3D numpy array representing occupancy
+        bbox: Object with attributes size_x, size_y, size_z in meters
+        margin: Extra clearance around object for safety
+        lift: Height to lift the object above the floor to avoid collisions
+        offset_x: X-offset for search expansion
+        offset_y: Y-offset for search expansion
+        resolution: Voxel size in meters
+
+    Returns:
+        pose: geometry_msgs.msg.Pose representing placement location and orientation
+        status_code: int (1=success, negative values indicate failure)
+        message: str describing the result
+
+    Notes:
+        - Experimental function: **not fully tested** in real-world scenarios
+        - Returns a safe default pose if bbox is None or no free space is found
+        - Placement z-coordinate is relative to the detected shelf floor
+        - Only the first valid location is returned to minimize computation
     """
     if bbox is None:
         print("Bbox is empty")

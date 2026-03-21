@@ -8,7 +8,7 @@ This module defines a ROS 2 node that maps semantic object information
 (grip force, position mode, orientation mode, object weight).
 
 Maintainer:
-    Sofia Öttl <sofia.oettl@gmail.com>
+    Sofia Öttl <sofia.oettl@uni-a.de>
 """
 
 import rclpy

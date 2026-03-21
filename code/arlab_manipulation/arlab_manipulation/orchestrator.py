@@ -299,8 +299,20 @@ class orchestrator(Node):
             self.msg = "GetShape from Knowledgebase failed"
             self.finish_action()
 
-    # GetGrippingParameter Response
+
     def handle_gripping_parameter_response(self, future):
+        """Handle response from GrippingParameter service.
+
+        Updates gripping force and grip modes, then computes pick/place pose.
+
+        Side Effects:
+            - Updates self.force, self.grip_pos_mode, self.grip_orient_mode
+            - Calls compute_goal_pose
+            - Updates self.err / self.msg if service fails
+
+        Args:
+            future: Future object from async GrippingParameter service call.
+        """
         try:
             response = future.result()
             self.force = response.gripforce
@@ -313,8 +325,23 @@ class orchestrator(Node):
             self.msg = "GetGrippingParameter from ParameterService failed"
             self.finish_action()
 
-    # Compute Goal Pose for MoveIt Node
+
     def compute_goal_pose(self):
+        """Compute the target pose for pick or place actions.
+
+        For 'pick':
+            - Applies static offsets to the object pose
+            - Sets gripping orientation
+        For 'place':
+            - Computes placement above shelf using octomap
+            - Sets placing orientation to match gripping orientation
+
+        Side Effects:
+            - Updates self.gripping_point_pos / self.gripping_point_orient
+            - Updates self.placing_point_pos / self.placing_point_orient
+            - Calls send_goal
+            - Updates self.err / self.msg if pose calculation fails
+        """
         if self.command_type == "pick":
             if self.pose is not None:
                 self.gripping_point_pos = self.pose.position
@@ -348,8 +375,16 @@ class orchestrator(Node):
                     self.msg = self.msg
                     self.finish_action()
 
-    # Publish Goal Pose with ActionClient
+
     def send_goal(self):
+        """Send computed pick/place pose as OrchestratorAction goal.
+
+        Side Effects:
+            - Waits for OrchestratorAction server
+            - Sends goal with pose, grip force, and command type
+            - Registers callback for response
+            - Updates self.err / self.msg if server unavailable
+        """
         if self.command_type == "pick":
             goal_pose = Pose()
             goal_pose.position = self.gripping_point_pos
@@ -376,8 +411,15 @@ class orchestrator(Node):
         send_future = self._orchestrator_client.send_goal_async(msg)
         send_future.add_done_callback(self.handle_orchestrator_response)
 
-    # OrchestratorAction Response
+
     def handle_orchestrator_response(self, future):
+        """Handle goal acceptance from OrchestratorAction server.
+
+        Registers callback for result retrieval or sets error if rejected.
+
+        Side Effects:
+            - Updates self.err / self.msg if goal rejected or failed
+        """
         try:
             self.goal_handle = future.result()
             if not self.goal_handle.accepted:
@@ -395,8 +437,16 @@ class orchestrator(Node):
             self.msg = "Failed to receive orchestrator goal"
             self.finish_action()
 
-    # OrchestratorAction Result
+
     def handle_orchestrator_result(self, future):
+        """Handle result from OrchestratorAction execution.
+
+        Updates status code and message based on result from downstream execution.
+
+        Side Effects:
+            - Updates self.err / self.msg
+            - Signals action completion via finish_action()
+        """
         try:
             result = future.result().result.response
             self.msg = result.message
@@ -410,8 +460,13 @@ class orchestrator(Node):
             self.msg = "Handle orchestrator action result failed"
             self.finish_action()
 
-    # Finish ManipulationAction --> send Result
+
     def finish_action(self):
+        """Signal that the current manipulation action is complete.
+
+        Side Effects:
+            - Sets self.action_done_event to unblock waiting execute_callback()
+        """
         self.action_done_event.set()
 
 

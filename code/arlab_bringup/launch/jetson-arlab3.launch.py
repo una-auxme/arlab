@@ -1,3 +1,15 @@
+"""Knowledge and computer vision launch file
+
+Launch configuration:
+    Includes the knowledge system launch file from `arlab_knowledge`
+    Includes the object detection launch file from `arlab_computer_vision`
+    Starts the knowledge and computer vision related components
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-a.de>
+    Daniel Gabler <daniel.gabler@uni-a.de>
+"""
+
 from launch import LaunchDescription
 from launch.actions import (
     IncludeLaunchDescription,
@@ -8,10 +20,11 @@ from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
-    """Generate a ROS2 launch description for orchestrator nodes.
+    """Generate the launch description for knowledge and computer vision running on Jetson 3.
 
     Returns:
-        LaunchDescription: LaunchDescription object containing all nodes.
+        LaunchDescription: Launch description that includes the knowledge launch file
+        and the object detection launch file.
     """
 
     knowledge_launch = PathJoinSubstitution(

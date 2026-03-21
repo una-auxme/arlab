@@ -1,38 +1,53 @@
-#pragma once
+#ifndef ARLAB_MANIPULATION_CPP_ORCHESTRATOR_LISTENER_H_
+#define ARLAB_MANIPULATION_CPP_ORCHESTRATOR_LISTENER_H_
+
+#include <memory>
+
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_action/rclcpp_action.hpp>
-#include <moveit_core/moveit/utils/moveit_error_code.hpp>
-#include "arlab_common_interfaces/msg/orchestrator_data.hpp"
+
 #include "arlab_common_interfaces/action/orchestrator_action.hpp"
-#include "mia_hand_msgs/action/grasp.hpp"
 
+class ArmMotion;
+class HandMotion;
+class JobRunner;
 
-class OrchestratorActionServer : public rclcpp::Node
-{
-public:
-  using OrchestratorAction = arlab_common_interfaces::action::OrchestratorAction;
-  using GoalHandleOrchestrator = rclcpp_action::ServerGoalHandle<OrchestratorAction>;
-  // using Grasp = Mia_hand_msgs::action::Grasp;
+// ROS 2 action server that receives orchestration requests and delegates
+// execution to the JobRunner.
+class OrchestratorActionServer : public rclcpp::Node {
 
-  explicit OrchestratorActionServer(const rclcpp::NodeOptions &options = rclcpp::NodeOptions());
+  public:
+    using OrchestratorAction = arlab_common_interfaces::action::OrchestratorAction;
+    using GoalHandleOrchestrator =
+      rclcpp_action::ServerGoalHandle<OrchestratorAction>;
 
-  void init();
+    explicit OrchestratorActionServer(
+      const rclcpp::NodeOptions& options = rclcpp::NodeOptions());
 
-private:
-  // Action-Server Callbacks
-  rclcpp_action::GoalResponse handleGoal(const rclcpp_action::GoalUUID &uuid, std::shared_ptr<const OrchestratorAction::Goal> goal);
-  rclcpp_action::CancelResponse handleCancel(const std::shared_ptr<GoalHandleOrchestrator> goal_handle);
-  void handleAccepted(const std::shared_ptr<GoalHandleOrchestrator> goal_handle);
-  void execute(const std::shared_ptr<GoalHandleOrchestrator> goal_handle);
+    // Initializes owned motion components and starts the action server.
+    void Init();
 
-  // Action-Server
-  rclcpp_action::Server<OrchestratorAction>::SharedPtr action_server_;
-  // rclcpp_action::Client<Grasp>::SharedPtr grasp_client_;
+  private:
+    // Validates an incoming goal request.
+    rclcpp_action::GoalResponse HandleGoal(
+      const rclcpp_action::GoalUUID& uuid,
+      std::shared_ptr<const OrchestratorAction::Goal> goal);
 
-  // Owned capabilities
-  std::unique_ptr<class ArmMotion> arm_;
-  std::unique_ptr<class HandMotion> hand_;
-  std::unique_ptr<class JobRunner> runner_;
+    // Handles a cancel request for a goal.
+    rclcpp_action::CancelResponse HandleCancel(
+      const std::shared_ptr<GoalHandleOrchestrator> goal_handle);
+
+    // Accepts a goal for asynchronous execution.
+    void HandleAccepted(std::shared_ptr<GoalHandleOrchestrator> goal_handle);
+
+    // Executes the orchestration job and reports the result to the client.
+    void Execute(std::shared_ptr<GoalHandleOrchestrator> goal_handle);
+
+    rclcpp_action::Server<OrchestratorAction>::SharedPtr action_server_;
+
+    std::unique_ptr<ArmMotion> arm_;
+    std::unique_ptr<HandMotion> hand_;
+    std::unique_ptr<JobRunner> runner_;
 };
 
-std::string errorMessageFromCode(int code);
+#endif  // ARLAB_MANIPULATION_CPP_ORCHESTRATOR_LISTENER_H_

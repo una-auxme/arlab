@@ -89,7 +89,7 @@ class ObjectDetection(Node):
         default_yolo_weights = os.path.join(
             package_share_dir,
             "yolo_weights",
-            "yolo11n-seg_fruit_dataset_strong_geom_fruit.pt",
+            "yolo11n-seg_demo_day.pt",
         )
 
         # Declare configurable parameters.
@@ -98,7 +98,7 @@ class ObjectDetection(Node):
         self.declare_parameter("log_level", "INFO")
         self.declare_parameter("use_depth", True)
         self.declare_parameter("sync_tolerance", 0.5)  # 500ms tolerance (default)
-        # Enable/disable depth clustering (default: False for better performance)
+        # Enable/disable depth clustering (default: True)
         self.declare_parameter("use_clustering", True)
         # Delete old entities before adding new ones
         self.declare_parameter("delete_old_entities", True)
@@ -107,7 +107,7 @@ class ObjectDetection(Node):
         # Maximum image width for YOLO inference (0 = no scaling)
         # Reduces memory usage and speeds up inference for large images
         self.declare_parameter("max_image_width", 640)
-        # Target frame for TF transformations (default: "world")
+        # Target frame for TF transformations (default: "camera_tool_link")
         self.declare_parameter("target_frame", "camera_tool_link")
 
         # Enable snapshot mode
@@ -407,7 +407,13 @@ class ObjectDetection(Node):
 
         Args:
             rgb_msg: Incoming RGB `sensor_msgs/Image`.
-            depth_msg: Optional incoming depth `sensor_msgs/Image`.
+            pointcloud_msg: Optional incoming `sensor_msgs/PointCloud2` used
+                to build 3D geometry when `use_depth=true`.
+            delete_old_entities: If true, delete previously stored pickable
+                entities before inserting new ones (subject to
+                `clear_db_on_no_detection`).
+            mask_hand: If true, ignore the “hand” portion of the segmentation
+                mask (by zeroing a lower image region).
         """
         t_start = time.perf_counter()
 
@@ -508,10 +514,10 @@ class ObjectDetection(Node):
                 for i, mask in enumerate(masks):
                     # Converts the image mask into a per point mask
                     point_mask = mask[camera_points_idxs[0], camera_points_idxs[1]]
-                    # Filters the points based on the mask.
-                    # The structured_points were already transformed
-                    # into the target frame.
-                    # -> Final points for the entity
+                    # Filter: keep only foreground points.
+                    # `point_mask` originates from `result_masks` (uint8 cast in `_extract_masks`),
+                    # so typical values are in {0, 1}. Thresholding at 0.5 turns this into a
+                    # boolean selection. If mask dtype/range changes, update the threshold.
                     entity_points = structured_points[point_mask > 0.5]
 
                     if self.get_parameter("use_clustering").get_parameter_value().bool_value:
@@ -555,8 +561,11 @@ class ObjectDetection(Node):
         # 1. Preparing data for sklearn dbscan
         xyz = np.stack([entity_points["x"], entity_points["y"], entity_points["z"]], axis=1)
 
-        # 2. Exectute DBSCAN clustering
-        # eps= max distance, min_samples= min density
+        # 2. Execute DBSCAN clustering
+        # eps = neighborhood radius; min_samples = minimum cluster density.
+        #
+        # Assumption: point cloud coordinates are in meters (eps=0.01 => 1 cm).
+        # Tune these parameters if the point cloud scale changes.
         db = DBSCAN(eps=0.01, min_samples=10).fit(xyz)
         labels = db.labels_
 
@@ -718,8 +727,10 @@ class ObjectDetection(Node):
             # No resize needed - single sync + transfer
             result_masks = masks_gpu.cpu().numpy().astype(np.uint8)
 
+        # After casting to uint8, mask values are expected to be in {0, 1}.
         if mask_hand:
             n, h, w = result_masks.shape
+            # Zero out lower 20% of the image to suppress hand-like detections.
             result_masks[:, int(h * 0.8) : h, :] = 0.0
         return result_masks
 
@@ -773,7 +784,7 @@ def create_entity(label: str, structured_points: NDArray, points_header: Header)
     entity.pose.position.y = float(np.average(structured_points["y"]))
     entity.pose.position.z = float(np.average(structured_points["z"]))
     entity.pickable.object_name = label
-    # TODO: update object category based om class
+    # TODO: Map YOLO class labels to KB object categories (placeholder default for now).
     entity.pickable.object_category = EntityPickable.OBJECT_CATEGORY_CYLINDER
     shape = Shape()
     shape.has_pointcloud = True

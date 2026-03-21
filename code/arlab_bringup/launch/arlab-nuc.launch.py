@@ -1,3 +1,15 @@
+"""Orchestrator launch file
+
+Launch configuration:
+    Includes the MoveIt robot launch file from `manipulator_description`
+    Includes the manipulation launch file from `arlab_manipulation`
+    Starts the required nodes for robot motion planning and manipulation
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-a.de>
+    Daniel Gabler <daniel.gabler@uni-a.de>
+"""
+
 from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -6,10 +18,11 @@ from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
-    """Generate a ROS2 launch description for orchestrator nodes.
+    """Generate a ROS2 launch description for nodes running on the NUC.
 
     Returns:
-        LaunchDescription: LaunchDescription object containing all nodes.
+        LaunchDescription: Launch description that includes the robot MoveIt launch
+        configuration and the manipulation launch file.
     """
     ld = LaunchDescription()
 

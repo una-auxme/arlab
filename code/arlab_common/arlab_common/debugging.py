@@ -1,3 +1,12 @@
+"""Debugging utilities for ROS2 nodes.
+
+This module provides helper functions for starting Python debuggers and
+retrieving caller information for debugging purposes.
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-a.de>
+"""
+
 import importlib.util
 import inspect
 from typing import Optional
@@ -7,10 +16,23 @@ from rclpy.impl.rcutils_logger import RcutilsLogger
 
 
 def get_logger() -> RcutilsLogger:
+    """Get the logger for the debugger node.
+
+    Returns:
+        RcutilsLogger: The logger instance for the "debugger" node.
+    """
     return rclpy.logging.get_logger("debugger")
 
 
 def get_caller_file() -> str:
+    """Get the filename of the caller's function.
+
+    Uses the inspect module to retrieve the filename of the function
+    that called this function.
+
+    Returns:
+        str: The filename of the caller, or "unknown" if unable to determine.
+    """
     stack = inspect.stack()
     if len(stack) < 1:
         return "unknown"
@@ -23,15 +45,20 @@ def start_debugger(
     host: str = "127.0.0.1",
     port: int = 53000,
     wait_for_client: bool = False,
-):
-    """_summary_
+) -> None:
+    """Start a Python debugger for the current node.
+
+    This function starts a debugpy debugger listener on the specified host
+    and port. It can optionally wait for a debugging client to attach before
+    continuing execution.
 
     Args:
-        node_module_name (str): Name of the underlying node. Only used for logging
-        host (str): host the debugger binds to
-        port (int): debugger port
-        wait_for_client (bool, optional): If the debugger should wait
-            for a client to attach. Defaults to False.
+        node_module_name (str, optional): Name of the underlying node. Only used for logging.
+            Defaults to the caller's filename if not provided.
+        host (str, optional): Host address the debugger binds to. Defaults to "127.0.0.1".
+        port (int, optional): Port number for the debugger. Defaults to 53000.
+        wait_for_client (bool, optional): If True, wait for a debugging client to attach
+            before continuing. Defaults to False.
     """
     debugger_spec = importlib.util.find_spec("debugpy")
     if debugger_spec is not None:

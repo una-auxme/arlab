@@ -6,8 +6,8 @@ Test cases:
     Status class to/from ROS Message Conversion Tests
 
 Maintainers:
-    Peter Viechter <peter.viechter@uni-augsburg.de>
-    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+    Peter Viechter <peter.viechter@uni-a.de>
+    Daniel Gabler <daniel.gabler@uni-a.de>
 """
 
 from arlab_knowledge import test_utils as utils

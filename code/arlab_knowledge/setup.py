@@ -17,7 +17,7 @@ setup(
     install_requires=["setuptools"],
     zip_safe=True,
     maintainer="Peter Viechter, Daniel Gabler",
-    maintainer_email="peter.viechter@uni-augsburg.de",
+    maintainer_email="peter.viechter@uni-a.de",
     description="Arlab knowledge base: database for handling the robot's surroundings, events and maps",
     license="MIT",
     tests_require=["pytest"],

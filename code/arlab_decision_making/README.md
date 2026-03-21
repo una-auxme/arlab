@@ -1,7 +1,32 @@
 # ARLAB decision making
 
-This package contains the global decision maker.
-It contains a py_trees-based behavior tree
+This package contains the global decision maker using py_trees-based behavior trees.
+
+## Package structure
+
+```txt
+arlab_decision_making/
+├── arlab_decision_making/
+│   ├── decision_maker.py    # Main decision maker entry point
+│   ├── behaviours/          # Behavior tree nodes
+│   │   ├── common/          # Common behaviors (action, speech, vision)
+│   │   ├── manipulation/    # Manipulation behaviors
+│   │   ├── movement/        # Movement behaviors
+│   │   ├── task1/           # Task 1: Help me carry
+│   │   ├── task2/           # Task 2: Storing groceries
+│   │   ├── tdi_demo/        # TDI demo behaviors
+│   │   ├── test_trees/      # Test behavior trees
+│   │   └── check_safety.py  # Safety checking behavior
+│   └── utils/               # Utility functions
+└── launch/                  # Launch files
+```
+
+## Key features
+
+- Safety-first behavior tree architecture
+- Error handling with ErrorSelector wrapper
+- Task-based execution (carry, storage tasks)
+- Modular behavior node organization
 
 ## Main behavior tree
 

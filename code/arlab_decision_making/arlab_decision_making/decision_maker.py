@@ -4,8 +4,8 @@ and task execution for the robot. It supports the safety check and different
 tasks that can be selected via parameters.
 
 Maintainers:
-    Peter Viechter <peter.viechter@uni-augsburg.de>
-    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+    Peter Viechter <peter.viechter@uni-a.de>
+    Daniel Gabler <daniel.gabler@uni-a.de>
 """
 
 import py_trees_ros
@@ -43,6 +43,10 @@ def get_tree(task: str) -> Behaviour:
             - "test_manipulation_move": Execute manipulation move test tree.
             - "test_manipulation_home_move_seq": Execute manipulation test tree.
             - "test_grab_seq": Execute test_manipulation_video_seq test tree.
+            - "test_grab_dr6": Execute test_manipulation_dr6_video test tree.
+            - "test_pick": Execute test_manipulation_pick test tree.
+            - "test_view": Execute test_view test tree.
+            - "tdi_demo": Execute TDI demo behavior tree.
 
     Raises:
         ValueError: If an unknown task name is provided.

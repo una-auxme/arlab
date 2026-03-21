@@ -1,7 +1,7 @@
 """Db adapter for generic ros messages to json
 
 Maintainers:
-    Peter Viechter <peter.viechter@uni-augsburg.de>
+    Peter Viechter <peter.viechter@uni-a.de>
 """
 
 import json

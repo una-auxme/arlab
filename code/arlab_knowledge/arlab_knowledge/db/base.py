@@ -1,7 +1,7 @@
 """Contains the base class for all database tables.
 
 Maintainers:
-    Peter Viechter <peter.viechter@uni-augsburg.de>
+    Peter Viechter <peter.viechter@uni-a.de>
 """
 
 # https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html#preventing-implicit-io-when-using-asyncsession

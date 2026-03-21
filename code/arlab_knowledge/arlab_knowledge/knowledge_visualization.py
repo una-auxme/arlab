@@ -3,8 +3,8 @@
 This node visualizes knowledge entities as markers in RViz.
 
 Maintainers:
-    Peter Viechter <peter.viechter@uni-augsburg.de>
-    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+    Peter Viechter <peter.viechter@uni-a.de>
+    Daniel Gabler <daniel.gabler@uni-a.de>
 """
 
 from typing import List, Optional

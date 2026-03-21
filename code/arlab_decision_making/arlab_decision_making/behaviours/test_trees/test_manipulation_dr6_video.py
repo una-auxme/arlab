@@ -1,3 +1,17 @@
+"""Scripted grab-and-place demo behaviour tree for py_trees.
+
+Provides a predefined behaviour tree sequence to:
+    - initialise the manipulator and speech output
+    - take scene snapshots before manipulation
+    - execute scripted pick and place motions for multiple fruits
+    - move objects to predefined cupboard positions
+    - return the manipulator to the home position between tasks
+
+Maintainers:
+    Peter Viechter <peter.viechter@uni-a.de>
+    Daniel Gabler <daniel.gabler@uni-a.de>
+"""
+
 from py_trees.behaviour import Behaviour
 from py_trees.composites import Sequence
 from py_trees.timers import Timer
@@ -13,6 +27,16 @@ from . import test_view
 
 
 def get_tree() -> Behaviour:
+    """Create the scripted grab-and-place demo behaviour tree.
+
+    This tree executes a fixed demonstration sequence including homing,
+    scene snapshot acquisition, grasping predefined fruits, placing them
+    into predefined cupboard positions, and returning the manipulator to
+    the home position.
+
+    Returns:
+        Behaviour: Root behaviour of the configured grab-and-place demo tree.
+    """
     return Sequence(
         "GrabSequence",
         memory=True,

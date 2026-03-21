@@ -1,0 +1,10 @@
+need to get gazebo bridge to listen to cmd_vel_stamped, instead of cmd_vel 
+
+OR manage to get the twist converter to publish to /cmd_vel
+
+the issue is in that the bridge expects TwistStamped, but nav2 only publishes twist
+
+maybe also try to make nav2 publish TwistStamped <- doesnt work, Twist is hardcoded into Nav2
+
+
+last deletion: turtlebot3_spawn_launch.py

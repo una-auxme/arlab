@@ -1,8 +1,8 @@
 """Utilities for creating sample data for testing the database.
 
 Maintainers:
-    Peter Viechter <peter.viechter@uni-augsburg.de>
-    Daniel Gabler <daniel.gabler@uni-augsburg.de>
+    Peter Viechter <peter.viechter@uni-a.de>
+    Daniel Gabler <daniel.gabler@uni-a.de>
 """
 
 from arlab_knowledge_interfaces import msg

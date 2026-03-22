@@ -2,7 +2,7 @@
 
 This project was built specifically for the `ARLab` at the University of Augsburg and developed in the context of the `Zirbi` robot.
 
-**Maintainer:** Leonie Schmidt &lt;leonie1.schmidt@uni-a.de&gt;  
+**Maintainer:** Leonie Schmidt &lt;<leonie1.schmidt@uni-a.de>&gt;  
 **License:** Apache2.0  
 **ROS 2 build system:** ament_cmake
 
@@ -51,7 +51,7 @@ The launch files are structured in two layers — *control* (drivers / simulatio
 ### Launch file overview
 
 | File | Target | What it starts |
-|---|---|---|
+| --- | --- | --- |
 | `manipulator.full.robot.launch.py` | **Real robot** ✅ recommended | UR driver + Mia Hand driver + MoveIt + RViz |
 | `manipulator.full.sim.launch.py` | **Simulation** ✅ recommended | Gazebo + controllers + MoveIt + RViz |
 | `manipulator.control.robot.launch.py` | Real robot | UR driver + Mia Hand driver only |
@@ -79,7 +79,7 @@ manipulator.full.sim.launch.py
 ### Common launch arguments
 
 | Argument | Default | Description |
-|---|---|---|
+| --- | --- | --- |
 | `ur_type` | `ur5e` | UR robot model series |
 | `robot_ip` | `10.135.245.20` | IP address of the real UR controller |
 | `serial_port_arg` | `/dev/ttyUSB0` | Serial port for the Mia Hand |

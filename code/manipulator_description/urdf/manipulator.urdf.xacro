@@ -165,10 +165,12 @@
     <origin xyz="0 0 0.07" rpy="0 0 0" /> <!-- position robot in the world -->
   </xacro:ur_robot>
 
+  <!-- Solution: Zirbi Manipulation and Robot Model -->
+  <!-- Turn the realsense mount 180 degrees -->
   <xacro:ur_realsense_mount
     parent_link="tool0"
     xyz="0 0 0"
-    rpy="0 0 0">
+    rpy="0 0 3.14159">
   </xacro:ur_realsense_mount>
 
   <!-- mia hand -->

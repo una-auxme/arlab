@@ -16,7 +16,9 @@
 
 namespace {
 
-constexpr char kGraspActionName[] = "/mia_hand/grasps/cylindrical/action";
+// --- Solution: Zirbi Manipulation and Robot Model ---
+// Change Mia Hand action to pinch grasp action
+constexpr char kGraspActionName[] = "/mia_hand/grasps/pinch/action";
 constexpr int kOpenClosurePercent = 10;
 constexpr int kClosedClosurePercent = 80;
 constexpr int kDefaultSpeedPercent = 15;

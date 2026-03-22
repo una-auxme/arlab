@@ -121,7 +121,6 @@ class orchestrator(Node):
         self.err = ManipulationResponse.UNDEFINED
         self.msg = ""
 
-
     def octomap_callback(self, msg: PlanningScene):
         """Callback to receive the octomap from the MoveIt planning scene.
 
@@ -142,7 +141,6 @@ class orchestrator(Node):
             return
         self.get_logger().info("Octomap received")
 
-
     def goal_callback(self, goal_request):
         """Accept incoming ManipulationAction goals.
 
@@ -158,7 +156,6 @@ class orchestrator(Node):
             f"Data from Decision Making: cmd={goal_request.command.command_type}, entity_id={goal_request.command.target_entityid}"
         )
         return GoalResponse.ACCEPT
-
 
     def execute_callback(self, goal_handle):
         """Execute the manipulation command asynchronously.
@@ -208,7 +205,6 @@ class orchestrator(Node):
         goal_handle.succeed()
 
         return self.action_result
-
 
     def handle_get_entity_response(self, future):
         """Handle asynchronous response from GetEntity service.
@@ -262,7 +258,6 @@ class orchestrator(Node):
             self.msg = "GetEntity from Knowledgebase failed"
             self.finish_action()
 
-
     def handle_get_shape_response(self, future):
         """Handle asynchronous response from GetShape service.
 
@@ -309,7 +304,6 @@ class orchestrator(Node):
             self.msg = "GetShape from Knowledgebase failed"
             self.finish_action()
 
-
     def handle_gripping_parameter_response(self, future):
         """Handle response from GrippingParameter service.
 
@@ -334,7 +328,6 @@ class orchestrator(Node):
             self.err = -43
             self.msg = "GetGrippingParameter from ParameterService failed"
             self.finish_action()
-
 
     def compute_goal_pose(self):
         """Compute the target pose for pick or place actions.
@@ -389,7 +382,6 @@ class orchestrator(Node):
                     self.msg = self.msg
                     self.finish_action()
 
-
     def send_goal(self):
         """Send computed pick/place pose as OrchestratorAction goal.
 
@@ -427,7 +419,6 @@ class orchestrator(Node):
         send_future = self._orchestrator_client.send_goal_async(msg)
         send_future.add_done_callback(self.handle_orchestrator_response)
 
-
     def handle_orchestrator_response(self, future):
         """Handle goal acceptance from OrchestratorAction server.
 
@@ -453,7 +444,6 @@ class orchestrator(Node):
             self.msg = "Failed to receive orchestrator goal"
             self.finish_action()
 
-
     def handle_orchestrator_result(self, future):
         """Handle result from OrchestratorAction execution.
 
@@ -475,7 +465,6 @@ class orchestrator(Node):
             self.err = -48
             self.msg = "Handle orchestrator action result failed"
             self.finish_action()
-
 
     def finish_action(self):
         """Signal that the current manipulation action is complete.

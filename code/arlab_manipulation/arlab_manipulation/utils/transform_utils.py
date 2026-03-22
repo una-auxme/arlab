@@ -121,7 +121,6 @@ def transform_pointCloud(tf_buffer, pointCloud, stamp, ref_frame: str):
         )
         translation = np.array([t.x, t.y, t.z])
 
-
         # Apply rotation and translation to every (non-NaN) point
         for pt in pc2.read_points(pointCloud, field_names=["x", "y", "z"], skip_nans=True):
             p = np.array([pt[0], pt[1], pt[2]])

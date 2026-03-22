@@ -6,9 +6,6 @@ This package provides launch configurations for the distributed robot system.
 
 ```txt
 arlab_bringup/
-├── arlab_bringup/
-│   ├── __init__.py              # Package initialization
-│   └── dummy.py                 # Dummy node for testing
 ├── launch/
 │   ├── arlab-nuc.launch.py      # NUC hardware launch file
 │   ├── jetson-arlab1.launch.py  # Jetson ARLAB1 launch file
@@ -18,7 +15,35 @@ arlab_bringup/
 └── package.xml                 # ROS2 package manifest
 ```
 
-## Startup procedure
+## Simulation startup procedure
+
+The simulation startup procedure requires launching components in the following order:
+
+1. **Start the simulation with MoveIt**:
+
+   ```bash
+   ros2 launch manipulator_description manipulator.full.sim.launch.py
+   ```
+
+   This launches Gazebo simulation with the manipulator robot, ros2_control, and MoveIt planning.
+
+2. **Start the manipulation orchestrators**:
+
+   ```bash
+   ros2 launch arlab_manipulation launch.py
+   ```
+
+   This launches the manipulation orchestration nodes that coordinate robot tasks.
+
+3. **Start additional systems (optional, any order)**:
+
+   ```bash
+   ros2 launch arlab_knowledge knowledge_launch.py
+   ros2 launch arlab_computer_vision object_detection_launch.py
+   ros2 run arlab_decision_making decision_maker --ros-args -p task:=...
+   ```
+
+## Hardware startup procedure
 
 Each compute node of the distributed system has their own launch file.
 

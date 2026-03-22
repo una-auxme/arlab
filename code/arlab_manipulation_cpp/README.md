@@ -64,3 +64,27 @@ The OrchestatorActionsServer, the Jobrunner and the two Hardware-Level motion wr
   (MoveGroup      (grasp action)
   Interface)
 ```
+
+## Quickstart
+
+### 1. Launch the full manipulation stack (recommended)
+
+The recommended way to start the package is via the central launch file of the
+`arlab_manipulation` package, which starts all needed nodes in the correct order:
+
+```bash
+ros2 launch arlab_manipulation launch.py
+```
+
+> For more information on the full manipulation stack see the README of [`arlab_manipulation`](../arlab_manipulation/README.md).
+
+### 2. Launch this node individually
+
+If you only need the MoveIt interface without the rest of the stack, the node
+can also be started in isolation. Note that without the orchestrator and
+gripping parameter service running, only raw action goals sent directly to
+`/orchestrator/action` will work.
+
+```bash
+ros2 run arlab_manipulation_cpp Manipulation_CPP
+```

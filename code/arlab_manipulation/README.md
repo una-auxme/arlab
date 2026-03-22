@@ -1,5 +1,13 @@
 # ARLAB manipulation
 
+This project was built specifically for the `ARLab` at the University of Augsburg and developed in the context of the `Zirbi` robot.
+
+**Maintainer:** Sofia Öttl &lt;<sofia.oettl@uni-a.de>&gt;  
+**License:** MIT  
+**ROS 2 build system:** ament_python
+
+## Overview
+
 ROS2 Python package for orchestrating manipulation commands from the decision maker, using the knowledge base and gripping parameter service.
 This project was built specifically for the `ARLab` at the University of Augsburg and developed in the context of the `Zirbi` robot.
 

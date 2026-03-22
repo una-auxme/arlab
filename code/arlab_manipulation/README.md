@@ -7,6 +7,22 @@ This project was built specifically for the `ARLab` at the University of Augsbur
 
 ---
 
+## Package structure
+
+```text
+arlab_manipulation/           
+├── arlab_manipulation/
+│    ├── orchestrator.py                # Main node: receives goals, runs service chain
+│    ├── services/
+│    │   └── gripping_parameter.py      # Service node: maps objects to grip parameters
+│    └── utils/
+│        ├── __init__.py
+│        ├── octomap_utils.py           # Shelf floor detection, placement search (experimental)
+│        └── transform_utils.py         # TF2 helpers for poses and point clouds (experimental)
+├── launch/
+│   └── launch.py                       # Launches all nodes in the correct order
+```
+
 ## Architecture
 
 ```text

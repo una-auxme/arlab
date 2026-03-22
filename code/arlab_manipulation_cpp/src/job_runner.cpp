@@ -1,3 +1,13 @@
+// -----------------------------------------------------------------------------
+// File: job_runner.cpp
+// Package: arlab_manipulation_cpp
+// Maintainer: Leonie Schmidt <leonie1.schmidt@uni-a.de>
+//
+// Implements JobRunner::Run(), the central command dispatch function. Each
+// supported command string is mapped to a sequence of ArmMotion and
+// HandMotion calls. Motion constants are isolated in the anonymous namespace
+// for easy tuning without touching the header.
+// -----------------------------------------------------------------------------
 
 #include "arlab_manipulation_cpp/job_runner.hpp"
 
@@ -68,15 +78,17 @@ void JobRunner::Run(const arlab_common_interfaces::msg::OrchestratorData& msg) {
                           kBoxOrientationTolerance, kEndEffectorLink,
                           kReferenceFrame,kPlannerId);
   } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PICK) {
+    // Full pick sequence: open → approach → close → retreat → home.
     hand_.Open();
-    auto approach_pose = arm_.MakeApproachPose(msg.pose, 0.1, 0.05);
+    auto approach_pose = arm_.MakeApproachPose(msg.pose, kApproachDistance, kLiftOffset);
     arm_.MoveToPose(approach_pose);
     arm_.MoveToPose(msg.pose);
     hand_.Close();
     arm_.MoveToPose(approach_pose);
     arm_.MoveToHome();
   } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PLACE) {
-    auto approach_pose = arm_.MakeApproachPose(msg.pose, 0.1, 0.05);
+    // Full place sequence: approach → open → retreat → home.
+    auto approach_pose = arm_.MakeApproachPose(msg.pose, kApproachDistance, kLiftOffset);
     arm_.MoveToPose(approach_pose);
     arm_.MoveToPose(msg.pose);
     hand_.Open();

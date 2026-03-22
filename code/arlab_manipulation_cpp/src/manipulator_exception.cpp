@@ -1,3 +1,13 @@
+// -----------------------------------------------------------------------------
+// File: manipulator_exception.cpp
+// Package: arlab_manipulation_cpp
+// Maintainer: Leonie Schmidt <leonie1.schmidt@uni-a.de>
+//
+// Implements ManipulationException, including the constructor overloads and
+// the static code-to-message lookup table that maps numeric MoveIt and
+// custom manipulation error codes to human-readable strings.
+// -----------------------------------------------------------------------------
+
 #include "arlab_manipulation_cpp/manipulator_exception.hpp"
 
 #include <utility>
@@ -17,6 +27,9 @@ const char* ManipulationException::what() const noexcept {
 }
 
 std::string ManipulationException::ErrorMessageFromCode(int code) {
+  // Codes 0 to -31 mirror the MoveIt MoveItErrorCodes message definition.
+  // Codes -35 and below are custom to this package.
+  // 99999 is the generic unknown-failure sentinel.
   switch (code) {
     case 0:
       return "Undefined";

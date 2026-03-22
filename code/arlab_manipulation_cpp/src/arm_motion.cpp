@@ -1,3 +1,14 @@
+// -----------------------------------------------------------------------------
+// File: arm_motion.cpp
+// Package: arlab_manipulation_cpp
+// Maintainer: Leonie Schmidt <leonie1.schmidt@uni-a.de>
+//
+// Implements ArmMotion. Contains four motion strategies (pose goal, Cartesian,
+// box-constrained, joint-space) and the MakeApproachPose utility. Planning
+// parameters and the home configuration are kept in the anonymous namespace
+// for easy tuning without touching the header.
+// -----------------------------------------------------------------------------
+
 #include "arlab_manipulation_cpp/arm_motion.hpp"
 
 #include "arlab_manipulation_cpp/orchestrator_listener.hpp"
@@ -35,8 +46,9 @@ namespace {
   constexpr double kPlanningTimeSeconds = 5.0;
   constexpr double kGoalPositionTolerance = 1e-2;
   constexpr double kGoalOrientationTolerance = 5e-2;
-  constexpr int kActionServerWaitSeconds = 3;
 
+  // Home configuration for the manipulator (joint values in radians).
+  // Adjust these values to match the physical robot's preferred home posture.
   const std::map<std::string, double> kHomeJoints = {
       {"shoulder_pan_joint", -1.6},
       {"shoulder_lift_joint", -1.1449},
@@ -56,6 +68,7 @@ ArmMotion::ArmMotion(const rclcpp::Node::SharedPtr& node,
       ORCHESTRATOR_LISTENER_NODE_NULL);
   }
 
+  // Apply package-level planning defaults to the MoveGroupInterface.
   mgi_.setNumPlanningAttempts(kPlanningAttempts);
   mgi_.setPlanningTime(kPlanningTimeSeconds);
   mgi_.setGoalPositionTolerance(kGoalPositionTolerance);
@@ -79,12 +92,16 @@ geometry_msgs::msg::Pose ArmMotion::MakeApproachPose(
   tf2::fromMsg(target.orientation, q);
   tf2::Matrix3x3 rotation(q);
 
+  // Third column of the rotation matrix = tool Z axis in world coordinates.
   const tf2::Vector3 tool_z_world =
         rotation * tf2::Vector3(0.0, 0.0, 1.0);
 
+  // Offset along the tool Z axis (pull back from the target surface).
   approach.position.x += tool_z_world.x() * dz_tool;
   approach.position.y += tool_z_world.y() * dz_tool;
   approach.position.z += tool_z_world.z() * dz_tool;
+
+  // Additional vertical offset in world Z (safe lift above the target).
   approach.position.z += dz_world;
 
   return approach;
@@ -94,7 +111,7 @@ void ArmMotion::MoveToPose(const geometry_msgs::msg::Pose& target)
 {
   mgi_.clearPoseTargets();
   mgi_.setStartStateToCurrentState();
-  if (!mgi_.setPoseTarget(target, "tool0")) {
+  if (!mgi_.setPoseTarget(target, kDefaultEndEffectorLink)) {
     RCLCPP_ERROR(node_->get_logger(), "Set pose target failed");
   }
 
@@ -128,12 +145,14 @@ void ArmMotion::MoveLinearToPose(const geometry_msgs::msg::Pose& target,
       traj_msg, true
   );
 
+  // Reject trajectories that do not cover enough of the requested path.
   if (fraction < min_fraction) {
     RCLCPP_ERROR(node_->get_logger(),
                  "Cartesian path fraction too low: %.3f (min %.3f)", fraction, min_fraction);
     throw ManipulationException(moveit::core::MoveItErrorCode::PLANNING_FAILED);
   }
 
+  // Convert to RobotTrajectory so that TOTG time parameterisation can be applied.
   robot_trajectory::RobotTrajectory rt(mgi_.getRobotModel(), mgi_.getName());
   rt.setRobotTrajectoryMsg(*mgi_.getCurrentState(), traj_msg);
 
@@ -171,9 +190,8 @@ void ArmMotion::MoveToPoseBoxGoal(const geometry_msgs::msg::Pose& target,
       TIMED_OUT);
   }
 
-  // -----------------------------
-  // Build BoundingVolume BOX
-  // -----------------------------
+  // Build a box-shaped BoundingVolume centred on the target position.
+  // The box side length is 2 * pos_tol so pos_tol represents the half-size.
   shape_msgs::msg::SolidPrimitive box;
   box.type = shape_msgs::msg::SolidPrimitive::BOX;
   box.dimensions.resize(3);
@@ -183,15 +201,12 @@ void ArmMotion::MoveToPoseBoxGoal(const geometry_msgs::msg::Pose& target,
 
   geometry_msgs::msg::Pose box_pose;
   box_pose.position = target.position;
-  box_pose.orientation.w = 1.0;
+  box_pose.orientation.w = 1.0;  // neutral rotation for the box itself
 
   moveit_msgs::msg::BoundingVolume bv;
   bv.primitives.push_back(box);
   bv.primitive_poses.push_back(box_pose);
 
-  // -----------------------------
-  // PositionConstraint
-  // -----------------------------
   moveit_msgs::msg::PositionConstraint pc;
   pc.header.frame_id = frame_id;
   pc.link_name = eef_link;
@@ -216,9 +231,6 @@ void ArmMotion::MoveToPoseBoxGoal(const geometry_msgs::msg::Pose& target,
     cons.orientation_constraints.push_back(oc);
   }
 
-  // -----------------------------
-  // Build MotionPlanRequest
-  // -----------------------------
   moveit_msgs::msg::MotionPlanRequest req;
   req.group_name = mgi_.getName();
   req.allowed_planning_time = mgi_.getPlanningTime();
@@ -226,25 +238,23 @@ void ArmMotion::MoveToPoseBoxGoal(const geometry_msgs::msg::Pose& target,
     req.planner_id = planner_id;
   }
 
-  // IMPORTANT: goal_constraints is a list of Constraints (each a conjunction)
+  // A single Constraints entry acts as a conjunction: all constraints must
+  // be satisfied simultaneously.
   req.goal_constraints.clear();
   req.goal_constraints.push_back(cons);
 
-  // Start state = current state from MoveGroupInterface
-  // (MoveIt will also accept empty start_state and use current, but explicit is safer)
+  // Supplying the current state explicitly is safer than relying on the
+  // implicit "use current state" behaviour of the action server.
   auto current_state = mgi_.getCurrentState(1.0);
   if (current_state) {
     moveit::core::robotStateToRobotStateMsg(*current_state, req.start_state);
     req.start_state.is_diff = true;
   }
 
-  // -----------------------------
-  // Send action goal
-  // -----------------------------
   MoveGroup::Goal goal_msg;
   goal_msg.request = req;
 
-  goal_msg.planning_options.plan_only = false; // execute
+  goal_msg.planning_options.plan_only = false;
   goal_msg.planning_options.look_around = false;
   goal_msg.planning_options.replan = false;
 
@@ -259,6 +269,7 @@ void ArmMotion::MoveToPoseBoxGoal(const geometry_msgs::msg::Pose& target,
   auto result_future = move_group_client_->async_get_result(goal_handle);
   auto wrapped_result = result_future.get();
 
+  // Helper lambda to convert rclcpp_action::ResultCode to a printable string.
   auto code_to_str = [](rclcpp_action::ResultCode c) {
     switch (c) {
       case rclcpp_action::ResultCode::SUCCEEDED:

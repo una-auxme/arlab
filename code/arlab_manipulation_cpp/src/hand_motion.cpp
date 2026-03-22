@@ -1,3 +1,13 @@
+// -----------------------------------------------------------------------------
+// File: hand_motion.cpp
+// Package: arlab_manipulation_cpp
+// Maintainer: Leonie Schmidt <leonie1.schmidt@uni-a.de>
+//
+// Implements the HandMotion class. Manages the lifecycle of a grasp action
+// goal: waiting for the action server, sending the goal, waiting for
+// acceptance, and finally waiting for the result.
+// -----------------------------------------------------------------------------
+
 #include "arlab_manipulation_cpp/hand_motion.hpp"
 
 #include <utility>
@@ -38,6 +48,7 @@ void HandMotion::Grasp(int target_closure_percent, int speed_for_percent,
                         std::chrono::milliseconds timeout,
                         std::chrono::milliseconds server_wait) {
 
+  // Clamp the closure value to the valid hardware range [0, 100].
   if (target_closure_percent < kMinClosurePercent) {
     target_closure_percent = kMinClosurePercent;
   }
@@ -70,6 +81,12 @@ void HandMotion::Grasp(int target_closure_percent, int speed_for_percent,
       INVALID_GRASP_GOAL);
   }
 
+  // The result timeout is currently not enforced because the Mia Hand
+  // may not close entirely when an object is present in the gripper.
+  // Therefore we wait indefinitely for the result.
+  // TODO: Find out over sensors if an object is present.
+  // Then the hand can be "closed enough" to consider the grasp successful and
+  // we can enforce a timeout here.
   auto result_future = client_->async_get_result(goal_handle);
   if (result_future.wait_for(timeout) != std::future_status::ready) {
     // throw ManipulationException(

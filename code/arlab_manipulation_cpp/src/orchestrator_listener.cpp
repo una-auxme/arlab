@@ -3,11 +3,11 @@
 // Package: arlab_manipulation_cpp
 // Maintainer: Leonie Schmidt <leonie1.schmidt@uni-a.de>
 //
-// Implements OrchestratorActionServer and the `main()` entry point.
+// Implements OrchestratorActionServer and the main() entry point.
 // The server lifecycle is:
 //   main() → make_shared<OrchestratorActionServer>() → Init() → spin().
-// Each accepted goal is executed in a separate detached thread via Execute(),
-// which keeps the action callback group unblocked during robot motion.
+// Each accepted goal is executed in a separate detached thread via Execute()
+// to keep the action callback group unblocked during robot motion.
 // -----------------------------------------------------------------------------
 
 #include "arlab_manipulation_cpp/orchestrator_listener.hpp"
@@ -36,7 +36,7 @@ OrchestratorActionServer::OrchestratorActionServer(
     : rclcpp::Node(kNodeName, options) {}
 
 void OrchestratorActionServer::Init() {
-
+  // Construct motion components after shared_from_this() is available.
   arm_ = std::make_unique<ArmMotion>(shared_from_this(), kManipulatorName);
   hand_ = std::make_unique<HandMotion>(shared_from_this());
   runner_ = std::make_unique<JobRunner>(*this, *arm_, *hand_);
@@ -62,6 +62,7 @@ rclcpp_action::GoalResponse OrchestratorActionServer::HandleGoal(
   RCLCPP_INFO(get_logger(), "OrchestratorAction Goal received (cmd=%s)",
               data_msg.cmd.data.c_str());
 
+  // Reject goals that carry no command — JobRunner cannot process them.
   if (data_msg.cmd.data.empty()) {
     RCLCPP_WARN(get_logger(),
                 "Rejecting OrchestratorAction Goal because cmd is empty.");
@@ -83,7 +84,9 @@ rclcpp_action::CancelResponse OrchestratorActionServer::HandleCancel(
 void OrchestratorActionServer::HandleAccepted(
     std::shared_ptr<GoalHandleOrchestrator> goal_handle) {
 
-  // Executes job in a separate thread so action callbacks remain responsive.
+  // Execute the job in a detached thread so that the action server callbacks
+  // remain responsive while the robot is in motion. The goal_handle is moved
+  // into the thread to extend its lifetime until Execute() returns.
   std::thread(&OrchestratorActionServer::Execute, this, std::move(goal_handle))
     .detach();
 }
@@ -109,7 +112,7 @@ void OrchestratorActionServer::Execute(
     return;
 
   } catch (const ManipulationException& e) {
-
+    // Known manipulation failure: propagate the typed error code.
     RCLCPP_ERROR(get_logger(), "JobRunner exception: %s", e.what());
 
     result->response.error_code = e.code();
@@ -119,7 +122,7 @@ void OrchestratorActionServer::Execute(
     return;
 
   } catch (const std::exception& e) {
-
+    // Unexpected failure: use the generic unknown error code.
     RCLCPP_ERROR(get_logger(), "JobRunner unknown exception: %s", e.what());
 
     result->response.error_code = kUnknownErrorCode;
@@ -133,6 +136,8 @@ void OrchestratorActionServer::Execute(
 int main(int argc, char** argv) {
   rclcpp::init(argc, argv);
 
+  // Two-step initialisation: construct the node first so that
+  // shared_from_this() is valid inside Init().
   auto node = std::make_shared<OrchestratorActionServer>();
   node->Init();
 

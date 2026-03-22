@@ -5,7 +5,6 @@
   - [Getting Started](#getting-started)
     - [Setup](#setup)
     - [Simulation startup](#simulation-startup)
-  - [Docker](#docker)
   - [Architecture Overview](#architecture-overview)
     - [Bringup \& Integration](#bringup--integration)
     - [Core Infrastructure](#core-infrastructure)
@@ -40,7 +39,7 @@ All code documentation can be found in the respective source code files.
 
 ### Setup
 
-This project needs to be cloned as part of the [arlab_docker](https://git.rz.uni-augsburg.de/imech-m/autonomous_robotics_lab/arlab_docker) project to work.
+This project needs to be cloned as part of the [arlab_docker](https://git.rz.uni-augsburg.de/imech-m/autonomous_robotics_lab/arlab_docker) project in order to work.
 
 ```bash
 # Do not clone arlab manually, just clone arlab_docker
@@ -82,10 +81,6 @@ docker exec -it <container-name> bash
 # Start basic simulation
 ros2 launch manipulator_description manipulator.full.sim.launch.py
 ```
-
-## Docker
-
-The [arlab_docker](https://git.rz.uni-augsburg.de/imech-m/autonomous_robotics_lab/arlab_docker) repository contains the docker configuration to execute this project.
 
 ## Architecture Overview
 

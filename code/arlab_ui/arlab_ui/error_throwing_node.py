@@ -1,3 +1,11 @@
+"""error_throwing_node.py
+
+This node emits an error log message for a specified duration.
+It is used for debugging and testing the UI.
+
+Author: Jonas Platzer
+"""
+
 import time
 
 import rclpy

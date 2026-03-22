@@ -1,4 +1,4 @@
-navigation_stack_manager:
+navigation_orchestrator:
   ros__parameters:
     # Map saving parameters
     map_path: "/workspace/src/arlab/code/arlab_movement/map/my_map"
@@ -10,7 +10,7 @@ navigation_stack_manager:
     slam_enabled: true
     nav_enabled: true
 
-    save_to_database: true
+    save_to_database: false
     map_topic: "/map"
     database_service: "/arlab/knowledge/add_map"
     database_timeout: 10.0

@@ -1,3 +1,13 @@
+"""main.py
+
+This is a simple UI for interacting with the robot for the "Tag der Informatik 12.03.2026".
+Might be used in the future, however a more fleshed out UI will be necessary.
+The UI reads in the ../config/buttons.json file to create buttons and their corresponding commands.
+
+Author: Jonas Platzer
+
+"""
+
 import json
 import math
 import queue
@@ -17,6 +27,19 @@ CONFIG_PATH = Path("/workspace/src/arlab/code/arlab_ui/config/buttons.json")
 
 
 class RosBridge(Node):
+    """
+    ROS bridge for communication between UI and ROS.
+    
+    Args:
+    - sub_topic (str): ROS topic to subscribe to subscribe to
+    - pub_topic (str): ROS topic to publish to
+    - incoming_queue (queue.Queue[str]): Queue for messages received from ROS to be processed
+    - outgoing_queue (queue.Queue[str]): Queue for messages from UI to be sent to ROS
+    - ros_error_queue (queue.Queue[str]): Queue for ROS error messages to be sent to UI
+    - rosout_topic (str): ROS topic to subscribe for log messages (default: "/rosout")
+    - min_severity (int): Minimum severity level for ROS log messages to forward to UI (default: Log.WARN)
+
+    """
     def __init__(
         self,
         sub_topic: str,
@@ -72,6 +95,11 @@ class RosBridge(Node):
 
 
 class App(tk.Tk):
+    """
+    Main application class for the UI.
+    It sets up the layout, handles user interactions, and manages communication with ROS via RosBridge
+    """
+
     def __init__(self, sub_topic="/chatter", pub_topic="/chatter"):
         super().__init__()
         self.title("Zirbi Touchscreen UI")
@@ -108,7 +136,6 @@ class App(tk.Tk):
         self.bind_all("<Any-Button>", self._on_user_activity)
         self.bind_all("<Motion>", self._on_user_activity)
 
-        # Touchscreens sometimes behave like mouse button events; this covers most cases.
         self._reset_screensaver_timer()
 
         # ROS thread + Tk polling
@@ -120,8 +147,9 @@ class App(tk.Tk):
 
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
-    # ---------- Layout ----------
+    # Building the layout
     def _build_layout(self):
+        # Grid
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
 
@@ -176,14 +204,13 @@ class App(tk.Tk):
         self.notebook = ttk.Notebook(below)
         self.notebook.grid(row=1, column=0, sticky="nsew")
 
-    # ---------- Chat send ----------
     def _send_chat(self):
+        """Get text from entry, publish to ROS, and append to chatbox."""
         text = self.chat_entry.get().strip()
         if not text:
             return
         self.chat_entry.delete(0, "end")
 
-        # show locally + queue to ROS publisher
         self._append_chat(f"[me] {text}")
         self.outgoing_queue.put(text)
 
@@ -200,8 +227,8 @@ class App(tk.Tk):
             pass
         self.after(50, self._drain_incoming)
 
-    # ---------- Config ----------
     def _load_config(self):
+        """Load button configuration from JSON file."""
         try:
             raw = CONFIG_PATH.read_text(encoding="utf-8")
             cfg = json.loads(raw)
@@ -213,8 +240,8 @@ class App(tk.Tk):
             self.buttons_data = [{"name": "Config load failed", "cmd": ""}]
             self._append_chat(f"[CONFIG] Failed to load {CONFIG_PATH}: {e}")
 
-    # ---------- Tabs ----------
     def _rebuild_tabs(self):
+        """Rebuild tabs based on current button configuration and toggle state."""
         try:
             current_index = self.notebook.index(self.notebook.select())
         except Exception:
@@ -237,6 +264,13 @@ class App(tk.Tk):
         self.notebook.select(min(current_index, num_tabs - 1))
 
     def _make_tab_frame(self, tab_buttons):
+        """Create a frame for a single tab.
+        Args:
+        - tab_buttons (list[dict]): List of button configurations for this tab
+        
+        Returns:
+        - tk.Frame: The constructed frame for the tab
+        """
         outer = ttk.Frame(self.notebook, padding=6)
         outer.columnconfigure(0, weight=1)
         outer.rowconfigure(0, weight=1)
@@ -276,6 +310,12 @@ class App(tk.Tk):
         return outer
 
     def _populate_button_grid(self, parent, button_items, slots: int):
+        """Populate the grid with buttons based on provided configuration.
+        Args:
+        - parent (tk.Frame): The parent frame to populate
+        - button_items (list[dict]): List of button configurations (name and cmd)
+        - slots (int): Total number of button slots to fill (including empty)
+        """
         cols = 2
         rows = slots // cols
 
@@ -303,10 +343,14 @@ class App(tk.Tk):
                 ttk.Label(parent, text="").grid(row=r, column=c, sticky="nsew", padx=6, pady=6)
 
     def _on_toggle(self):
+        """Handle toggle of error box visibility and rebuild tabs accordingly."""
         self._rebuild_tabs()
 
-    # --------- Screensaver ----------
     def _build_screensaver(self, image_path: str):
+        """Set up the screensaver frame and load the initial media (static image or GIF).
+        
+        Args:
+        - image_path (str): Path to the image or GIF to use for the screensaver"""
         self._screensaver_frame = tk.Frame(self, bg="white", bd=0, highlightthickness=0, relief="flat")
         self._screensaver_frame.place_forget()
 
@@ -321,16 +365,16 @@ class App(tk.Tk):
         )
         self._screensaver_label.pack(fill="both", expand=True)
 
-        # animation state
+        # animation
         self._gif_frames = []
         self._gif_index = 0
         self._gif_after_id = None
-        self._gif_delay_ms = 80  # default frame delay if not specified in GIF
+        self._gif_delay_ms = 80
 
         self._load_screensaver_media(image_path)
 
     def _reset_screensaver_timer(self):
-        # Cancel old timer if exists
+        """Reset the inactivity timer for the screensaver. If the timer expires, the screensaver will be shown."""
         if hasattr(self, "_screensaver_after_id") and self._screensaver_after_id is not None:
             try:
                 self.after_cancel(self._screensaver_after_id)
@@ -340,25 +384,34 @@ class App(tk.Tk):
         self._screensaver_after_id = self.after(int(self.screensaver_seconds * 1000), self._show_screensaver)
 
     def _show_screensaver(self):
+        """Show the screensaver."""
         self._screensaver_on = True
         self._screensaver_frame.place(x=0, y=0, relwidth=1, relheight=1)
         self._screensaver_frame.lift()
         self._start_gif()  # start animation if it's a GIF
 
     def _hide_screensaver(self):
+        """Hide the screensaver and return to the main UI."""
         self._screensaver_on = False
-        self._stop_gif()  # stop animation timer
+        self._stop_gif()
         self._screensaver_frame.place_forget()
 
     def _on_user_activity(self, event=None):
-        # Wake on first interaction
+        """Handle any user interaction by hiding the screensaver (if active) and resetting the inactivity timer.
+        
+        Args:
+        - event: The Tkinter event that triggered the user activity (optional)
+        """
         if getattr(self, "_screensaver_on", False):
             self._hide_screensaver()
 
         self._reset_screensaver_timer()
 
     def _load_screensaver_media(self, path: str):
-        # stop previous animation
+        """Load the media for the screensaver. Supports static images and GIFs.
+        Args:
+        - path (str): Path to the image or GIF file to load as the screensaver
+        """
         self._stop_gif()
 
         self._screensaver_path = path
@@ -374,6 +427,9 @@ class App(tk.Tk):
             self._screensaver_label.configure(image=self._screensaver_img)
 
     def _load_gif_frames(self, path: str) -> list[tk.PhotoImage]:
+        """Load all frames from a GIF file.
+        Args:
+        - path (str): Path to the GIF file"""
         frames = []
         i = 0
         while True:
@@ -388,13 +444,13 @@ class App(tk.Tk):
         return frames
 
     def _start_gif(self):
-        # only animate multiple frames are available and screensaver is on
+        """Start the GIF animation if the screensaver is active."""
         if not getattr(self, "_screensaver_on", False):
             return
         if not getattr(self, "_gif_frames", None) or len(self._gif_frames) <= 1:
             return
         if self._gif_after_id is not None:
-            return  # already running
+            return
 
         def step():
             if not getattr(self, "_screensaver_on", False):
@@ -408,6 +464,7 @@ class App(tk.Tk):
         self._gif_after_id = self.after(self._gif_delay_ms, step)
 
     def _stop_gif(self):
+        """Stop the GIF animation."""
         if getattr(self, "_gif_after_id", None) is not None:
             try:
                 self.after_cancel(self._gif_after_id)
@@ -415,8 +472,11 @@ class App(tk.Tk):
                 pass
             self._gif_after_id = None
 
-    # ---------- ROS errors -> error box (when visible) ----------
     def _append_error(self, line: str):
+        """Append a ROS error line to the error buffer and display it in the error box if visible.
+        Args:
+        - line (str): The error message to display
+        """
         self.ros_error_buffer.append(line)
 
         tab_id = self.notebook.select()
@@ -428,6 +488,7 @@ class App(tk.Tk):
             target.see("end")
 
     def _drain_ros_errors(self):
+        """Drain the ROS error queue and append any new errors to the error box."""
         try:
             while True:
                 line = self.ros_error_queue.get_nowait()
@@ -436,8 +497,11 @@ class App(tk.Tk):
             pass
         self.after(50, self._drain_ros_errors)
 
-    # ---------- Commands ----------
     def _run_command(self, name: str, cmd: str):
+        """Run a shell command and log its output to the chatbox.
+        Args:
+        - name (str): The name of the command (for logging purposes)
+        - cmd (str): The shell command to execute"""
         def log(text: str):
             for line in text.splitlines():
                 self._append_chat(f"[cmd] {line}")
@@ -456,8 +520,8 @@ class App(tk.Tk):
         except Exception as e:
             log(f"Failed to run command: {e}")
 
-    # ---------- ROS thread ----------
     def _ros_spin(self):
+        """ROS spinning in a separate thread."""
         rclpy.init(args=None)
         self.ros_node = RosBridge(
             sub_topic=self.sub_topic,
@@ -484,6 +548,7 @@ class App(tk.Tk):
                 pass
 
     def _on_close(self):
+        """Handle application close event."""
         try:
             rclpy.shutdown()
         except Exception:

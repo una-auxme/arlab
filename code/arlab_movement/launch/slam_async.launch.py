@@ -1,3 +1,13 @@
+"""slam_async.launch.py
+
+Slight adjustments to the original slam_async_launch.py from the slam_toolbox package,
+mainly to allow for parameterization of the used parameters file.
+
+Original source: https://github.com/SteveMacenski/slam_toolbox/blob/ros2/launch/online_async_launch.py
+Modified by: Jonas Platzer
+
+"""
+
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, EmitEvent, LogInfo, RegisterEventHandler
 from launch.conditions import IfCondition

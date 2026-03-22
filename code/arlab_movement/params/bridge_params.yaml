@@ -1,3 +1,6 @@
+# This file defines the topic bridges between ROS and Gazebo,
+# which are used by the ros_gz_bridge package to bridge messages between the two systems.
+
 # gz topic published by the simulator core
 - ros_topic_name: "clock"
   gz_topic_name: "clock"

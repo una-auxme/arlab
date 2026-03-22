@@ -21,7 +21,7 @@ from launch.conditions import IfCondition
 from launch.substitutions import EqualsSubstitution, LaunchConfiguration, NotEqualsSubstitution, PythonExpression
 from launch_ros.actions import LoadComposableNodes, Node, PushROSNamespace, SetParameter
 from launch_ros.descriptions import ComposableNode, ParameterFile
-from nav2_common.launch import LaunchConfigAsBool, RewrittenYaml
+from nav2_common.launch import RewrittenYaml
 
 
 def generate_launch_description() -> LaunchDescription:
@@ -30,13 +30,13 @@ def generate_launch_description() -> LaunchDescription:
 
     namespace = LaunchConfiguration("namespace")
     map_yaml_file = LaunchConfiguration("map")
-    use_sim_time = LaunchConfigAsBool("use_sim_time")
-    autostart = LaunchConfigAsBool("autostart")
+    use_sim_time = LaunchConfiguration("use_sim_time")
+    autostart = LaunchConfiguration("autostart")
     params_file = LaunchConfiguration("params_file")
-    use_composition = LaunchConfigAsBool("use_composition")
+    use_composition = LaunchConfiguration("use_composition")
     container_name = LaunchConfiguration("container_name")
     container_name_full = (namespace, "/", container_name)
-    use_respawn = LaunchConfigAsBool("use_respawn")
+    use_respawn = LaunchConfiguration("use_respawn")
     log_level = LaunchConfiguration("log_level")
 
     lifecycle_nodes = ["map_server", "amcl"]
@@ -103,20 +103,6 @@ def generate_launch_description() -> LaunchDescription:
         actions=[
             PushROSNamespace(namespace),
             SetParameter("use_sim_time", use_sim_time),
-            # Node(
-            #    condition=IfCondition(
-            #        EqualsSubstitution(LaunchConfiguration('map'), '')
-            #    ),
-            #    package='nav2_map_server',
-            #    executable='map_server',
-            #    name='map_server',
-            #    output='screen',
-            #    respawn=use_respawn,
-            #    respawn_delay=2.0,
-            #    parameters=[configured_params],
-            #    arguments=['--ros-args', '--log-level', log_level],
-            #    remappings=remappings,
-            # ),
             Node(
                 condition=IfCondition(NotEqualsSubstitution(LaunchConfiguration("map"), "")),
                 package="nav2_map_server",
@@ -150,11 +136,6 @@ def generate_launch_description() -> LaunchDescription:
             ),
         ],
     )
-    # LoadComposableNode for map server twice depending if we should use the
-    # value of map from a CLI or launch default or user defined value in the
-    # yaml configuration file. They are separated since the conditions
-    # currently only work on the LoadComposableNodes commands and not on the
-    # ComposableNode node function itself
     load_composable_nodes = GroupAction(
         condition=IfCondition(use_composition),
         actions=[

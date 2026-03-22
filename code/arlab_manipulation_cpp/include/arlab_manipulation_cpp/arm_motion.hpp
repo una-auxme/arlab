@@ -47,6 +47,7 @@ class ArmMotion {
     void MoveToPose(const geometry_msgs::msg::Pose& target);
 
     /**
+     * @note Not fully tested. Errors may occur. Use with caution.
      * Plans and executes a straight-line Cartesian motion to the given pose.
      * The trajectory is time-parameterised with TOTG before execution.
      * @param target            Desired end-effector pose.
@@ -63,6 +64,7 @@ class ArmMotion {
                           double min_fraction = 0.95);
 
     /**
+     * @note Not fully tested. Errors may occur. Use with caution.
      * Plans and executes a motion to a box-constrained region around the target
      * pose using the raw MoveGroup action.
      * @param target            Centre of the goal region and optional desired orientation.
@@ -98,6 +100,7 @@ class ArmMotion {
     void MoveToHome();
 
     /**
+     * @note Not fully tested. Errors may occur. Use with caution.
      * Computes an approach pose by offsetting the target along the tool Z axis
      * and the world Z axis.
      * @param target      Reference target pose.

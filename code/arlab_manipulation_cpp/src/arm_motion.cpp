@@ -82,6 +82,9 @@ ArmMotion::ArmMotion(const rclcpp::Node::SharedPtr& node,
   joints_home_ = kHomeJoints;
 }
 
+/*
+* @note Not fully tested. Errors may occur. Use with caution.
+*/
 geometry_msgs::msg::Pose ArmMotion::MakeApproachPose(
     const geometry_msgs::msg::Pose& target,
     double dz_tool,
@@ -130,6 +133,9 @@ void ArmMotion::MoveToPose(const geometry_msgs::msg::Pose& target)
   return;
 }
 
+/*
+* @note Not fully tested. Errors may occur. Use with caution.
+*/
 void ArmMotion::MoveLinearToPose(const geometry_msgs::msg::Pose& target,
                                  double eef_step, double jump_threshold,
                                  double min_fraction) {
@@ -177,6 +183,9 @@ void ArmMotion::MoveLinearToPose(const geometry_msgs::msg::Pose& target,
   }
 }
 
+/*
+* @note Not fully tested. Errors may occur. Use with caution.
+*/
 void ArmMotion::MoveToPoseBoxGoal(const geometry_msgs::msg::Pose& target,
                                   double pos_tol, bool use_orientation,
                                   double ori_tol, const std::string& eef_link,

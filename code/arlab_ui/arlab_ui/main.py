@@ -29,7 +29,7 @@ CONFIG_PATH = Path("/workspace/src/arlab/code/arlab_ui/config/buttons.json")
 class RosBridge(Node):
     """
     ROS bridge for communication between UI and ROS.
-    
+
     Args:
     - sub_topic (str): ROS topic to subscribe to subscribe to
     - pub_topic (str): ROS topic to publish to
@@ -40,6 +40,7 @@ class RosBridge(Node):
     - min_severity (int): Minimum severity level for ROS log messages to forward to UI (default: Log.WARN)
 
     """
+
     def __init__(
         self,
         sub_topic: str,
@@ -165,7 +166,9 @@ class App(tk.Tk):
         chat.columnconfigure(0, weight=1)
         chat.rowconfigure(1, weight=1)
 
-        ttk.Label(chat, text=f"Sub: {self.sub_topic}   Pub: {self.pub_topic}").grid(row=0, column=0, sticky="w")
+        ttk.Label(chat, text=f"Sub: {self.sub_topic}   Pub: {self.pub_topic}").grid(
+            row=0, column=0, sticky="w"
+        )
 
         self.chat_text = tk.Text(chat, wrap="word", height=6)
         self.chat_text.grid(row=1, column=0, sticky="nsew", pady=(6, 6))
@@ -180,7 +183,9 @@ class App(tk.Tk):
         self.chat_entry.grid(row=0, column=0, sticky="ew", padx=(0, 6))
         self.chat_entry.bind("<Return>", lambda e: self._send_chat())
 
-        ttk.Button(input_row, text="Send", command=self._send_chat).grid(row=0, column=1)
+        ttk.Button(input_row, text="Send", command=self._send_chat).grid(
+            row=0, column=1
+        )
 
         # Tabs
         below = ttk.Frame(main, padding=8)
@@ -267,7 +272,7 @@ class App(tk.Tk):
         """Create a frame for a single tab.
         Args:
         - tab_buttons (list[dict]): List of button configurations for this tab
-        
+
         Returns:
         - tk.Frame: The constructed frame for the tab
         """
@@ -336,11 +341,15 @@ class App(tk.Tk):
                 btn = ttk.Button(
                     parent,
                     text=name,
-                    command=lambda n=name, command_str=cmd: self._run_command(n, command_str),
+                    command=lambda n=name, command_str=cmd: self._run_command(
+                        n, command_str
+                    ),
                 )
                 btn.grid(row=r, column=c, sticky="nsew", padx=6, pady=6)
             else:
-                ttk.Label(parent, text="").grid(row=r, column=c, sticky="nsew", padx=6, pady=6)
+                ttk.Label(parent, text="").grid(
+                    row=r, column=c, sticky="nsew", padx=6, pady=6
+                )
 
     def _on_toggle(self):
         """Handle toggle of error box visibility and rebuild tabs accordingly."""
@@ -348,10 +357,12 @@ class App(tk.Tk):
 
     def _build_screensaver(self, image_path: str):
         """Set up the screensaver frame and load the initial media (static image or GIF).
-        
+
         Args:
         - image_path (str): Path to the image or GIF to use for the screensaver"""
-        self._screensaver_frame = tk.Frame(self, bg="white", bd=0, highlightthickness=0, relief="flat")
+        self._screensaver_frame = tk.Frame(
+            self, bg="white", bd=0, highlightthickness=0, relief="flat"
+        )
         self._screensaver_frame.place_forget()
 
         self._screensaver_label = tk.Label(
@@ -375,13 +386,18 @@ class App(tk.Tk):
 
     def _reset_screensaver_timer(self):
         """Reset the inactivity timer for the screensaver. If the timer expires, the screensaver will be shown."""
-        if hasattr(self, "_screensaver_after_id") and self._screensaver_after_id is not None:
+        if (
+            hasattr(self, "_screensaver_after_id")
+            and self._screensaver_after_id is not None
+        ):
             try:
                 self.after_cancel(self._screensaver_after_id)
             except Exception:
                 pass
 
-        self._screensaver_after_id = self.after(int(self.screensaver_seconds * 1000), self._show_screensaver)
+        self._screensaver_after_id = self.after(
+            int(self.screensaver_seconds * 1000), self._show_screensaver
+        )
 
     def _show_screensaver(self):
         """Show the screensaver."""
@@ -398,7 +414,7 @@ class App(tk.Tk):
 
     def _on_user_activity(self, event=None):
         """Handle any user interaction by hiding the screensaver (if active) and resetting the inactivity timer.
-        
+
         Args:
         - event: The Tkinter event that triggered the user activity (optional)
         """
@@ -502,6 +518,7 @@ class App(tk.Tk):
         Args:
         - name (str): The name of the command (for logging purposes)
         - cmd (str): The shell command to execute"""
+
         def log(text: str):
             for line in text.splitlines():
                 self._append_chat(f"[cmd] {line}")

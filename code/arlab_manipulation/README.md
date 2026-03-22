@@ -35,6 +35,9 @@ arlab_manipulation/
 
 ## Package workflow
 
+The orchestrator receives a goal from the decision maker and sequentially queries the knowledge
+base and gripping parameter service before forwarding the computed pose to the C++ interface node:
+
 ```text
 DecisionMaker
     │  ManipulationAction  (/manipulation/action)

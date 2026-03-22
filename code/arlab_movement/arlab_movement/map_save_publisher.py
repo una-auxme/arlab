@@ -1,3 +1,14 @@
+"""map_save_publisher.py
+
+This node provides a simple publisher that periodically publishes a Bool message with data=True to
+the /map_save topic.
+Previously used for periodically saving the map during navigation, but currently not actively
+used in the system. Provided for potential future use.
+
+Author: Jonas Platzer
+
+"""
+
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Bool

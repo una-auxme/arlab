@@ -1,5 +1,20 @@
+"""slam_async.launch.py
+
+Slight adjustments to the original slam_async_launch.py from the slam_toolbox package,
+mainly to allow for parameterization of the used parameters file.
+
+Original source: https://github.com/SteveMacenski/slam_toolbox/blob/ros2/launch/online_async_launch.py
+Modified by: Jonas Platzer
+
+"""
+
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, EmitEvent, LogInfo, RegisterEventHandler
+from launch.actions import (
+    DeclareLaunchArgument,
+    EmitEvent,
+    LogInfo,
+    RegisterEventHandler,
+)
 from launch.conditions import IfCondition
 from launch.events import matches_action
 from launch.substitutions import AndSubstitution, LaunchConfiguration, NotSubstitution
@@ -16,10 +31,14 @@ def generate_launch_description():
     slam_params_file = LaunchConfiguration("slam_params_file")
 
     declare_autostart_cmd = DeclareLaunchArgument(
-        "autostart", default_value="true", description="Automatically startup the slamtoolbox. Ignored when use_lifecycle_manager is true."
+        "autostart",
+        default_value="true",
+        description="Automatically startup the slamtoolbox. Ignored when use_lifecycle_manager is true.",
     )
     declare_use_lifecycle_manager = DeclareLaunchArgument(
-        "use_lifecycle_manager", default_value="false", description="Enable bond connection during node activation"
+        "use_lifecycle_manager",
+        default_value="false",
+        description="Enable bond connection during node activation",
     )
     declare_use_sim_time_argument = DeclareLaunchArgument("use_sim_time", default_value="true", description="Use simulation/Gazebo clock")
     declare_slam_params_file_cmd = DeclareLaunchArgument(
@@ -29,7 +48,13 @@ def generate_launch_description():
     )
 
     start_async_slam_toolbox_node = LifecycleNode(
-        parameters=[slam_params_file, {"use_lifecycle_manager": use_lifecycle_manager, "use_sim_time": use_sim_time}],
+        parameters=[
+            slam_params_file,
+            {
+                "use_lifecycle_manager": use_lifecycle_manager,
+                "use_sim_time": use_sim_time,
+            },
+        ],
         package="slam_toolbox",
         executable="async_slam_toolbox_node",
         name="slam_toolbox",
@@ -39,7 +64,8 @@ def generate_launch_description():
 
     configure_event = EmitEvent(
         event=ChangeState(
-            lifecycle_node_matcher=matches_action(start_async_slam_toolbox_node), transition_id=Transition.TRANSITION_CONFIGURE
+            lifecycle_node_matcher=matches_action(start_async_slam_toolbox_node),
+            transition_id=Transition.TRANSITION_CONFIGURE,
         ),
         condition=IfCondition(AndSubstitution(autostart, NotSubstitution(use_lifecycle_manager))),
     )
@@ -53,7 +79,8 @@ def generate_launch_description():
                 LogInfo(msg="[LifecycleLaunch] Slamtoolbox node is activating."),
                 EmitEvent(
                     event=ChangeState(
-                        lifecycle_node_matcher=matches_action(start_async_slam_toolbox_node), transition_id=Transition.TRANSITION_ACTIVATE
+                        lifecycle_node_matcher=matches_action(start_async_slam_toolbox_node),
+                        transition_id=Transition.TRANSITION_ACTIVATE,
                     )
                 ),
             ],

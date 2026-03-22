@@ -1,3 +1,12 @@
+"""custom_spawn_turtlebot3.launch.py
+
+This launch file spawns a TurtleBot3 robot in Gazebo at a specified position and sets up the necessary ROS-Gazebo
+bridges for communication. It allows for customization of the robot's initial position through launch arguments.
+
+Author: Jonas Platzer
+
+"""
+
 import os
 
 from ament_index_python.packages import get_package_share_directory
@@ -8,10 +17,17 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
+    """Generate the launch description for spawning a TurtleBot3 in Gazebo with ROS-Gazebo bridges."""
+
     # Get the urdf file
     TURTLEBOT3_MODEL = os.environ["TURTLEBOT3_MODEL"]
     model_folder = "turtlebot3_" + TURTLEBOT3_MODEL
-    urdf_path = os.path.join(get_package_share_directory("turtlebot3_gazebo"), "models", model_folder, "model.sdf")
+    urdf_path = os.path.join(
+        get_package_share_directory("turtlebot3_gazebo"),
+        "models",
+        model_folder,
+        "model.sdf",
+    )
 
     # Launch configuration variables specific to simulation
     x_pose = LaunchConfiguration("x_pose", default="0.0")
@@ -25,15 +41,21 @@ def generate_launch_description():
     start_gazebo_ros_spawner_cmd = Node(
         package="ros_gz_sim",
         executable="create",
-        arguments=["-name", TURTLEBOT3_MODEL, "-file", urdf_path, "-x", x_pose, "-y", y_pose, "-z", "0.01"],
+        arguments=[
+            "-name",
+            TURTLEBOT3_MODEL,
+            "-file",
+            urdf_path,
+            "-x",
+            x_pose,
+            "-y",
+            y_pose,
+            "-z",
+            "0.01",
+        ],
         output="screen",
     )
 
-    # bridge_params = os.path.join(
-    #    get_package_share_directory('turtlebot3_gazebo'),
-    #    'params',
-    #    model_folder+'_bridge.yaml'
-    # )
     bridge_params = "/workspace/build/arlab_movement/params/bridge_params.yaml"
 
     start_gazebo_ros_bridge_cmd = Node(

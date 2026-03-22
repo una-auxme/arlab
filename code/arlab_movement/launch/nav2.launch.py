@@ -23,13 +23,12 @@ from nav2_common.launch import RewrittenYaml
 
 def generate_launch_description():
     # Get the launch directory
-    # bringup_dir = get_package_share_directory("nav2_bringup")
 
     namespace = LaunchConfiguration("namespace")
     use_sim_time = LaunchConfiguration("use_sim_time")
     autostart = LaunchConfiguration("autostart")
     params_file = LaunchConfiguration("params_file")
-    use_composition = LaunchConfiguration("use_composition")
+    use_composition = "use_composition"
     container_name = LaunchConfiguration("container_name")
     container_name_full = (namespace, "/", container_name)
     use_respawn = LaunchConfiguration("use_respawn")
@@ -75,7 +74,7 @@ def generate_launch_description():
 
     declare_use_sim_time_cmd = DeclareLaunchArgument(
         "use_sim_time",
-        default_value="false",
+        default_value="true",
         description="Use simulation (Gazebo) clock if true",
     )
 

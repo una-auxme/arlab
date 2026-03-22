@@ -8,7 +8,7 @@ This project was built specifically for the `ARLab` at the University of Augsbur
 
 ## Overview
 
-ROS2 Python package for orchestrating pick-and-place manipulation commands on the Zirbi robot.
+ROS2 Python package for orchestrating different commands on the Zirbi robot (move, pick, place, home, open, close).
 It receives high-level commands from the decision maker, queries the knowledge base for object
 properties, fetches gripping parameters from a dedicated service, and forwards computed
 pick/place poses to the MoveIt motion planner via a C++ interface node.

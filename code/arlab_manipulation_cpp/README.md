@@ -35,8 +35,7 @@ arlab_manipulation_cpp/
 
 ## Package Workflow
 
-Internally the package workflow is structured in three layers.
-The OrchestatorActionsServer, the Jobrunner and the two Hardware-Level motion wrappers.
+An incoming action goal is recieved by the `OrchestratorActionServer`, handed to the `JobRunner` which resolves the command into a concrete motion sequence, that is then executed by `ArmMotion` via MoveIt or `HandMotion` via the Mia Hand grasp action.
 
 ```text
     Manipulation Orchestrator (external)

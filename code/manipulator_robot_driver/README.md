@@ -4,9 +4,8 @@ This package contains the actual driver for UR robots. It is part of the *univer
 repository and requires other packages from that repository. Also, see the [main repository's
 README](../README.md) for information on how to install and startup this driver.
 
-This package has been modified as part of the `ARLab` setup at the University of Augsburg in the
-context of the `Zirbi` robot. Please refer to the individual configuration files for details on
-what has been changed.
+It has been modified as part of the `ARLab` setup at the University of Augsburg in the
+context of the `Zirbi` robot.
 
 **Maintainer:** Sofia Öttl <sofia.oettl@uni-a.de>  
 **Maintainer:** Leonie Schmidt <leonie1.schmidt@uni-a.de>  

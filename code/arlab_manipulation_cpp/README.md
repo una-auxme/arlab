@@ -33,6 +33,23 @@ arlab_manipulation_cpp/
 │   └── orchestrator_listener.cpp
 ```
 
+```txt
+arlab_manipulation_cpp/
+├── include/                
+│   └── arlab_manipulation_cpp/
+│       ├── arm_motion.hpp              # ArmMotion class – MoveIt motion planning & execution
+│       ├── hand_motion.hpp             # HandMotion class – Mia Hand grasp action client
+│       ├── job_runner.hpp              # JobRunner class – command dispatcher
+│       ├── manipulator_exception.hpp   # ManipulationException – domain exception with error codes
+│       └── orchestrator_listener.hpp   # OrchestratorActionServer – ROS 2 action server entry point
+├── src/
+│   ├── arm_motion.cpp                  # Implements pose, Cartesian, box-goal & joint-space motion
+│   ├── hand_motion.cpp                 # Implements open, close & raw grasp via action client
+│   ├── job_runner.cpp                  # Implements command routing and pick/place sequences
+│   ├── manipulator_exception.cpp       # Implements error code to message mapping
+│   └── orchestrator_listener.cpp       # Implements action server callbacks & main()
+```
+
 | File | Description |
 | --- | --- |
 | `orchestrator_listener.hpp/.cpp` | ROS 2 action server; entry point of the package. Owns all motion components and initilizes the OrchestratorActionServer. |

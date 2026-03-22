@@ -28,7 +28,7 @@ def generate_launch_description():
     use_sim_time = LaunchConfiguration("use_sim_time")
     autostart = LaunchConfiguration("autostart")
     params_file = LaunchConfiguration("params_file")
-    use_composition = "use_composition"
+    use_composition = LaunchConfiguration("use_composition")
     container_name = LaunchConfiguration("container_name")
     container_name_full = (namespace, "/", container_name)
     use_respawn = LaunchConfiguration("use_respawn")

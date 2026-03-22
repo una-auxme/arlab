@@ -50,9 +50,7 @@ class NavigationOrchestrator(Node):
         self.action_group = ReentrantCallbackGroup()
 
         # Initialize parameters set in ../params/arlab_navigation_params.yaml
-        self.declare_parameter(
-            "map_path", "/workspace/src/arlab/code/arlab_movement/map/my_map"
-        )
+        self.declare_parameter("map_path", "/workspace/src/arlab/code/arlab_movement/map/my_map")
         self.declare_parameter("use_timestamp", False)
         self.declare_parameter("save_to_database", False)
         self.declare_parameter("map_topic", "/map")
@@ -68,9 +66,7 @@ class NavigationOrchestrator(Node):
         self.map_topic = str(self.get_parameter("map_topic").value)
         self.database_service = str(self.get_parameter("database_service").value)
         self.database_timeout = float(self.get_parameter("database_timeout").value)
-        self.enable_legacy_topics = bool(
-            self.get_parameter("enable_legacy_topics").value
-        )
+        self.enable_legacy_topics = bool(self.get_parameter("enable_legacy_topics").value)
 
         # initialize states
         self.current_map: Optional[OccupancyGrid] = None
@@ -79,16 +75,12 @@ class NavigationOrchestrator(Node):
         self.nav_process: Optional[subprocess.Popen] = None
 
         # subscribe to the map topic to cache the latest map for saving
-        self.map_subscription = self.create_subscription(
-            OccupancyGrid, self.map_topic, self.map_callback, 10
-        )
+        self.map_subscription = self.create_subscription(OccupancyGrid, self.map_topic, self.map_callback, 10)
 
         # initialize database client
         self.database_client = None
         if self.save_to_database:
-            self.database_client = self.create_client(
-                AddMap, self.database_service, callback_group=self.service_group
-            )
+            self.database_client = self.create_client(AddMap, self.database_service, callback_group=self.service_group)
             self.get_logger().info(f"Database client created: {self.database_service}")
 
         # action server for movement commands
@@ -104,16 +96,10 @@ class NavigationOrchestrator(Node):
 
         # legacy topic interface (subscription based control)
         if self.enable_legacy_topics:
-            self.create_subscription(
-                Bool, "localization_bool", self.legacy_localization_callback, 10
-            )
-            self.create_subscription(
-                Bool, "mapping_bool", self.legacy_mapping_callback, 10
-            )
+            self.create_subscription(Bool, "localization_bool", self.legacy_localization_callback, 10)
+            self.create_subscription(Bool, "mapping_bool", self.legacy_mapping_callback, 10)
             self.create_subscription(Bool, "nav_bool", self.legacy_nav_callback, 10)
-            self.create_subscription(
-                Bool, "map_save", self.legacy_map_save_callback, 10
-            )
+            self.create_subscription(Bool, "map_save", self.legacy_map_save_callback, 10)
 
         self.get_logger().info("NavigationOrchestrator ActionServer started.")
         self.get_logger().info("Action name: /movement/action")
@@ -146,9 +132,7 @@ class NavigationOrchestrator(Node):
         Returns:
             GoalResponse: ACCEPT to allow execution of the goal.
         """
-        self.get_logger().info(
-            f"Goal: cmd='{goal_request.cmd}', enable={goal_request.enable}"
-        )
+        self.get_logger().info(f"Goal: cmd='{goal_request.cmd}', enable={goal_request.enable}")
         return GoalResponse.ACCEPT
 
     def cancel_callback(self, goal_handle):
@@ -164,9 +148,7 @@ class NavigationOrchestrator(Node):
         Returns:
             CancelResponse: ACCEPT to confirm cancellation.
         """
-        self.get_logger().warning(
-            "Cancel requested; stopping all navigation processes."
-        )
+        self.get_logger().warning("Cancel requested; stopping all navigation processes.")
         self.stop_all()
         return CancelResponse.ACCEPT
 
@@ -233,9 +215,7 @@ class NavigationOrchestrator(Node):
         return result
 
     # Process helpers
-    def _start_process(
-        self, cmd_list, name: str
-    ) -> Tuple[Optional[subprocess.Popen], int, str]:
+    def _start_process(self, cmd_list, name: str) -> Tuple[Optional[subprocess.Popen], int, str]:
         """
         Start a navigation-related subprocess.
 
@@ -280,9 +260,7 @@ class NavigationOrchestrator(Node):
         except Exception as e:
             return None, NavErr.PROCESS_START_FAILED, f"Failed to start {name}: {e}"
 
-    def _stop_process(
-        self, proc: Optional[subprocess.Popen], name: str
-    ) -> Tuple[Optional[subprocess.Popen], int, str]:
+    def _stop_process(self, proc: Optional[subprocess.Popen], name: str) -> Tuple[Optional[subprocess.Popen], int, str]:
         """
         Stop a running navigation-related subprocess.
 
@@ -327,9 +305,7 @@ class NavigationOrchestrator(Node):
         if enable:
             if self.amcl_process is None or self.amcl_process.poll() is not None:
                 publish_status("Starting localization (AMCL)")
-                self.amcl_process, err, msg = self._start_process(
-                    ["ros2", "run", "nav2_amcl", "amcl"], "AMCL"
-                )
+                self.amcl_process, err, msg = self._start_process(["ros2", "run", "nav2_amcl", "amcl"], "AMCL")
                 return err, msg
             return NavErr.OK, "AMCL already running"
         publish_status("Stopping localization (AMCL)")
@@ -360,9 +336,7 @@ class NavigationOrchestrator(Node):
                 return err, msg
             return NavErr.OK, "SLAM already running"
         publish_status("Stopping mapping (SLAM Toolbox)")
-        self.slam_process, err, msg = self._stop_process(
-            self.slam_process, "SLAM Toolbox"
-        )
+        self.slam_process, err, msg = self._stop_process(self.slam_process, "SLAM Toolbox")
         return err, msg
 
     def set_nav(self, enable: bool, publish_status) -> Tuple[int, str]:
@@ -453,9 +427,7 @@ class NavigationOrchestrator(Node):
             workspace_setup = "/workspace/install/setup.bash"
             sourced_cmd = ["bash", "-c", f"source {workspace_setup} && {' '.join(cmd)}"]
 
-            result = subprocess.run(
-                sourced_cmd, capture_output=True, text=True, env=env
-            )
+            result = subprocess.run(sourced_cmd, capture_output=True, text=True, env=env)
 
             if result.returncode == 0:
                 return NavErr.OK, f"Map saved to file: {map_path}"
@@ -482,9 +454,7 @@ class NavigationOrchestrator(Node):
             return NavErr.DB_SAVE_FAILED, "No map received to save"
 
         if not self.database_client.wait_for_service(timeout_sec=self.database_timeout):
-            return NavErr.DB_SERVICE_UNAVAILABLE, (
-                f"Service {self.database_service} not available"
-            )
+            return NavErr.DB_SERVICE_UNAVAILABLE, (f"Service {self.database_service} not available")
 
         req = AddMap.Request()
         req.grid = self.current_map

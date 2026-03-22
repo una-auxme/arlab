@@ -1,18 +1,16 @@
-"""setup.py
-
+"""
 Setup script for the arlab_manipulation ROS2 Python package.
 
 This script defines package metadata, dependencies, launch files, and
 console scripts for ROS2 execution.
 
-Author: Sofia Öttl
-Date: 2025-08-24
-
+Maintainer:
+    Sofia Öttl <sofia.oettl@uni-a.de>
 """
 
 from glob import glob
 
-from setuptools import setup  # ,find_packages
+from setuptools import setup
 
 package_name = "arlab_manipulation"
 
@@ -27,9 +25,12 @@ setup(
     ],
     install_requires=["setuptools"],
     zip_safe=True,
-    maintainer="root",
-    maintainer_email="root@todo.todo",
-    description="TODO: Package description",
+    maintainer="Sofia Öttl",
+    maintainer_email="sofia.oettl@uni-a.de",
+    description=(
+        "ARLab Manipulation stack: Python nodes, services, and actions "
+        "for pick-and-place orchestration using octomap and gripping parameters."
+    ),
     license="MIT",
     tests_require=["pytest"],
     entry_points={

@@ -1,32 +1,17 @@
-# Copyright (c) 2022 Stogl Robotics Consulting UG (haftungsbeschränkt)
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#
-#    * Redistributions of source code must retain the above copyright
-#      notice, this list of conditions and the following disclaimer.
-#
-#    * Redistributions in binary form must reproduce the above copyright
-#      notice, this list of conditions and the following disclaimer in the
-#      documentation and/or other materials provided with the distribution.
-#
-#    * Neither the name of the {copyright_holder} nor the names of its
-#      contributors may be used to endorse or promote products derived from
-#      this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-# POSSIBILITY OF SUCH DAMAGE.
-#
-# Author: Denis Stogl
+"""
+Launch file: manipulator.full.sim.launch.py
+Package: manipulator_description
+Maintainer: Leonie Schmidt <leonie1.schmidt@uni-a.de>
+
+Top-level launch file for the Gazebo simulation. Composes two sub-stacks:
+    1. manipulator.control.sim.launch.py         — Gazebo + ros2_control controllers
+    2. manipulator_ur_moveit_config/ur_moveit.launch.py — MoveIt + RViz
+
+This is the recommended entry point for simulation with MoveIt planning.
+
+Based on the original UR simulation launch file by Denis Stogl /
+Stogl Robotics Consulting UG.
+"""
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
@@ -36,12 +21,22 @@ from launch_ros.substitutions import FindPackageShare
 
 
 def launch_setup(context, *args, **kwargs):
+    """Resolve launch arguments and compose the simulation and MoveIt sub-stacks.
 
+    Args:
+        context: Launch context used to resolve substitutions.
+        *args: Unused positional arguments required by OpaqueFunction.
+        **kwargs: Unused keyword arguments required by OpaqueFunction.
+
+    Returns:
+        List of launch actions to execute.
+    """
     ur_type = LaunchConfiguration("ur_type")
     safety_limits = LaunchConfiguration("safety_limits")
-
     controllers_file = LaunchConfiguration("controllers_file")
 
+    # Start Gazebo with all ros2_control controllers.
+    # RViz is disabled here because MoveIt starts its own RViz instance below.
     manipulator_sim_control_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution(
@@ -60,7 +55,7 @@ def launch_setup(context, *args, **kwargs):
         }.items(),
     )
 
-    # Launch MoveIt and RViz
+    # Start MoveIt move_group and RViz with simulation time enabled.
     manipulator_moveit_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution(
@@ -87,8 +82,13 @@ def launch_setup(context, *args, **kwargs):
 
 
 def generate_launch_description():
+    """Declare all launch arguments and register the OpaqueFunction setup.
+
+    Returns:
+        LaunchDescription containing all declared arguments and the setup function.
+    """
     declared_arguments = []
-    # UR specific arguments
+
     declared_arguments.append(
         DeclareLaunchArgument(
             "ur_type",
@@ -117,7 +117,6 @@ def generate_launch_description():
             description="Enables the safety limits controller if true.",
         )
     )
-    # General arguments
     declared_arguments.append(
         DeclareLaunchArgument(
             "controllers_file",

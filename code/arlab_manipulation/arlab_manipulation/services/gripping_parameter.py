@@ -62,7 +62,7 @@ class GrippingParameterNode(Node):
             "cone": [2.0, 0, 0],
             "ring": [5.0, 0, 0],
             "capsule": [2.0, 0, 0],
-            "default": [5.0, 0, 0], # Default: if object group not found
+            "default": [5.0, 0, 0],  # Default: if object group not found
         }
 
         # Table: Object name → weight [kg]
@@ -77,7 +77,7 @@ class GrippingParameterNode(Node):
             "chipscan": 0.3,
             "chipsbag": 0.2,
             "shoppingbag": 0.25,
-            "default": 1.0, # Default: if object name not found
+            "default": 1.0,  # Default: if object name not found
         }
 
     def callback(self, request, response):

@@ -91,7 +91,7 @@ def is_box_free(octo_data, center, size, resolution=0.01):
                     continue
                 try:
                     if octo_data[ix, iy, iz]:
-                       # Occupied voxel detected — placement would collide
+                        # Occupied voxel detected — placement would collide
                         return False
                 except IndexError:
                     # Voxel is outside map bounds; treat as free

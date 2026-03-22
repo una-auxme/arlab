@@ -30,7 +30,7 @@ setup(
     description=(
         "ARLab Manipulation stack: Python nodes, services, and actions "
         "for pick-and-place orchestration using octomap and gripping parameters."
-        ),
+    ),
     license="MIT",
     tests_require=["pytest"],
     entry_points={

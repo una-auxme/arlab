@@ -234,7 +234,6 @@ def launch_setup(context, *args, **kwargs):
         ],
     )
 
-
     trajectory_controller_spawner = Node(
         name="trajectory_controller_spawner",
         package="controller_manager",

@@ -1,3 +1,15 @@
+// -----------------------------------------------------------------------------
+// File: orchestrator_listener.cpp
+// Package: arlab_manipulation_cpp
+// Maintainer: Leonie Schmidt <leonie1.schmidt@uni-a.de>
+//
+// Implements OrchestratorActionServer and the `main()` entry point.
+// The server lifecycle is:
+//   main() → make_shared<OrchestratorActionServer>() → Init() → spin().
+// Each accepted goal is executed in a separate detached thread via Execute(),
+// which keeps the action callback group unblocked during robot motion.
+// -----------------------------------------------------------------------------
+
 #include "arlab_manipulation_cpp/orchestrator_listener.hpp"
 
 #include <memory>

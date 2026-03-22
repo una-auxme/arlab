@@ -36,7 +36,7 @@ def generate_launch_description():
             {"log_level": "INFO"},  # Node parameter for logging verbosity
             {"sync_tolerance": 5.0},
             {"target_frame": "world"},
-            {"snapshot_mode": True},
+            {"snapshot_mode": False},  # SOLUTION FOR TASK a) Disable snapshot mode
         ],
         arguments=[
             "--ros-args",

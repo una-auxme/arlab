@@ -89,7 +89,7 @@ class ObjectDetection(Node):
         default_yolo_weights = os.path.join(
             package_share_dir,
             "yolo_weights",
-            "yolo11n-seg_demo_day.pt",
+            "yolo26n-seg.pt",  # SOLUTION FOR TASK b) Use YOLO26n-seg model
         )
 
         # Declare configurable parameters.

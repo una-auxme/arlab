@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
 """
-voxel_utils.py
----------------
+TF Transform Utilities for Poses, Point Clouds, and Bounding Boxes.
 
-Author: Sofia Öttl
-Date: 2025-10-22
+Provides ROS-independent functions to transform geometry messages and
+point clouds to a target frame ('base_link'). Includes error handling
+and status codes for use in pipelines.
+
+Maintainer:
+    Sofia Öttl <sofia.oettl@uni-a.de>
+
+Note:
+    These functions are experimental and have not been fully tested.
 """
 
 from typing import Optional, Tuple
@@ -16,10 +22,34 @@ import sensor_msgs_py.point_cloud2 as pc2
 from geometry_msgs.msg import Pose, PoseStamped
 from tf2_geometry_msgs.tf2_geometry_msgs import do_transform_pose_stamped
 
+
+# All transforms target this fixed frame
 target_frame = "base_link"
 
 
 def transform_pose(tf_buffer, pose: Pose, stamp, ref_frame: str) -> Tuple[Optional[Pose], int, str]:
+    """Transform a Pose to the target frame using a TF2 buffer.
+
+    Converts a Pose into a PoseStamped, looks up the transform from the
+    reference frame to the target frame, and applies it. Returns status
+    codes and message for error handling.
+
+    Args:
+        tf_buffer: TF2 buffer used for looking up transforms.
+        pose: Pose to transform.
+        stamp: ROS 2 timestamp for transform lookup.
+        ref_frame: Frame in which the input pose is defined.
+
+    Returns:
+        transformed_pose: Pose in the target frame, or None if failed.
+        status_code: 1 for success, negative for failure.
+        message: Description of the result.
+
+    Notes:
+        - Timeout is set to 1 second for transform lookup.
+        - Unsuccessful transform returns None and status -51.
+        - Preserves orientation unless transform fails.
+    """
     try:
         pose_stamped = PoseStamped()
         pose_stamped.header.frame_id = ref_frame
@@ -38,6 +68,28 @@ def transform_pose(tf_buffer, pose: Pose, stamp, ref_frame: str) -> Tuple[Option
 
 
 def transform_pointCloud(tf_buffer, pointCloud, stamp, ref_frame: str):
+    """Transform a PointCloud to the target frame using a TF2 buffer.
+
+    Applies rotation and translation from the transform to all points in
+    the cloud. Returns a new PointCloud with updated frame and timestamp.
+
+    Args:
+        tf_buffer: TF2 buffer used for transform lookup.
+        pointCloud: sensor_msgs/PointCloud2 message to transform.
+        stamp: ROS 2 timestamp for transform.
+        ref_frame: Frame in which the point cloud is defined.
+
+    Returns:
+        new_cloud: Transformed PointCloud2 message, or None if failed.
+        status_code: 1 for success, negative for failure.
+        message: Description of the result.
+
+    Notes:
+        - Constructs rotation matrix from quaternion manually.
+        - Handles NaNs by skipping them.
+        - Unsuccessful transform returns None and status -51.
+        - Experimental: not tested in real-world scenarios.
+    """
     try:
         transformed_points = []
 
@@ -46,6 +98,7 @@ def transform_pointCloud(tf_buffer, pointCloud, stamp, ref_frame: str):
         t = transform_stamped.transform.translation
         q = transform_stamped.transform.rotation
 
+        # Build 3×3 rotation matrix from unit quaternion
         qw, qx, qy, qz = q.w, q.x, q.y, q.z
         R = np.array(
             [
@@ -68,6 +121,7 @@ def transform_pointCloud(tf_buffer, pointCloud, stamp, ref_frame: str):
         )
         translation = np.array([t.x, t.y, t.z])
 
+        # Apply rotation and translation to every (non-NaN) point
         for pt in pc2.read_points(pointCloud, field_names=["x", "y", "z"], skip_nans=True):
             p = np.array([pt[0], pt[1], pt[2]])
             p_transformed = R @ p + translation
@@ -85,7 +139,29 @@ def transform_pointCloud(tf_buffer, pointCloud, stamp, ref_frame: str):
 
 
 def transform_bBox(tf_buffer, bBox, stamp, ref_frame: str):
+    """Transform a bounding box to the target frame using TF2.
 
+    Transforms the min and max points of the bounding box individually.
+    Updates the bounding box in place with transformed positions.
+
+    Args:
+        tf_buffer: TF2 buffer used for transform lookup.
+        bBox: Bounding box object with min_point and max_point attributes.
+        stamp: ROS 2 timestamp for transform.
+        ref_frame: Frame in which the bounding box is defined.
+
+    Returns:
+        bBox: Updated bounding box in the target frame, or None if failed.
+        status_code: 1 for success, negative for failure.
+        message: Description of the result.
+
+    Notes:
+        - Uses transform_pose internally; failure of either corner aborts.
+        - Orientation of min/max poses is identity (w=1.0) since only positions are transformed.
+        - Experimental: not tested in real-world scenarios.
+    """
+
+    # Build identity-orientation poses for each corner
     min_pose = Pose()
     min_pose.position = bBox.min_point
     min_pose.orientation.w = 1.0
@@ -94,10 +170,12 @@ def transform_bBox(tf_buffer, bBox, stamp, ref_frame: str):
     max_pose.position = bBox.max_point
     max_pose.orientation.w = 1.0
 
+    # Transform min corner
     min_trans, err, msg = transform_pose(tf_buffer, min_pose, stamp, ref_frame)
     if min_trans is None:
         return None, err, msg
 
+    # Transform max corner
     max_trans, err, msg = transform_pose(tf_buffer, max_pose, stamp, ref_frame)
     if max_trans is None:
         return None, err, msg

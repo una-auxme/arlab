@@ -1,3 +1,16 @@
+"""
+Launch file: manipulator.moveit.robot.launch.py
+Package: manipulator_description
+Maintainer: Leonie Schmidt <leonie1.schmidt@uni-a.de>
+
+Starts MoveIt move_group and optionally RViz for the real robot.
+Delegates entirely to manipulator_ur_moveit_config/ur_moveit.launch.py.
+
+This file is typically not called directly — it is included by
+manipulator.full.robot.launch.py. Call it standalone only if the hardware
+drivers are already running in a separate terminal.
+"""
+
 from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
@@ -13,12 +26,23 @@ from launch_ros.substitutions import FindPackageShare
 
 
 def launch_setup(context, *args, **kwargs):
+    """Resolve launch arguments and forward them to the MoveIt config launch file.
+
+    Args:
+        context: Launch context used to resolve substitutions.
+        *args: Unused positional arguments required by OpaqueFunction.
+        **kwargs: Unused keyword arguments required by OpaqueFunction.
+
+    Returns:
+        List containing the MoveIt launch action.
+    """
     launch_rviz_moveit = LaunchConfiguration("launch_rviz_moveit")
     ur_type = LaunchConfiguration("ur_type")
     launch_servo = LaunchConfiguration("launch_servo")
     use_sim_time = LaunchConfiguration("use_sim_time")
     publish_robot_description_semantic = LaunchConfiguration("publish_robot_description_semantic")
 
+    # Forward all arguments to the MoveIt config package launch file.
     manipulator_moveit_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution(
@@ -44,8 +68,13 @@ def launch_setup(context, *args, **kwargs):
 
 
 def generate_launch_description():
+    """Declare all launch arguments and register the OpaqueFunction setup.
+
+    Returns:
+        LaunchDescription containing all declared arguments and the setup function.
+    """
     declared_arguments = []
-    # UR specific arguments
+
     declared_arguments.append(
         DeclareLaunchArgument(
             "launch_rviz_moveit",

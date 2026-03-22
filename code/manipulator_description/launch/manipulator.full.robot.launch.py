@@ -1,3 +1,15 @@
+"""
+Launch file: manipulator.full.robot.launch.py
+Package: manipulator_description
+Maintainer: Leonie Schmidt <leonie1.schmidt@uni-a.de>
+
+Top-level launch file for the real robot. Composes two sub-stacks:
+    1. manipulator.control.robot.launch.py  — UR arm driver + Mia Hand driver
+    2. manipulator.moveit.robot.launch.py   — MoveIt move_group + RViz
+
+This is the recommended entry point for operating the physical robot.
+"""
+
 from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
@@ -13,12 +25,23 @@ from launch_ros.substitutions import FindPackageShare
 
 
 def launch_setup(context, *args, **kwargs):
+    """Resolve launch arguments and compose the control and MoveIt sub-stacks.
+
+    Args:
+        context: Launch context used to resolve substitutions.
+        *args: Unused positional arguments required by OpaqueFunction.
+        **kwargs: Unused keyword arguments required by OpaqueFunction.
+
+    Returns:
+        List of launch actions to execute.
+    """
     launch_rviz = LaunchConfiguration("launch_rviz")
     launch_rviz_moveit = LaunchConfiguration("launch_rviz_moveit")
     ur_type = LaunchConfiguration("ur_type")
     robot_ip = LaunchConfiguration("robot_ip")
     serial_port_arg = LaunchConfiguration("serial_port_arg")
 
+    # Start the hardware drivers for the UR arm and the Mia Hand.
     manipulator_control_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution(
@@ -37,6 +60,7 @@ def launch_setup(context, *args, **kwargs):
         }.items(),
     )
 
+    # Start MoveIt move_group and optionally RViz with the MoveIt plugin.
     manipulator_moveit_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution(
@@ -60,7 +84,13 @@ def launch_setup(context, *args, **kwargs):
 
 
 def generate_launch_description():
+    """Declare all launch arguments and register the OpaqueFunction setup.
+
+    Returns:
+        LaunchDescription containing all declared arguments and the setup function.
+    """
     declared_arguments = []
+
     declared_arguments.append(
         DeclareLaunchArgument(
             "launch_rviz",
@@ -122,7 +152,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "robot_ip",
-            default_value="10.135.245.20",  # put your robot's IP address here
+            default_value="10.135.245.20",  # Replace with your robot's IP address.
             description="IP address by which the robot can be reached.",
         )
     )

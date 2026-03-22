@@ -12,7 +12,6 @@ find_package(moveit_ros_planning_interface REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(arlab_common_interfaces REQUIRED)
 find_package(mia_hand_msgs REQUIRED)
-# find_package(urdf_tutorial REQUIRED)
 
 add_executable(Manipulation_CPP src/orchestrator_listener.cpp src/job_runner.cpp src/arm_motion.cpp src/hand_motion.cpp src/manipulator_exception.cpp)
 

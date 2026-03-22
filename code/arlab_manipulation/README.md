@@ -23,7 +23,7 @@ arlab_manipulation/
 │   └── launch.py                       # Launches all nodes in the correct order
 ```
 
-## Architecture
+## Package workflow
 
 ```text
 DecisionMaker

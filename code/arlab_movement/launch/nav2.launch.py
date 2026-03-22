@@ -28,7 +28,7 @@ def generate_launch_description():
     use_sim_time = LaunchConfiguration("use_sim_time")
     autostart = LaunchConfiguration("autostart")
     params_file = LaunchConfiguration("params_file")
-    use_composition = ("use_composition")
+    use_composition = "use_composition"
     container_name = LaunchConfiguration("container_name")
     container_name_full = (namespace, "/", container_name)
     use_respawn = LaunchConfiguration("use_respawn")
@@ -68,9 +68,13 @@ def generate_launch_description():
         allow_substs=True,
     )
 
-    stdout_linebuf_envvar = SetEnvironmentVariable("RCUTILS_LOGGING_BUFFERED_STREAM", "1")
+    stdout_linebuf_envvar = SetEnvironmentVariable(
+        "RCUTILS_LOGGING_BUFFERED_STREAM", "1"
+    )
 
-    declare_namespace_cmd = DeclareLaunchArgument("namespace", default_value="", description="Top-level namespace")
+    declare_namespace_cmd = DeclareLaunchArgument(
+        "namespace", default_value="", description="Top-level namespace"
+    )
 
     declare_use_sim_time_cmd = DeclareLaunchArgument(
         "use_sim_time",
@@ -108,7 +112,9 @@ def generate_launch_description():
         description="Whether to respawn if a node crashes. Applied when composition is disabled.",
     )
 
-    declare_log_level_cmd = DeclareLaunchArgument("log_level", default_value="info", description="log level")
+    declare_log_level_cmd = DeclareLaunchArgument(
+        "log_level", default_value="info", description="log level"
+    )
 
     load_nodes = GroupAction(
         condition=IfCondition(PythonExpression(["not ", use_composition])),
@@ -315,7 +321,9 @@ def generate_launch_description():
                         package="nav2_lifecycle_manager",
                         plugin="nav2_lifecycle_manager::LifecycleManager",
                         name="lifecycle_manager_navigation",
-                        parameters=[{"autostart": autostart, "node_names": lifecycle_nodes}],
+                        parameters=[
+                            {"autostart": autostart, "node_names": lifecycle_nodes}
+                        ],
                     ),
                 ],
             ),

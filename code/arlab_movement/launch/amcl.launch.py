@@ -18,7 +18,12 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, GroupAction, SetEnvironmentVariable
 from launch.conditions import IfCondition
-from launch.substitutions import EqualsSubstitution, LaunchConfiguration, NotEqualsSubstitution, PythonExpression
+from launch.substitutions import (
+    EqualsSubstitution,
+    LaunchConfiguration,
+    NotEqualsSubstitution,
+    PythonExpression,
+)
 from launch_ros.actions import LoadComposableNodes, Node, PushROSNamespace, SetParameter
 from launch_ros.descriptions import ComposableNode, ParameterFile
 from nav2_common.launch import RewrittenYaml
@@ -54,11 +59,17 @@ def generate_launch_description() -> LaunchDescription:
         allow_substs=True,
     )
 
-    stdout_linebuf_envvar = SetEnvironmentVariable("RCUTILS_LOGGING_BUFFERED_STREAM", "1")
+    stdout_linebuf_envvar = SetEnvironmentVariable(
+        "RCUTILS_LOGGING_BUFFERED_STREAM", "1"
+    )
 
-    declare_namespace_cmd = DeclareLaunchArgument("namespace", default_value="", description="Top-level namespace")
+    declare_namespace_cmd = DeclareLaunchArgument(
+        "namespace", default_value="", description="Top-level namespace"
+    )
 
-    declare_map_yaml_cmd = DeclareLaunchArgument("map", default_value="", description="Full path to map yaml file to load")
+    declare_map_yaml_cmd = DeclareLaunchArgument(
+        "map", default_value="", description="Full path to map yaml file to load"
+    )
 
     declare_use_sim_time_cmd = DeclareLaunchArgument(
         "use_sim_time",
@@ -96,7 +107,9 @@ def generate_launch_description() -> LaunchDescription:
         description="Whether to respawn if a node crashes. Applied when composition is disabled.",
     )
 
-    declare_log_level_cmd = DeclareLaunchArgument("log_level", default_value="info", description="log level")
+    declare_log_level_cmd = DeclareLaunchArgument(
+        "log_level", default_value="info", description="log level"
+    )
 
     load_nodes = GroupAction(
         condition=IfCondition(PythonExpression(["not ", use_composition])),
@@ -104,7 +117,9 @@ def generate_launch_description() -> LaunchDescription:
             PushROSNamespace(namespace),
             SetParameter("use_sim_time", use_sim_time),
             Node(
-                condition=IfCondition(NotEqualsSubstitution(LaunchConfiguration("map"), "")),
+                condition=IfCondition(
+                    NotEqualsSubstitution(LaunchConfiguration("map"), "")
+                ),
                 package="nav2_map_server",
                 executable="map_server",
                 name="map_server",
@@ -143,7 +158,9 @@ def generate_launch_description() -> LaunchDescription:
             SetParameter("use_sim_time", use_sim_time),
             LoadComposableNodes(
                 target_container=container_name_full,
-                condition=IfCondition(EqualsSubstitution(LaunchConfiguration("map"), "")),
+                condition=IfCondition(
+                    EqualsSubstitution(LaunchConfiguration("map"), "")
+                ),
                 composable_node_descriptions=[
                     ComposableNode(
                         package="nav2_map_server",
@@ -156,7 +173,9 @@ def generate_launch_description() -> LaunchDescription:
             ),
             LoadComposableNodes(
                 target_container=container_name_full,
-                condition=IfCondition(NotEqualsSubstitution(LaunchConfiguration("map"), "")),
+                condition=IfCondition(
+                    NotEqualsSubstitution(LaunchConfiguration("map"), "")
+                ),
                 composable_node_descriptions=[
                     ComposableNode(
                         package="nav2_map_server",
@@ -184,7 +203,9 @@ def generate_launch_description() -> LaunchDescription:
                         package="nav2_lifecycle_manager",
                         plugin="nav2_lifecycle_manager::LifecycleManager",
                         name="lifecycle_manager_localization",
-                        parameters=[{"autostart": autostart, "node_names": lifecycle_nodes}],
+                        parameters=[
+                            {"autostart": autostart, "node_names": lifecycle_nodes}
+                        ],
                     ),
                 ],
             ),

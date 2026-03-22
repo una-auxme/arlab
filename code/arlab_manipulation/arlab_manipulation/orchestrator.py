@@ -68,7 +68,7 @@ class orchestrator(Node):
         super().__init__("orchestrator")
         self.service_group = MutuallyExclusiveCallbackGroup()
 
-        # Action Clients / Servers
+        # Outgoing action client (to MoveIt / C++ node)
         self._orchestrator_client = ActionClient(
             self,
             OrchestratorAction,
@@ -76,6 +76,7 @@ class orchestrator(Node):
             callback_group=self.service_group,
         )
 
+        # Incoming action server (from decision maker)
         self._action_server = ActionServer(
             self,
             ManipulationAction,
@@ -84,7 +85,7 @@ class orchestrator(Node):
             goal_callback=self.goal_callback,
         )
 
-        # Synchronization event for async callbacks
+        # Threading event used to block execute_callback until async chain ends
         self.action_done_event = Event()
 
         prefix = "/arlab/knowledge"
@@ -92,12 +93,14 @@ class orchestrator(Node):
         # Knowledge base service clients
         self.client_get_entity = self.create_client(GetEntity, f"{prefix}/get_entity", callback_group=self.service_group)
         self.client_get_shape = self.create_client(GetShape, f"{prefix}/get_shape", callback_group=self.service_group)
+
+        # Gripping parameter service client
         self.client_gripping_parameter = self.create_client(GrippingParameter, "GetGrippingParameter", callback_group=self.service_group)
 
-        # Subscribe to octomap updates
+        # Octomap subscription (MoveIt planning scene)
         self.subscription = self.create_subscription(PlanningScene, "/monitored_planning_scene", self.octomap_callback, 10)
 
-        # TF2 initialization
+        # TF2
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
 
@@ -131,6 +134,7 @@ class orchestrator(Node):
         octomap_msg = octomap_with_pose.octomap
         self.octomap = octomap_msg.data
         if not self.octomap:
+            # Lines below to treat an empty octomap as an error (uncomment for testing without working octomap):
             # self.get_logger().warn("Octomap is empty")
             # self.err = -40
             # self.msg = "Octomap is empty"
@@ -181,13 +185,16 @@ class orchestrator(Node):
         self.target_pose = getattr(goal_command, "target_pose", None)
 
         if self.command_type in ["pick", "place"]:
+            # Start async service chain: GetEntity → GetShape → GrippingParameter
             self.req_get_entity = GetEntity.Request()
             self.req_get_entity.entityid = self.entity_id
             future_entity = self.client_get_entity.call_async(self.req_get_entity)
             future_entity.add_done_callback(self.handle_get_entity_response)
         else:
+            # For non-pick/place commands (e.g. "home"), skip knowledge queries
             self.send_goal()
 
+        # Block until the async chain completes (set via finish_action)
         self.action_done_event.wait()
         self.action_done_event.clear()
 
@@ -235,9 +242,11 @@ class orchestrator(Node):
             self.ref_frame = entity.pose_reference_frame
             self.stamp = entity.stamp
 
+            # Transform pose from the entity's reference frame to base_link
             self.pose, err, msg = transform_pose(self.tf_buffer, cast(Pose, self.pose), self.stamp, self.ref_frame)
 
             if err == 1:
+                # Continue chain: request shape data for grasp/place planning
                 self.req_get_shape = GetShape.Request()
                 self.req_get_shape.entityid = self.entity_id
                 future_shape = self.client_get_shape.call_async(self.req_get_shape)
@@ -274,7 +283,7 @@ class orchestrator(Node):
             self.point_cloud = shape.pointcloud if shape.has_pointcloud else None
             self.bounding_box = shape.boundingbox2d if shape.has_boundingbox2d else None
 
-            # Experimental (TODO): TF transform of point cloud and bounding box not testet in utils
+            # TODO: TF transform for point cloud and bounding box is experimental
             # self.point_cloud, err, msg = transform_pointCloud(
             #     self.tf_buffer, self.point_cloud, self.stamp, self.ref_frame
             # )
@@ -284,6 +293,7 @@ class orchestrator(Node):
             # )
 
             if self.pickable:
+                # Continue chain: fetch gripping parameters for this object group
                 self.req_gripping_parameter = GrippingParameter.Request()
                 self.req_gripping_parameter.objectgroup = self.object_group
                 future_param = self.client_gripping_parameter.call_async(self.req_gripping_parameter)
@@ -345,10 +355,13 @@ class orchestrator(Node):
         if self.command_type == "pick":
             if self.pose is not None:
                 self.gripping_point_pos = self.pose.position
-                # Just static offsets + orientation for now
+                # Static offsets to align the gripper with the object centre.
+                # TODO: Replace with a proper grasp planner.
                 self.gripping_point_pos.x += -0.085
                 self.gripping_point_pos.y += 0.01
                 self.gripping_point_pos.z = 0.19
+
+                # Fixed grasp orientation (pre-calibrated for the Zirbi gripper)
                 self.gripping_point_orient = Quaternion(x=0.243005, y=0.808244, z=-0.0517573, w=0.533864)
                 self.send_goal()
             else:
@@ -361,13 +374,14 @@ class orchestrator(Node):
                 pose, err, msg = find_placing_area(
                     octo_data=self.octomap,
                     bbox=self.bounding_box,
-                    margin=0.02,  # safety offset
-                    lift=0.01,  # offset shelf
-                    offset_x=0.05,  # offset gripper side
-                    offset_y=0.05,  # offset gripper front
+                    margin=0.02,  # Extra safety clearance around the object [m]
+                    lift=0.01,  # Vertical lift above shelf floor [m]
+                    offset_x=0.05,  # Additional clearance along gripper X-axis [m]
+                    offset_y=0.05,  # Additional clearance along gripper Y-axis [m]
                 )
                 if err == 1:
                     self.placing_point_pos = Point(x=pose.position.x, y=pose.position.y, z=pose.position.z)
+                    # Reuse the grasp orientation for placing
                     self.placing_point_orient = self.gripping_point_orient
                     self.send_goal()
                 else:
@@ -385,6 +399,7 @@ class orchestrator(Node):
             - Registers callback for response
             - Updates self.err / self.msg if server unavailable
         """
+        # Select the appropriate target pose for the command
         if self.command_type == "pick":
             goal_pose = Pose()
             goal_pose.position = self.gripping_point_pos
@@ -394,6 +409,7 @@ class orchestrator(Node):
             goal_pose.position = self.placing_point_pos
             goal_pose.orientation = self.placing_point_orient
         else:
+            # For commands like "home", use a provided target pose or identity
             goal_pose = self.target_pose or Pose()
 
         msg = OrchestratorAction.Goal()
@@ -471,6 +487,14 @@ class orchestrator(Node):
 
 
 def main(args=None):
+    """Start the orchestrator node with a multi-threaded executor.
+
+    Uses two threads so that the blocking ``execute_callback`` and the async
+    service callbacks can run concurrently without deadlocking.
+
+    Args:
+        args: Optional command-line arguments forwarded to ``rclpy.init``.
+    """
     rclpy.init(args=args)
     executor = rclpy.executors.MultiThreadedExecutor(num_threads=2)
 

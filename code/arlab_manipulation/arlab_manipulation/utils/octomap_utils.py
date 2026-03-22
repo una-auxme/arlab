@@ -42,10 +42,11 @@ def detect_shelf_floor(octo_data, resolution=0.01):
             column = octo_data[ix, iy, :]
             occupied = np.where(column)[0]
             if occupied.size > 0:
+                # Record the z-coordinate of the lowest occupied voxel
                 floor_candidates.append(occupied[0] * resolution)
 
     if not floor_candidates:
-        # Default safe height when map is empty
+        # No occupied voxels found — return a conservative default height
         return 0.75
     return np.median(floor_candidates)
 
@@ -72,10 +73,12 @@ def is_box_free(octo_data, center, size, resolution=0.01):
     """
 
     dx, dy, dz = size
+    # Number of voxels to cover each dimension (ceiling ensures full coverage)
     nx = int(np.ceil(dx / resolution))
     ny = int(np.ceil(dy / resolution))
     nz = int(np.ceil(dz / resolution))
 
+    # Voxel index of the box's lower-left-front corner
     start_x = int(np.floor(center[0] / resolution - nx / 2))
     start_y = int(np.floor(center[1] / resolution - ny / 2))
     start_z = int(np.floor(center[2] / resolution - nz / 2))
@@ -83,14 +86,15 @@ def is_box_free(octo_data, center, size, resolution=0.01):
     for ix in range(start_x, start_x + nx):
         for iy in range(start_y, start_y + ny):
             for iz in range(start_z, start_z + nz):
+                # Skip voxels with negative indices (below map origin)
                 if ix < 0 or iy < 0 or iz < 0:
                     continue
                 try:
                     if octo_data[ix, iy, iz]:
-                        # Occupied voxel found → placement not possible
+                       # Occupied voxel detected — placement would collide
                         return False
                 except IndexError:
-                    # Outside map bounds assumed free
+                    # Voxel is outside map bounds; treat as free
                     continue
     return True
 
@@ -134,21 +138,22 @@ def find_placing_area(
         pose = Pose()
         return pose, -50, "BoundingBox is empty"
 
-    # Determine the shelf floor for placement reference
+    # Detect the shelf floor as the reference height for placement
     floor_z = detect_shelf_floor(octo_data, resolution)
 
-    # Compute the total search box size including margins and offsets
+    # Compute the total footprint to check, including safety margins
     search_size_x = bbox.size_x + margin + 2 * offset_x
     search_size_y = bbox.size_y + margin + offset_y
     search_size_z = bbox.size_z
 
-    # Define search boundaries (world coordinates)
+    # World-coordinate bounds for the candidate search grid
     min_bb = [0.0, 0.0, floor_z]
     max_bb = [1.0, 1.0, floor_z + 1.0]
 
-    # Candidate positions along x and y
     x_vals = np.arange(min_bb[0], max_bb[0] - search_size_x, resolution)
     y_vals = np.arange(min_bb[1], max_bb[1] - search_size_y, resolution)
+
+    # Place the object centre at half its height above the floor, plus lift
     z_center = floor_z + search_size_z / 2 + lift
 
     for x in x_vals:
@@ -160,7 +165,7 @@ def find_placing_area(
                 [search_size_x, search_size_y, search_size_z],
                 resolution,
             ):
-                # Valid placement found; orientation identity (no rotation)
+                # Valid placement found — build and return the pose
                 pose = Pose()
                 pose.position.x = center[0]
                 pose.position.y = center[1]
@@ -168,7 +173,7 @@ def find_placing_area(
                 pose.orientation.w = 1.0
                 return pose, 1, "Success"
 
-    # No free placement found; return safe default
+    # No collision-free position found in the entire search grid
     print("No free placing area found")
     pose = Pose()
     pose.position.x = 0.5

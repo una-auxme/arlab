@@ -49,6 +49,8 @@ class GrippingParameterNode(Node):
             Registers a service callback with the executor.
         """
         super().__init__("GetGrippingParameter")
+
+        # Register the service; keep reference to prevent garbage collection
         self.srv = self.create_service(GrippingParameter, "GetGrippingParameter", self.callback)
 
         # Table: Object group → gripping parameters (force [N], pos_mode, orient_mode)
@@ -96,7 +98,10 @@ class GrippingParameterNode(Node):
             Executed by the rclpy executor thread for this node.
         """
 
+         # Look up weight; fall back to default if object name is unknown
         object_weight = self.object_weight_table.get(request.objectname, self.object_weight_table["default"])
+
+        # Look up grip parameters; fall back to default if group is unknown
         grip_parameter = self.group_parameter_table.get(request.objectgroup, self.group_parameter_table["default"])
 
         # Unpack the parameters for direct use in the service response
@@ -111,7 +116,7 @@ class GrippingParameterNode(Node):
             f"Object weight = {object_weight} kg"
         )
 
-        # Populate response to be sent back to the requester
+        # Populate and return the response
         response.gripforce = gripforce
         response.grippos_mode = grippos_mode
         response.griporient_mode = griporient_mode
@@ -121,6 +126,11 @@ class GrippingParameterNode(Node):
 
 
 def main(args=None):
+    """Start the GrippingParameterNode and spin until shutdown.
+
+    Args:
+        args: Optional command-line arguments forwarded to ``rclpy.init``.
+    """
     rclpy.init(args=args)
     node = GrippingParameterNode()
     rclpy.spin(node)

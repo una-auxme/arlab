@@ -22,6 +22,8 @@ import sensor_msgs_py.point_cloud2 as pc2
 from geometry_msgs.msg import Pose, PoseStamped
 from tf2_geometry_msgs.tf2_geometry_msgs import do_transform_pose_stamped
 
+
+# All transforms target this fixed frame
 target_frame = "base_link"
 
 
@@ -96,7 +98,7 @@ def transform_pointCloud(tf_buffer, pointCloud, stamp, ref_frame: str):
         t = transform_stamped.transform.translation
         q = transform_stamped.transform.rotation
 
-        # Rotation matrix from quaternion (w, x, y, z)
+        # Build 3×3 rotation matrix from unit quaternion
         qw, qx, qy, qz = q.w, q.x, q.y, q.z
         R = np.array(
             [
@@ -119,6 +121,8 @@ def transform_pointCloud(tf_buffer, pointCloud, stamp, ref_frame: str):
         )
         translation = np.array([t.x, t.y, t.z])
 
+
+        # Apply rotation and translation to every (non-NaN) point
         for pt in pc2.read_points(pointCloud, field_names=["x", "y", "z"], skip_nans=True):
             p = np.array([pt[0], pt[1], pt[2]])
             p_transformed = R @ p + translation
@@ -157,6 +161,8 @@ def transform_bBox(tf_buffer, bBox, stamp, ref_frame: str):
         - Orientation of min/max poses is identity (w=1.0) since only positions are transformed.
         - Experimental: not tested in real-world scenarios.
     """
+
+    # Build identity-orientation poses for each corner
     min_pose = Pose()
     min_pose.position = bBox.min_point
     min_pose.orientation.w = 1.0
@@ -165,10 +171,12 @@ def transform_bBox(tf_buffer, bBox, stamp, ref_frame: str):
     max_pose.position = bBox.max_point
     max_pose.orientation.w = 1.0
 
+    # Transform min corner
     min_trans, err, msg = transform_pose(tf_buffer, min_pose, stamp, ref_frame)
     if min_trans is None:
         return None, err, msg
 
+    # Transform max corner
     max_trans, err, msg = transform_pose(tf_buffer, max_pose, stamp, ref_frame)
     if max_trans is None:
         return None, err, msg

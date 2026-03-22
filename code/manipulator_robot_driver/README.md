@@ -1,8 +1,30 @@
-# ur_robot_driver
+# ARLAB Robot Driver
 
 This package contains the actual driver for UR robots. It is part of the *universal_robots_driver*
 repository and requires other packages from that repository. Also, see the [main repository's
 README](../README.md) for information on how to install and startup this driver.
+
+It has been modified as part of the `ARLab` setup at the University of Augsburg in the
+context of the `Zirbi` robot.
+
+**Maintainer:** Sofia Öttl <sofia.oettl@uni-a.de>  
+**Maintainer:** Leonie Schmidt <leonie1.schmidt@uni-a.de>  
+**ROS 2 build system:** ament_cmake
+
+## Changes Compared to the Original
+
+### Launch (`launch/ur_control.launch.py`)
+
+- The default value for `description_launchfile` has been changed to point to
+  `manipulator_robot_driver` instead of `ur_robot_driver`, so that the ARLab-specific
+  robot state publisher launch file is used by default.
+
+### Launch (`launch/ur_rsp.launch.py`)
+
+- The default value for `description_file` has been changed to load
+  `manipulator.urdf.xacro` from the `manipulator_description` package instead of
+  `ur.urdf.xacro` from `ur_description`. This ensures the full Zirbi robot description
+  (including the Mia Hand and RealSense mount) is published.
 
 ## Technical details
 

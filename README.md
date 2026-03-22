@@ -73,6 +73,16 @@ docker compose -f docker-compose.dev.<your-gpu-type>.yml up --build
 
 Once the container is running, enter it and **launch the simulation as described in the [arlab_bringup documentation](./code/arlab_bringup/README.md)**.
 
+```bash
+# Find container name
+docker ps
+# Enter the container (Or just attach Vs Code with the Container Tools extension)
+docker exec -it <container-name> bash
+
+# Start basic simulation
+ros2 launch manipulator_description manipulator.full.sim.launch.py
+```
+
 ## Docker
 
 The [arlab_docker](https://git.rz.uni-augsburg.de/imech-m/autonomous_robotics_lab/arlab_docker) repository contains the docker configuration to execute this project.

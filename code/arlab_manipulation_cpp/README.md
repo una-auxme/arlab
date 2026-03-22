@@ -41,10 +41,10 @@ arlab_manipulation_cpp/
 | `hand_motion.hpp/.cpp` | Wrapper around the Mia Hand grasp action client. Provides `Open()`, `Close()`, and a low-level `Grasp()`. |
 | `manipulator_exception.hpp/.cpp` | Domain exception class that carries a numeric error code and a human-readable message. |
 
-
 ## Package Workflow
 
-Internally the package is structured in three layers:
+Internally the package workflow is structured in three layers.
+The OrchestatorActionsServer, the Jobrunner and the two Hardware-Level motion wrappers.
 
 ```text
     Manipulation Orchestrator (external)
@@ -60,7 +60,6 @@ Internally the package is structured in three layers:
       ▼               ▼
   ArmMotion       HandMotion      ← hardware-level motion wrappers
       │               │
-      ▼               ▼
     MoveIt         Mia Hand
   (MoveGroup      (grasp action)
   Interface)

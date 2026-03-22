@@ -3,7 +3,7 @@
 This project was built specifically for the `ARLab` at the University of Augsburg and developed in the context of the `Zirbi` robot.
 
 **Maintainer:** Leonie Schmidt &lt;leonie1.schmidt@uni-a.de&gt;  
-**License:** MIT  
+**License:** Apache2.0  
 **ROS 2 build system:** ament_cmake
 
 ## Overview
@@ -17,7 +17,7 @@ The robot consists of:
 - **RealSense D435** — a depth camera mounted on the tool0 via a custom 3D-printed mount
 - **Scene objects** — shelf (`SchrankRegal`) at three heights and a robot base pedestal (`ur_sockel`)
 
-The full is is assempled in the top-level file `urdf/manipulator.urdf.xacro`.
+The full scene is is assempled in the top-level file `urdf/manipulator.urdf.xacro`.
 
 ## Package Structure
 

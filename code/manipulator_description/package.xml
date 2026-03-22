@@ -3,9 +3,8 @@
 <package format="3">
   <name>manipulator_description</name>
   <version>0.1.0</version>
-  <description>Descriptiion of Zirbi Manipulatos (ur5 with mia hand)</description>
-
-  <maintainer email="you@example.com">You</maintainer>
+  <description>Description of Zirbi Manipulator (ur5 with mia hand)</description>
+  <maintainer email="leonie.schmidt2000@outlook.de">Leonie Schmidt</maintainer>
   <license>Apache2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>

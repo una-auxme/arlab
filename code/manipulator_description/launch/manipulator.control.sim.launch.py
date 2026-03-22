@@ -1,32 +1,17 @@
-# Copyright (c) 2021 Stogl Robotics Consulting UG (haftungsbeschränkt)
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#
-#    * Redistributions of source code must retain the above copyright
-#      notice, this list of conditions and the following disclaimer.
-#
-#    * Redistributions in binary form must reproduce the above copyright
-#      notice, this list of conditions and the following disclaimer in the
-#      documentation and/or other materials provided with the distribution.
-#
-#    * Neither the name of the {copyright_holder} nor the names of its
-#      contributors may be used to endorse or promote products derived from
-#      this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-# POSSIBILITY OF SUCH DAMAGE.
-#
-# Author: Denis Stogl
+"""
+Launch file: manipulator.control.sim.launch.py
+Package: manipulator_description
+Maintainer: Leonie Schmidt <leonie1.schmidt@uni-a.de>
+
+Starts the Gazebo simulation with the full manipulator (UR arm + Mia Hand)
+and spawns all ros2_control controllers. Does NOT start MoveIt.
+
+Use this launch file if you only need Gazebo with controllers.
+For the full simulation stack including MoveIt use manipulator.full.sim.launch.py.
+
+Based on the original UR simulation launch file by Denis Stogl /
+Stogl Robotics Consulting UG.
+"""
 
 from os.path import exists
 
@@ -53,29 +38,41 @@ from launch_ros.substitutions import FindPackageShare
 
 
 def launch_setup(context, *args, **kwargs):
+    """Resolve launch arguments, build the robot description, and create all nodes.
+
+    Performs two runtime file-existence checks to select calibrated Mia Hand
+    config files over their defaults when available. Delays all controller
+    spawners until after the robot has been spawned in Gazebo.
+
+    Args:
+        context: Launch context used to resolve substitutions and perform checks.
+        *args: Unused positional arguments required by OpaqueFunction.
+        **kwargs: Unused keyword arguments required by OpaqueFunction.
+
+    Returns:
+        List of launch actions and nodes to execute.
+    """
     ur_type = LaunchConfiguration("ur_type")
     safety_limits = LaunchConfiguration("safety_limits")
     safety_pos_margin = LaunchConfiguration("safety_pos_margin")
     safety_k_position = LaunchConfiguration("safety_k_position")
-    # General arguments
     controllers_file = LaunchConfiguration("controllers_file")
     tf_prefix = LaunchConfiguration("tf_prefix")
     activate_joint_controller = LaunchConfiguration("activate_joint_controller")
     initial_joint_controller = LaunchConfiguration("initial_joint_controller")
-
     launch_rviz = LaunchConfiguration("launch_rviz")
     rviz_config_file = LaunchConfiguration("rviz_config_file")
     gazebo_gui = LaunchConfiguration("gazebo_gui")
     world_file = LaunchConfiguration("world_file")
-    # MIA Hand launch Arguments
+    description_file = LaunchConfiguration("description_file")
+
+    # Perform context-dependent arguments needed for the file-existence checks below.
     serial_port = LaunchConfiguration("serial_port").perform(context)
     laterality = LaunchConfiguration("laterality").perform(context)
     prefix = LaunchConfiguration("prefix").perform(context)
     use_mock_hardware = LaunchConfiguration("use_mock_hardware").perform(context)
 
-    description_file = LaunchConfiguration("description_file")
-    # --- MIA Hand ---
-    # Joint limits configuration (P)
+    # Use calibrated joint limits if available, otherwise fall back to defaults.
     joint_limits_config_file_path = PathJoinSubstitution(
         [FindPackageShare("mia_hand_description"), "calibration", "joint_limits.yaml"]
     ).perform(context)
@@ -85,7 +82,7 @@ def launch_setup(context, *args, **kwargs):
     else:
         joint_limits_config_file = "joint_limits_default.yaml"
 
-    # Transmission configuration (P)
+    # Use calibrated transmission config if available, otherwise fall back to defaults.
     transmissions_config_file_path = PathJoinSubstitution(
         [FindPackageShare("mia_hand_description"), "calibration", "transmission_config.yaml"]
     ).perform(context)
@@ -95,7 +92,7 @@ def launch_setup(context, *args, **kwargs):
     else:
         transmissions_config_file = "transmission_config_default.yaml"
 
-    # Load description with necessary parameters
+    # Build the robot description by running xacro on the top-level URDF file.
     robot_description_content = Command(
         [
             PathJoinSubstitution([FindExecutable(name="xacro")]),
@@ -138,6 +135,7 @@ def launch_setup(context, *args, **kwargs):
     )
     robot_description = {"robot_description": robot_description_content}
 
+    # Publish the robot description and TF tree.
     robot_state_publisher_node = Node(
         package="robot_state_publisher",
         executable="robot_state_publisher",
@@ -145,6 +143,7 @@ def launch_setup(context, *args, **kwargs):
         output="both",
     )
 
+    # Optional RViz visualisation — only started when launch_rviz:=true.
     rviz_node = Node(
         package="rviz2",
         executable="rviz2",
@@ -154,12 +153,14 @@ def launch_setup(context, *args, **kwargs):
         condition=IfCondition(launch_rviz),
     )
 
+    # Spawn the joint_state_broadcaster so joint states are published to /joint_states.
     joint_state_broadcaster_spawner = Node(
         package="controller_manager",
         executable="spawner",
         arguments=["joint_state_broadcaster", "-c", "/controller_manager"],
     )
 
+    # Publish per-finger joint states for RViz2 — only needed when RViz is active.
     rviz2_joint_state_publisher = Node(
         condition=IfCondition(launch_rviz),
         name="rviz2_joint_state_publisher",
@@ -177,7 +178,7 @@ def launch_setup(context, *args, **kwargs):
         ],
     )
 
-    # There may be other controllers of the joints, but this is the initially-started one
+    # Spawn the primary arm controller — active or stopped depending on the argument.
     initial_joint_controller_spawner_started = Node(
         package="controller_manager",
         executable="spawner",
@@ -191,6 +192,7 @@ def launch_setup(context, *args, **kwargs):
         condition=UnlessCondition(activate_joint_controller),
     )
 
+    # Spawn Mia Hand velocity controllers — started inactive so MoveIt can activate them.
     velocity_controllers_spawner = Node(
         name="velocity_controllers_spawner",
         package="controller_manager",
@@ -205,6 +207,7 @@ def launch_setup(context, *args, **kwargs):
         ],
     )
 
+    # Spawn Mia Hand position controllers — started active.
     position_controllers_spawner = Node(
         name="position_controllers_spawner",
         package="controller_manager",
@@ -218,6 +221,7 @@ def launch_setup(context, *args, **kwargs):
         ],
     )
 
+    # Spawn the Mia Hand joint trajectory controller — started inactive.
     joint_trajectory_controller_spawner = Node(
         name="joint_trajectory_controller_spawner",
         package="controller_manager",
@@ -229,6 +233,7 @@ def launch_setup(context, *args, **kwargs):
             "/controller_manager",
         ],
     )
+
 
     trajectory_controller_spawner = Node(
         name="trajectory_controller_spawner",
@@ -242,8 +247,7 @@ def launch_setup(context, *args, **kwargs):
         ],
     )
 
-    # --- GZ nodes ---
-
+    # Spawn the robot model into the running Gazebo instance.
     gz_spawn_entity = Node(
         package="ros_gz_sim",
         executable="create",
@@ -261,6 +265,7 @@ def launch_setup(context, *args, **kwargs):
         ],
     )
 
+    # Start Gazebo with or without the GUI depending on the gazebo_gui argument.
     gz_launch_description = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([FindPackageShare("ros_gz_sim"), "/launch/gz_sim.launch.py"]),
         launch_arguments={
@@ -272,14 +277,12 @@ def launch_setup(context, *args, **kwargs):
         }.items(),
     )
 
-    # Make the /clock topic available in ROS
+    # Bridge the Gazebo /clock topic into ROS so that use_sim_time works correctly.
     gz_sim_bridge = Node(
         package="ros_gz_bridge",
         executable="parameter_bridge",
         arguments=[
             "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
-            # "/rgbd_camera/depth_image@sensor_msgs/msg/Image[gz.msgs.Image",
-            # "/rgbd_camera/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked",
             "--ros-args",
             "--log-level",
             "error",
@@ -287,7 +290,8 @@ def launch_setup(context, *args, **kwargs):
         output="screen",
     )
 
-    # Starte alle Controller-Spawner ERST, nachdem der Roboter in Gazebo gespawnt wurde
+    # Delay all controller spawners until the robot has been spawned in Gazebo.
+    # Without this, spawners fail because the controller manager is not yet ready.
     delay_spawners_after_gz_spawn = RegisterEventHandler(
         event_handler=OnProcessExit(
             target_action=gz_spawn_entity,
@@ -317,8 +321,13 @@ def launch_setup(context, *args, **kwargs):
 
 
 def generate_launch_description():
+    """Declare all launch arguments and register the OpaqueFunction setup.
+
+    Returns:
+        LaunchDescription containing all declared arguments and the setup function.
+    """
     declared_arguments = []
-    # UR specific arguments
+
     declared_arguments.append(
         DeclareLaunchArgument(
             "ur_type",

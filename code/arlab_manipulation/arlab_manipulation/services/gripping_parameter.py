@@ -98,7 +98,7 @@ class GrippingParameterNode(Node):
             Executed by the rclpy executor thread for this node.
         """
 
-         # Look up weight; fall back to default if object name is unknown
+        # Look up weight; fall back to default if object name is unknown
         object_weight = self.object_weight_table.get(request.objectname, self.object_weight_table["default"])
 
         # Look up grip parameters; fall back to default if group is unknown

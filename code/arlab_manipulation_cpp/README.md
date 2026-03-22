@@ -1,13 +1,15 @@
-# arlab_manipulation_cpp
+# ARLAB Manipulation Cpp
+
+This project was built specifically for the `ARLab` at the University of Augsburg and developed in the context of the `Zirbi` robot.
 
 **Maintainer:** Leonie Schmidt &lt;<leonie1.schmidt@uni-a.de>&gt;  
 **License:** MIT  
-**ROS 2 build system:** ament_cmake  
+**ROS 2 build system:** ament_cmake
 
 ## Overview
 
-`arlab_manipulation_cpp` is a ROS 2 C++ package that controls a **UR manipulator arm**
-with an attached **Mia robotic hand**. It exposes a single ROS 2 action interface
+`arlab_manipulation_cpp` is a ROS 2 C++ package that controls the manipulator
+with an attached robotic hand. It exposes a single ROS 2 action interface
 (`/orchestrator/action`) through which the external manipulator orchestrator can trigger
 high-level manipulation commands such as picking and placing objects, opening and closing
 the hand, or moving the arm to the home position or arbitrary poses.
@@ -30,8 +32,6 @@ arlab_manipulation_cpp/
 │   ├── manipulator_exception.cpp
 │   └── orchestrator_listener.cpp
 ```
-
-## File Descriptions
 
 | File | Description |
 | --- | --- |

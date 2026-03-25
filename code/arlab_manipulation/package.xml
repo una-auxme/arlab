@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<package format="3">
+  <!-- Package metadata -->
+  <name>arlab_manipulation</name>
+  <version>1.0.0</version>
+  <description>
+    ARLab Manipulation stack: provides ROS2 nodes, services, and actions for
+    pick-and-place orchestration with gripping parameter computation and
+    octomap-based placement.
+  </description>
+  <maintainer email="sofia.oettl@uni-a.de">root</maintainer>
+  <license>MIT</license>
+
+  <!-- Build dependencies -->
+  <build_depend>rosidl_default_generators</build_depend>
+
+  <!-- Runtime dependencies -->
+  <exec_depend>rosidl_default_runtime</exec_depend>
+
+  <!-- Indicates this package provides ROS interfaces -->
+  <member_of_group>rosidl_interface_packages</member_of_group>
+
+  <!-- Test dependencies -->
+  <test_depend>python3-pytest</test_depend>
+
+  <!-- Export build type for ament -->
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

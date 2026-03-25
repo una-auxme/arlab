@@ -1,0 +1,13 @@
+# Vision snapshot action
+
+# Command to execute
+VisionSnapshotCommand command
+
+---
+
+# Response to the command
+VisionSnapshotResponse response
+
+---
+
+# No feedback, action will be cancelled with VisionSnapshotResponse if an error occurs

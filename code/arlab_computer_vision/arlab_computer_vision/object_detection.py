@@ -89,7 +89,7 @@ class ObjectDetection(Node):
         default_yolo_weights = os.path.join(
             package_share_dir,
             "yolo_weights",
-            "yolo11n-seg_fruit_dataset_strong_geom_fruit.pt",
+            "yolo11n-seg.pt",
         )
 
         # Declare configurable parameters.

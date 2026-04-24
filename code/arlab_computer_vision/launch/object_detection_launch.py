@@ -34,6 +34,7 @@ def generate_launch_description():
             {"sync_tolerance": 5.0},
             {"target_frame": "camera_link"},
             {"snapshot_mode": True},
+            {"yolo_weights": "yolo11n-seg.pt"},
         ],
         arguments=[
             "--ros-args",

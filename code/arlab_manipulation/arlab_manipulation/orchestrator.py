@@ -28,7 +28,7 @@ from rclpy.action.client import ActionClient
 from rclpy.action.server import ActionServer, GoalResponse
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.node import Node
-from std_msgs.msg import Float64, String
+from std_msgs.msg import Float64, String, Bool
 
 from .utils.octomap_utils import find_placing_area
 from .utils.transform_utils import (
@@ -104,6 +104,9 @@ class orchestrator(Node):
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
 
+        #publisher for object placed
+        self.obj_placed_pub = self.create_publisher(Bool, "/object_placed", 10)
+
         # Default state initialization
         self.entity_id = None
         self.command_type = "home"
@@ -120,7 +123,7 @@ class orchestrator(Node):
         self.action_result = None
         self.err = ManipulationResponse.UNDEFINED
         self.msg = ""
-
+        
     def octomap_callback(self, msg: PlanningScene):
         """Callback to receive the octomap from the MoveIt planning scene.
 
@@ -194,6 +197,13 @@ class orchestrator(Node):
         # Block until the async chain completes (set via finish_action)
         self.action_done_event.wait()
         self.action_done_event.clear()
+
+        # Give feedback if object was correctly placed
+        if self.command_type == "place":
+            placed = Bool()
+            placed.data = (self.err == ManipulationResponse.SUCCESS)   # ← Erfolg-Wert bestätigen
+            self.obj_placed_pub.publish(placed)
+            self.get_logger().info(f'Publishing {placed.data} on /object_placed')  # DEBUG
 
         if not goal_handle.is_active:
             return

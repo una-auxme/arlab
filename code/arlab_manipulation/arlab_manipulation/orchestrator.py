@@ -123,7 +123,7 @@ class orchestrator(Node):
         self.action_result = None
         self.err = ManipulationResponse.UNDEFINED
         self.msg = ""
-        
+
     def octomap_callback(self, msg: PlanningScene):
         """Callback to receive the octomap from the MoveIt planning scene.
 

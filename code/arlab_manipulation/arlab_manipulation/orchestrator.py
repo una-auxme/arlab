@@ -104,7 +104,7 @@ class orchestrator(Node):
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
 
-        #publisher for object placed
+        # publisher for object placed
         self.obj_placed_pub = self.create_publisher(Bool, "/object_placed", 10)
 
         # Default state initialization
@@ -201,9 +201,9 @@ class orchestrator(Node):
         # Give feedback if object was correctly placed
         if self.command_type == "place":
             placed = Bool()
-            placed.data = (self.err == ManipulationResponse.SUCCESS)   # ← Erfolg-Wert bestätigen
+            placed.data = self.err == ManipulationResponse.SUCCESS  # ← Erfolg-Wert bestätigen
             self.obj_placed_pub.publish(placed)
-            self.get_logger().info(f'Publishing {placed.data} on /object_placed')  # DEBUG
+            self.get_logger().info(f"Publishing {placed.data} on /object_placed")  # DEBUG
 
         if not goal_handle.is_active:
             return

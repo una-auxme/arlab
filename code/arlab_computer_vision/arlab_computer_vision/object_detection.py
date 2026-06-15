@@ -14,6 +14,7 @@ Maintainers:
 import os
 import time
 from copy import deepcopy
+from dataclasses import dataclass
 from threading import Lock
 from time import sleep
 from typing import Any, List, Optional, Tuple
@@ -56,6 +57,160 @@ from torchvision.transforms.functional import resize
 from ultralytics import YOLO
 
 
+# Maps VisionSnapshotCommand model constants to weights filenames (relative to yolo_weights/).
+# pinned=True models are loaded at startup and never evicted; all others are lazy-loaded.
+_MODEL_DEFINITIONS: dict[int, dict] = {
+    VisionSnapshotCommand.MODEL_GENERAL_OBJECTS: {
+        "name": "general_objects",
+        "weights": "yolo11n-seg_demo_day.pt",
+        "pinned": True,
+    },
+    VisionSnapshotCommand.MODEL_PEOPLE: {
+        "name": "people",
+        "weights": "people.pt",
+        "pinned": True,
+    },
+    VisionSnapshotCommand.MODEL_WALLS: {
+        "name": "walls",
+        "weights": "walls.pt",
+        "pinned": False,
+    },
+    VisionSnapshotCommand.MODEL_DOOR_OPEN: {
+        "name": "door_open",
+        "weights": "door_open.pt",
+        "pinned": False,
+    },
+    VisionSnapshotCommand.MODEL_STORAGE_LOCATION: {
+        "name": "storage_location",
+        "weights": "storage_location.pt",
+        "pinned": False,
+    },
+    VisionSnapshotCommand.MODEL_KITCHEN_WORKSPACES: {
+        "name": "kitchen_workspaces",
+        "weights": "kitchen_workspaces.pt",
+        "pinned": False,
+    },
+    VisionSnapshotCommand.MODEL_DISHWASHER_STATUS: {
+        "name": "dishwasher_status",
+        "weights": "dishwasher_status.pt",
+        "pinned": False,
+    },
+    VisionSnapshotCommand.MODEL_DISHWASHER_SLOTS: {
+        "name": "dishwasher_slots",
+        "weights": "dishwasher_slots.pt",
+        "pinned": False,
+    },
+    VisionSnapshotCommand.MODEL_WASHING_MACHINE_POINTS: {
+        "name": "washing_machine_points",
+        "weights": "washing_machine_points.pt",
+        "pinned": False,
+    },
+    VisionSnapshotCommand.MODEL_TSHIRT_DETECT: {
+        "name": "tshirt_detect",
+        "weights": "tshirt_detect.pt",
+        "pinned": False,
+    },
+    VisionSnapshotCommand.MODEL_TSHIRT_SEGMENT: {
+        "name": "tshirt_segment",
+        "weights": "tshirt_segment.pt",
+        "pinned": False,
+    },
+    VisionSnapshotCommand.MODEL_WASHING_MACHINE_STATUS: {
+        "name": "washing_machine_status",
+        "weights": "washing_machine_status.pt",
+        "pinned": False,
+    },
+}
+
+
+@dataclass
+class _ModelEntry:
+    model: Any
+    pinned: bool
+    last_used: float
+
+
+class ModelRegistry:
+    """Manages YOLO models with lazy loading and TTL eviction for non-pinned models."""
+
+    def __init__(
+        self,
+        definitions: dict,
+        weights_dir: str,
+        device: str,
+        logger: Any,
+        warmup_size: int = 640,
+    ) -> None:
+        self._definitions = definitions
+        self._weights_dir = weights_dir
+        self._device = device
+        self._logger = logger
+        self._warmup_size = warmup_size
+        self._registry: dict[int, _ModelEntry] = {}
+        self._lock = Lock()
+
+    def load_pinned(self) -> None:
+        """Load all pinned models into GPU memory with warmup."""
+        for model_id, defn in self._definitions.items():
+            if defn.get("pinned", False):
+                with self._lock:
+                    self._ensure_loaded(model_id)
+
+    def get_pinned_ids(self) -> list[int]:
+        return [mid for mid, defn in self._definitions.items() if defn.get("pinned", False)]
+
+    def get_model(self, model_id: int) -> Any | None:
+        with self._lock:
+            self._ensure_loaded(model_id)
+            entry = self._registry.get(model_id)
+            if entry is not None:
+                entry.last_used = time.time()
+                return entry.model
+        return None
+
+    def evict_stale(self, ttl_seconds: float) -> None:
+        """Remove non-pinned models that have not been used within ttl_seconds."""
+        now = time.time()
+        with self._lock:
+            to_evict = [
+                mid for mid, entry in self._registry.items()
+                if not entry.pinned and (now - entry.last_used) > ttl_seconds
+            ]
+            for mid in to_evict:
+                del self._registry[mid]
+                self._logger.info(f"Evicted model '{self._definitions[mid]['name']}'")
+
+    def _ensure_loaded(self, model_id: int) -> None:
+        """Load model if not already cached. Caller must hold self._lock."""
+        if model_id in self._registry:
+            return
+        if model_id not in self._definitions:
+            self._logger.warn(f"Unknown model ID {model_id}")
+            return
+        defn = self._definitions[model_id]
+        weights_path = os.path.join(self._weights_dir, defn["weights"])
+        if not os.path.exists(weights_path):
+            self._logger.warn(f"Weights not found for '{defn['name']}': {weights_path}")
+            return
+        self._logger.info(f"Loading model '{defn['name']}' ...")
+        model = YOLO(weights_path)
+        if self._device == "cuda":
+            model.to("cuda")
+            try:
+                dummy = np.zeros((self._warmup_size, self._warmup_size, 3), dtype=np.uint8)
+                for _ in range(3):
+                    model(dummy, verbose=False, device=self._device)
+                torch.cuda.synchronize()
+            except Exception as e:
+                self._logger.warn(f"Warmup failed for '{defn['name']}': {e}")
+        self._registry[model_id] = _ModelEntry(
+            model=model,
+            pinned=defn.get("pinned", False),
+            last_used=time.time(),
+        )
+        self._logger.info(f"Model '{defn['name']}' ready")
+
+
 class ObjectDetection(Node):
     """ROS2 node for real-time object detection and KB synchronization.
 
@@ -86,14 +241,10 @@ class ObjectDetection(Node):
         super().__init__(type(self).__name__)
 
         package_share_dir = get_package_share_directory("arlab_computer_vision")
-        default_yolo_weights = os.path.join(
-            package_share_dir,
-            "yolo_weights",
-            "yolo11n-seg_demo_day.pt",
-        )
+        yolo_weights_dir = os.path.join(package_share_dir, "yolo_weights")
 
         # Declare configurable parameters.
-        self.declare_parameter("yolo_weights", default_yolo_weights)
+        self.declare_parameter("model_ttl_minutes", 10)
         self.declare_parameter("visualize", True)
         self.declare_parameter("log_level", "INFO")
         self.declare_parameter("use_depth", True)
@@ -117,7 +268,6 @@ class ObjectDetection(Node):
         self.visualize = self.get_parameter("visualize").get_parameter_value().bool_value
 
         # Load parameters.
-        yolo_weights = self.get_parameter("yolo_weights").get_parameter_value().string_value
         # Visualization parameter removed for performance reasons
         log_level_str = self.get_parameter("log_level").get_parameter_value().string_value
 
@@ -170,78 +320,31 @@ class ObjectDetection(Node):
 
         self.vision_data_mutex = Lock()
 
-        # Check if using segmentation model based on filename
-        self.use_segmentation = "-seg.pt" in yolo_weights
-        if self.use_segmentation:
-            self.get_logger().info("Using YOLO segmentation model.")
-        else:
-            self.get_logger().info("Using YOLO detection model.")
-
-        # Init CV bridge and YOLO model.
+        # Init CV bridge.
         self.bridge = CvBridge()
         device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.get_logger().info(f"Using device: {device}.")
-
-        # Initialize YOLO model
-        # Note: YOLO doesn't support device parameter in __init__,
-        # but will use the device specified during first inference
-        self.model = YOLO(yolo_weights)
-        # Store device - will be verified/updated below
-        self.device = device
-
-        # Use half precision (FP16) for faster GPU inference
         if device == "cuda":
-            # Verify CUDA is actually available
             if not torch.cuda.is_available():
                 self.get_logger().warn("CUDA not available despite device='cuda'. Falling back to CPU.")
-                self.device = "cpu"
+                device = "cpu"
             else:
-                # Explicitly move model to GPU
-                self.model.to("cuda")
-                # Verify GPU is accessible
                 try:
                     gpu_name = torch.cuda.get_device_name(0)
                     gpu_memory = torch.cuda.get_device_properties(0).total_memory / 1e9
-                    self.get_logger().info(f"GPU detected: {gpu_name} ({gpu_memory:.1f} GB total memory)")
+                    self.get_logger().info(f"GPU: {gpu_name} ({gpu_memory:.1f} GB)")
                 except Exception as e:
                     self.get_logger().warn(f"GPU verification failed: {e}")
+        self.device = device
 
-                self.get_logger().info("Using FP16 (half precision) for GPU inference")
-                # Warmup: Load model on GPU and compile CUDA kernels
-                try:
-                    import numpy as np
-
-                    # Calculate warmup size based on max_image_width
-                    # This matches the actual scaled image size used in inference
-                    if self.max_image_width > 0:
-                        warmup_size = (
-                            self.max_image_width,
-                            self.max_image_width,
-                            3,
-                        )
-                    else:
-                        warmup_size = (640, 640, 3)
-
-                    self.get_logger().debug(f"Warmup image size: {warmup_size[1]}x{warmup_size[0]}")
-
-                    # Create dummy input and run warmup inference
-                    # This loads the model on GPU and compiles CUDA kernels
-                    dummy_input = np.zeros(warmup_size, dtype=np.uint8)
-                    for i in range(3):  # 3 warmup runs to compile all kernels
-                        _ = self.model(dummy_input, verbose=False, device=device)
-                        if torch.cuda.is_available():
-                            torch.cuda.synchronize()
-
-                    # Verify GPU was actually used
-                    if torch.cuda.is_available():
-                        model_device = self.model.device if hasattr(self.model, "device") else "unknown"
-                        self.get_logger().info(
-                            f"Model warmup completed on GPU (device: {model_device}, warmup size: {warmup_size[1]}x{warmup_size[0]})"
-                        )
-                    else:
-                        self.get_logger().warn("Model warmup completed but GPU not verified")
-                except Exception as e:
-                    self.get_logger().warn(f"Model warmup failed: {e}")
+        warmup_size = self.max_image_width if self.max_image_width > 0 else 640
+        self._model_registry = ModelRegistry(
+            definitions=_MODEL_DEFINITIONS,
+            weights_dir=yolo_weights_dir,
+            device=self.device,
+            logger=self.get_logger(),
+            warmup_size=warmup_size,
+        )
+        self._model_registry.load_pinned()
 
         # Frame statistics
         self._frames_processed = 0
@@ -342,6 +445,7 @@ class ObjectDetection(Node):
         # Check services availability initially
         self._check_kb_services()
         self.create_timer(timer_period_sec=5.0, callback=self._frame_statistics_reporter)
+        self.create_timer(timer_period_sec=60.0, callback=self._evict_stale_models)
 
     def _check_kb_services(self) -> bool:
         """Check if all KB services are available.
@@ -399,21 +503,20 @@ class ObjectDetection(Node):
         pointcloud_msg: PointCloud2 | None = None,
         delete_old_entities: bool = False,
         mask_hand: bool = False,
+        extra_models: List[int] | None = None,
     ) -> None:
         """Fully synchronous frame processing - no async, no threads.
 
-        This ensures Ultralytics YOLO has complete control over the CUDA
-        context without interference from async event loops.
+        Runs all pinned models plus any extra_models requested by the caller.
+        Depth preparation (TF lookups, point projection) is done once and
+        shared across all model results.
 
         Args:
             rgb_msg: Incoming RGB `sensor_msgs/Image`.
-            pointcloud_msg: Optional incoming `sensor_msgs/PointCloud2` used
-                to build 3D geometry when `use_depth=true`.
-            delete_old_entities: If true, delete previously stored pickable
-                entities before inserting new ones (subject to
-                `clear_db_on_no_detection`).
-            mask_hand: If true, ignore the “hand” portion of the segmentation
-                mask (by zeroing a lower image region).
+            pointcloud_msg: Optional incoming `sensor_msgs/PointCloud2`.
+            delete_old_entities: If true, delete previously stored entities first.
+            mask_hand: If true, zero the lower image region to suppress hand detections.
+            extra_models: Additional model IDs (VisionSnapshotCommand.MODEL_*) to run.
         """
         t_start = time.perf_counter()
 
@@ -422,7 +525,6 @@ class ObjectDetection(Node):
         rgb_image = self.bridge.imgmsg_to_cv2(rgb_msg, desired_encoding="bgr8")
         original_height, original_width = rgb_image.shape[:2]
 
-        # Scale to YOLO input size
         if self.max_image_width > 0:
             yolo_size = self.max_image_width
             scale_x = yolo_size / original_width
@@ -433,126 +535,130 @@ class ObjectDetection(Node):
             scale_x = scale_y = 1.0
         preprocess_ms = (time.perf_counter() - t_pre) * 1000
 
-        # === 2. YOLO INFERENCE (GPU) ===
-        t_yolo = time.perf_counter()
-        result, num_detections = self._run_yolo_inference(yolo_image)
-        inference_ms = (time.perf_counter() - t_yolo) * 1000
+        # === 2. DEPTH PREPARATION (once, shared across all models) ===
+        structured_points = None
+        camera_points_idxs = None
+        points_header = None
 
-        if self.visualize:
-            # Plot model result if enabled
-            self.segmented_image_pub.publish(self.bridge.cv2_to_imgmsg(result.plot(), "bgr8"))
+        if pointcloud_msg is not None and self.use_depth and self.camera_intrinsics_matrix is not None:
+            depth_to_target_msg = self.tf_buffer.lookup_transform(
+                self.target_frame,
+                pointcloud_msg.header.frame_id,
+                Time(seconds=0.0),
+                timeout=Duration(seconds=1.0),
+            )
+            depth_to_target: NDArray = ros2_numpy.numpify(depth_to_target_msg.transform)
 
-        # === 3. POSTPROCESSING (CPU) ===
-        t_post = time.perf_counter()
+            structured_points = deepcopy(pointcloud2_to_array(pointcloud_msg))
+            sp_np = np.stack(
+                (
+                    structured_points[“x”],
+                    structured_points[“y”],
+                    structured_points[“z”],
+                    np.ones(structured_points.shape[0]),
+                )
+            )
+            target_sp = depth_to_target @ sp_np
+            target_sp = target_sp / target_sp[3]
+            structured_points[“x”] = target_sp[0]
+            structured_points[“y”] = target_sp[1]
+            structured_points[“z”] = target_sp[2]
+
+            depth_to_color_msg = self.tf_buffer.lookup_transform(
+                rgb_msg.header.frame_id,
+                pointcloud_msg.header.frame_id,
+                Time.from_msg(rgb_msg.header.stamp),
+                timeout=Duration(seconds=1.0),
+            )
+            depth_to_color: NDArray = ros2_numpy.numpify(depth_to_color_msg.transform)
+
+            np_points = pointcloud2_to_xyz_array(pointcloud_msg)
+            np_points = np_points.transpose(1, 0)
+            np_points = np.concatenate([np_points, np.ones((1, np_points.shape[-1]))])
+            np_points = depth_to_color @ np_points
+            camera_points = self.camera_intrinsics_matrix @ np_points[:3]
+            camera_points = camera_points / camera_points[2]
+            camera_points = camera_points[:2]
+            camera_points_idxs = camera_points.astype(np.int32)
+            camera_points_idxs[[0, 1]] = camera_points_idxs[[1, 0]]
+            camera_points_idxs[0] = np.clip(camera_points_idxs[0], 0, original_height - 1)
+            camera_points_idxs[1] = np.clip(camera_points_idxs[1], 0, original_width - 1)
+
+            points_header = deepcopy(pointcloud_msg.header)
+            points_header.frame_id = self.target_frame
+
+        # === 3. RUN MODELS ===
+        model_ids = self._model_registry.get_pinned_ids()
+        if extra_models:
+            for mid in extra_models:
+                if mid not in model_ids:
+                    model_ids.append(mid)
+
+        all_entities: List[Tuple[Entity, Shape]] = []
+        first_result = None
+        t_yolo_total = 0.0
         old_entity_ids = self._kb_get_entities_for_deletion()
-        entities: List[Tuple[Entity, Shape]] = []
 
-        if num_detections > 0:
-            # Scale boxes back
+        for model_id in model_ids:
+            model = self._model_registry.get_model(model_id)
+            if model is None:
+                self.get_logger().warn(f”Model {model_id} unavailable, skipping”)
+                continue
+
+            t_yolo = time.perf_counter()
+            result, num_detections = self._run_yolo_inference(yolo_image, model)
+            t_yolo_total += (time.perf_counter() - t_yolo) * 1000
+
+            if first_result is None:
+                first_result = result
+
+            if num_detections == 0:
+                continue
+
             if scale_x != 1.0 or scale_y != 1.0:
-                if hasattr(result, "boxes") and result.boxes is not None:
-                    boxes = result.boxes
-                    if hasattr(boxes, "xywh") and boxes.xywh is not None:
-                        boxes.xywh[:, 0] /= scale_x
-                        boxes.xywh[:, 1] /= scale_y
-                        boxes.xywh[:, 2] /= scale_x
-                        boxes.xywh[:, 3] /= scale_y
+                if hasattr(result, “boxes”) and result.boxes is not None:
+                    if hasattr(result.boxes, “xywh”) and result.boxes.xywh is not None:
+                        result.boxes.xywh[:, 0] /= scale_x
+                        result.boxes.xywh[:, 1] /= scale_y
+                        result.boxes.xywh[:, 2] /= scale_x
+                        result.boxes.xywh[:, 3] /= scale_y
 
-            # Extract masks
             masks = self._extract_masks(result, original_height, original_width, mask_hand=mask_hand)
 
-            # Depth processing
-            if pointcloud_msg is not None and masks is not None and self.use_depth and self.camera_intrinsics_matrix is not None:
-                # Transform from depth frame to target(world) frame
-                depth_to_target_msg = self.tf_buffer.lookup_transform(
-                    self.target_frame,
-                    pointcloud_msg.header.frame_id,
-                    Time(seconds=0.0),
-                    timeout=Duration(seconds=1.0),
-                )
-                depth_to_target: NDArray = ros2_numpy.numpify(depth_to_target_msg.transform)
-
-                structured_points = deepcopy(pointcloud2_to_array(pointcloud_msg))
-                sp_np = np.stack(
-                    (
-                        structured_points["x"],
-                        structured_points["y"],
-                        structured_points["z"],
-                        np.ones(structured_points.shape[0]),
-                    )
-                )
-                target_sp = depth_to_target @ sp_np
-                target_sp = target_sp / target_sp[3]
-                structured_points["x"] = target_sp[0]
-                structured_points["y"] = target_sp[1]
-                structured_points["z"] = target_sp[2]
-                # structured_points now contains the pointcloud in target coordinates
-
-                # Transform from depth frame to color image frame
-                depth_to_color_msg = self.tf_buffer.lookup_transform(
-                    rgb_msg.header.frame_id,
-                    pointcloud_msg.header.frame_id,
-                    Time.from_msg(rgb_msg.header.stamp),
-                    timeout=Duration(seconds=1.0),
-                )
-                depth_to_color: NDArray = ros2_numpy.numpify(depth_to_color_msg.transform)
-
-                np_points = pointcloud2_to_xyz_array(pointcloud_msg)
-                np_points = np_points.transpose(1, 0)
-                np_points = np.concatenate([np_points, np.ones((1, np_points.shape[-1]))])
-                np_points = depth_to_color @ np_points
-                # np_points contains pointcloud in color frame coordinates
-                camera_points = self.camera_intrinsics_matrix @ np_points[:3]
-                camera_points = camera_points / camera_points[2]
-                camera_points = camera_points[:2]
-                # camera_points contains pointcloud in color image coordinates
-                camera_points_idxs = camera_points.astype(np.int32)
-                # x, y -> y, x
-                camera_points_idxs[[0, 1]] = camera_points_idxs[[1, 0]]
-                camera_points_idxs[0] = np.clip(camera_points_idxs[0], 0, original_height - 1)
-                camera_points_idxs[1] = np.clip(camera_points_idxs[1], 0, original_width - 1)
+            if structured_points is not None and masks is not None and camera_points_idxs is not None:
                 for i, mask in enumerate(masks):
-                    # Converts the image mask into a per point mask
                     point_mask = mask[camera_points_idxs[0], camera_points_idxs[1]]
-                    # Filter: keep only foreground points.
-                    # `point_mask` originates from `result_masks` (uint8 cast in `_extract_masks`),
-                    # so typical values are in {0, 1}. Thresholding at 0.5 turns this into a
-                    # boolean selection. If mask dtype/range changes, update the threshold.
                     entity_points = structured_points[point_mask > 0.5]
 
-                    if self.get_parameter("use_clustering").get_parameter_value().bool_value:
+                    if self.get_parameter(“use_clustering”).get_parameter_value().bool_value:
                         entity_points = self.cluster_entity_points(entity_points)
 
                     if len(entity_points) == 0:
                         continue
+
                     entity_pointcloud = array_to_pointcloud2(entity_points)
-                    entity_pointcloud.header = pointcloud_msg.header
-                    entity_pointcloud.header.frame_id = self.target_frame
+                    entity_pointcloud.header.stamp = points_header.stamp
+                    entity_pointcloud.header.frame_id = points_header.frame_id
                     self.debug_pointcloud_pub.publish(entity_pointcloud)
 
-                    # Extract label
                     label = result.names[int(result.boxes.cls[i].item())]
-                    entities.append(create_entity(label, entity_points, entity_pointcloud.header))
-            else:
-                if pointcloud_msg is None:
-                    self.get_logger().debug("No pointcloud message available")
-                if not self.use_depth:
-                    self.get_logger().debug("use_depth is False")
+                    all_entities.append(create_entity(label, entity_points, entity_pointcloud.header))
 
-        # Update database
+        # === 4. VISUALIZE (first/pinned model result only) ===
+        if self.visualize and first_result is not None:
+            self.segmented_image_pub.publish(self.bridge.cv2_to_imgmsg(first_result.plot(), “bgr8”))
+
+        # === 5. KB UPDATE ===
         if self._kb_services_available:
-            self.kb_add_entities(entities)
+            self.kb_add_entities(all_entities)
         if delete_old_entities:
-            if len(entities) > 0 or self._clear_db_on_no_detection:
+            if len(all_entities) > 0 or self._clear_db_on_no_detection:
                 self._kb_delete_entities(ids=old_entity_ids)
 
-        postprocess_ms = (time.perf_counter() - t_post) * 1000
-
-        # Timing summary
         total_ms = (time.perf_counter() - t_start) * 1000
         self.get_logger().info(
-            f"[Timing] Pre:{preprocess_ms:.1f}ms | YOLO:{inference_ms:.1f}ms | Post:{postprocess_ms:.1f}ms | Total:{total_ms:.1f}ms | "
-            # f"{queued_count} queued"
+            f”[Timing] Pre:{preprocess_ms:.1f}ms | YOLO:{t_yolo_total:.1f}ms | Total:{total_ms:.1f}ms | “
+            f”Models:{len(model_ids)} | Entities:{len(all_entities)}”
         )
 
     def cluster_entity_points(self, entity_points):
@@ -678,20 +784,24 @@ class ObjectDetection(Node):
 
         self.camera_intrinsics_matrix = K
 
-    def _run_yolo_inference(self, rgb_image: np.ndarray) -> tuple[Any, int]:
+    def _run_yolo_inference(self, rgb_image: np.ndarray, model: Any) -> tuple[Any, int]:
         """Run YOLO inference on RGB image (synchronous).
 
         Args:
             rgb_image: RGB image as numpy array.
+            model: YOLO model instance to use.
 
         Returns:
             Tuple of (YOLO result, number of detections).
         """
-        # Simple synchronous inference - Ultralytics has full control
-        results = self.model(rgb_image, verbose=False, device=self.device)
+        results = model(rgb_image, verbose=False, device=self.device)
         result = results[0]
         num_detections = len(result.boxes) if hasattr(result, "boxes") else 0
         return result, num_detections
+
+    def _evict_stale_models(self) -> None:
+        ttl = self.get_parameter("model_ttl_minutes").get_parameter_value().integer_value * 60.0
+        self._model_registry.evict_stale(ttl)
 
     def _extract_masks(self, result: Any, image_height: int, image_width: int, mask_hand: bool) -> np.ndarray | None:
         """Extract segmentation masks from YOLO result.
@@ -765,6 +875,7 @@ class ObjectDetection(Node):
                     self.pointcloud,
                     delete_old_entities=goal_command.clear_database,
                     mask_hand=goal_command.mask_hand,
+                    extra_models=list(goal_command.extra_models),
                 )
                 action_result.response.result = VisionSnapshotResponse.SUCCESS
             except Exception as e:

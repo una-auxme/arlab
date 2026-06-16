@@ -11,6 +11,7 @@ from geometry_msgs.msg import PoseStamped
 from std_srvs.srv import Trigger
 from rclpy.node import Node
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
+from tf2_geometry_msgs.tf2_geometry_msgs import do_transform_pose_stamped
 
 class EntityPlacer(Node):
     """
@@ -77,7 +78,7 @@ class EntityPlacer(Node):
         TODO doc
         """
         # save pose
-        pose = msg.pose
+        pose = self._to_target_fram(msg)
         if pose is None:
             return
 
@@ -85,7 +86,7 @@ class EntityPlacer(Node):
         self.get_logger().info(f"Received and staged new pose: {pose}")
 
 
-    def _commit_callback(self, request:Trigger.Request, response:Trigger.Response) -> Trigger.Response:
+    async def _commit_callback(self, request:Trigger.Request, response:Trigger.Response) -> Trigger.Response:
         """
         TODO doc
         """
@@ -99,7 +100,9 @@ class EntityPlacer(Node):
         entity = Entity()
         entity.entity_type = EntityType(id=self.get_parameter("entity_type_id").get_parameter_value().integer_value)
         entity.description = self.get_parameter("description").get_parameter_value().string_value
-        entity.pose = self._pending_pose
+        entity.pose = self._pending_pose.pose
+        entity.pose_reference_frame = self._pending_pose.header.frame_id
+        entity.stamp = self._pending_pose.header.stamp
 
         # call add_entity service
 
@@ -112,7 +115,7 @@ class EntityPlacer(Node):
 
         req = AddEntity.Request()
         req.data = entity
-        res = client.call_async(req)
+        res = await client.call_async(req)
 
         if res.result.result_type != Result.SUCCESS:
             response.success = False
@@ -123,6 +126,25 @@ class EntityPlacer(Node):
         response.message = f"Entity added successfully with id: {res.entityid}"
         self.get_logger().info(response.message)
         return response
+
+
+    def _to_target_fram(self, msg:PoseStamped) -> PoseStamped:
+        """
+        transforms any PoseStamped to target frame (map)
+        """
+        if msg.header.frame_id == self.target_frame:
+            return msg
+        try:
+            transform = self.tf_buffer.lookup_transform(
+                self.target_frame,
+                msg.header.frame_id,
+                rclpy.time.Time(),
+                timeout=rclpy.duration.Duration(seconds=self.service_timeout),
+            )
+            return do_transform_pose_stamped(msg, transform)
+        except Exception as e:
+            self.get_logger().error(f"Failed to transform pose to target frame: {e}")
+            return None
 
 
 def main(args=None):

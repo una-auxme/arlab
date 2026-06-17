@@ -14,8 +14,16 @@ from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from tf2_geometry_msgs.tf2_geometry_msgs import do_transform_pose_stamped
 
 class EntityPlacer(Node):
-    """
-    TODO doc
+    """Node that stages rviz pose clicks and offers a service to add a new entity with staged pose to knowledge base
+
+    We need the possibility to add entities manually to the knowledge base, to enable semantic annotation of map.
+    (kitchen, laundry area) This node is the fallback if automatic annotation via CV fails.
+
+    Workflow:
+    - Set topic of 2D Goal Pose in rviz to /arlab/entity_pose using Panel Tool Properties
+    - Click on displayed /map in rviz to select pose
+    - Call /arlab/entity_placer/place service to add entity (pose, stamp, reference_frame are already set)
+    - Display entities in rviz using topic /arlab/knowledge/visualization
     """
     def __init__(self):
         super().__init__(type(self).__name__)
@@ -72,7 +80,7 @@ class EntityPlacer(Node):
 
     def _pose_callback(self, msg:PoseStamped):
         """
-        TODO doc
+        Callback for /arlab/entity_pose topic, transforms pose to target_frame and stages pose for later use.
         """
         # save pose
         pose = self._to_target_frame(msg)
@@ -85,7 +93,8 @@ class EntityPlacer(Node):
 
     async def _place_callback(self, request:AddEntity.Request, response:AddEntity.Response) -> AddEntity.Response:
         """
-        TODO doc
+        Callback for /arlab/entity_placer/place service, extends AddEntity service by using staged pose, reference_frame and stamp already set by staged pose.
+        Calls AddEntity service to add entity to knowledge base and returns result.
         """
         if self._pending_pose is None:
             response.result.result_type = Result.ERROR_INVALID_INPUT

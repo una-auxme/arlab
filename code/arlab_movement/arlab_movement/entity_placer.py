@@ -1,14 +1,14 @@
 """Interactive entity placer node
-Node for manually placing entities (POIs) for semantic annotation of map / env, using rviz for pose selection on map and extension of AddEntity.srv for metadata.
+Node for manually placing entities (POIs) for semantic annotation of map / env,
+using rviz for pose selection on map and extension of AddEntity.srv for metadata.
 
 Maintainers:
 Luca Kahlenberg <luca.kahlenberg@uni-a.de>
 """
 import rclpy
-from arlab_knowledge_interfaces.msg import Entity, EntityType, Result
+from arlab_knowledge_interfaces.msg import Result
 from arlab_knowledge_interfaces.srv import AddEntity
 from geometry_msgs.msg import PoseStamped
-from std_srvs.srv import Trigger
 from rclpy.node import Node
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from tf2_geometry_msgs.tf2_geometry_msgs import do_transform_pose_stamped
@@ -93,7 +93,8 @@ class EntityPlacer(Node):
 
     async def _place_callback(self, request:AddEntity.Request, response:AddEntity.Response) -> AddEntity.Response:
         """
-        Callback for /arlab/entity_placer/place service, extends AddEntity service by using staged pose, reference_frame and stamp already set by staged pose.
+        Callback for /arlab/entity_placer/place service.
+        Extends AddEntity service by using staged pose, reference_frame and stamp already set by staged pose.
         Calls AddEntity service to add entity to knowledge base and returns result.
         """
         if self._pending_pose is None:

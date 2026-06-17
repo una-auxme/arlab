@@ -58,7 +58,6 @@ def generate_launch_description():
 
     bridge_params = "/workspace/install/arlab_movement/share/arlab_movement/params/bridge_params.yaml"
 
-
     start_gazebo_ros_bridge_cmd = Node(
         package="ros_gz_bridge",
         executable="parameter_bridge",

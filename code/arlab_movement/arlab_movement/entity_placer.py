@@ -5,6 +5,7 @@ using rviz for pose selection on map and extension of AddEntity.srv for metadata
 Maintainers:
 Luca Kahlenberg <luca.kahlenberg@uni-a.de>
 """
+
 import rclpy
 from arlab_knowledge_interfaces.msg import Result
 from arlab_knowledge_interfaces.srv import AddEntity
@@ -12,6 +13,7 @@ from geometry_msgs.msg import PoseStamped
 from rclpy.node import Node
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from tf2_geometry_msgs.tf2_geometry_msgs import do_transform_pose_stamped
+
 
 class EntityPlacer(Node):
     """Node that stages rviz pose clicks and offers a service to add a new entity with staged pose to knowledge base
@@ -25,6 +27,7 @@ class EntityPlacer(Node):
     - Call /arlab/entity_placer/place service to add entity (pose, stamp, reference_frame are already set)
     - Display entities in rviz using topic /arlab/knowledge/visualization
     """
+
     def __init__(self):
         super().__init__(type(self).__name__)
 
@@ -41,7 +44,7 @@ class EntityPlacer(Node):
         self.target_frame = self.get_parameter("target_frame").get_parameter_value().string_value
         self.pose_topic = self.get_parameter("pose_topic").get_parameter_value().string_value
         self.add_entity_service = self.get_parameter("add_entity_service").get_parameter_value().string_value
-        self._place_service_name  = self.get_parameter("place_service").get_parameter_value().string_value
+        self._place_service_name = self.get_parameter("place_service").get_parameter_value().string_value
         self._pending_pose = None
         self.service_timeout = 5.0
 
@@ -77,8 +80,7 @@ class EntityPlacer(Node):
             f"Entities are added in frame '{self.target_frame}')."
         )
 
-
-    def _pose_callback(self, msg:PoseStamped):
+    def _pose_callback(self, msg: PoseStamped):
         """
         Callback for /arlab/entity_pose topic, transforms pose to target_frame and stages pose for later use.
         """
@@ -90,8 +92,7 @@ class EntityPlacer(Node):
         self._pending_pose = pose
         self.get_logger().info(f"Received and staged new pose: {pose}")
 
-
-    async def _place_callback(self, request:AddEntity.Request, response:AddEntity.Response) -> AddEntity.Response:
+    async def _place_callback(self, request: AddEntity.Request, response: AddEntity.Response) -> AddEntity.Response:
         """
         Callback for /arlab/entity_placer/place service.
         Extends AddEntity service by using staged pose, reference_frame and stamp already set by staged pose.
@@ -134,8 +135,7 @@ class EntityPlacer(Node):
 
         return response
 
-
-    def _to_target_frame(self, msg:PoseStamped) -> PoseStamped:
+    def _to_target_frame(self, msg: PoseStamped) -> PoseStamped:
         """
         transforms any PoseStamped to target frame (map)
         """
@@ -155,7 +155,7 @@ class EntityPlacer(Node):
 
 
 def main(args=None):
-    """ Entry point for node"""
+    """Entry point for node"""
     rclpy.init(args=args)
     node = EntityPlacer()
     rclpy.spin(node)

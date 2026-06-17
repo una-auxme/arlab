@@ -49,7 +49,7 @@ class NavigationOrchestrator(Node):
         self.service_group = MutuallyExclusiveCallbackGroup()
         self.action_group = ReentrantCallbackGroup()
 
-        # Initialize parameters set in ../paraparams.yamlms/arlab_navigation_
+        # Initialize parameters set in ../params/arlab_navigation_params.yaml
         self.declare_parameter("map_path", "/workspace/src/arlab/code/arlab_movement/map/my_map")
         self.declare_parameter("use_timestamp", False)
         self.declare_parameter("save_to_database", False)

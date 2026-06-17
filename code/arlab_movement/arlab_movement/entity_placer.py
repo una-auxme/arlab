@@ -1,5 +1,5 @@
 """Interactive entity placer node
-Node for manually placing entities (POIs) for semantic annotation of map / env, using rviz for pose selection on map and params for entity args.
+Node for manually placing entities (POIs) for semantic annotation of map / env, using rviz for pose selection on map and extension of AddEntity.srv for metadata.
 
 Maintainers:
 Luca Kahlenberg <luca.kahlenberg@uni-a.de>

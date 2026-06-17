@@ -24,17 +24,16 @@ class EntityPlacer(Node):
 
         self.declare_parameter("pose_topic", "/arlab/entity_pose")
         self.declare_parameter("target_frame", "map")
-        self.declare_parameter("entity_type_id", 0)
-        self.declare_parameter("description", "new_poi")
 
         self.declare_parameter("add_entity_service", "/arlab/knowledge/add_entity")
-        self.declare_parameter("commit_service", "/arlab/entity_placer/commit")
+        self.declare_parameter("place_service", "/arlab/entity_placer/place")
 
         # set self vars
 
         self.target_frame = self.get_parameter("target_frame").get_parameter_value().string_value
         self.pose_topic = self.get_parameter("pose_topic").get_parameter_value().string_value
         self.add_entity_service = self.get_parameter("add_entity_service").get_parameter_value().string_value
+        self._place_service_name  = self.get_parameter("place_service").get_parameter_value().string_value
         self._pending_pose = None
         self.service_timeout = 5.0
 
@@ -55,12 +54,10 @@ class EntityPlacer(Node):
 
         # create services
 
-        self._commit_service_name = self.get_parameter("commit_service").get_parameter_value().string_value
-
         self.create_service(
-            Trigger,
-            self._commit_service_name,
-            self._commit_callback,
+            AddEntity,
+            self._place_service_name,
+            self._place_callback,
             callback_group=self.trigger_group,
         )
 
@@ -68,8 +65,8 @@ class EntityPlacer(Node):
 
         self.get_logger().info(
             f"Staging poses from '{self.pose_topic}'.\n"
-            f"Commit via '{self._commit_service_name}'.\n"
-            f"TODO implement tf: (Entities should be added in frame '{self.target_frame}')."
+            f"Place Entity / Add to DB via '{self._place_service_name}'.\n"
+            f"Entities are added in frame '{self.target_frame}')."
         )
 
 
@@ -78,7 +75,7 @@ class EntityPlacer(Node):
         TODO doc
         """
         # save pose
-        pose = self._to_target_fram(msg)
+        pose = self._to_target_frame(msg)
         if pose is None:
             return
 
@@ -86,49 +83,49 @@ class EntityPlacer(Node):
         self.get_logger().info(f"Received and staged new pose: {pose}")
 
 
-    async def _commit_callback(self, request:Trigger.Request, response:Trigger.Response) -> Trigger.Response:
+    async def _place_callback(self, request:AddEntity.Request, response:AddEntity.Response) -> AddEntity.Response:
         """
         TODO doc
         """
         if self._pending_pose is None:
-            response.success = False
-            response.message = "No pose staged"
+            response.result.result_type = Result.ERROR_INVALID_INPUT
+            response.result.error = "No pose staged"
             return response
 
-        # create entity from pose
+        pose = self._pending_pose
 
-        entity = Entity()
-        entity.entity_type = EntityType(id=self.get_parameter("entity_type_id").get_parameter_value().integer_value)
-        entity.description = self.get_parameter("description").get_parameter_value().string_value
-        entity.pose = self._pending_pose.pose
-        entity.pose_reference_frame = self._pending_pose.header.frame_id
-        entity.stamp = self._pending_pose.header.stamp
+        request.data.pose = pose.pose
+        request.data.pose_reference_frame = pose.header.frame_id
+        request.data.stamp = pose.header.stamp
 
         # call add_entity service
 
         client = self.create_client(AddEntity, self.add_entity_service)
 
         if not client.wait_for_service(timeout_sec=self.service_timeout):
-            response.success = False
-            response.message = "service not available"
+            response.result.result_type = Result.ERROR_BUSY
+            response.result.error = "service not available"
             return response
 
-        req = AddEntity.Request()
-        req.data = entity
-        res = await client.call_async(req)
-
-        if res.result.result_type != Result.SUCCESS:
-            response.success = False
-            response.message = f"Failed to add entity: {res.result.error}"
+        try:
+            res = await client.call_async(request)
+        except Exception as e:
+            response.result.result_type = Result.ERROR_DBAPI
+            response.result.error = f"AddEntity sercive call failed: {e}"
             return response
 
-        response.success = True
-        response.message = f"Entity added successfully with id: {res.entityid}"
-        self.get_logger().info(response.message)
+        response.entityid = res.entityid
+        response.result = res.result
+
+        if res.result.result_type == Result.SUCCESS:
+            self.get_logger().info(f"Entity added successfully with id: {res.entityid}")
+        else:
+            self.get_logger().error(f"Failed to add entity: {res.result.error}")
+
         return response
 
 
-    def _to_target_fram(self, msg:PoseStamped) -> PoseStamped:
+    def _to_target_frame(self, msg:PoseStamped) -> PoseStamped:
         """
         transforms any PoseStamped to target frame (map)
         """

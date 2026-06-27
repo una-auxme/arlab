@@ -16,7 +16,7 @@
 
 namespace {
 
-constexpr char kGraspActionName[] = "/mia_hand/grasps/cylindrical/action";
+//constexpr char kGraspActionName[] = "/mia_hand/grasps/cylindrical/action";
 constexpr int kOpenClosurePercent = 10;
 constexpr int kClosedClosurePercent = 80;
 constexpr int kDefaultSpeedPercent = 15;
@@ -33,18 +33,32 @@ HandMotion::HandMotion(rclcpp::Node::SharedPtr node)
       ORCHESTRATOR_LISTENER_NODE_NULL);
   }
 
-  client_ = rclcpp_action::create_client<GraspAction>(node_, kGraspActionName);
+  // client_ = rclcpp_action::create_client<GraspAction>(node_, kGraspActionName);  
 }
 
+HandMotion::Client::SharedPtr
+HandMotion::GetCreateClient(const std:strin& action_name) {
+  if (clent_cache_.find(action_name) == client_cache.end()){
+    // create a new client for specific grasp action if not present already
+    client_cache_[action_name] = rclcpp_action::create_client<GraspAction>(node_, action_name); 
+  }
+  return client_cache_[action_name]
+} 
+
 void HandMotion::Open(std::chrono::milliseconds timeout) {
-  Grasp(kOpenClosurePercent, kDefaultSpeedPercent, timeout);
+  Grasp("/mia_hand/grasps/cylindrical/action", kOpenClosurePercent, kDefaultSpeedPercent, timeout);
 }
 
 void HandMotion::Close(std::chrono::milliseconds timeout) {
-  Grasp(kClosedClosurePercent, kDefaultSpeedPercent, timeout);
+  Grasp("/mia_hand/grasps/cylindrical/action", kClosedClosurePercent, kDefaultSpeedPercent, timeout);
 }
 
-void HandMotion::Grasp(int target_closure_percent, int speed_for_percent,
+void HandMotion::Pinch(std::chrono::milliseconds timeout) {
+  Grasp("/mia_hand/grasps/pinch/action", kClosedClosurePercent, kDefaultSpeedPercent, timeout);
+}
+
+void HandMotion::Grasp(const std::string& action_name,
+                        int target_closure_percent, int speed_for_percent,
                         std::chrono::milliseconds timeout,
                         std::chrono::milliseconds server_wait) {
 
@@ -56,7 +70,9 @@ void HandMotion::Grasp(int target_closure_percent, int speed_for_percent,
     target_closure_percent = kMaxClosurePercent;
   }
 
-  if (!client_->wait_for_action_server(server_wait)) {
+  auto client = GetCreateClient(action_name);
+
+  if (!client->wait_for_action_server(server_wait)) {
     throw ManipulationException(
       arlab_common_interfaces::msg::ManipulationResponse::
       GRASP_ACTION_SERVER_NOT_READY);
@@ -66,7 +82,7 @@ void HandMotion::Grasp(int target_closure_percent, int speed_for_percent,
   goal.spe_for_percent = speed_for_percent;
   goal.target_closure_percent = target_closure_percent;
 
-  auto goal_future = client_->async_send_goal(goal);
+  auto goal_future = client->async_send_goal(goal);
 
   if (goal_future.wait_for(timeout) != std::future_status::ready) {
     throw ManipulationException(
@@ -87,7 +103,7 @@ void HandMotion::Grasp(int target_closure_percent, int speed_for_percent,
   // TODO: Find out over sensors if an object is present.
   // Then the hand can be "closed enough" to consider the grasp successful and
   // we can enforce a timeout here.
-  auto result_future = client_->async_get_result(goal_handle);
+  auto result_future = client->async_get_result(goal_handle);
   if (result_future.wait_for(timeout) != std::future_status::ready) {
     // throw ManipulationException(
     //   arlab_common_interfaces::msg::ManipulationResponse::

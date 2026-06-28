@@ -66,6 +66,51 @@ class HandMotion {
       std::chrono::milliseconds timeout = std::chrono::milliseconds{3000});
 
     /**
+     * Closes the hand to a lateral grasp configuration.
+     * @param timeout   Maximum time to wait for goal acceptance.
+                        Defaults to 3000 ms.
+     * @throws ManipulationException on any action-level failure.
+     */
+    void Lateral(
+      std::chrono::milliseconds timeout = std::chrono::milliseconds{3000});
+
+    /**
+     * Move the hand to a pointing up configuration.
+     * @param timeout   Maximum time to wait for goal acceptance.
+                        Defaults to 3000 ms.
+     * @throws ManipulationException on any action-level failure.
+     */
+    void PointUp(
+      std::chrono::milliseconds timeout = std::chrono::milliseconds{3000});
+
+    /**
+     * Move the hand to a pointing down configuration.
+     * @param timeout   Maximum time to wait for goal acceptance.
+                        Defaults to 3000 ms.
+     * @throws ManipulationException on any action-level failure.
+     */
+    void PointDown(
+      std::chrono::milliseconds timeout = std::chrono::milliseconds{3000});
+
+    /**
+     * Closes the hand to a spherical grasp configuration.
+     * @param timeout   Maximum time to wait for goal acceptance.
+                        Defaults to 3000 ms.
+     * @throws ManipulationException on any action-level failure.
+     */
+    void Spherical(
+      std::chrono::milliseconds timeout = std::chrono::milliseconds{3000});
+
+    /**
+     * Closes the hand to a tridigital grasp configuration.
+     * @param timeout   Maximum time to wait for goal acceptance.
+                        Defaults to 3000 ms.
+     * @throws ManipulationException on any action-level failure.
+     */
+    void Tridigital(
+      std::chrono::milliseconds timeout = std::chrono::milliseconds{3000});
+
+    /**
      * Sends a grasp goal to the hand action server and waits for a result.
      * @param target_closure_percent  Desired hand closure in percent [0, 100].
      * @param speed_for_percent       Closing speed in percent. Defaults to 15.

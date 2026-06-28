@@ -37,12 +37,12 @@ HandMotion::HandMotion(rclcpp::Node::SharedPtr node)
 }
 
 HandMotion::Client::SharedPtr
-HandMotion::GetCreateClient(const std:strin& action_name) {
-  if (clent_cache_.find(action_name) == client_cache.end()){
+HandMotion::GetCreateClient(const std::string& action_name) {
+  if (client_cache_.find(action_name) == client_cache_.end()){
     // create a new client for specific grasp action if not present already
     client_cache_[action_name] = rclcpp_action::create_client<GraspAction>(node_, action_name); 
   }
-  return client_cache_[action_name]
+  return client_cache_[action_name];
 } 
 
 void HandMotion::Open(std::chrono::milliseconds timeout) {

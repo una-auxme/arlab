@@ -122,7 +122,7 @@ class HandMotion {
      *         rejected, or goal acceptance times out.
      */
     void Grasp(
-      const std:string& action_name,
+      const std::string& action_name,
       int target_closure_percent,
       int speed_for_percent = 15,
       std::chrono::milliseconds timeout = std::chrono::milliseconds{3000},
@@ -130,9 +130,9 @@ class HandMotion {
           std::chrono::milliseconds{2000});
 
   private:
-    Client::SharedPtr GetCreateClient(const std:string& action_name);
+    Client::SharedPtr GetCreateClient(const std::string& action_name);
     rclcpp::Node::SharedPtr node_;
-    std::map<std::string, Client::SharedPtr> client_cache_
+    std::map<std::string, Client::SharedPtr> client_cache_;
 };
 
 #endif  // ARLAB_MANIPULATION_CPP_HAND_MOTION_HPP_

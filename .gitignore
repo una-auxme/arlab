@@ -196,3 +196,7 @@ cython_debug/
 
 # Ruff
 .ruff_cache
+
+# map testing
+*.pgm
+my_map.yaml

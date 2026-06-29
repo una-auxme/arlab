@@ -200,3 +200,5 @@ cython_debug/
 # map testing
 *.pgm
 my_map.yaml
+code/arlab_movement/map/my_map.pgm
+code/arlab_movement/map/my_map.yaml

@@ -58,6 +58,14 @@ def entity_msg_type_to_class(msg_type: msg.EntityType) -> type | None:
         return furniture.Shelf
     if msg_type.id == msg.EntityType.TABLE:
         return furniture.Table
+    if msg_type.id == msg.EntityType.DISHWASHER:
+        return furniture.Dishwasher
+    if msg_type.id == msg.EntityType.WASHER:
+        return furniture.Washer
+    if msg_type.id == msg.EntityType.LAUNDRY_BASKET:
+        return furniture.LaundryBasket
+    if msg_type.id == msg.EntityType.TRASH_BIN:
+        return furniture.TrashBin
     else:
         return None
 
@@ -91,4 +99,12 @@ def entity_extract_type_msg(e: entity.Entity) -> msg.EntityType:
         m.id = msg.EntityType.SHELF
     if isinstance(e, furniture.Table):
         m.id = msg.EntityType.TABLE
+    if isinstance(e, furniture.Dishwasher):
+        m.id = msg.EntityType.DISHWASHER
+    if isinstance(e, furniture.Washer):
+        m.id = msg.EntityType.WASHER
+    if isinstance(e, furniture.LaundryBasket):
+        m.id = msg.EntityType.LAUNDRY_BASKET
+    if isinstance(e, furniture.TrashBin):
+        m.id = msg.EntityType.TRASH_BIN
     return m

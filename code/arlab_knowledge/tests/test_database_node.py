@@ -3,6 +3,8 @@
 These tests are not compatible with `pytest`/`colcon test` and need to be manually
 executed via `python3 test_database_node.py`.
 
+Note: The new entities (Dishwasher, Washer, LaundryBasket, TrashBin) are not yet covered by update test.
+
 Maintainers:
     Peter Viechter <peter.viechter@uni-a.de>
     Daniel Gabler <daniel.gabler@uni-a.de>
@@ -53,6 +55,10 @@ class DatabaseServiceTester(Node):
             self.test_add_cupboard,
             self.test_add_shelf,
             self.test_add_table,
+            self.test_add_dishwasher,
+            self.test_add_washer,
+            self.test_add_laundry_basket,
+            self.test_add_trash_bin,
             self.test_add_pickable,
             self.test_add_map,
             self.test_get_description,
@@ -86,6 +92,10 @@ class DatabaseServiceTester(Node):
         self.pickable_id = 0
         self.shelf_id = 0
         self.table_id = 0
+        self.dishwasher_id = 0
+        self.washer_id = 0
+        self.laundry_basket_id = 0
+        self.trash_bin_id = 0
 
         self.current_test = 0
         self.timer = self.create_timer(0.01, self.run_next_test)
@@ -144,6 +154,18 @@ class DatabaseServiceTester(Node):
 
     async def test_add_pickable(self):
         self.pickable_id = await self.generic_test_add_entity(utils.get_pickable)
+
+    async def test_add_dishwasher(self):
+        self.dishwasher_id = await self.generic_test_add_entity(utils.get_dishwasher)
+
+    async def test_add_washer(self):
+        self.washer_id = await self.generic_test_add_entity(utils.get_washer)
+
+    async def test_add_laundry_basket(self):
+        self.laundry_basket_id = await self.generic_test_add_entity(utils.get_laundry_basket)
+
+    async def test_add_trash_bin(self):
+        self.trash_bin_id = await self.generic_test_add_entity(utils.get_trash_bin)
 
     async def test_add_map(self):
         request = AddMap.Request()
@@ -336,6 +358,10 @@ class DatabaseServiceTester(Node):
             self.pickable_id,
             self.shelf_id,
             self.table_id,
+            self.dishwasher_id,
+            self.washer_id,
+            self.laundry_basket_id,
+            self.trash_bin_id,
         ]
         res = await self.call_service(DelEntities, f"{self.prefix}/del_entities", req)
         self.log_result("DelEntities", res.result)

@@ -320,7 +320,7 @@ class orchestrator(Node):
         Updates gripping force and grip modes, then computes pick/place pose.
 
         Side Effects:
-            - Updates self.force, self.grip_pos_mode, self.grip_orient_mode
+            - Updates self.force, self.grip_pos_mode, self.grip_orient_mode, self.grip_type
             - Calls compute_goal_pose
             - Updates self.err / self.msg if service fails
 
@@ -332,6 +332,7 @@ class orchestrator(Node):
             self.force = response.gripforce
             self.grip_pos_mode = response.grippos_mode
             self.grip_orient_mode = response.griporient_mode
+            self.grip_type = response.grip_type
             self.compute_goal_pose()
         except Exception as e:
             self.get_logger().error(f"GetGrippingParameter failed: {e}")
@@ -416,7 +417,9 @@ class orchestrator(Node):
 
         msg = OrchestratorAction.Goal()
         msg.data.pose = goal_pose
+        msg.data.grip_type = self.grip_type
         msg.data.grip_force = Float64(data=self.force)
+
         msg.data.cmd = String(data=self.command_type)
 
         if not self._orchestrator_client.wait_for_server(timeout_sec=5.0):

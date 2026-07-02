@@ -172,7 +172,7 @@ class Entity(Base):
             base=self.pose.pose,
             frame_id=self.pose_reference_frame,
             color=(0.5, 0.5, 0.5, 0.5),
-            size_modifier=0.05,
+            size_modifier=0.5,
         )
 
     def get_point_cloud_marker(self) -> Optional[Marker]:
@@ -214,7 +214,7 @@ class Entity(Base):
                 pose=self.pose.pose,
                 offset=Vector3(x=0.0, y=0.0, z=0.05),
                 color=(1.0, 1.0, 1.0, 0.9),
-                size_modifier=0.05,
+                size_modifier=0.5,
             )
         ]
 

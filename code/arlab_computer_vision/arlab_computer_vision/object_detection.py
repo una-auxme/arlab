@@ -60,66 +60,24 @@ from ultralytics import YOLO
 # Maps VisionSnapshotCommand model constants to weights filenames (relative to yolo_weights/).
 # pinned=True models are loaded at startup and never evicted; all others are lazy-loaded.
 _MODEL_DEFINITIONS: dict[int, dict] = {
-    VisionSnapshotCommand.MODEL_GENERAL_OBJECTS: {
+    VisionSnapshotCommand.MODEL_GENERAL_OBJECTS_AND_PEOPLE: {
+        "name": "general_objects",
+        "weights": "open_img.pt",
+        "pinned": True,
+    },
+
+    VisionSnapshotCommand.MODEL_DISHWASHER: {
+        "name": "general_objects",
+        "weights": "person.pt",
+        "pinned": False,
+    },
+
+    VisionSnapshotCommand.MODEL_LAUNDRY: {
         "name": "general_objects",
         "weights": "yolo11n-seg_demo_day.pt",
-        "pinned": True,
-    },
-    VisionSnapshotCommand.MODEL_PEOPLE: {
-        "name": "people",
-        "weights": "people.pt",
-        "pinned": True,
-    },
-    VisionSnapshotCommand.MODEL_WALLS: {
-        "name": "walls",
-        "weights": "walls.pt",
         "pinned": False,
     },
-    VisionSnapshotCommand.MODEL_DOOR_OPEN: {
-        "name": "door_open",
-        "weights": "door_open.pt",
-        "pinned": False,
-    },
-    VisionSnapshotCommand.MODEL_STORAGE_LOCATION: {
-        "name": "storage_location",
-        "weights": "storage_location.pt",
-        "pinned": False,
-    },
-    VisionSnapshotCommand.MODEL_KITCHEN_WORKSPACES: {
-        "name": "kitchen_workspaces",
-        "weights": "kitchen_workspaces.pt",
-        "pinned": False,
-    },
-    VisionSnapshotCommand.MODEL_DISHWASHER_STATUS: {
-        "name": "dishwasher_status",
-        "weights": "dishwasher_status.pt",
-        "pinned": False,
-    },
-    VisionSnapshotCommand.MODEL_DISHWASHER_SLOTS: {
-        "name": "dishwasher_slots",
-        "weights": "dishwasher_slots.pt",
-        "pinned": False,
-    },
-    VisionSnapshotCommand.MODEL_WASHING_MACHINE_POINTS: {
-        "name": "washing_machine_points",
-        "weights": "washing_machine_points.pt",
-        "pinned": False,
-    },
-    VisionSnapshotCommand.MODEL_TSHIRT_DETECT: {
-        "name": "tshirt_detect",
-        "weights": "tshirt_detect.pt",
-        "pinned": False,
-    },
-    VisionSnapshotCommand.MODEL_TSHIRT_SEGMENT: {
-        "name": "tshirt_segment",
-        "weights": "tshirt_segment.pt",
-        "pinned": False,
-    },
-    VisionSnapshotCommand.MODEL_WASHING_MACHINE_STATUS: {
-        "name": "washing_machine_status",
-        "weights": "washing_machine_status.pt",
-        "pinned": False,
-    },
+   
 }
 
 
@@ -552,17 +510,17 @@ class ObjectDetection(Node):
             structured_points = deepcopy(pointcloud2_to_array(pointcloud_msg))
             sp_np = np.stack(
                 (
-                    structured_points[“x”],
-                    structured_points[“y”],
-                    structured_points[“z”],
+                    structured_points["x"],
+                    structured_points["y"],
+                    structured_points["z"],
                     np.ones(structured_points.shape[0]),
                 )
             )
             target_sp = depth_to_target @ sp_np
             target_sp = target_sp / target_sp[3]
-            structured_points[“x”] = target_sp[0]
-            structured_points[“y”] = target_sp[1]
-            structured_points[“z”] = target_sp[2]
+            structured_points["x"] = target_sp[0]
+            structured_points["y"] = target_sp[1]
+            structured_points["z"] = target_sp[2]
 
             depth_to_color_msg = self.tf_buffer.lookup_transform(
                 rgb_msg.header.frame_id,
@@ -602,7 +560,7 @@ class ObjectDetection(Node):
         for model_id in model_ids:
             model = self._model_registry.get_model(model_id)
             if model is None:
-                self.get_logger().warn(f”Model {model_id} unavailable, skipping”)
+                self.get_logger().warn(f"Model {model_id} unavailable, skipping")
                 continue
 
             t_yolo = time.perf_counter()
@@ -616,8 +574,8 @@ class ObjectDetection(Node):
                 continue
 
             if scale_x != 1.0 or scale_y != 1.0:
-                if hasattr(result, “boxes”) and result.boxes is not None:
-                    if hasattr(result.boxes, “xywh”) and result.boxes.xywh is not None:
+                if hasattr(result, "boxes") and result.boxes is not None:
+                    if hasattr(result.boxes, "xywh") and result.boxes.xywh is not None:
                         result.boxes.xywh[:, 0] /= scale_x
                         result.boxes.xywh[:, 1] /= scale_y
                         result.boxes.xywh[:, 2] /= scale_x
@@ -630,7 +588,7 @@ class ObjectDetection(Node):
                     point_mask = mask[camera_points_idxs[0], camera_points_idxs[1]]
                     entity_points = structured_points[point_mask > 0.5]
 
-                    if self.get_parameter(“use_clustering”).get_parameter_value().bool_value:
+                    if self.get_parameter("use_clustering").get_parameter_value().bool_value:
                         entity_points = self.cluster_entity_points(entity_points)
 
                     if len(entity_points) == 0:
@@ -646,7 +604,7 @@ class ObjectDetection(Node):
 
         # === 4. VISUALIZE (first/pinned model result only) ===
         if self.visualize and first_result is not None:
-            self.segmented_image_pub.publish(self.bridge.cv2_to_imgmsg(first_result.plot(), “bgr8”))
+            self.segmented_image_pub.publish(self.bridge.cv2_to_imgmsg(first_result.plot(), "bgr8"))
 
         # === 5. KB UPDATE ===
         if self._kb_services_available:
@@ -657,8 +615,8 @@ class ObjectDetection(Node):
 
         total_ms = (time.perf_counter() - t_start) * 1000
         self.get_logger().info(
-            f”[Timing] Pre:{preprocess_ms:.1f}ms | YOLO:{t_yolo_total:.1f}ms | Total:{total_ms:.1f}ms | “
-            f”Models:{len(model_ids)} | Entities:{len(all_entities)}”
+            f"[Timing] Pre:{preprocess_ms:.1f}ms | YOLO:{t_yolo_total:.1f}ms | Total:{total_ms:.1f}ms | "
+            f"Models:{len(model_ids)} | Entities:{len(all_entities)}"
         )
 
     def cluster_entity_points(self, entity_points):

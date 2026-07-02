@@ -62,3 +62,25 @@ def test_convert_shelf():
 def test_convert_table():
     entity = utils.get_table()
     convert(entity)
+
+
+def test_convert_dishwasher():
+    entity = utils.get_dishwasher()
+    convert(entity)
+
+
+def test_convert_washer():
+    entity = utils.get_washer()
+    convert(entity)
+
+
+def test_convert_laundry_basket():
+    entity = utils.get_laundry_basket()
+    convert(entity)
+
+
+def test_convert_trash_bin():
+    entity = utils.get_trash_bin()
+    convert(entity)
+
+    

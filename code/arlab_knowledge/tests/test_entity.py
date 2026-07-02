@@ -82,5 +82,3 @@ def test_convert_laundry_basket():
 def test_convert_trash_bin():
     entity = utils.get_trash_bin()
     convert(entity)
-
-    

@@ -89,7 +89,20 @@ void HandMotion::Grasp(const std::string& action_name,
     target_closure_percent = kMaxClosurePercent;
   }
 
+  // DEBUG
+  RCLCPP_INFO(
+    node_->get_logger(),
+    "Waiting for action server '%s'",
+    action_name.c_str());
+
   auto client = GetCreateClient(action_name);
+
+  // more DEBUG
+  bool ready = client->wait_for_action_server(server_wait);
+  RCLCPP_INFO(
+    node_->get_logger(),
+    "Server ready: %s",
+    ready ? "true" : "false");
 
   if (!client->wait_for_action_server(server_wait)) {
     throw ManipulationException(

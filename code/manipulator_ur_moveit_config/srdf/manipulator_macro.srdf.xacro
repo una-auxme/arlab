@@ -75,6 +75,15 @@
 
 
 
+    <group_state name="hand_nice_gesture" group="mia_hand">
+      <joint name="j_thumb_fle" value="0.22"/>
+      <joint name="j_thumb_opp" value="0"/>
+      <joint name="j_index_fle" value="1.21"/>
+      <joint name="j_mrl_fle"  value="0.92"/>
+    </group_state>
+
+
+
     <!--VIRTUAL JOINT - Purpose - this element defines a virtual joint between a robot link and an external frame of reference (considered fixed with respect to the robot)-->
     <!--DISABLE COLLISIONS - By default it is assumed that any link of the robot could potentially come into collision with any other link in the robot. This tag disables collision checking between a specified pair of links. -->
     <disable_collisions link1="base_link" link2="base_link_inertia" reason="Adjacent" />

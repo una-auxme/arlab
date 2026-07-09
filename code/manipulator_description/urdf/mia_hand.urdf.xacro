@@ -12,7 +12,7 @@
       *origin">
 
     <!-- Importing URDF macro related to the specified laterality -->
-    <xacro:include filename="$(find mia_hand_description)/urdf/mia_hand_${laterality}.urdf.xacro"/>
+    <xacro:include filename="$(find manipulator_description)/urdf/mia_hand_${laterality}.urdf.xacro"/>
 
     <!-- Loading proper URDF, depending on the specified laterality -->
     <xacro:if value="${'right' == laterality}">

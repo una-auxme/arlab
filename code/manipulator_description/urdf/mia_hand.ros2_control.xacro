@@ -45,7 +45,7 @@
       <!-- Thumb flexion -->
       <joint name="${prefix}j_thumb_fle">
         <command_interface name="position">
-          <param name="min">0.0</param>
+          <param name="min">-0.001</param>
           <param name="max">1.2</param>
         </command_interface>
         <command_interface name="velocity">
@@ -54,7 +54,7 @@
         </command_interface>
 
         <state_interface name="position">
-          <param name="initial_value">0.0</param>
+          <param name="initial_value">0.01</param>
         </state_interface>
         <state_interface name="velocity">
           <param name="initial_value">0.0</param>
@@ -64,7 +64,7 @@
       <!-- Index flexion -->
       <joint name="${prefix}j_index_fle">
         <command_interface name="position">
-          <param name="min">0.0</param>
+          <param name="min">-0.001</param>
           <param name="max">1.2</param>
         </command_interface>
         <command_interface name="velocity">
@@ -73,7 +73,7 @@
         </command_interface>
 
         <state_interface name="position">
-          <param name="initial_value">0.0</param>
+          <param name="initial_value">0.01</param>
         </state_interface>
         <state_interface name="velocity">
           <param name="initial_value">0.0</param>
@@ -83,7 +83,7 @@
       <!-- Middle / Ring / Little flexion combined -->
       <joint name="${prefix}j_mrl_fle">
         <command_interface name="position">
-          <param name="min">0.0</param>
+          <param name="min">-0.001</param>
           <param name="max">1.2</param>
         </command_interface>
         <command_interface name="velocity">
@@ -92,7 +92,7 @@
         </command_interface>
 
         <state_interface name="position">
-          <param name="initial_value">0.0</param>
+          <param name="initial_value">0.01</param>
         </state_interface>
         <state_interface name="velocity">
           <param name="initial_value">0.0</param>

@@ -46,7 +46,7 @@
         </include>
         <pose frame=''>-9.199410 2.411230 2.084544 0 -0 0</pose>
 	</model>
-	
+
 	<model name='AirconditionerB_01_001'>
         <include>
             <uri>model://aws_robomaker_residential_AirconditionerB_01</uri>
@@ -59,9 +59,9 @@
         </include>
         <pose frame=''>3.295503 4.225674 0.318684 0 -0 0</pose>
 	</model>
-    
+
     <!-- quick test ball for turtlebot3 -->
-    <!-- 
+    <!--
 	<model name='Ball_01_002'>
         <include>
             <uri>model://aws_robomaker_residential_Ball_01</uri>
@@ -101,7 +101,7 @@
         </include>
         <pose frame=''>2.779073 -5.392703 1.538173 0 -0 0</pose>
 	</model>
-	
+
     <!-- Remove ceiling for easier view
 	<model name='RoomCeiling_01_001'>
         <include>
@@ -110,7 +110,7 @@
         <pose frame=''>0 0 2.5 0 -0 0</pose>
 	</model>
     -->
-	
+
 	<model name='ChairA_01_001'>
         <include>
             <uri>model://aws_robomaker_residential_ChairA_01</uri>
@@ -159,30 +159,6 @@
         </include>
         <pose frame=''>-8.270775 -4.504456 0 0 -0 0.869673</pose>
 	</model>
-	<model name='Chandelier_01_001'>
-        <include>
-            <uri>model://aws_robomaker_residential_Chandelier_01</uri>
-        </include>
-        <pose frame=''>1.221061 4.155740 1.295000 0 -0 0</pose>
-	</model>
-       	<model name='Chandelier_01_002'>
-        <include>
-            <uri>model://aws_robomaker_residential_Chandelier_01</uri>
-        </include>
-        <pose frame=''>-6.451061 -0.692040 1.810000 0 -0 0</pose>
-	</model>
-	<model name='Chandelier_01_003'>
-        <include>
-            <uri>model://aws_robomaker_residential_Chandelier_01</uri>
-        </include>
-        <pose frame=''>7.824061 -1.59 1.7510000 0 -0 0</pose>
-	</model>
-    <model name='Chandelier_01_004'>
-        <include>
-            <uri>model://aws_robomaker_residential_Chandelier_01</uri>
-        </include>
-        <pose frame=''>1.221061 -1.592040 1.7873000 0 -0 0</pose>
-	</model>
 	<model name='Carpet_01_001'>
         <include>
             <uri>model://aws_robomaker_residential_Carpet_01</uri>
@@ -221,7 +197,7 @@
         </include>
         <pose frame=''>-9.172642 0.203760 0 0 -0 0</pose>
 	</model>
-    
+
 	<model name='KitchenTable_01_001'>
         <include>
             <uri>model://aws_robomaker_residential_KitchenTable_01</uri>
@@ -247,7 +223,7 @@
         </include>
         <pose frame=''>6.001449 -5.549002 0 0 -0 0</pose>
 	</model>
-	
+
 	<model name='Dumbbell_01_001'>
         <include>
             <uri>model://aws_robomaker_residential_Dumbbell_01</uri>
@@ -284,14 +260,14 @@
         </include>
         <pose frame=''>5.724 -5.523 0.9938 0 -0 -3.1415</pose>
 	</model>
-	
+
     <model name='HouseWallB_01_001'>
         <include>
             <uri>model://aws_robomaker_residential_HouseWallB_01</uri>
         </include>
         <pose frame=''>0 0 0 0 -0 0</pose>
 	</model>
-    
+
     <model name='FloorB_01_001'>
         <include>
             <uri>model://aws_robomaker_residential_FloorB_01</uri>
@@ -326,7 +302,7 @@
         </include>
         <pose frame=''>9.285478 -5.021261 1.141805 0 -0 0</pose>
 	</model>
-	
+
 	<model name='LightC_01_001'>
         <include>
             <uri>model://aws_robomaker_residential_LightC_01</uri>
@@ -339,13 +315,13 @@
         </include>
         <pose frame=''>-0.138245 -5.4443710 2.000000 0 -0 0</pose>
 	</model>
-	
-    <!-- 
-    Wall & Desk Portraits: 
+
+    <!--
+    Wall & Desk Portraits:
 
     They're copies rather than instances, however, they still use
     the same collada files. This way, we can individually change each
-    portrait image by replacing the texture files. Remember that the 
+    portrait image by replacing the texture files. Remember that the
     texture file name needs to be the same.
     -->
      <!-- WALL -->
@@ -355,7 +331,7 @@
         </include>
         <pose frame=''>-2.712360 -4.817539 1.00000 0 -0 1.566796</pose>
 	</model>
-	
+
 	<model name='PortraitB_01'>
         <include>
             <uri>model://aws_robomaker_residential_PortraitB_01</uri>
@@ -390,7 +366,7 @@
         </include>
         <pose frame=''>-9.294904 -4.526084 1.000000 0 -0 1.554734</pose>
 	</model>
-	
+
 	<model name='PortraitD_01'>
         <include>
             <uri>model://aws_robomaker_residential_PortraitD_01</uri>
@@ -403,7 +379,7 @@
         </include>
         <pose frame=''>6.870181 3.080310 1.488439 0 -0 0</pose>
 	</model>
-	
+
 	<model name='PortraitE_01'>
         <include>
             <uri>model://aws_robomaker_residential_PortraitE_01</uri>
@@ -428,7 +404,7 @@
         <include>
             <uri>model://aws_robomaker_residential_DeskPortraitA_02</uri>
         </include>
-        
+
         <pose frame=''>2.046082 -1.892926 0.0703880 -0.018328 -0.000441 1.576216</pose>
 	</model>
 	<model name='DeskPortraitC_01'>
@@ -487,7 +463,7 @@
         </include>
         <pose frame=''>9.019794 -3.369940 1.507605 0 -0 0</pose>
 	</model>
-	
+
 	<model name='Refrigerator_01_001'>
         <include>
             <uri>model://aws_robomaker_residential_Refrigerator_01</uri>
@@ -541,12 +517,12 @@
             <uri>model://aws_robomaker_residential_TV_02</uri>
         </include>
         <pose frame=''>-6.197322 -1.388739 0.676282 0 -0 -1.561744</pose>
-	</model>	
+	</model>
 	<model name='TVCabinet_01_001'>
         <include>
             <uri>model://aws_robomaker_residential_TVCabinet_01</uri>
         </include>
-        <!-- 
+        <!--
         <pose frame=''>0.615509 -5.105954 -0.011049 0 -0 1.5700</pose>
         -->
         <pose frame=''>0.629509 -5.183576 -0.017049 0 -0 1.5792</pose>
@@ -563,9 +539,9 @@
         </include>
         <pose frame=''>-6.097550 -1.496180 0.028124 0 -0 0</pose>
 	</model>
-	
 
-	
+
+
 	<model name='Wardrobe_01_001'>
         <include>
             <uri>model://aws_robomaker_residential_Wardrobe_01</uri>
@@ -718,11 +694,11 @@
         <linear>0.01</linear>
         <quadratic>0.00</quadratic>
       </attenuation>
-      <spot> 
-        <inner_angle>0.6</inner_angle>  
-        <outer_angle>1.0</outer_angle>  
-        <falloff>1.0</falloff> 
-      </spot> 
+      <spot>
+        <inner_angle>0.6</inner_angle>
+        <outer_angle>1.0</outer_angle>
+        <falloff>1.0</falloff>
+      </spot>
       <cast_shadows>1</cast_shadows>
       <direction>0 0 -1</direction>
     </light>

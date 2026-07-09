@@ -67,6 +67,7 @@
   <xacro:arg name="mock_sensor_commands" default="false" />
   <xacro:arg name="simulation_controllers" default="" />
   <xacro:arg name="ros_namespace" default="" />
+  <xacro:arg name="lock_base_tilt" default="true" />
   <xacro:arg name="initial_positions_file" default="$(find ur_description)/config/initial_positions.yaml"/>
   <xacro:property name="initial_positions_file" default="$(arg initial_positions_file)"/>
 
@@ -92,6 +93,44 @@
     attach_to_parent="false"
     fix_wheel_joints="true">
   </xacro:ranger_air_description>
+
+  <xacro:if value="$(arg lock_base_tilt)">
+    <!-- Anti-tip stabilisation for the mobile Gazebo setup.
+         The mobile base is moved by gz-sim-velocity-control-system via /cmd_vel,
+         so we do not need Gazebo to solve roll/pitch dynamics for the root link.
+         Marking ranger_base_link as kinematic prevents the complete robot from
+         tipping over, while x/y/yaw motion through /cmd_vel still works.
+         The hidden ballast link is an additional fallback for Gazebo versions that
+         ignore <kinematic> from URDF conversion: it lowers the combined centre of
+         mass and makes roll/pitch numerically very hard to excite. -->
+    <gazebo reference="ranger_base_link">
+      <gravity>false</gravity>
+      <kinematic>true</kinematic>
+      <self_collide>false</self_collide>
+    </gazebo>
+
+    <link name="anti_tip_ballast_link">
+      <inertial>
+        <origin xyz="0 0 -0.20" rpy="0 0 0"/>
+        <mass value="250.0"/>
+        <inertia
+          ixx="5000.0" ixy="0.0" ixz="0.0"
+          iyy="5000.0" iyz="0.0"
+          izz="5000.0"/>
+      </inertial>
+    </link>
+
+    <joint name="anti_tip_ballast_joint" type="fixed">
+      <parent link="ranger_base_link"/>
+      <child link="anti_tip_ballast_link"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+
+    <gazebo reference="anti_tip_ballast_link">
+      <visualize>false</visualize>
+      <self_collide>false</self_collide>
+    </gazebo>
+  </xacro:if>
 
   <!-- UR chassis mounted on the Ranger Air base -->
   <xacro:ur_chasis

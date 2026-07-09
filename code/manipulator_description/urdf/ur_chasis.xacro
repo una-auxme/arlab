@@ -18,10 +18,15 @@
         </geometry>
       </collision>
 
+      <!-- Stabilised inertial model:
+           The old centre of mass was 0.5 m above the chassis link, which made
+           the mobile manipulator very top-heavy in Gazebo. The visual/collision
+           geometry is unchanged; only the hidden inertial model is moved down
+           and made numerically stiff against roll/pitch. -->
       <inertial>
-        <origin xyz="0 0 0.5" rpy="0 0 0"/>
-        <mass value="20"/>
-        <inertia ixx="100"  ixy="0"  ixz="0" iyy="100" iyz="0" izz="100" />
+        <origin xyz="0 0 0.12" rpy="0 0 0"/>
+        <mass value="60"/>
+        <inertia ixx="300"  ixy="0"  ixz="0" iyy="300" iyz="0" izz="300" />
       </inertial>
 
     </link>

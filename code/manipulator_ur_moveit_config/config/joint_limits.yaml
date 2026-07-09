@@ -23,3 +23,39 @@ joint_limits:
   wrist_3_joint:
     has_acceleration_limits: true
     max_acceleration: 5.0
+
+  # MIA hand joints. MoveIt's time parameterization needs acceleration limits
+  # for every actively planned joint; without these, Plan & Execute aborts
+  # before sending the trajectory to ros2_control.
+  j_thumb_opp:
+    has_position_limits: true
+    min_position: -1.0
+    max_position: 1.0
+    has_velocity_limits: true
+    max_velocity: 1.0
+    has_acceleration_limits: true
+    max_acceleration: 2.0
+  j_thumb_fle:
+    has_position_limits: true
+    min_position: 0.0
+    max_position: 1.2
+    has_velocity_limits: true
+    max_velocity: 1.0
+    has_acceleration_limits: true
+    max_acceleration: 2.0
+  j_index_fle:
+    has_position_limits: true
+    min_position: 0.0
+    max_position: 1.2
+    has_velocity_limits: true
+    max_velocity: 1.0
+    has_acceleration_limits: true
+    max_acceleration: 2.0
+  j_mrl_fle:
+    has_position_limits: true
+    min_position: 0.0
+    max_position: 1.2
+    has_velocity_limits: true
+    max_velocity: 1.0
+    has_acceleration_limits: true
+    max_acceleration: 2.0

@@ -7,57 +7,97 @@
     params="name prefix serial_port use_mock_hardware">
 
     <ros2_control name="${name}" type="system">
+
+      <!-- Real hardware: echte Mia-Hand über Serial Interface -->
       <xacro:unless value="${use_mock_hardware}">
         <hardware>
           <plugin>mia_hand_ros2_control/MiaHandSystemInterface</plugin>
           <param name="serial_port">${serial_port}</param>
         </hardware>
       </xacro:unless>
+
+      <!-- Simulation: Mia-Hand-Joints werden von Gazebo / gz_ros2_control bereitgestellt -->
       <xacro:if value="${use_mock_hardware}">
         <hardware>
-          <plugin>mock_components/GenericSystem</plugin>
-          <!-- <plugin>gz_ros2_control/GazeboSimSystem</plugin> -->
+          <plugin>gz_ros2_control/GazeboSimSystem</plugin>
         </hardware>
-
-        <joint name="j_thumb_opp">
-          <command_interface name="position" />
-          <command_interface name="velocity" />
-          <state_interface name="position" />
-          <state_interface name="velocity" />
-        </joint>
-
-        <joint name="j_ring_fle"></joint>
-
-        <joint name="j_little_fle"></joint>
-
-        <joint name="j_thumb_fle">
-          <command_interface name="position" />
-          <command_interface name="velocity" />
-          <state_interface name="position" />
-          <state_interface name="velocity" />
-        </joint>
-
-        <joint name="j_index_fle">
-          <command_interface name="position" />
-          <command_interface name="velocity" />
-          <state_interface name="position" />
-          <state_interface name="velocity" />
-        </joint>
-
-        <joint name="j_mrl_fle">
-          <command_interface name="position" />
-          <command_interface name="velocity" />
-          <state_interface name="position" />
-          <state_interface name="velocity" />
-        </joint>
-
       </xacro:if>
 
-      <!-- Extra joints used only for Rviz2 visualization -->
+      <!-- Thumb opposition joint: nur falls du ihn später auch steuern willst -->
+      <joint name="${prefix}j_thumb_opp">
+        <command_interface name="position">
+          <param name="min">-1.0</param>
+          <param name="max">1.0</param>
+        </command_interface>
+        <command_interface name="velocity">
+          <param name="min">-2.0</param>
+          <param name="max">2.0</param>
+        </command_interface>
 
-      <!-- <joint name="j_thumb_opp" />
-      <joint name="j_ring_fle" />
-      <joint name="j_little_fle" /> -->
+        <state_interface name="position">
+          <param name="initial_value">0.0</param>
+        </state_interface>
+        <state_interface name="velocity">
+          <param name="initial_value">0.0</param>
+        </state_interface>
+      </joint>
+
+      <!-- Thumb flexion -->
+      <joint name="${prefix}j_thumb_fle">
+        <command_interface name="position">
+          <param name="min">0.0</param>
+          <param name="max">1.2</param>
+        </command_interface>
+        <command_interface name="velocity">
+          <param name="min">-2.0</param>
+          <param name="max">2.0</param>
+        </command_interface>
+
+        <state_interface name="position">
+          <param name="initial_value">0.0</param>
+        </state_interface>
+        <state_interface name="velocity">
+          <param name="initial_value">0.0</param>
+        </state_interface>
+      </joint>
+
+      <!-- Index flexion -->
+      <joint name="${prefix}j_index_fle">
+        <command_interface name="position">
+          <param name="min">0.0</param>
+          <param name="max">1.2</param>
+        </command_interface>
+        <command_interface name="velocity">
+          <param name="min">-2.0</param>
+          <param name="max">2.0</param>
+        </command_interface>
+
+        <state_interface name="position">
+          <param name="initial_value">0.0</param>
+        </state_interface>
+        <state_interface name="velocity">
+          <param name="initial_value">0.0</param>
+        </state_interface>
+      </joint>
+
+      <!-- Middle / Ring / Little flexion combined -->
+      <joint name="${prefix}j_mrl_fle">
+        <command_interface name="position">
+          <param name="min">0.0</param>
+          <param name="max">1.2</param>
+        </command_interface>
+        <command_interface name="velocity">
+          <param name="min">-2.0</param>
+          <param name="max">2.0</param>
+        </command_interface>
+
+        <state_interface name="position">
+          <param name="initial_value">0.0</param>
+        </state_interface>
+        <state_interface name="velocity">
+          <param name="initial_value">0.0</param>
+        </state_interface>
+      </joint>
 
     </ros2_control>
 

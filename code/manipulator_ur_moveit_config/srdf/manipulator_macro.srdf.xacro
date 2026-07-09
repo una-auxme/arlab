@@ -51,26 +51,29 @@
       <joint name="wrist_3_joint" value="-0.11" />
     </group_state>
 
-    <!-- Hand-States (anpassen, falls andere Neutralwerte) -->
+    <!-- Hand states for RViz/MoveIt. These joints are actively controlled via
+         mia_joint_trajectory_controller, so they must not be passive joints. -->
     <group_state name="hand_open" group="mia_hand">
-      <joint name="j_thumb_fle" value="0.1"/>
+      <joint name="j_thumb_fle" value="0.0"/>
       <joint name="j_thumb_opp" value="-0.4"/>
-      <joint name="j_index_fle" value="0"/>
-      <joint name="j_mrl_fle"  value="0.1"/>
+      <joint name="j_index_fle" value="0.0"/>
+      <joint name="j_mrl_fle"  value="0.0"/>
     </group_state>
 
+    <!-- Collision-free closing pose.
+         The previous 1.0 / -0.1 / 1.0 / 1.0 pose closes the hand too far in
+         MoveIt's collision model: thumb_fle intersects index_sensor /
+         middle_sensor. This pose still curls the fingers, but keeps the thumb
+         slightly opened / rotated away so Plan & Execute can run without
+         disabling those collisions. -->
     <group_state name="hand_close" group="mia_hand">
-      <joint name="j_thumb_fle" value="0.3"/>
-      <joint name="j_thumb_opp" value="-0.1"/>
-      <joint name="j_index_fle" value="0.5"/>
-      <joint name="j_mrl_fle"  value="0.5"/>
+      <joint name="j_thumb_fle" value="0.45"/>
+      <joint name="j_thumb_opp" value="-0.45"/>
+      <joint name="j_index_fle" value="0.85"/>
+      <joint name="j_mrl_fle"  value="0.85"/>
     </group_state>
 
 
-    <passive_joint name="j_thumb_fle"/>
-    <passive_joint name="j_index_fle"/>
-    <passive_joint name="j_mrl_fle"/>
-    <passive_joint name="j_thumb_opp"/>
 
     <!--VIRTUAL JOINT - Purpose - this element defines a virtual joint between a robot link and an external frame of reference (considered fixed with respect to the robot)-->
     <!--DISABLE COLLISIONS - By default it is assumed that any link of the robot could potentially come into collision with any other link in the robot. This tag disables collision checking between a specified pair of links. -->
@@ -86,6 +89,11 @@
     <disable_collisions link1="wrist_1_link" link2="wrist_3_link" reason="Never" />
     <disable_collisions link1="wrist_2_link" link2="wrist_3_link" reason="Adjacent" />
     <disable_collisions link1="index_fle" link2="index_sensor" reason="Adjacent"/>
+
+    <!-- MIA hand internal collision matrix.
+         The index_sensor/thumb_fle and middle_sensor/thumb_fle collisions are
+         intentionally NOT disabled here. Instead, the hand_close named state
+         above is chosen so the hand closes without self-collision. -->
     <disable_collisions link1="little_fle" link2="palm" reason="Adjacent"/>
     <disable_collisions link1="index_fle" link2="palm" reason="Adjacent"/>
     <disable_collisions link1="middle_fle" link2="palm" reason="Adjacent"/>

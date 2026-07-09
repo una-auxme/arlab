@@ -28,7 +28,7 @@ def generate_launch_description():
     use_sim_time = LaunchConfiguration("use_sim_time")
     autostart = LaunchConfiguration("autostart")
     params_file = LaunchConfiguration("params_file")
-    use_composition = LaunchConfiguration("use_composition")
+    use_composition = "use_composition"
     container_name = LaunchConfiguration("container_name")
     container_name_full = (namespace, "/", container_name)
     use_respawn = LaunchConfiguration("use_respawn")
@@ -80,7 +80,7 @@ def generate_launch_description():
 
     declare_params_file_cmd = DeclareLaunchArgument(
         "params_file",
-        default_value="/workspace/install/arlab_movement/share/arlab_movement/params/nav2_params.yaml",
+        default_value="/workspace/build/arlab_movement/params/nav2_params.yaml",
         description="Full path to the ROS2 parameters file to use for all launched nodes",
     )
 

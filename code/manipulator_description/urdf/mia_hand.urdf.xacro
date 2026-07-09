@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+
+<robot xmlns:xacro="http://wiki.ros.org/xacro">
+
+  <xacro:macro 
+    name="mia_hand" 
+    params=
+      "laterality 
+      joint_limits_config_file:='joint_limits_default.yaml'
+      parent
+      prefix:=''
+      *origin">
+
+    <!-- Importing URDF macro related to the specified laterality -->
+    <xacro:include filename="$(find mia_hand_description)/urdf/mia_hand_${laterality}.urdf.xacro"/>
+
+    <!-- Loading proper URDF, depending on the specified laterality -->
+    <xacro:if value="${'right' == laterality}">
+      <xacro:mia_hand_right 
+        joint_limits_config_file='$(find mia_hand_description)/calibration/${joint_limits_config_file}' 
+        parent="${parent}"
+        prefix="${prefix}">
+        <xacro:insert_block name="origin"/>
+      </xacro:mia_hand_right>
+    </xacro:if>
+
+    <xacro:if value="${'left' == laterality}">
+      <xacro:mia_hand_left 
+        joint_limits_config_file='$(find mia_hand_description)/calibration/${joint_limits_config_file}' 
+        parent="${parent}"
+        prefix="${prefix}">
+        <xacro:insert_block name="origin"/>
+      </xacro:mia_hand_left>
+    </xacro:if>
+  </xacro:macro>
+
+</robot>

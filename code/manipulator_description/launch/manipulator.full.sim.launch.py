@@ -1,16 +1,14 @@
 """
 Launch file: manipulator.full.sim.launch.py
 Package: manipulator_description
-Maintainer: Leonie Schmidt <leonie1.schmidt@uni-a.de>
 
-Top-level launch file for the Gazebo simulation. Composes two sub-stacks:
-    1. manipulator.control.sim.launch.py         — Gazebo + ros2_control controllers
-    2. manipulator_ur_moveit_config/ur_moveit.launch.py — MoveIt + RViz
+Full simulation stack:
+    - Gazebo Sim + gz_ros2_control controllers
+    - MoveIt move_group
+    - MoveIt RViz
 
-This is the recommended entry point for simulation with MoveIt planning.
-
-Based on the original UR simulation launch file by Denis Stogl /
-Stogl Robotics Consulting UG.
+Use this when you want to plan / execute from RViz and see the real simulated
+robot in Gazebo follow the executed trajectory.
 """
 
 from launch import LaunchDescription
@@ -21,22 +19,28 @@ from launch_ros.substitutions import FindPackageShare
 
 
 def launch_setup(context, *args, **kwargs):
-    """Resolve launch arguments and compose the simulation and MoveIt sub-stacks.
-
-    Args:
-        context: Launch context used to resolve substitutions.
-        *args: Unused positional arguments required by OpaqueFunction.
-        **kwargs: Unused keyword arguments required by OpaqueFunction.
-
-    Returns:
-        List of launch actions to execute.
-    """
+    """Resolve launch arguments and compose Gazebo-control and MoveIt."""
     ur_type = LaunchConfiguration("ur_type")
     safety_limits = LaunchConfiguration("safety_limits")
     controllers_file = LaunchConfiguration("controllers_file")
+    description_file = LaunchConfiguration("description_file")
+    world_file = LaunchConfiguration("world_file")
+    spawn_x = LaunchConfiguration("spawn_x")
+    spawn_y = LaunchConfiguration("spawn_y")
+    spawn_z = LaunchConfiguration("spawn_z")
+    spawn_roll = LaunchConfiguration("spawn_roll")
+    spawn_pitch = LaunchConfiguration("spawn_pitch")
+    spawn_yaw = LaunchConfiguration("spawn_yaw")
+    gazebo_gui = LaunchConfiguration("gazebo_gui")
+    initial_joint_controller = LaunchConfiguration("initial_joint_controller")
+    activate_joint_controller = LaunchConfiguration("activate_joint_controller")
+    use_sim_time = LaunchConfiguration("use_sim_time")
+    launch_rviz_moveit = LaunchConfiguration("launch_rviz_moveit")
+    launch_servo = LaunchConfiguration("launch_servo")
+    publish_robot_description_semantic = LaunchConfiguration("publish_robot_description_semantic")
 
-    # Start Gazebo with all ros2_control controllers.
-    # RViz is disabled here because MoveIt starts its own RViz instance below.
+    # Start Gazebo with ros2_control. The simple display RViz is disabled here,
+    # because MoveIt starts the useful RViz instance below.
     manipulator_sim_control_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution(
@@ -51,11 +55,25 @@ def launch_setup(context, *args, **kwargs):
             "ur_type": ur_type,
             "safety_limits": safety_limits,
             "controllers_file": controllers_file,
+            "description_file": description_file,
+            "spawn_x": spawn_x,
+            "spawn_y": spawn_y,
+            "spawn_z": spawn_z,
+            "spawn_roll": spawn_roll,
+            "spawn_pitch": spawn_pitch,
+            "spawn_yaw": spawn_yaw,
             "launch_rviz": "false",
+            "world_file": world_file,
+            "gazebo_gui": gazebo_gui,
+            "use_mock_hardware": "true",
+            "initial_joint_controller": initial_joint_controller,
+            "activate_joint_controller": activate_joint_controller,
         }.items(),
     )
 
-    # Start MoveIt move_group and RViz with simulation time enabled.
+    # Start MoveIt move_group and the MoveIt RViz instance.
+    # Important: the MoveIt launch argument is called launch_rviz_moveit,
+    # not launch_rviz.
     manipulator_moveit_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution(
@@ -68,25 +86,20 @@ def launch_setup(context, *args, **kwargs):
         ),
         launch_arguments={
             "ur_type": ur_type,
-            "use_sim_time": "true",
-            "launch_rviz": "true",
+            "use_sim_time": use_sim_time,
+            "launch_rviz_moveit": launch_rviz_moveit,
+            "launch_servo": launch_servo,
+            "publish_robot_description_semantic": publish_robot_description_semantic,
         }.items(),
     )
 
-    nodes_to_launch = [
+    return [
         manipulator_sim_control_launch,
         manipulator_moveit_launch,
     ]
 
-    return nodes_to_launch
-
 
 def generate_launch_description():
-    """Declare all launch arguments and register the OpaqueFunction setup.
-
-    Returns:
-        LaunchDescription containing all declared arguments and the setup function.
-    """
     declared_arguments = []
 
     declared_arguments.append(
@@ -120,8 +133,86 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "controllers_file",
-            default_value=PathJoinSubstitution([FindPackageShare("manipulator_description"), "config", "manipulator_controllers.yaml"]),
+            default_value=PathJoinSubstitution(
+                [FindPackageShare("manipulator_description"), "config", "manipulator_controllers.yaml"]
+            ),
             description="Absolute path to YAML file with the controllers configuration.",
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "description_file",
+            default_value=PathJoinSubstitution(
+                [FindPackageShare("manipulator_description"), "urdf", "manipulator.urdf.xacro"]
+            ),
+            description="URDF/XACRO description file to spawn in Gazebo and publish to robot_description.",
+        )
+    )
+    declared_arguments.append(DeclareLaunchArgument("spawn_x", default_value="0.0", description="Initial Gazebo spawn x position."))
+    declared_arguments.append(DeclareLaunchArgument("spawn_y", default_value="0.0", description="Initial Gazebo spawn y position."))
+    declared_arguments.append(DeclareLaunchArgument("spawn_z", default_value="0.0", description="Initial Gazebo spawn z position."))
+    declared_arguments.append(DeclareLaunchArgument("spawn_roll", default_value="0.0", description="Initial Gazebo spawn roll."))
+    declared_arguments.append(DeclareLaunchArgument("spawn_pitch", default_value="0.0", description="Initial Gazebo spawn pitch."))
+    declared_arguments.append(DeclareLaunchArgument("spawn_yaw", default_value="0.0", description="Initial Gazebo spawn yaw."))
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "world_file",
+            default_value="empty.sdf",
+            description="Gazebo world file to load.",
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "gazebo_gui",
+            default_value="true",
+            description="Start Gazebo with GUI.",
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "initial_joint_controller",
+            default_value="scaled_joint_trajectory_controller",
+            description="Arm controller used by MoveIt for execution in Gazebo.",
+            choices=[
+                "scaled_joint_trajectory_controller",
+                "joint_trajectory_controller",
+                "forward_position_controller",
+            ],
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "activate_joint_controller",
+            default_value="true",
+            description="Activate the initial joint controller.",
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "launch_rviz_moveit",
+            default_value="true",
+            description="Start the MoveIt RViz window.",
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "launch_servo",
+            default_value="false",
+            description="Start MoveIt Servo.",
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "use_sim_time",
+            default_value="true",
+            description="Use Gazebo simulation time for MoveIt/RViz.",
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "publish_robot_description_semantic",
+            default_value="true",
+            description="Let move_group publish robot_description_semantic.",
         )
     )
 

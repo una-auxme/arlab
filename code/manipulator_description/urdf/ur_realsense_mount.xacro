@@ -7,7 +7,7 @@
       <visual>
         <origin xyz="${xyz}" rpy="${rpy}"/>
         <geometry>
-          <mesh filename="package://manipulator_description/meshes/halterung_realsense.stl" scale="0.001 0.001 0.001"/>
+          <mesh filename="file://$(find manipulator_description)/meshes/halterung_realsense.stl" scale="0.001 0.001 0.001"/>
         </geometry>
         <material name="MYBLACK"/>
       </visual>
@@ -15,7 +15,7 @@
       <collision>
         <origin xyz="${xyz}" rpy="${rpy}"/>
         <geometry>
-          <mesh filename="package://manipulator_description/meshes/halterung_realsense.stl" scale="0.001 0.001 0.001"/>
+          <mesh filename="file://$(find manipulator_description)/meshes/halterung_realsense.stl" scale="0.001 0.001 0.001"/>
         </geometry>
       </collision>
 

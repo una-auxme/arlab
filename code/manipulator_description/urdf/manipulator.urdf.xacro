@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<robot xmlns:xacro="http://wiki.ros.org/xacro" name="ur5e">
+<robot xmlns:xacro="http://wiki.ros.org/xacro" name="$(arg ur_type)">
 
   <xacro:arg name="use_mock_hardware" default="false" />
   <xacro:property name="use_mock_hardware" value="$(arg use_mock_hardware)"/>
@@ -16,12 +16,12 @@
   </xacro:unless>
 
   <!-- import Mia Hand macro -->
-  <xacro:include filename="$(find mia_hand_description)/urdf/mia_hand.urdf.xacro"/>
+  <xacro:include filename="$(find manipulator_description)/urdf/mia_hand.urdf.xacro"/>
   <!-- import Mia Hand ROS2 control macro -->
   <xacro:include filename="$(find manipulator_description)/urdf/mia_hand.ros2_control.xacro"/>
 
   <!-- import Camera macro -->
-  <xacro:include filename="$(find realsense2_description)/urdf/_d435.urdf.xacro"/>
+  <xacro:include filename="$(find manipulator_description)/urdf/_d435.urdf.xacro"/>
 
   <!-- import Realsense Mount macro -->
   <xacro:include filename="$(find manipulator_description)/urdf/ur_realsense_mount.xacro"/>
@@ -30,7 +30,10 @@
   <xacro:include filename="$(find manipulator_description)/urdf/schrankregal.xacro"/>
 
   <!-- import UR Sockel macro -->
-  <xacro:include filename="$(find manipulator_description)/urdf/ur_sockel.xacro"/>
+  <xacro:include filename="$(find manipulator_description)/urdf/ur_chasis.xacro"/>
+
+    <!-- import Apollo Base macro -->
+  <xacro:include filename="$(find manipulator_description)/urdf/ranger_air_description.xacro"/>
 
   <!-- ur5 parameters -->
   <!-- possible 'ur_type' values: ur3, ur3e, ur5, ur5e, ur7e, ur10, ur10e, ur12e, ur16e, ur15, ur20, ur30 -->
@@ -117,13 +120,25 @@
     <child link="ground_plane"/>
   </joint>
 
-  <!-- UR Sockel -->
-  <xacro:ur_sockel
-    name="ur_sockel"
+
+  <!-- Apollo2 Base -->
+  <xacro:ranger_air_description
+    name="ranger_air_description"
     parent_link="world"
+    xyz="1 1 0"
+    rpy="0 0 0"
+    use_mock_hardware="true">
+  </xacro:ranger_air_description>
+
+  <!-- UR Chasis -->
+  <xacro:ur_chasis
+    name="ur_chasis"
+    parent_link="ranger_base_link"
     xyz="0 0 0"
     rpy="0 0 0">
-  </xacro:ur_sockel>
+  </xacro:ur_chasis>
+
+
 
   <!-- scene -->
   <xacro:schrankregal
@@ -133,7 +148,7 @@
     rpy="1.571 0 -0.785">
   </xacro:schrankregal>
 
-  <!-- scene -->
+
   <xacro:schrankregal
     name="mitte"
     parent_link="world"
@@ -141,7 +156,7 @@
     rpy="1.571 0 -0.785">
   </xacro:schrankregal>
 
-  <!-- scene -->
+
   <xacro:schrankregal
     name="oben"
     parent_link="world"
@@ -149,9 +164,10 @@
     rpy="1.571 0 -0.785">
   </xacro:schrankregal>
 
+
   <!-- arm -->
   <xacro:ur_robot
-    parent="world"
+    parent="ur_chasis_link"
     name="$(arg ur_type)"
     tf_prefix="$(arg tf_prefix)"
     joint_limits_parameters_file="$(arg joint_limit_params)"
@@ -162,7 +178,7 @@
     safety_pos_margin="$(arg safety_pos_margin)"
     safety_k_position="$(arg safety_k_position)"
     force_abs_paths="true">
-    <origin xyz="0 0 0.07" rpy="0 0 0" /> <!-- position robot in the world -->
+    <origin xyz="0 0 1.142" rpy="0 0 0" /> <!-- position robot in the world -->
   </xacro:ur_robot>
 
   <xacro:ur_realsense_mount
@@ -202,7 +218,7 @@
       use_nominal_extrinsics="false"
       add_plug="false"
       use_mesh="true">
-    <origin xyz="0 0.110 0.012" rpy="0 -1.57 -1.57"/>
+    <origin xyz="-0.001 0.102 0.052" rpy="0 1.31 1.57"/>
   </xacro:sensor_d435>
 
   <xacro:if value="${use_mock_hardware}">
@@ -286,6 +302,5 @@
     serial_port="$(arg serial_port)"
     use_mock_hardware="$(arg mia_use_mock_hardware)"
   />
-
 
 </robot>

@@ -35,7 +35,6 @@ setup(
             "dummy = arlab_movement.dummy:main",
             "map_save_publisher = arlab_movement.map_save_publisher:main",
             "movement_orchestrator = arlab_movement.movement_orchestrator:main",
-            "entity_placer = arlab_movement.entity_placer:main",
         ],
     },
 )

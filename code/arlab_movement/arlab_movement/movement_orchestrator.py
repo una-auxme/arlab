@@ -26,6 +26,7 @@ from rclpy.action.server import ActionServer, CancelResponse, GoalResponse
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
 from rclpy.node import Node
 from std_msgs.msg import Bool
+from arlab_knowledge_interfaces.msg import Result
 
 
 class NavErr:
@@ -477,7 +478,8 @@ class NavigationOrchestrator(Node):
             return NavErr.DB_SAVE_FAILED, f"Database call failed: {e}"
 
         for ok_field in ("success", "result"):
-            if hasattr(resp, ok_field) and bool(getattr(resp, ok_field)):
+            if hasattr(resp, ok_field) and resp.result.result_type == Result.SUCCESS:
+                self.get_logger().info("Map added with id: " + str(resp.mapid))
                 return NavErr.OK, "Map saved to database"
 
         for msg_field in ("message", "error_message", "error"):

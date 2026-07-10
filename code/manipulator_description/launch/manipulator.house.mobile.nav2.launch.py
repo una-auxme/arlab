@@ -20,12 +20,12 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
-            DeclareLaunchArgument("ur_type", default_value="ur10e"),
+            DeclareLaunchArgument("ur_type", default_value="ur5e"),
             DeclareLaunchArgument("gazebo_gui", default_value="true"),
             DeclareLaunchArgument("launch_rviz_moveit", default_value="true"),
             DeclareLaunchArgument("launch_nav2", default_value="true"),
             DeclareLaunchArgument("launch_slam", default_value="true"),
-            DeclareLaunchArgument("launch_nav2_rviz", default_value="false"),
+            DeclareLaunchArgument("launch_nav2_rviz", default_value="true"),
             DeclareLaunchArgument("spawn_x", default_value="-4.0"),
             DeclareLaunchArgument("spawn_y", default_value="1.0"),
             DeclareLaunchArgument("spawn_z", default_value="0.0"),

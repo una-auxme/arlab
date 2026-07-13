@@ -94,6 +94,7 @@ class HandMotion {
 
     /**
      * Closes the hand to a spherical grasp configuration.
+     * WARNING: Mia hand openes hand completely on spherical grasp! Spherical grasp not yet supported.
      * @param timeout   Maximum time to wait for goal acceptance.
                         Defaults to 3000 ms.
      * @throws ManipulationException on any action-level failure.
@@ -103,6 +104,7 @@ class HandMotion {
 
     /**
      * Closes the hand to a tridigital grasp configuration.
+     * WARNING: Mia hand openes hand completely on tridigital grasp! Tridigital grasp not yet supported.
      * @param timeout   Maximum time to wait for goal acceptance.
                         Defaults to 3000 ms.
      * @throws ManipulationException on any action-level failure.

@@ -85,7 +85,7 @@ class GrippingParameterNode(Node):
         self.grip_type_table = {
             "beer" : "cylindrical",
             "chipsbag" : "pinch",
-            "default" : "spherical",  # Default: if object name not found
+            "default" : "cylindrical",  # Default: if object name not found
         }
 
     def callback(self, request, response):

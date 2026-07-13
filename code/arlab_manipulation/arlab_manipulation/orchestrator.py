@@ -17,7 +17,7 @@ import rclpy
 import rclpy.executors
 import tf2_ros
 from arlab_common_interfaces.action import ManipulationAction, OrchestratorAction
-from arlab_common_interfaces.msg import ManipulationResponse
+from arlab_common_interfaces.msg import ManipulationResponse, ManipulationCommand
 from arlab_common_interfaces.srv import GrippingParameter
 from arlab_knowledge_interfaces.srv import GetEntity, GetShape
 from geometry_msgs.msg import Point, Pose, Quaternion
@@ -115,6 +115,7 @@ class orchestrator(Node):
         self.pickable = False
         self.ref_frame = "camera_link"
         self.force = 5.0
+        self.grip_type = "cylindrical"
         self.gripping_point_pos = Point()
         self.gripping_point_orient = Quaternion(w=1.0)
         self.placing_point_pos = Point()
@@ -398,7 +399,7 @@ class orchestrator(Node):
 
         Side Effects:
             - Waits for OrchestratorAction server
-            - Sends goal with pose, grip force, and command type
+            - Sends goal with pose, grip force, grip type and command type
             - Registers callback for response
             - Updates self.err / self.msg if server unavailable
         """

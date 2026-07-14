@@ -80,25 +80,24 @@ void JobRunner::Run(const arlab_common_interfaces::msg::OrchestratorData& msg) {
                           kReferenceFrame,kPlannerId);
   } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PICK) {
     // Full pick sequence: enable stream → open → approach → close → retreat → home → disable stream.
-    force_switch_.EnableStream();
+    
     hand_.Open();
     auto approach_pose = arm_.MakeApproachPose(msg.pose, kApproachDistance, kLiftOffset);
     arm_.MoveToPose(approach_pose);
     arm_.MoveToPose(msg.pose);
     hand_.Close();
+    force_switch_.EnableStream();
     arm_.MoveToPose(approach_pose);
     arm_.MoveToHome();
-    force_switch_.DisableStream();
   } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PLACE) {
     // Full place sequence: enable stream → approach → open → retreat → home → disable stream.
-    force_switch_.EnableStream();
     auto approach_pose = arm_.MakeApproachPose(msg.pose, kApproachDistance, kLiftOffset);
     arm_.MoveToPose(approach_pose);
     arm_.MoveToPose(msg.pose);
+    force_switch_.DisableStream();
     hand_.Open();
     arm_.MoveToPose(approach_pose);
     arm_.MoveToHome();
-    force_switch_.DisableStream();
   } else {
     RCLCPP_WARN(logger_, "Unknown command: %s", cmd.c_str());
     throw ManipulationException(arlab_common_interfaces::msg::ManipulationResponse::UNKNOWN_JOB_COMMAND);

@@ -62,11 +62,11 @@ void HandMotion::Lateral(std::chrono::milliseconds timeout) {
 }
 
 void HandMotion::PointUp(std::chrono::milliseconds timeout) {
-  Grasp("/mia_hand/grasps/point_up/action", kClosedClosurePercent, kDefaultSpeedPercent, timeout);
+  Grasp("/mia_hand/grasps/point_up/action", 0, kDefaultSpeedPercent, timeout);
 }
 
 void HandMotion::PointDown(std::chrono::milliseconds timeout) {
-  Grasp("/mia_hand/grasps/point_down/action", kClosedClosurePercent, kDefaultSpeedPercent, timeout);
+  Grasp("/mia_hand/grasps/point_down/action", 100, kDefaultSpeedPercent, timeout);
 }
 void HandMotion::Spherical(std::chrono::milliseconds timeout) {
   Grasp("/mia_hand/grasps/spherical/action", kClosedClosurePercent, kDefaultSpeedPercent, timeout);

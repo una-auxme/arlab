@@ -361,7 +361,7 @@ class orchestrator(Node):
             if self.pose is not None:
                 self.gripping_point_pos = self.pose.position
                 # Static offsets to align the gripper with the object centre.
-                # TODO: Replace with a proper grasp planner.
+                # TODO: Replace with a proper grasp planner. Every grasp type will need their own offset.
                 self.gripping_point_pos.x += -0.085
                 self.gripping_point_pos.y += 0.01
                 self.gripping_point_pos.z = 0.19

@@ -15,4 +15,4 @@ int32 griporient_mode
 float64 object_weight
 
 # used grasp
-string grip_tpye
+string grip_type

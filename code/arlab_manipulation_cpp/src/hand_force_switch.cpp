@@ -1,9 +1,9 @@
 // -----------------------------------------------------------------------------
-// File: hand_force_test.cpp
+// File: hand_force_switch.cpp
 // Package: arlab_manipulation_cpp
 // Maintainer: Marc Stumpp <marc.stumpp@uni-a.de>
 //
-// Tests the output of the hand force sensors. 
+// Activates the switches
 // -----------------------------------------------------------------------------
 
 #include <chrono>
@@ -14,14 +14,13 @@
 
 // #include "rclcpp/rclcpp.hpp" // standart ros2 geplänker
 // aus modules/mia_hand_ros2_pkgs/mia_hand_msgs/msg/ForceData.msg
-// wird zu force_data.hpp
+
 #include "arlab_manipulation_cpp/hand_force_switch.hpp"
 
 // #include "std_srvs/srv/set_bool.hpp"
  
-HandForceSwitch::HandForceSwitch(const rclcpp::Node::SharedPtr& node)
-    : switch_client_(node->create_client<SetBool>(
-          "mia_hand/data_streams/fingers/forces/switch")),
+HandForceSwitch::HandForceSwitch(const rclcpp::Node::SharedPtr& node, const std::string& service_name)
+    : switch_client_(node->create_client<SetBool>(service_name)),
       logger_(node->get_logger()) {}
  
 void HandForceSwitch::EnableStream(std::chrono::milliseconds timeout) {

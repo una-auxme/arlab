@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------------
-// File: hand_force.hpp
+// File: hand_force_switch.hpp
 // Package: arlab_manipulation_cpp
 // Maintainer: Marc Stumpp <marc.stumpp@uni-a.de>
 //
@@ -35,9 +35,10 @@ class HandForceSwitch {
 
     /**
      * Creates a switch_client to enable the force data stream
+     * and to activate the force monitor
      * @param node Existing node the Client is created on
      */
-    explicit HandForceSwitch(const rclcpp::Node::SharedPtr& node);
+    explicit HandForceSwitch(const rclcpp::Node::SharedPtr& node, const std::string& service_name);
 
     /**
      * Enables the hand force stream.

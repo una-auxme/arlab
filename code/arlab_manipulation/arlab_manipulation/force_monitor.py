@@ -13,21 +13,27 @@ Maintainer:
 
 # angesprochene Specification: DM-A-02 Fehlerfall erkennen
 
-#Ziel: Kraftabfall beim Tragen erkennen und melden. Nicht reagieren – das macht Decision Making.
-#Drei Ebenen:
+#Ziel: Kraftabfall beim Tragen erkennen und melden. Decision Making reagiert dann.
 
-#JobRunner (C++, fertig): schaltet den Stream. Pick: an nach Close(). Place: aus vor Open().
-#force_monitor.py (zu bauen): bietet SetBool-Service (scharf/unscharf), subscribed Kraftdaten, 
+#bisher:
+#JobRunner: schaltet den Stream. Pick: an nach Close(). Place: aus vor Open().
+#force_monitor.py: bietet SetBool-Service armed (true/false), subscribed Kraftdaten, 
 #published Drop-Event.
 #Decision Making: schaltet scharf, lauscht auf das Event, entscheidet.
 
 #Detektor: Baseline aus ersten Werten, Alarm erst nach N Messungen in Folge 
-#unter Schwelle (Zähler, Reset bei Wert drüber). Ein Sturz = ein Event. Schwelle + N als 
-#ROS2-Parameter.
-#Offen: Schwellwert braucht echte Daten. Abbruch geht mit aktuellem Code nicht 
-#(HandleCancel = REJECT). Rausfahr-Fall (Dose hängt) nicht abgedeckt.
-#Nächster Schritt: force_monitor.py bauen, Daten sammeln, Schwelle kalibrieren.
+#unter Schwelle (Zähler, Reset bei Wert drüber). 
+#Ein Sturz = Event. Schwelle + N als ROS2-Parameter.
 
+#Zusatz 16.07. in der Uni
+#Test hat den Code grundsätzlich bestätigt, aber ein problem ist das das detektieren
+#von allen 3 Sensoren beim Pinch Grip bspw. nicht funktionieren wird. 
+#Also musste der code von "and" mit allen 3 sensoren mit dem Kraftabfall zu "or"
+#geändert werden. Dann werden aber potentiell nicth mehr alle fälle abgefangen
+#Lösung: Gripunterscheidung muss her-> wie noch unklar 
+
+#Auserdem sollte der Drop fall im orchestrator auch abgefangen werden
+#ggf. soll die funktion auch vom orchestrator aktiviert werden 
 
 from rclpy.node import Node 
 from mia_hand_msgs.msg import ForceData
@@ -109,8 +115,8 @@ class force_monitor(Node):
 
         dropped = (
             abs(self.thumb_nforce_median - msg.thumb_nfor) > self.allowed_force_jitter
-            and abs(self.index_nforce_median - msg.index_nfor) > self.allowed_force_jitter
-            and abs(self.mrl_nforce_median - msg.mrl_nfor) > self.allowed_force_jitter
+            or abs(self.index_nforce_median - msg.index_nfor) > self.allowed_force_jitter
+            or abs(self.mrl_nforce_median - msg.mrl_nfor) > self.allowed_force_jitter
         )
         
         if dropped:

@@ -40,8 +40,11 @@ void OrchestratorActionServer::Init() {
   // Construct motion components after shared_from_this() is available.
   arm_ = std::make_unique<ArmMotion>(shared_from_this(), kManipulatorName);
   hand_ = std::make_unique<HandMotion>(shared_from_this());
-  force_switch_ = std::make_unique<HandForceSwitch>(shared_from_this());
-  runner_ = std::make_unique<JobRunner>(*this, *arm_, *hand_, *force_switch_);
+  force_switch_ = std::make_unique<HandForceSwitch>(shared_from_this()
+    ,"mia_hand/data_streams/fingers/forces/switch");
+  monitor_switch_ = std::make_unique<HandForceSwitch>(shared_from_this()
+    ,"/force_monitor/activate");
+  runner_ = std::make_unique<JobRunner>(*this, *arm_, *hand_, *force_switch_, *monitor_switch_);
 
   using std::placeholders::_1;
   using std::placeholders::_2;

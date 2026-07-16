@@ -199,6 +199,7 @@ class orchestrator(Node):
         self.action_done_event.clear()
 
         # Give feedback if object was correctly placed
+        #TODO hier reinschreiben ob object gedroppt wurde
         if self.command_type == "place":
             placed = Bool()
             placed.data = self.err == ManipulationResponse.SUCCESS  # ← Erfolg-Wert bestätigen

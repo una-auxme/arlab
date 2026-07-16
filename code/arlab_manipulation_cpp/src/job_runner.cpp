@@ -30,8 +30,8 @@ constexpr char kPlannerId[] = "RRTConnectkConfigDefault";
 
 }  // namespace
 
-JobRunner::JobRunner(rclcpp::Node& node, ArmMotion& arm, HandMotion& hand, HandForceSwitch& force_switch)
-    : logger_(node.get_logger()), arm_(arm), hand_(hand), force_switch_(force_switch) {}
+JobRunner::JobRunner(rclcpp::Node& node, ArmMotion& arm, HandMotion& hand, HandForceSwitch& force_switch, HandForceSwitch& monitor_switch)
+    : logger_(node.get_logger()), arm_(arm), hand_(hand), force_switch_(force_switch), monitor_switch_(monitor_switch) {}
 
 geometry_msgs::msg::Pose JobRunner::CreatePose(double x, double y, double z,
                                               double qx, double qy, double qz,
@@ -87,6 +87,7 @@ void JobRunner::Run(const arlab_common_interfaces::msg::OrchestratorData& msg) {
     arm_.MoveToPose(msg.pose);
     hand_.Close();
     force_switch_.EnableStream();
+    monitor_switch_.EnableStream();
     arm_.MoveToPose(approach_pose);
     arm_.MoveToHome();
   } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PLACE) {
@@ -95,6 +96,7 @@ void JobRunner::Run(const arlab_common_interfaces::msg::OrchestratorData& msg) {
     arm_.MoveToPose(approach_pose);
     arm_.MoveToPose(msg.pose);
     force_switch_.DisableStream();
+    monitor_switch_.DisableStream();
     hand_.Open();
     arm_.MoveToPose(approach_pose);
     arm_.MoveToHome();

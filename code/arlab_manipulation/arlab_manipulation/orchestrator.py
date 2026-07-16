@@ -302,6 +302,7 @@ class orchestrator(Node):
                 # Continue chain: fetch gripping parameters for this object group
                 self.req_gripping_parameter = GrippingParameter.Request()
                 self.req_gripping_parameter.objectgroup = self.object_group
+                self.req_gripping_parameter.objectname = self.object_name
                 future_param = self.client_gripping_parameter.call_async(self.req_gripping_parameter)
                 future_param.add_done_callback(self.handle_gripping_parameter_response)
             else:
@@ -416,12 +417,12 @@ class orchestrator(Node):
             # For commands like "home", use a provided target pose or identity
             goal_pose = self.target_pose or Pose()
 
+        execution_command = self.get_execution_command()
         msg = OrchestratorAction.Goal()
         msg.data.pose = goal_pose
-        msg.data.grip_type = self.grip_type
+        msg.data.grip_type = String(data=self.grip_type)
         msg.data.grip_force = Float64(data=self.force)
-
-        msg.data.cmd = String(data=self.command_type)
+        msg.data.cmd = String(data=execution_command)
 
         if not self._orchestrator_client.wait_for_server(timeout_sec=5.0):
             self.get_logger().error("OrchestratorAction server is not available")
@@ -432,6 +433,29 @@ class orchestrator(Node):
 
         send_future = self._orchestrator_client.send_goal_async(msg)
         send_future.add_done_callback(self.handle_orchestrator_response)
+
+    def get_execution_command(self) -> str:
+        """Map a generic pick request to a hand-specific pick command.
+           Non pick commands will be returned as is."""
+
+        if self.command_type != ManipulationCommand.COMMAND_PICK:
+            return self.command_type
+
+        grip_to_pick_command = {
+            "cylindrical": ManipulationCommand.COMMAND_PICK,
+            "pinch": ManipulationCommand.COMMAND_PICK_PINCH,
+            "lateral": ManipulationCommand.COMMAND_PICK_LATERAL,
+            "spherical": ManipulationCommand.COMMAND_PICK_SPHERICAL,
+            "tridigital": ManipulationCommand.COMMAND_PICK_TRIDIGITAL,
+        }
+
+        execution_command = grip_to_pick_command.get(self.grip_type)
+        if execution_command is None:
+            raise ValueError(
+                f"Unsupported grip type for pick: '{self.grip_type}'"
+            )
+
+        return execution_command
 
     def handle_orchestrator_response(self, future):
         """Handle goal acceptance from OrchestratorAction server.

@@ -77,7 +77,6 @@ _MODEL_DEFINITIONS: dict[int, dict] = {
         "weights": "yolo11n-seg_demo_day.pt",
         "pinned": False,
     },
-   
 }
 
 

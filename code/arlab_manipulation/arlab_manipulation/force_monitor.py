@@ -4,7 +4,7 @@ Force Monitor Node to recognize load drops of the Mia Hand Force Sensors.
 
 This Node provides an activation service for decision making,
 subscribes to the mia hand force stream, reads the forces when being activated, 
-checks for sudden force drops and provides an event-publisher if a force 
+checks for sudden force drops and provides an service if a force 
 drop was detected
 
 Maintainer:
@@ -39,6 +39,7 @@ from rclpy.node import Node
 from mia_hand_msgs.msg import ForceData
 from std_srvs.srv import SetBool
 from std_msgs.msg import Bool
+from GetObjectDropped.srv import GetDropStatus
 import rclpy 
 
 class force_monitor(Node):
@@ -71,7 +72,7 @@ class force_monitor(Node):
 
         self.create_subscription(ForceData, '/mia_hand/data_streams/fingers/forces/data', self.get_data, 10)
         self.activation_status = self.create_service(SetBool, '/force_monitor/activate', self.activation_callback)
-        self.drop_pub = self.create_publisher(Bool, '/object_dropped', 10)
+        self.dropped_service = self.create_service(GetDropStatus, '/object_dropped', self.object_dropped_response)
 
     def activation_callback(self, request, response):
 
@@ -87,6 +88,7 @@ class force_monitor(Node):
             self.mrl_nforce_median = 0
             self.report_counter = 0
             self.median_complete = False
+            self.drop_reported = False
             response.success = True
             response.message = "Force monitor activated"
             return response
@@ -125,7 +127,7 @@ class force_monitor(Node):
             self.report_counter = 0
 
         if self.report_counter >= self.allowed_reports and not self.drop_reported:
-            self.report_drop()
+            self.get_logger().warn("Force drop detected. Object lost")
             self.drop_reported = True
                 
     def calculate_median(self):
@@ -138,11 +140,9 @@ class force_monitor(Node):
         self.mrl_nforce_median = self.mrl_nforce_list[self.values_to_calculate_median // 2]
         self.median_complete = True
 
-    def report_drop(self):
-        msg = Bool()
-        msg.data = True
-        self.drop_pub.publish(msg)
-        self.get_logger().warn("Force drop detected. Object lost")
+    def object_dropped_response(self, request, response):
+        """Provides a service to respose wether object got dropped or not """
+        response.GetDropStatus = self.drop_reported
 
 def main(args=None):
     rclpy.init(args=args)

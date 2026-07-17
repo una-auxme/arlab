@@ -1,0 +1,2 @@
+# simple callback to check if the Object was dropped
+bool GetDropStatus

@@ -3,6 +3,7 @@
 # ============================================================================
 
 import sys
+from queue import Empty, Queue
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -137,12 +138,16 @@ class CameraView(QWidget):
 class TtsSubscriberThread(QThread):
     speech_received = pyqtSignal(str)
     status_changed = pyqtSignal(str)
+    action_published = pyqtSignal(str)
 
-    def __init__(self, topic_name="/tts_output"):
+    def __init__(self, tts_topic_name="/tts_output", action_topic_name="/ui_action"):
         super().__init__()
-        self.topic_name = topic_name
+        self.tts_topic_name = tts_topic_name
+        self.action_topic_name = action_topic_name
         self._running = True
         self.node = None
+        self.action_publisher = None
+        self.action_queue = Queue()
 
     def run(self):
         if not ROS_AVAILABLE:
@@ -153,21 +158,29 @@ class TtsSubscriberThread(QThread):
 
         try:
             rclpy.init(args=None)
-            self.node = rclpy.create_node("zirbi_display_tts_subscriber")
+            self.node = rclpy.create_node("zirbi_display_ros_interface")
 
             self.node.create_subscription(
                 String,
-                self.topic_name,
+                self.tts_topic_name,
                 self.handle_tts_message,
                 10,
             )
 
+            self.action_publisher = self.node.create_publisher(
+                String,
+                self.action_topic_name,
+                10,
+            )
+
             self.status_changed.emit(
-                f"ROS integration: subscribed to {self.topic_name}"
+                "ROS integration: subscribed to "
+                f"{self.tts_topic_name}, publishing to {self.action_topic_name}"
             )
 
             while self._running and rclpy.ok():
                 rclpy.spin_once(self.node, timeout_sec=0.1)
+                self.publish_pending_actions()
 
         except Exception as error:
             self.status_changed.emit(f"ROS integration error: {error}")
@@ -183,6 +196,25 @@ class TtsSubscriberThread(QThread):
         text = message.data.strip()
         if text:
             self.speech_received.emit(text)
+
+    def queue_ui_action(self, action_text):
+        if action_text:
+            self.action_queue.put(action_text)
+
+    def publish_pending_actions(self):
+        if self.action_publisher is None:
+            return
+
+        while True:
+            try:
+                action_text = self.action_queue.get_nowait()
+            except Empty:
+                break
+
+            message = String()
+            message.data = action_text
+            self.action_publisher.publish(message)
+            self.action_published.emit(action_text)
 
     def stop(self):
         self._running = False
@@ -291,9 +323,12 @@ class ZirbiDisplay(QMainWindow):
     def setup_ros_integration(self):
         if ROS_AVAILABLE:
             self.ros_status_text = "ROS integration: available"
-            self.ros_tts_thread = TtsSubscriberThread("/tts_output")
+            self.ros_tts_thread = TtsSubscriberThread("/tts_output", "/ui_action")
             self.ros_tts_thread.speech_received.connect(self.handle_ros_speech)
             self.ros_tts_thread.status_changed.connect(self.update_ros_status)
+            self.ros_tts_thread.action_published.connect(
+                self.handle_ros_action_published
+            )
             self.ros_tts_thread.start()
         else:
             self.ros_status_text = (
@@ -1209,6 +1244,9 @@ class ZirbiDisplay(QMainWindow):
             "Decision Making format: not finalized\n"
             "Planned integration: HRI Output Interface\n"
             "Output channels: Display + TTS\n"
+            "Subscribed topic: /tts_output\n"
+            "Published topic: /ui_action\n"
+            f"Last UI action: {self.last_action}\n"
             f"{self.ros_status_text}"
         )
 
@@ -1233,6 +1271,14 @@ class ZirbiDisplay(QMainWindow):
         )
 
         self.apply_runtime_state(updated_state)
+
+    def publish_ui_action(self, action_text):
+        if self.ros_tts_thread is not None and ROS_AVAILABLE:
+            self.ros_tts_thread.queue_ui_action(action_text)
+
+    def handle_ros_action_published(self, action_text):
+        self.last_action = action_text
+        self.update_developer_state()
 
     def get_pick_progress_steps(self):
         return [
@@ -1279,7 +1325,8 @@ class ZirbiDisplay(QMainWindow):
             progress=self.runtime_state.progress,
         )
 
-        self.last_action = "Primary action clicked"
+        self.last_action = "confirm"
+        self.publish_ui_action(self.last_action)
         self.apply_runtime_state(updated_state)
 
     def secondary_action(self):
@@ -1308,7 +1355,8 @@ class ZirbiDisplay(QMainWindow):
             progress=self.runtime_state.progress,
         )
 
-        self.last_action = "Secondary action clicked"
+        self.last_action = "repeat"
+        self.publish_ui_action(self.last_action)
         self.apply_runtime_state(updated_state)
 
     def cancel_task(self):
@@ -1326,7 +1374,8 @@ class ZirbiDisplay(QMainWindow):
             progress=self.runtime_state.progress,
         )
 
-        self.last_action = "Cancel clicked"
+        self.last_action = "cancel"
+        self.publish_ui_action(self.last_action)
         self.apply_runtime_state(updated_state)
 
     # ============================================================================

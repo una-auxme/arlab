@@ -1,2 +1,6 @@
-# simple callback to check if the Object was dropped
-bool GetDropStatus
+# Request: No specific request format. Just the drop status is requested. 
+
+---
+
+# Response: simple callback to check if the Object was dropped
+bool object_dropped

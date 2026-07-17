@@ -18,11 +18,10 @@ import rclpy.executors
 import tf2_ros
 from arlab_common_interfaces.action import ManipulationAction, OrchestratorAction
 from arlab_common_interfaces.msg import ManipulationResponse
-from arlab_common_interfaces.srv import GrippingParameter
+from arlab_common_interfaces.srv import GrippingParameter, GetObjectDropped
 from arlab_knowledge_interfaces.srv import GetEntity, GetShape
 from geometry_msgs.msg import Point, Pose, Quaternion
 from moveit_msgs.msg import PlanningScene
-from GetObjectDropped.srv import GetDropStatus
 
 # from octomap_msgs.msg import Octomap, OctomapWithPose
 from rclpy.action.client import ActionClient
@@ -109,8 +108,7 @@ class orchestrator(Node):
         self.obj_placed_pub = self.create_publisher(Bool, "/object_placed", 10)
 
         # service client for dropped objects
-        self.dropped_client = self.create_client(GetDropStatus, '/object_dropped')
-        self.drop_request = GetDropStatus.Request()
+        self.dropped_client = self.create_client(GetObjectDropped, '/object_dropped')
 
         # Default state initialization
         self.entity_id = None
@@ -409,19 +407,19 @@ class orchestrator(Node):
         long, a warning message will be thrown and it is assumed 
         that object wasn't dropped"""
 
-    if not self.drop_client.wait_for_service(timeout_sec=1.0):
-        self.get_logger().warn("Force monitor service not available. Cannot detect if object was dropped")
-        return False
-
-    drop_request = GetDropStatus.Request()
-    drop_future = self.drop_client.call_async(drop_request)
-    rclpy.spin_until_future_complete(self, drop_future, timeout_sec=2.0)
-
-    if not drop_future.done() or drop_future.result() is None:
-        self.get_logger().warn("Force monitor did not respond in time. Cannot detect if object was dropped")
-        return False
-
-    return drop_future.result().object_dropped
+        if not self.dropped_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().warn("Force monitor service not available. Cannot detect if object was dropped")
+            return False
+    
+        drop_request = GetObjectDropped.Request()
+        drop_future = self.dropped_client.call_async(drop_request)
+        rclpy.spin_until_future_complete(self, drop_future, timeout_sec=2.0)
+    
+        if not drop_future.done() or drop_future.result() is None:
+            self.get_logger().warn("Force monitor did not respond in time. Cannot detect if object was dropped")
+            return False
+    
+        return drop_future.result().object_dropped
 
     def send_goal(self):
         """Send computed pick/place pose as OrchestratorAction goal.

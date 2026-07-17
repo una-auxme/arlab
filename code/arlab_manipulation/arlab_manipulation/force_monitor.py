@@ -39,7 +39,7 @@ from rclpy.node import Node
 from mia_hand_msgs.msg import ForceData
 from std_srvs.srv import SetBool
 from std_msgs.msg import Bool
-from GetObjectDropped.srv import GetDropStatus
+from arlab_common_interfaces.srv import GetObjectDropped
 import rclpy 
 
 class force_monitor(Node):
@@ -72,7 +72,7 @@ class force_monitor(Node):
 
         self.create_subscription(ForceData, '/mia_hand/data_streams/fingers/forces/data', self.get_data, 10)
         self.activation_status = self.create_service(SetBool, '/force_monitor/activate', self.activation_callback)
-        self.dropped_service = self.create_service(GetDropStatus, '/object_dropped', self.object_dropped_response)
+        self.dropped_service = self.create_service(GetObjectDropped, '/object_dropped', self.object_dropped_response)
 
     def activation_callback(self, request, response):
 
@@ -142,7 +142,8 @@ class force_monitor(Node):
 
     def object_dropped_response(self, request, response):
         """Provides a service to respose wether object got dropped or not """
-        response.GetDropStatus = self.drop_reported
+        response.object_dropped = self.drop_reported
+        return response
 
 def main(args=None):
     rclpy.init(args=args)

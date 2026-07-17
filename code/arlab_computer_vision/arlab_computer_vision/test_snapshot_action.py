@@ -73,8 +73,7 @@ class SnapshotActionTester(Node):
             sys.exit(1)
 
         self.get_logger().info(
-            "Sending snapshot goal (extra_models=[MODEL_DISHWASHER=person.pt], "
-            f"clear_database={clear_database}, mask_hand={mask_hand})"
+            f"Sending snapshot goal (extra_models=[MODEL_DISHWASHER=person.pt], clear_database={clear_database}, mask_hand={mask_hand})"
         )
         send_goal_future = self._client.send_goal_async(goal)
         send_goal_future.add_done_callback(self._on_goal_response)

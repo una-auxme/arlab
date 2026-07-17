@@ -65,13 +65,11 @@ _MODEL_DEFINITIONS: dict[int, dict] = {
         "weights": "person.pt",
         "pinned": False,
     },
-
     VisionSnapshotCommand.MODEL_DISHWASHER: {
         "name": "general_objects",
         "weights": "open_img.pt",
         "pinned": False,
     },
-
     VisionSnapshotCommand.MODEL_LAUNDRY: {
         "name": "general_objects",
         "weights": "yolo11n-seg_demo_day.pt",
@@ -129,10 +127,7 @@ class ModelRegistry:
         """Remove non-pinned models that have not been used within ttl_seconds."""
         now = time.time()
         with self._lock:
-            to_evict = [
-                mid for mid, entry in self._registry.items()
-                if not entry.pinned and (now - entry.last_used) > ttl_seconds
-            ]
+            to_evict = [mid for mid, entry in self._registry.items() if not entry.pinned and (now - entry.last_used) > ttl_seconds]
             for mid in to_evict:
                 del self._registry[mid]
                 self._logger.info(f"Evicted model '{self._definitions[mid]['name']}'")

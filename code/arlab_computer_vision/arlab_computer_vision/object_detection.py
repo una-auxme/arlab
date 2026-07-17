@@ -62,13 +62,13 @@ from ultralytics import YOLO
 _MODEL_DEFINITIONS: dict[int, dict] = {
     VisionSnapshotCommand.MODEL_GENERAL_OBJECTS_AND_PEOPLE: {
         "name": "general_objects",
-        "weights": "open_img.pt",
-        "pinned": True,
+        "weights": "person.pt",
+        "pinned": False,
     },
 
     VisionSnapshotCommand.MODEL_DISHWASHER: {
         "name": "general_objects",
-        "weights": "person.pt",
+        "weights": "open_img.pt",
         "pinned": False,
     },
 
@@ -552,7 +552,7 @@ class ObjectDetection(Node):
                     model_ids.append(mid)
 
         all_entities: List[Tuple[Entity, Shape]] = []
-        first_result = None
+        annotated_image = None
         t_yolo_total = 0.0
         old_entity_ids = self._kb_get_entities_for_deletion()
 
@@ -566,8 +566,10 @@ class ObjectDetection(Node):
             result, num_detections = self._run_yolo_inference(yolo_image, model)
             t_yolo_total += (time.perf_counter() - t_yolo) * 1000
 
-            if first_result is None:
-                first_result = result
+            # Accumulate every model's detections on one frame; must happen
+            # before the box rescale below so coordinates match yolo_image.
+            if self.visualize:
+                annotated_image = result.plot(img=annotated_image)
 
             if num_detections == 0:
                 continue
@@ -601,9 +603,9 @@ class ObjectDetection(Node):
                     label = result.names[int(result.boxes.cls[i].item())]
                     all_entities.append(create_entity(label, entity_points, entity_pointcloud.header))
 
-        # === 4. VISUALIZE (first/pinned model result only) ===
-        if self.visualize and first_result is not None:
-            self.segmented_image_pub.publish(self.bridge.cv2_to_imgmsg(first_result.plot(), "bgr8"))
+        # === 4. VISUALIZE (all models' detections on one frame) ===
+        if self.visualize and annotated_image is not None:
+            self.segmented_image_pub.publish(self.bridge.cv2_to_imgmsg(annotated_image, "bgr8"))
 
         # === 5. KB UPDATE ===
         if self._kb_services_available:

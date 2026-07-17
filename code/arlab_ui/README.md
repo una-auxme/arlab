@@ -13,7 +13,8 @@ The prototype focuses on the robot-facing display for the RoboCup@Home tasks Pic
 - a runtime view for jury-facing output,
 - a developer view for debugging runtime state and ROS integration,
 - a placeholder camera view,
-- synchronized display of speech output received from ROS.
+- synchronized display of speech output received from ROS,
+- prototype feedback from UI buttons back into ROS.
 
 ## Run
 
@@ -46,6 +47,26 @@ Example test command:
 
     ros2 topic pub --once /tts_output std_msgs/msg/String "{data: 'This message comes from ROS and is shown in the PyQt display.'}"
 
+The prototype also publishes basic UI button actions to:
+
+    /ui_action
+
+Message type:
+
+    std_msgs/msg/String
+
+Current prototype actions:
+
+- confirm
+- repeat
+- cancel
+
+Example test command:
+
+    ros2 topic echo /ui_action std_msgs/msg/String
+
+This is a prototype feedback topic and not the final HRI interface. The final interface should be aligned with the Decision Making structure.
+
 ## Dependencies
 
 The PyQt-based display requires:
@@ -66,12 +87,13 @@ Currently implemented:
 - ROS package structure,
 - start via ros2 run,
 - start via ros2 launch,
-- optional /tts_output subscription.
+- optional /tts_output subscription,
+- prototype /ui_action publisher for Confirm, Repeat and Cancel.
 
 Still open:
 
 - final HRI Output Interface from Decision Making,
-- UI action feedback topic for confirm, repeat and cancel,
+- structured UI action feedback interface,
 - live camera topic integration,
 - final launch and configuration structure,
 - review and cleanup before merge.

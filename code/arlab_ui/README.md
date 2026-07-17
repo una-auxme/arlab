@@ -97,3 +97,9 @@ Still open:
 - live camera topic integration,
 - final launch and configuration structure,
 - review and cleanup before merge.
+
+## Development Notes
+
+This HRI display prototype was implemented by Jessica Herrmann as part of the HRI/UI work for the Autonomous Robotics Lab project.
+
+ChatGPT 5.5 was used as a development assistant during the prototyping process, mainly for code structuring, ROS package setup, debugging and documentation support. The code was tested manually in the ROS development container.

@@ -1,3 +1,6 @@
+import os
+from glob import glob
+
 from setuptools import find_packages, setup
 
 package_name = "arlab_ui"
@@ -18,6 +21,10 @@ setup(
         (
             "share/" + package_name + "/config",
             ["config/buttons.json"],
+        ),
+        (
+            "share/" + package_name + "/launch",
+            glob(os.path.join("launch", "*.launch.py")),
         ),
     ],
     install_requires=["setuptools"],

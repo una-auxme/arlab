@@ -1,3 +1,20 @@
+"""ROS 2 integrated PyQt6 HRI display prototype for Zirbi.
+
+This module implements the current robot-facing display prototype as a ROS 2
+Python package entry point. It combines a PyQt6 touchscreen-style user
+interface with a small ROS 2 bridge running in a background thread.
+
+Current ROS 2 integration:
+- subscribes to /tts_output (std_msgs/msg/String) and displays speech output,
+- publishes prototype UI feedback to /ui_action (std_msgs/msg/String),
+- subscribes to /camera_gripper/color/image_raw (sensor_msgs/msg/Image) and
+  renders incoming camera frames in the runtime view.
+
+The /ui_action topic is a temporary prototype feedback channel. It is not the
+final structured HRI interface. The final interface should be aligned with the
+Decision Making and HRI Output architecture.
+"""
+
 # ============================================================================
 # IMPORTS
 # ============================================================================
@@ -48,6 +65,17 @@ except ImportError:
 
 @dataclass
 class RuntimeState:
+    """Internal UI-side representation of the current HRI output state.
+
+    The final HRI Output Interface from Decision Making is not finalized yet.
+    This dataclass therefore models the information the display currently needs:
+    the active challenge, visible status text, speech text, next action,
+    available button labels and progress state.
+
+    It keeps the prototype structured and makes the future interface boundary
+    explicit instead of spreading task state across unrelated UI widgets.
+    """
+
     challenge: str
     subtask: str
     message_type: str
@@ -95,6 +123,8 @@ PAGE_MAINTENANCE = 5
 # ============================================================================
 
 class CameraView(QWidget):
+    """Rounded camera panel with placeholder fallback and live frame updates."""
+
     def __init__(self, image_path):
         super().__init__()
         self.image_path = image_path
@@ -144,12 +174,24 @@ class CameraView(QWidget):
 # ROS 2 INTEGRATION
 # ============================================================================
 
-# This prototype can run without ROS 2.
-# If rclpy is available, the UI subscribes to /tts_output and mirrors the
-# latest speech message in the Speech Output card.
+# The PyQt event loop must stay responsive, so ROS 2 spinning runs in a
+# dedicated QThread. Qt signals are used to safely pass data back to the UI.
+# This keeps ROS communication separate from rendering and button handling.
 
 
-class TtsSubscriberThread(QThread):
+class RosInterfaceThread(QThread):
+    """Small ROS 2 bridge used by the display prototype.
+
+    The node created in this thread is named ``zirbi_display_ros_interface``.
+    It acts as the current prototype counterpart for display I/O:
+
+    - ROS -> UI: speech text from /tts_output
+    - UI -> ROS: button feedback on /ui_action
+    - ROS -> UI: camera frames from /camera_gripper/color/image_raw
+
+    The bridge is intentionally simple. It uses std_msgs/msg/String for UI
+    actions until a structured HRI feedback message is defined.
+    """
     speech_received = pyqtSignal(str)
     status_changed = pyqtSignal(str)
     action_published = pyqtSignal(str)
@@ -231,11 +273,15 @@ class TtsSubscriberThread(QThread):
                 rclpy.shutdown()
 
     def handle_tts_message(self, message):
+        """Forward incoming /tts_output text to the PyQt runtime view."""
+
         text = message.data.strip()
         if text:
             self.speech_received.emit(text)
 
     def handle_camera_message(self, message):
+        """Convert a ROS image message into a QImage for the camera panel."""
+
         if self.bridge is None:
             return
 
@@ -265,10 +311,14 @@ class TtsSubscriberThread(QThread):
             self.camera_status_changed.emit(f"Camera error: {error}")
 
     def queue_ui_action(self, action_text):
+        """Queue a UI button action so it can be published from the ROS thread."""
+
         if action_text:
             self.action_queue.put(action_text)
 
     def publish_pending_actions(self):
+        """Publish queued UI feedback messages on /ui_action."""
+
         if self.action_publisher is None:
             return
 
@@ -308,7 +358,7 @@ class ZirbiDisplay(QMainWindow):
         self.active_control_page = None
         self.last_action = "None"
         self.runtime_state = None
-        self.ros_tts_thread = None
+        self.ros_interface_thread = None
         self.ros_status_text = "ROS integration: not initialized"
         self.camera_status_text = "Camera source: placeholder image"
 
@@ -390,21 +440,28 @@ class ZirbiDisplay(QMainWindow):
         self.clock_timer.start(1000)
 
     def setup_ros_integration(self):
+        """Start the ROS 2 bridge thread if rclpy is available.
+
+        The display can still be opened as a pure PyQt prototype without ROS 2.
+        Inside the development container, this method starts the ROS bridge that
+        subscribes to speech and camera topics and publishes UI feedback.
+        """
+
         if ROS_AVAILABLE:
             self.ros_status_text = "ROS integration: available"
-            self.ros_tts_thread = TtsSubscriberThread("/tts_output", "/ui_action")
-            self.ros_tts_thread.speech_received.connect(self.handle_ros_speech)
-            self.ros_tts_thread.status_changed.connect(self.update_ros_status)
-            self.ros_tts_thread.action_published.connect(
+            self.ros_interface_thread = RosInterfaceThread("/tts_output", "/ui_action")
+            self.ros_interface_thread.speech_received.connect(self.handle_ros_speech)
+            self.ros_interface_thread.status_changed.connect(self.update_ros_status)
+            self.ros_interface_thread.action_published.connect(
                 self.handle_ros_action_published
             )
-            self.ros_tts_thread.camera_frame_received.connect(
+            self.ros_interface_thread.camera_frame_received.connect(
                 self.handle_ros_camera_frame
             )
-            self.ros_tts_thread.camera_status_changed.connect(
+            self.ros_interface_thread.camera_status_changed.connect(
                 self.update_camera_status
             )
-            self.ros_tts_thread.start()
+            self.ros_interface_thread.start()
         else:
             self.ros_status_text = (
                 "ROS integration: unavailable in current Python environment"
@@ -414,9 +471,9 @@ class ZirbiDisplay(QMainWindow):
         self.time_label.setText(QTime.currentTime().toString("HH:mm"))
 
     def closeEvent(self, event):
-        if self.ros_tts_thread is not None:
-            self.ros_tts_thread.stop()
-            self.ros_tts_thread.wait(1000)
+        if self.ros_interface_thread is not None:
+            self.ros_interface_thread.stop()
+            self.ros_interface_thread.wait(1000)
 
         event.accept()
 
@@ -1316,7 +1373,7 @@ class ZirbiDisplay(QMainWindow):
         )
 
         self.dev_system_label.setText(
-            "UI node: local prototype\n"
+            "ROS node: zirbi_display_ros_interface\n"
             "Decision Making format: not finalized\n"
             "Planned integration: HRI Output Interface\n"
             "Output channels: Display + TTS\n"
@@ -1331,6 +1388,8 @@ class ZirbiDisplay(QMainWindow):
         self.update_developer_state()
 
     def handle_ros_speech(self, speech_text):
+        """Update the visible Speech Output card from /tts_output."""
+
         if self.runtime_state is None:
             self.speech_label.setText(f"Speech Output:\n{speech_text}")
             return
@@ -1353,14 +1412,25 @@ class ZirbiDisplay(QMainWindow):
         self.update_developer_state()
 
     def handle_ros_camera_frame(self, image):
+        """Render the latest ROS camera frame in the runtime camera panel."""
+
         if hasattr(self, "camera_view"):
             self.camera_view.set_frame(image)
 
     def publish_ui_action(self, action_text):
-        if self.ros_tts_thread is not None and ROS_AVAILABLE:
-            self.ros_tts_thread.queue_ui_action(action_text)
+        """Send prototype UI feedback to ROS.
+
+        The current actions are simple strings such as confirm, repeat and
+        cancel. They are published on /ui_action and should later be replaced
+        or extended by a structured HRI feedback message.
+        """
+
+        if self.ros_interface_thread is not None and ROS_AVAILABLE:
+            self.ros_interface_thread.queue_ui_action(action_text)
 
     def handle_ros_action_published(self, action_text):
+        """Mirror the last published UI action in the Developer View."""
+
         self.last_action = action_text
         self.update_developer_state()
 

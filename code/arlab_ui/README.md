@@ -32,8 +32,6 @@ Relevant files:
     |   `-- camera_placeholder.png
     |-- launch/
     |   `-- zirbi_display.launch.py
-    |-- config/
-    |   `-- buttons.json
     |-- resource/
     |   `-- arlab_ui
     |-- package.xml
@@ -202,6 +200,8 @@ Older UI and debugging files are kept separately in:
     arlab_ui/legacy/
 
 These files are retained for reference only. They are not part of the current PyQt-based HRI display prototype and are not used by the current ROS 2 launch or executable setup.
+
+The legacy folder contains the old Tkinter UI, legacy assets and old button configuration files.
 
 The current HRI display entry point is:
 

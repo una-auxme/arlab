@@ -19,10 +19,6 @@ setup(
             ["package.xml"],
         ),
         (
-            "share/" + package_name + "/config",
-            ["config/buttons.json"],
-        ),
-        (
             "share/" + package_name + "/launch",
             glob(os.path.join("launch", "*.launch.py")),
         ),

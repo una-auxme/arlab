@@ -30,3 +30,12 @@ It is started with:
 or:
 
     ros2 launch arlab_ui zirbi_display.launch.py
+
+
+## Legacy Resources
+
+- assets/
+  - legacy Zirbi image and icon files used by the old Tkinter UI
+
+- config/buttons.json
+  - legacy button configuration used by the old Tkinter UI

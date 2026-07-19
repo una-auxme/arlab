@@ -23,7 +23,7 @@ from rclpy.node import Node
 from rclpy.qos import QoSDurabilityPolicy, QoSProfile, QoSReliabilityPolicy
 from std_msgs.msg import String
 
-CONFIG_PATH = Path("/workspace/src/arlab/code/arlab_ui/config/buttons.json")
+CONFIG_PATH = Path("/workspace/src/arlab/code/arlab_ui/legacy/config/buttons.json")
 
 
 class RosBridge(Node):
@@ -106,7 +106,7 @@ class App(tk.Tk):
         self.title("Zirbi Touchscreen UI")
         self.geometry("900x600")
 
-        self._app_icon = tk.PhotoImage(file="src/arlab/code/arlab_ui/assets/Zirbi.png")
+        self._app_icon = tk.PhotoImage(file="/workspace/src/arlab/code/arlab_ui/legacy/assets/Zirbi.png")
         self.iconphoto(True, self._app_icon)
 
         self.buttons_data = []
@@ -130,7 +130,7 @@ class App(tk.Tk):
         self.screensaver_seconds = 10  # inactivity timeout
         self._screensaver_on = False
 
-        self._build_screensaver("/workspace/src/arlab/code/arlab_ui/assets/Zirbi.gif")
+        self._build_screensaver("/workspace/src/arlab/code/arlab_ui/legacy/assets/Zirbi.gif")
 
         # Any user interaction resets timer + hides saver
         self.bind_all("<Any-KeyPress>", self._on_user_activity)

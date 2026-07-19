@@ -194,6 +194,19 @@ The runtime view is driven by an internal runtime state model. This model repres
 - available user interaction buttons,
 - camera feedback.
 
+
+## Legacy Files
+
+Older UI and debugging files are kept separately in:
+
+    arlab_ui/legacy/
+
+These files are retained for reference only. They are not part of the current PyQt-based HRI display prototype and are not used by the current ROS 2 launch or executable setup.
+
+The current HRI display entry point is:
+
+    arlab_ui/arlab_ui/zirbi_display.py
+
 ## Development Notes
 
 This HRI display prototype was implemented by Jessica Herrmann as part of the HRI/UI work for the Autonomous Robotics Lab project.

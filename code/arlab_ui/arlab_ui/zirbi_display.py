@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from PyQt6.QtCore import Qt, QRectF, QThread, QTimer, QTime, pyqtSignal
-from PyQt6.QtGui import QCursor, QPainter, QPainterPath, QPixmap
+from PyQt6.QtGui import QCursor, QImage, QPainter, QPainterPath, QPixmap
 from PyQt6.QtWidgets import (
     QApplication,
     QFrame,
@@ -30,6 +30,16 @@ except ImportError:
     rclpy = None
     String = None
     ROS_AVAILABLE = False
+
+try:
+    from cv_bridge import CvBridge
+    from sensor_msgs.msg import Image
+
+    CAMERA_AVAILABLE = True
+except ImportError:
+    CvBridge = None
+    Image = None
+    CAMERA_AVAILABLE = False
 
 
 # ============================================================================
@@ -91,6 +101,10 @@ class CameraView(QWidget):
         self.pixmap = QPixmap(str(image_path))
         self.setMinimumSize(300, 200)
 
+    def set_frame(self, image):
+        self.pixmap = QPixmap.fromImage(image)
+        self.update()
+
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -139,15 +153,24 @@ class TtsSubscriberThread(QThread):
     speech_received = pyqtSignal(str)
     status_changed = pyqtSignal(str)
     action_published = pyqtSignal(str)
+    camera_frame_received = pyqtSignal(QImage)
+    camera_status_changed = pyqtSignal(str)
 
-    def __init__(self, tts_topic_name="/tts_output", action_topic_name="/ui_action"):
+    def __init__(
+        self,
+        tts_topic_name="/tts_output",
+        action_topic_name="/ui_action",
+        camera_topic_name="/camera_gripper/color/image_raw",
+    ):
         super().__init__()
         self.tts_topic_name = tts_topic_name
         self.action_topic_name = action_topic_name
+        self.camera_topic_name = camera_topic_name
         self._running = True
         self.node = None
         self.action_publisher = None
         self.action_queue = Queue()
+        self.bridge = CvBridge() if CAMERA_AVAILABLE else None
 
     def run(self):
         if not ROS_AVAILABLE:
@@ -173,6 +196,21 @@ class TtsSubscriberThread(QThread):
                 10,
             )
 
+            if CAMERA_AVAILABLE:
+                self.node.create_subscription(
+                    Image,
+                    self.camera_topic_name,
+                    self.handle_camera_message,
+                    10,
+                )
+                self.camera_status_changed.emit(
+                    f"Camera source: waiting for {self.camera_topic_name}"
+                )
+            else:
+                self.camera_status_changed.emit(
+                    "Camera source: placeholder image, camera dependencies unavailable"
+                )
+
             self.status_changed.emit(
                 "ROS integration: subscribed to "
                 f"{self.tts_topic_name}, publishing to {self.action_topic_name}"
@@ -196,6 +234,35 @@ class TtsSubscriberThread(QThread):
         text = message.data.strip()
         if text:
             self.speech_received.emit(text)
+
+    def handle_camera_message(self, message):
+        if self.bridge is None:
+            return
+
+        try:
+            cv_image = self.bridge.imgmsg_to_cv2(
+                message,
+                desired_encoding="rgb8",
+            )
+
+            height, width, channels = cv_image.shape
+            bytes_per_line = channels * width
+
+            qt_image = QImage(
+                cv_image.data,
+                width,
+                height,
+                bytes_per_line,
+                QImage.Format.Format_RGB888,
+            ).copy()
+
+            self.camera_frame_received.emit(qt_image)
+            self.camera_status_changed.emit(
+                f"Camera source: live ROS topic {self.camera_topic_name}"
+            )
+
+        except Exception as error:
+            self.camera_status_changed.emit(f"Camera error: {error}")
 
     def queue_ui_action(self, action_text):
         if action_text:
@@ -243,6 +310,7 @@ class ZirbiDisplay(QMainWindow):
         self.runtime_state = None
         self.ros_tts_thread = None
         self.ros_status_text = "ROS integration: not initialized"
+        self.camera_status_text = "Camera source: placeholder image"
 
         self.setup_labels()
         self.setup_buttons()
@@ -266,6 +334,7 @@ class ZirbiDisplay(QMainWindow):
         self.next_action_label = QLabel()
 
         self.dev_state_label = QLabel()
+        self.dev_camera_label = QLabel()
         self.dev_hri_label = QLabel()
         self.dev_system_label = QLabel()
 
@@ -328,6 +397,12 @@ class ZirbiDisplay(QMainWindow):
             self.ros_tts_thread.status_changed.connect(self.update_ros_status)
             self.ros_tts_thread.action_published.connect(
                 self.handle_ros_action_published
+            )
+            self.ros_tts_thread.camera_frame_received.connect(
+                self.handle_ros_camera_frame
+            )
+            self.ros_tts_thread.camera_status_changed.connect(
+                self.update_camera_status
             )
             self.ros_tts_thread.start()
         else:
@@ -813,10 +888,10 @@ class ZirbiDisplay(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
 
         image_path = Path(__file__).parent / "camera_placeholder.png"
-        camera = CameraView(image_path)
-        camera.setObjectName("cameraView")
+        self.camera_view = CameraView(image_path)
+        self.camera_view.setObjectName("cameraView")
 
-        layout.addWidget(camera, stretch=1)
+        layout.addWidget(self.camera_view, stretch=1)
 
         return frame
 
@@ -900,13 +975,7 @@ class ZirbiDisplay(QMainWindow):
         )
 
         left_column.addWidget(
-            self.debug_card(
-                "Camera Source",
-                "Source: camera_placeholder.png\n"
-                "Mode: placeholder image\n"
-                "Scaling: keep aspect ratio, crop center\n"
-                "Target view: responsive",
-            )
+            self.debug_card_with_label("Camera Source", self.dev_camera_label)
         )
 
         right_column.addWidget(
@@ -1231,6 +1300,13 @@ class ZirbiDisplay(QMainWindow):
             f"Next action: {state.next_action}"
         )
 
+        self.dev_camera_label.setText(
+            f"{self.camera_status_text}\n"
+            "Fallback: camera_placeholder.png\n"
+            "Expected message type: sensor_msgs/msg/Image\n"
+            "Rendering: cv_bridge -> QImage -> QPixmap"
+        )
+
         self.dev_hri_label.setText(
             "Prototype-side representation of a future HRI output message.\n\n"
             f"display_text: {state.display_text}\n"
@@ -1271,6 +1347,14 @@ class ZirbiDisplay(QMainWindow):
         )
 
         self.apply_runtime_state(updated_state)
+
+    def update_camera_status(self, status_text):
+        self.camera_status_text = status_text
+        self.update_developer_state()
+
+    def handle_ros_camera_frame(self, image):
+        if hasattr(self, "camera_view"):
+            self.camera_view.set_frame(image)
 
     def publish_ui_action(self, action_text):
         if self.ros_tts_thread is not None and ROS_AVAILABLE:

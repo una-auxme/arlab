@@ -14,7 +14,8 @@ The prototype focuses on the robot-facing display for the RoboCup@Home tasks Pic
 - a developer view for debugging runtime state and ROS integration,
 - a placeholder camera view,
 - synchronized display of speech output received from ROS,
-- prototype feedback from UI buttons back into ROS.
+- prototype feedback from UI buttons back into ROS,
+- optional live camera display from a ROS image topic with fallback image.
 
 ## Run
 
@@ -67,6 +68,22 @@ Example test command:
 
 This is a prototype feedback topic and not the final HRI interface. The final interface should be aligned with the Decision Making structure.
 
+The camera view can subscribe to:
+
+    /camera_gripper/color/image_raw
+
+Message type:
+
+    sensor_msgs/msg/Image
+
+If no camera images are received, the UI falls back to:
+
+    camera_placeholder.png
+
+The live camera rendering was tested with a synthetic ROS image publisher. The current implementation uses:
+
+    cv_bridge -> QImage -> QPixmap
+
 ## Dependencies
 
 The PyQt-based display requires:
@@ -88,13 +105,14 @@ Currently implemented:
 - start via ros2 run,
 - start via ros2 launch,
 - optional /tts_output subscription,
-- prototype /ui_action publisher for Confirm, Repeat and Cancel.
+- prototype /ui_action publisher for Confirm, Repeat and Cancel,
+- optional camera image subscriber with placeholder fallback.
 
 Still open:
 
 - final HRI Output Interface from Decision Making,
 - structured UI action feedback interface,
-- live camera topic integration,
+- connection to the real robot camera topic during task execution,
 - final launch and configuration structure,
 - review and cleanup before merge.
 

@@ -3,9 +3,9 @@
 <package format="3">
   <name>arlab_ui</name>
   <version>0.0.1</version>
-  <description>HRI display UI prototype for Zirbi.</description>
+  <description>ROS 2 package for the Zirbi HRI display prototype.</description>
 
-  <maintainer email="tobias.neher@uni-a.de">ARLab HRI Team</maintainer>
+  <maintainer email="jessica.herrmann@uni-a.de">Jessica Herrmann</maintainer>
   <license>Apache-2.0</license>
 
   <buildtool_depend>ament_python</buildtool_depend>

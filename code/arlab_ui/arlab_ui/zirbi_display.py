@@ -1024,6 +1024,7 @@ class ZirbiDisplay(QMainWindow):
         right_column.setSpacing(14)
 
         self.dev_state_label.setObjectName("debugText")
+        self.dev_camera_label.setObjectName("debugText")
         self.dev_hri_label.setObjectName("debugText")
         self.dev_system_label.setObjectName("debugText")
 

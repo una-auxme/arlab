@@ -23,7 +23,7 @@ The implementation is still a prototype. It is intended to support the design re
 
 ## Package Structure
 
-Relevant files:
+Relevant files and folders:
 
     arlab_ui/
     |-- arlab_ui/
@@ -32,6 +32,20 @@ Relevant files:
     |   `-- camera_placeholder.png
     |-- launch/
     |   `-- zirbi_display.launch.py
+    |-- legacy/
+    |   |-- README.md
+    |   |-- main.py
+    |   |-- error_throwing_node.py
+    |   |-- assets/
+    |   |   |-- Zirbi.gif
+    |   |   |-- Zirbi.jpg
+    |   |   |-- Zirbi.png
+    |   |   |-- Zirbi.svg
+    |   |   |-- Zirbi.webp
+    |   |   |-- Zirbi_Logo.pdf
+    |   |   `-- Zirbi_original.gif
+    |   `-- config/
+    |       `-- buttons.json
     |-- resource/
     |   `-- arlab_ui
     |-- package.xml
@@ -39,9 +53,11 @@ Relevant files:
     |-- setup.cfg
     `-- setup.py
 
-The main display implementation is located in:
+The active HRI display implementation is located in:
 
     arlab_ui/arlab_ui/zirbi_display.py
+
+The legacy folder contains older UI and debugging files that are retained for reference only. These files are not used by the current ROS 2 launch file or the current console executable.
 
 ## Run
 
@@ -160,7 +176,8 @@ Currently implemented:
 - camera image subscriber for /camera_gripper/color/image_raw,
 - placeholder fallback if no camera frames are received,
 - runtime view with jury-facing information,
-- developer view with runtime state and ROS integration information.
+- developer view with runtime state and ROS integration information,
+- clear separation between the active PyQt HRI display and older legacy UI files.
 
 Still open:
 
@@ -192,7 +209,6 @@ The runtime view is driven by an internal runtime state model. This model repres
 - available user interaction buttons,
 - camera feedback.
 
-
 ## Legacy Files
 
 Older UI and debugging files are kept separately in:
@@ -201,7 +217,25 @@ Older UI and debugging files are kept separately in:
 
 These files are retained for reference only. They are not part of the current PyQt-based HRI display prototype and are not used by the current ROS 2 launch or executable setup.
 
-The legacy folder contains the old Tkinter UI, legacy assets and old button configuration files.
+The legacy folder currently contains:
+
+- main.py
+  - old Tkinter-based UI demo
+  - originally created for the Tag der Informatik 12.03.2026
+  - reads button definitions from legacy/config/buttons.json
+  - uses image resources from legacy/assets/
+  - not used by the current PyQt HRI display prototype
+
+- error_throwing_node.py
+  - old ROS 2 debug node
+  - emits test error log messages
+  - not used by the current PyQt HRI display prototype
+
+- assets/
+  - legacy Zirbi image and icon files used by the old Tkinter UI
+
+- config/buttons.json
+  - legacy button configuration used by the old Tkinter UI
 
 The current HRI display entry point is:
 

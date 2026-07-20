@@ -27,12 +27,14 @@ import argparse
 import csv
 import statistics
 import subprocess
+import threading
 import time
 from datetime import datetime
 
 import cv2
 import numpy as np
 import rclpy
+import rclpy.executors
 from arlab_common_interfaces.action import VisionSnapshotAction
 from arlab_common_interfaces.msg import VisionSnapshotCommand, VisionSnapshotResponse
 from cv_bridge import CvBridge
@@ -294,10 +296,21 @@ class PitchVideoDemo(Node):
         import os
 
         size_mb = os.path.getsize(self._video_path) / 1e6 if os.path.exists(self._video_path) else 0.0
+        elapsed = time.monotonic() - self._start_time
+        effective_fps = self._frames_written / elapsed if elapsed > 0 else 0.0
         self.get_logger().info(
             f"Done. Wrote {self._frames_written} frames ({size_mb:.1f} MB) to {self._video_path}; "
             f"GPU log at {self._gpu_log_path}"
         )
+        self.get_logger().info(
+            f"Effective capture rate: {effective_fps:.1f} fps (declared {self._output_fps:.1f} fps). "
+            f"Playback length ~= {self._frames_written / self._output_fps:.1f}s"
+        )
+        if effective_fps < 0.7 * self._output_fps:
+            self.get_logger().warn(
+                f"Captured well below the declared {self._output_fps:.0f} fps; the clip will play back fast/short. "
+                f"Lower --fps to about {effective_fps:.0f} to match real time."
+            )
         if self._frames_written == 0:
             self.get_logger().warn(
                 "0 frames captured - the color topic produced no images. "
@@ -352,15 +365,25 @@ def main() -> None:
         print(f"Error: {e}")
         return
 
+    # Spin with a real executor in a background thread so every callback
+    # (23Hz camera frames, the 15Hz video timer, action results) is serviced
+    # promptly. A manual spin_once loop throttles all callbacks to its poll
+    # rate, which starves the video timer and produces a too-short clip.
+    executor = rclpy.executors.MultiThreadedExecutor(num_threads=4)
+    executor.add_node(node)
+    spin_thread = threading.Thread(target=executor.spin, daemon=True)
+    spin_thread.start()
+
     try:
         end_time = time.monotonic() + args.duration + 5.0
         while rclpy.ok() and not node.finished and time.monotonic() < end_time:
-            rclpy.spin_once(node, timeout_sec=0.05)
+            time.sleep(0.1)
         if not node.finished:
             node.finish()
     except KeyboardInterrupt:
         node.finish()
     finally:
+        executor.shutdown()
         node.destroy_node()
         rclpy.shutdown()
 

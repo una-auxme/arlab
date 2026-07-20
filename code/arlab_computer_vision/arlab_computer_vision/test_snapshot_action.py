@@ -17,6 +17,9 @@ Usage:
 The node does not require the knowledge base to be up: KB calls are skipped
 with a warning if the KB services are unavailable, so this script also works
 standalone against just the camera + object_detection node.
+
+Maintainers:
+    Simeon Wagner <simeon.wagner@uni-a.de>
 """
 
 import argparse

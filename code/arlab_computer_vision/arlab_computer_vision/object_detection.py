@@ -8,6 +8,7 @@ via ROS services.
 
 Maintainers:
     Simeon Wagner <simeon.wagner@uni-a.de>
+    Lars Britz <lars.britz@uni-a.de>
 """
 
 import os

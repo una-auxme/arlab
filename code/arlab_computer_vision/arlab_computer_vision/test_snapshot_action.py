@@ -20,6 +20,7 @@ standalone against just the camera + object_detection node.
 
 Maintainers:
     Simeon Wagner <simeon.wagner@uni-a.de>
+    Lars Britz <lars.britz@uni-a.de>
 """
 
 import argparse

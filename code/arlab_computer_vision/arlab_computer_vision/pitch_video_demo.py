@@ -88,7 +88,7 @@ class PitchVideoDemo(Node):
         self._bridge = CvBridge()
         self._video_writer: cv2.VideoWriter | None = None
         self._video_path = args.out
-        self._fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        self._codec = args.codec
 
         self._last_color_frame: np.ndarray | None = None
         self._last_annotated_frame: np.ndarray | None = None
@@ -200,12 +200,43 @@ class PitchVideoDemo(Node):
         frame = self._last_color_frame.copy()
         if self._video_writer is None:
             h, w = frame.shape[:2]
-            self._video_writer = cv2.VideoWriter(self._video_path, self._fourcc, self._output_fps, (w, h))
-            self.get_logger().info(f"Recording {w}x{h} @ {self._output_fps}fps -> {self._video_path}")
+            self._video_writer = self._open_writer(w, h)
 
         self._draw_overlay(frame, elapsed)
         self._video_writer.write(frame)
         self._frames_written += 1
+
+    def _open_writer(self, w: int, h: int) -> cv2.VideoWriter:
+        """Open a VideoWriter, falling back to codecs that this OpenCV build supports.
+
+        cv2.VideoWriter does not raise when a codec backend is missing; it just
+        returns a writer whose isOpened() is False and silently drops every
+        write(). We try the requested codec first, then progressively more
+        portable ones, and abort loudly if none actually open.
+        """
+        # (codec, file extension) pairs, most-preferred first.
+        candidates = [
+            (self._codec, self._video_path),
+            ("mp4v", self._swap_ext(self._video_path, ".mp4")),
+            ("MJPG", self._swap_ext(self._video_path, ".avi")),
+            ("XVID", self._swap_ext(self._video_path, ".avi")),
+        ]
+        for codec, path in candidates:
+            fourcc = cv2.VideoWriter_fourcc(*codec)
+            writer = cv2.VideoWriter(path, fourcc, self._output_fps, (w, h))
+            if writer.isOpened():
+                self._video_path = path
+                self.get_logger().info(f"Recording {w}x{h} @ {self._output_fps}fps, codec={codec} -> {path}")
+                return writer
+            writer.release()
+            self.get_logger().warn(f"Codec '{codec}' unavailable in this OpenCV build, trying next fallback")
+        raise RuntimeError("No usable video codec found (tried mp4v, MJPG, XVID). Install ffmpeg-enabled OpenCV.")
+
+    @staticmethod
+    def _swap_ext(path: str, ext: str) -> str:
+        import os
+
+        return os.path.splitext(path)[0] + ext
 
     # -- rendering -------------------------------------------------------------
     def _draw_overlay(self, frame: np.ndarray, elapsed: float) -> None:
@@ -259,9 +290,24 @@ class PitchVideoDemo(Node):
         if self._video_writer is not None:
             self._video_writer.release()
         self._gpu_log_file.close()
+
+        import os
+
+        size_mb = os.path.getsize(self._video_path) / 1e6 if os.path.exists(self._video_path) else 0.0
         self.get_logger().info(
-            f"Done. Wrote {self._frames_written} frames to {self._video_path}; GPU log at {self._gpu_log_path}"
+            f"Done. Wrote {self._frames_written} frames ({size_mb:.1f} MB) to {self._video_path}; "
+            f"GPU log at {self._gpu_log_path}"
         )
+        if self._frames_written == 0:
+            self.get_logger().warn(
+                "0 frames captured - the color topic produced no images. "
+                "Check --color-topic matches your camera (e.g. /camera/color/image_raw)."
+            )
+        elif size_mb < 0.05:
+            self.get_logger().warn(
+                "Output file is suspiciously small; the codec may not have encoded correctly. "
+                "Try a different --codec (MJPG with a .avi --out is the most portable)."
+            )
 
 
 def _print_gpu_summary(gpu_log_path: str) -> None:
@@ -287,8 +333,13 @@ def main() -> None:
     parser.add_argument("--switch-at", type=float, default=15.0, help="Seconds after which the people model is added")
     parser.add_argument("--fps", type=float, default=15.0, help="Output video frame rate")
     parser.add_argument("--out", default="pitch_demo.mp4", help="Output video file path")
+    parser.add_argument(
+        "--codec",
+        default="mp4v",
+        help="Preferred FourCC codec. Falls back to mp4v/MJPG/XVID if unavailable. Use MJPG with a .avi --out for max portability.",
+    )
     parser.add_argument("--gpu-log", default="gpu_usage.csv", help="Output GPU usage CSV path")
-    parser.add_argument("--color-topic", default="/camera_gripper/color/image_raw", help="Raw color image topic")
+    parser.add_argument("--color-topic", default="/camera/color/image_raw", help="Raw color image topic")
     parser.add_argument("--segmented-topic", default="/vision/segmented_image", help="Annotated detection image topic")
     parser.add_argument("--clear-database", action="store_true", help="Clear KB entities before each snapshot")
     args = parser.parse_args()

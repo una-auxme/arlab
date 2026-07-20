@@ -23,6 +23,7 @@
 class ArmMotion;
 class HandMotion;
 class HandForceSwitch;
+class ForceMonitorSwitch;
 
 /**
  * Central command dispatcher that maps incoming command strings to concrete
@@ -37,7 +38,7 @@ class JobRunner {
      * @param arm     Reference to the arm motion helper.
      * @param hand    Reference to the hand motion helper.
      */
-    JobRunner(rclcpp::Node& node, ArmMotion& arm, HandMotion& hand, HandForceSwitch& force_switch, HandForceSwitch& monitor_switch);
+    JobRunner(rclcpp::Node& node, ArmMotion& arm, HandMotion& hand, HandForceSwitch& force_switch, ForceMonitorSwitch& monitor_switch);
 
     /**
      * Executes a single manipulation command described by the orchestrator message.
@@ -87,7 +88,7 @@ class JobRunner {
     ArmMotion& arm_;
     HandMotion& hand_;
     HandForceSwitch& force_switch_;
-    HandForceSwitch& monitor_switch_;
+    ForceMonitorSwitch& monitor_switch_;
 };
 
 #endif  // ARLAB_MANIPULATION_CPP_JOB_RUNNER_HPP_

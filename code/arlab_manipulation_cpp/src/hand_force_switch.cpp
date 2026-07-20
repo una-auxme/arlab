@@ -12,9 +12,6 @@
 #include <functional>
 #include "rclcpp/rclcpp.hpp"
 
-// #include "rclcpp/rclcpp.hpp" // standart ros2 geplänker
-// aus modules/mia_hand_ros2_pkgs/mia_hand_msgs/msg/ForceData.msg
-
 #include "arlab_manipulation_cpp/hand_force_switch.hpp"
 
 // #include "std_srvs/srv/set_bool.hpp"

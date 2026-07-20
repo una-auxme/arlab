@@ -13,10 +13,12 @@
 
 #include "arlab_common_interfaces/msg/manipulation_response.hpp"
 #include "arlab_common_interfaces/msg/manipulation_command.hpp"
+#include "arlab_common_interfaces/srv/activate_force_monitor.hpp"
 #include "arlab_manipulation_cpp/arm_motion.hpp"
 #include "arlab_manipulation_cpp/hand_motion.hpp"
 #include "arlab_manipulation_cpp/hand_force_switch.hpp"
 #include "arlab_manipulation_cpp/manipulator_exception.hpp"
+#include "arlab_manipulation_cpp/force_monitor_switch.hpp"
 
 namespace {
 
@@ -30,7 +32,7 @@ constexpr char kPlannerId[] = "RRTConnectkConfigDefault";
 
 }  // namespace
 
-JobRunner::JobRunner(rclcpp::Node& node, ArmMotion& arm, HandMotion& hand, HandForceSwitch& force_switch, HandForceSwitch& monitor_switch)
+JobRunner::JobRunner(rclcpp::Node& node, ArmMotion& arm, HandMotion& hand, HandForceSwitch& force_switch, ForceMonitorSwitch& monitor_switch)
     : logger_(node.get_logger()), arm_(arm), hand_(hand), force_switch_(force_switch), monitor_switch_(monitor_switch) {}
 
 geometry_msgs::msg::Pose JobRunner::CreatePose(double x, double y, double z,
@@ -93,60 +95,67 @@ void JobRunner::Run(const arlab_common_interfaces::msg::OrchestratorData& msg) {
                           kBoxOrientationTolerance, kEndEffectorLink,
                           kReferenceFrame,kPlannerId);
   } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PICK) {
-    // Full pick sequence: enable stream → open → approach → close → retreat → home → disable stream.
-    
+    // Full pick sequence: open → approach → close → enable force stream → activate force monitor → retreat → home.
     hand_.Open();
     auto approach_pose = arm_.MakeApproachPose(msg.pose, kApproachDistance, kLiftOffset);
     arm_.MoveToPose(approach_pose);
     arm_.MoveToPose(msg.pose);
     hand_.Close();
     force_switch_.EnableStream();
-    monitor_switch_.EnableStream();
+    monitor_switch_.ActivateMonitor(msg.grip_type.data);
     arm_.MoveToPose(approach_pose);
     arm_.MoveToHome();
   } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PICK_PINCH) {
-    // Full pick sequence: open → approach → close → retreat → home.
+    // Full pick sequence: open → approach → close → enable force stream → activate force monitor → retreat → home.
     hand_.Open();
     auto approach_pose = arm_.MakeApproachPose(msg.pose, kApproachDistance, kLiftOffset);
     arm_.MoveToPose(approach_pose);
     arm_.MoveToPose(msg.pose);
     hand_.Pinch();
+    force_switch_.EnableStream();
+    monitor_switch_.ActivateMonitor(msg.grip_type.data);
     arm_.MoveToPose(approach_pose);
     arm_.MoveToHome();
   } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PICK_LATERAL) {
-    // Full pick sequence: open → approach → close → retreat → home.
+    // Full pick sequence: open → approach → close → enable force stream → activate force monitor → retreat → home.
     hand_.Open();
     auto approach_pose = arm_.MakeApproachPose(msg.pose, kApproachDistance, kLiftOffset);
     arm_.MoveToPose(approach_pose);
     arm_.MoveToPose(msg.pose);
     hand_.Lateral();
+    force_switch_.EnableStream();
+    monitor_switch_.ActivateMonitor(msg.grip_type.data);
     arm_.MoveToPose(approach_pose);
     arm_.MoveToHome();
   } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PICK_SPHERICAL) {
-    // Full pick sequence: open → approach → close → retreat → home.
+    // Full pick sequence: open → approach → close → enable force stream → activate force monitor → retreat → home.
     hand_.Open();
     auto approach_pose = arm_.MakeApproachPose(msg.pose, kApproachDistance, kLiftOffset);
     arm_.MoveToPose(approach_pose);
     arm_.MoveToPose(msg.pose);
     hand_.Spherical();
+    force_switch_.EnableStream();
+    monitor_switch_.ActivateMonitor(msg.grip_type.data);
     arm_.MoveToPose(approach_pose);
     arm_.MoveToHome();
   } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PICK_TRIDIGITAL) {
-    // Full pick sequence: open → approach → close → retreat → home.
+    // Full pick sequence: open → approach → close → enable force stream → activate force monitor → retreat → home.
     hand_.Open();
     auto approach_pose = arm_.MakeApproachPose(msg.pose, kApproachDistance, kLiftOffset);
     arm_.MoveToPose(approach_pose);
     arm_.MoveToPose(msg.pose);
     hand_.Tridigital();
+    force_switch_.EnableStream();
+    monitor_switch_.ActivateMonitor(msg.grip_type.data);
     arm_.MoveToPose(approach_pose);
     arm_.MoveToHome();
   } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PLACE) {
-    // Full place sequence: enable stream → approach → open → retreat → home → disable stream.
+    // Full place sequence: approach → disable force stream → open → retreat → home.
     auto approach_pose = arm_.MakeApproachPose(msg.pose, kApproachDistance, kLiftOffset);
     arm_.MoveToPose(approach_pose);
     arm_.MoveToPose(msg.pose);
     force_switch_.DisableStream();
-    monitor_switch_.DisableStream();
+    monitor_switch_.DeactivateMonitor();
     hand_.Open();
     arm_.MoveToPose(approach_pose);
     arm_.MoveToHome();

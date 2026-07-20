@@ -1,0 +1,9 @@
+# Request
+bool activate
+string grip_type
+
+---
+
+# Response
+bool success
+string message

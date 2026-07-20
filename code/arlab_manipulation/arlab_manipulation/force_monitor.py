@@ -39,7 +39,7 @@ from rclpy.node import Node
 from mia_hand_msgs.msg import ForceData
 from std_srvs.srv import SetBool
 from std_msgs.msg import Bool
-from arlab_common_interfaces.srv import GetObjectDropped
+from arlab_common_interfaces.srv import GetObjectDropped, ActivateForceMonitor
 import rclpy 
 
 class force_monitor(Node):
@@ -62,6 +62,8 @@ class force_monitor(Node):
 
         self.report_counter = 0
 
+        self.grip_type = "cylindrical"
+
         self.thumb_nforce_list = []
         self.index_nforce_list = []
         self.mrl_nforce_list = []
@@ -71,15 +73,16 @@ class force_monitor(Node):
         self.mrl_nforce_median = 0
 
         self.create_subscription(ForceData, '/mia_hand/data_streams/fingers/forces/data', self.get_data, 10)
-        self.activation_status = self.create_service(SetBool, '/force_monitor/activate', self.activation_callback)
+        self.activation_status = self.create_service(ActivateForceMonitor, '/force_monitor/activate', self.activation_callback)
         self.dropped_service = self.create_service(GetObjectDropped, '/object_dropped', self.object_dropped_response)
 
     def activation_callback(self, request, response):
 
-        is_activatet = request.data
+        is_activatet = request.activate
 
         if is_activatet:
             self.armed = True
+            self.grip_type = request.grip_type
             self.thumb_nforce_list.clear()
             self.index_nforce_list.clear()
             self.mrl_nforce_list.clear()
@@ -116,11 +119,27 @@ class force_monitor(Node):
             return
 
         #TODO Hier ggf. noch adden in welche richtung also + oder - die sensoren dich verändern bei kraftverlust
-        dropped = (
-            abs(self.thumb_nforce_median - msg.thumb_nfor) > self.allowed_force_jitter
-            or abs(self.index_nforce_median - msg.index_nfor) > self.allowed_force_jitter
-            or abs(self.mrl_nforce_median - msg.mrl_nfor) > self.allowed_force_jitter
+        
+        # tridigital and spherical are custom grip types that are not defined yet
+        # after implementing one or both, the right force sensors should be addressed here
+        if self.grip_type == "pinch":
+            dropped = (
+            (msg.thumb_nfor - self.thumb_nforce_median) > self.allowed_force_jitter
+            and (self.index_nforce_median - msg.index_nfor) > self.allowed_force_jitter
         )
+        
+        elif self.grip_type == "lateral":
+            dropped = (
+            (self.thumb_nforce_median - msg.thumb_nfor) > self.allowed_force_jitter
+        )      
+
+        # All other grip types are processed together 
+        else:
+            dropped = (
+            (self.thumb_nforce_median - msg.thumb_nfor) > self.allowed_force_jitter
+            and (self.index_nforce_median - msg.index_nfor) > self.allowed_force_jitter
+            and (self.mrl_nforce_median - msg.mrl_nfor) > self.allowed_force_jitter
+        )     
         
         if dropped:
             self.report_counter += 1

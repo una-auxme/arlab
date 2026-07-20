@@ -69,6 +69,20 @@ void JobRunner::Run(const arlab_common_interfaces::msg::OrchestratorData& msg) {
     hand_.Open();
   } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_CLOSE) {
     hand_.Close();
+  } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_CYLINDRICAL) {
+    hand_.Close();
+  } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PINCH) {
+    hand_.Pinch();
+  } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_LATERAL) {
+    hand_.Lateral();
+  } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_POINTUP) {
+    hand_.PointUp();
+  } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_POINTDOWN) {
+    hand_.PointDown();
+  } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_SPHERICAL) {
+    hand_.Spherical();
+  } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_TRIDIGITAL) {
+    hand_.Tridigital();
   } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_HOME) {
     arm_.MoveToHome();
   } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_MOVE) {
@@ -88,6 +102,42 @@ void JobRunner::Run(const arlab_common_interfaces::msg::OrchestratorData& msg) {
     hand_.Close();
     force_switch_.EnableStream();
     monitor_switch_.EnableStream();
+    arm_.MoveToPose(approach_pose);
+    arm_.MoveToHome();
+  } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PICK_PINCH) {
+    // Full pick sequence: open → approach → close → retreat → home.
+    hand_.Open();
+    auto approach_pose = arm_.MakeApproachPose(msg.pose, kApproachDistance, kLiftOffset);
+    arm_.MoveToPose(approach_pose);
+    arm_.MoveToPose(msg.pose);
+    hand_.Pinch();
+    arm_.MoveToPose(approach_pose);
+    arm_.MoveToHome();
+  } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PICK_LATERAL) {
+    // Full pick sequence: open → approach → close → retreat → home.
+    hand_.Open();
+    auto approach_pose = arm_.MakeApproachPose(msg.pose, kApproachDistance, kLiftOffset);
+    arm_.MoveToPose(approach_pose);
+    arm_.MoveToPose(msg.pose);
+    hand_.Lateral();
+    arm_.MoveToPose(approach_pose);
+    arm_.MoveToHome();
+  } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PICK_SPHERICAL) {
+    // Full pick sequence: open → approach → close → retreat → home.
+    hand_.Open();
+    auto approach_pose = arm_.MakeApproachPose(msg.pose, kApproachDistance, kLiftOffset);
+    arm_.MoveToPose(approach_pose);
+    arm_.MoveToPose(msg.pose);
+    hand_.Spherical();
+    arm_.MoveToPose(approach_pose);
+    arm_.MoveToHome();
+  } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PICK_TRIDIGITAL) {
+    // Full pick sequence: open → approach → close → retreat → home.
+    hand_.Open();
+    auto approach_pose = arm_.MakeApproachPose(msg.pose, kApproachDistance, kLiftOffset);
+    arm_.MoveToPose(approach_pose);
+    arm_.MoveToPose(msg.pose);
+    hand_.Tridigital();
     arm_.MoveToPose(approach_pose);
     arm_.MoveToHome();
   } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PLACE) {

@@ -17,8 +17,9 @@ import rclpy
 import rclpy.executors
 import tf2_ros
 from arlab_common_interfaces.action import ManipulationAction, OrchestratorAction
-from arlab_common_interfaces.msg import ManipulationResponse
 from arlab_common_interfaces.srv import GrippingParameter, GetObjectDropped
+from arlab_common_interfaces.msg import ManipulationResponse, ManipulationCommand
+from arlab_common_interfaces.srv import GrippingParameter
 from arlab_knowledge_interfaces.srv import GetEntity, GetShape
 from geometry_msgs.msg import Point, Pose, Quaternion
 from moveit_msgs.msg import PlanningScene
@@ -118,6 +119,7 @@ class orchestrator(Node):
         self.pickable = False
         self.ref_frame = "camera_link"
         self.force = 5.0
+        self.grip_type = "cylindrical"
         self.gripping_point_pos = Point()
         self.gripping_point_orient = Quaternion(w=1.0)
         self.placing_point_pos = Point()
@@ -309,6 +311,7 @@ class orchestrator(Node):
                 # Continue chain: fetch gripping parameters for this object group
                 self.req_gripping_parameter = GrippingParameter.Request()
                 self.req_gripping_parameter.objectgroup = self.object_group
+                self.req_gripping_parameter.objectname = self.object_name
                 future_param = self.client_gripping_parameter.call_async(self.req_gripping_parameter)
                 future_param.add_done_callback(self.handle_gripping_parameter_response)
             else:
@@ -328,7 +331,7 @@ class orchestrator(Node):
         Updates gripping force and grip modes, then computes pick/place pose.
 
         Side Effects:
-            - Updates self.force, self.grip_pos_mode, self.grip_orient_mode
+            - Updates self.force, self.grip_pos_mode, self.grip_orient_mode, self.grip_type
             - Calls compute_goal_pose
             - Updates self.err / self.msg if service fails
 
@@ -340,6 +343,7 @@ class orchestrator(Node):
             self.force = response.gripforce
             self.grip_pos_mode = response.grippos_mode
             self.grip_orient_mode = response.griporient_mode
+            self.grip_type = response.grip_type
             self.compute_goal_pose()
         except Exception as e:
             self.get_logger().error(f"GetGrippingParameter failed: {e}")
@@ -367,7 +371,7 @@ class orchestrator(Node):
             if self.pose is not None:
                 self.gripping_point_pos = self.pose.position
                 # Static offsets to align the gripper with the object centre.
-                # TODO: Replace with a proper grasp planner.
+                # TODO: Replace with a proper grasp planner. Every grasp type will need their own offset.
                 self.gripping_point_pos.x += -0.085
                 self.gripping_point_pos.y += 0.01
                 self.gripping_point_pos.z = 0.19
@@ -426,7 +430,7 @@ class orchestrator(Node):
 
         Side Effects:
             - Waits for OrchestratorAction server
-            - Sends goal with pose, grip force, and command type
+            - Sends goal with pose, grip force, grip type and command type
             - Registers callback for response
             - Updates self.err / self.msg if server unavailable
         """
@@ -443,10 +447,12 @@ class orchestrator(Node):
             # For commands like "home", use a provided target pose or identity
             goal_pose = self.target_pose or Pose()
 
+        execution_command = self.get_execution_command()
         msg = OrchestratorAction.Goal()
         msg.data.pose = goal_pose
+        msg.data.grip_type = String(data=self.grip_type)
         msg.data.grip_force = Float64(data=self.force)
-        msg.data.cmd = String(data=self.command_type)
+        msg.data.cmd = String(data=execution_command)
 
         if not self._orchestrator_client.wait_for_server(timeout_sec=5.0):
             self.get_logger().error("OrchestratorAction server is not available")
@@ -457,6 +463,29 @@ class orchestrator(Node):
 
         send_future = self._orchestrator_client.send_goal_async(msg)
         send_future.add_done_callback(self.handle_orchestrator_response)
+
+    def get_execution_command(self) -> str:
+        """Map a generic pick request to a hand-specific pick command.
+           Non pick commands will be returned as is."""
+
+        if self.command_type != ManipulationCommand.COMMAND_PICK:
+            return self.command_type
+
+        grip_to_pick_command = {
+            "cylindrical": ManipulationCommand.COMMAND_PICK,
+            "pinch": ManipulationCommand.COMMAND_PICK_PINCH,
+            "lateral": ManipulationCommand.COMMAND_PICK_LATERAL,
+            "spherical": ManipulationCommand.COMMAND_PICK_SPHERICAL,
+            "tridigital": ManipulationCommand.COMMAND_PICK_TRIDIGITAL,
+        }
+
+        execution_command = grip_to_pick_command.get(self.grip_type)
+        if execution_command is None:
+            raise ValueError(
+                f"Unsupported grip type for pick: '{self.grip_type}'"
+            )
+
+        return execution_command
 
     def handle_orchestrator_response(self, future):
         """Handle goal acceptance from OrchestratorAction server.

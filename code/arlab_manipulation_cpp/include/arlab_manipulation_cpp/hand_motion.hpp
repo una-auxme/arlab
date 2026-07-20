@@ -14,6 +14,7 @@
 #include <chrono>
 #include <memory>
 #include <string>
+#include <map>
 
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
@@ -47,12 +48,68 @@ class HandMotion {
       std::chrono::milliseconds timeout = std::chrono::milliseconds{3000});
 
     /**
-     * Closes the hand to a predefined grasp configuration.
+     * Closes the hand to a cylindrical grasp configuration.
      * @param timeout   Maximum time to wait for goal acceptance.
                         Defaults to 3000 ms.
      * @throws ManipulationException on any action-level failure.
      */
     void Close(
+      std::chrono::milliseconds timeout = std::chrono::milliseconds{3000});
+
+    /**
+     * Closes the hand to a pinch grasp configuration.
+     * @param timeout   Maximum time to wait for goal acceptance.
+                        Defaults to 3000 ms.
+     * @throws ManipulationException on any action-level failure.
+     */
+    void Pinch(
+      std::chrono::milliseconds timeout = std::chrono::milliseconds{3000});
+
+    /**
+     * Closes the hand to a lateral grasp configuration.
+     * @param timeout   Maximum time to wait for goal acceptance.
+                        Defaults to 3000 ms.
+     * @throws ManipulationException on any action-level failure.
+     */
+    void Lateral(
+      std::chrono::milliseconds timeout = std::chrono::milliseconds{3000});
+
+    /**
+     * Move the hand to a pointing up configuration.
+     * @param timeout   Maximum time to wait for goal acceptance.
+                        Defaults to 3000 ms.
+     * @throws ManipulationException on any action-level failure.
+     */
+    void PointUp(
+      std::chrono::milliseconds timeout = std::chrono::milliseconds{3000});
+
+    /**
+     * Move the hand to a pointing down configuration.
+     * @param timeout   Maximum time to wait for goal acceptance.
+                        Defaults to 3000 ms.
+     * @throws ManipulationException on any action-level failure.
+     */
+    void PointDown(
+      std::chrono::milliseconds timeout = std::chrono::milliseconds{3000});
+
+    /**
+     * Closes the hand to a spherical grasp configuration.
+     * WARNING: Mia hand openes hand completely on spherical grasp! Spherical grasp not yet supported.
+     * @param timeout   Maximum time to wait for goal acceptance.
+                        Defaults to 3000 ms.
+     * @throws ManipulationException on any action-level failure.
+     */
+    void Spherical(
+      std::chrono::milliseconds timeout = std::chrono::milliseconds{3000});
+
+    /**
+     * Closes the hand to a tridigital grasp configuration.
+     * WARNING: Mia hand openes hand completely on tridigital grasp! Tridigital grasp not yet supported.
+     * @param timeout   Maximum time to wait for goal acceptance.
+                        Defaults to 3000 ms.
+     * @throws ManipulationException on any action-level failure.
+     */
+    void Tridigital(
       std::chrono::milliseconds timeout = std::chrono::milliseconds{3000});
 
     /**
@@ -67,6 +124,7 @@ class HandMotion {
      *         rejected, or goal acceptance times out.
      */
     void Grasp(
+      const std::string& action_name,
       int target_closure_percent,
       int speed_for_percent = 15,
       std::chrono::milliseconds timeout = std::chrono::milliseconds{3000},
@@ -74,8 +132,9 @@ class HandMotion {
           std::chrono::milliseconds{2000});
 
   private:
+    Client::SharedPtr GetCreateClient(const std::string& action_name);
     rclcpp::Node::SharedPtr node_;
-    Client::SharedPtr client_;
+    std::map<std::string, Client::SharedPtr> client_cache_;
 };
 
 #endif  // ARLAB_MANIPULATION_CPP_HAND_MOTION_HPP_

@@ -115,6 +115,7 @@ class force_monitor(Node):
                 self.calculate_median()
             return
 
+        #TODO Hier ggf. noch adden in welche richtung also + oder - die sensoren dich verändern bei kraftverlust
         dropped = (
             abs(self.thumb_nforce_median - msg.thumb_nfor) > self.allowed_force_jitter
             or abs(self.index_nforce_median - msg.index_nfor) > self.allowed_force_jitter

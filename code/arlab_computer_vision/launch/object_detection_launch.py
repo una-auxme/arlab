@@ -37,6 +37,10 @@ def generate_launch_description():
             {"sync_tolerance": 5.0},
             {"target_frame": "world"},
             {"snapshot_mode": True},
+            # Keep the on-robot stabilization delay after arm motion. The node
+            # default is 0.0 (fast, for continuous demo streaming); the robot
+            # workflow wants the camera to settle before capturing.
+            {"snapshot_settle_sec": 1.0},
         ],
         arguments=[
             "--ros-args",

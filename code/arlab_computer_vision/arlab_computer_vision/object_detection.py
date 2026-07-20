@@ -216,6 +216,15 @@ class ObjectDetection(Node):
         # Enable snapshot mode
         self.declare_parameter("snapshot_mode", True)
 
+        # Snapshot frame acquisition tuning.
+        # snapshot_settle_sec: fixed delay after clearing buffers before a fresh
+        #   frame is accepted (lets a moving camera/arm stabilize). 0.0 = capture
+        #   as soon as a fresh frame arrives (best for continuous demo streaming).
+        # snapshot_timeout_sec: max time to wait for a fresh synchronized frame
+        #   before giving up with ERROR_NO_IMAGE_DATA.
+        self.declare_parameter("snapshot_settle_sec", 0.0)
+        self.declare_parameter("snapshot_timeout_sec", 5.0)
+
         # If the model output should be plotted and published
         self.visualize = self.get_parameter("visualize").get_parameter_value().bool_value
 
@@ -258,6 +267,12 @@ class ObjectDetection(Node):
         # Enable snapshot mode?
         self._snapshot_mode = self.get_parameter("snapshot_mode").get_parameter_value().bool_value
         self.get_logger().info(f"Snapshot mode: {self._snapshot_mode}")
+
+        self._snapshot_settle_sec = self.get_parameter("snapshot_settle_sec").get_parameter_value().double_value
+        self._snapshot_timeout_sec = self.get_parameter("snapshot_timeout_sec").get_parameter_value().double_value
+        self.get_logger().info(
+            f"Snapshot acquisition: settle={self._snapshot_settle_sec:.2f}s, timeout={self._snapshot_timeout_sec:.2f}s"
+        )
 
         if self._snapshot_mode:
             self._snapshot_group = MutuallyExclusiveCallbackGroup()
@@ -806,12 +821,22 @@ class ObjectDetection(Node):
         with self.vision_data_mutex:
             self.color_image = None
             self.pointcloud = None
-        # sleep to make sure position has stabilized
-        for _ in range(5):
-            sleep(1.0)
+
+        # Optional fixed settle delay (e.g. wait for a moving arm/camera to
+        # stabilize). Kept at 0.0 by default so demo streaming is not throttled.
+        if self._snapshot_settle_sec > 0.0:
+            sleep(self._snapshot_settle_sec)
+
+        # Poll at fine granularity for a fresh synchronized frame instead of
+        # sleeping in coarse 1s steps, so a snapshot completes as soon as data
+        # is available (tens of ms) rather than always taking >=1s.
+        poll_interval = 0.02
+        deadline = time.monotonic() + self._snapshot_timeout_sec
+        while time.monotonic() < deadline:
             with self.vision_data_mutex:
                 if self.color_image is not None and self.pointcloud is not None:
                     break
+            sleep(poll_interval)
 
         with self.vision_data_mutex:
             goal_command: VisionSnapshotCommand = goal_handle.request.command

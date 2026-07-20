@@ -67,12 +67,12 @@ _MODEL_DEFINITIONS: dict[int, dict] = {
     },
     VisionSnapshotCommand.MODEL_DISHWASHER: {
         "name": "general_objects",
-        "weights": "open_img.pt",
+        "weights": "dishwasher.pt",
         "pinned": False,
     },
     VisionSnapshotCommand.MODEL_LAUNDRY: {
         "name": "general_objects",
-        "weights": "yolo11n-seg_demo_day.pt",
+        "weights": "ycb.pt",
         "pinned": False,
     },
 }

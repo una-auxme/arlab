@@ -102,6 +102,12 @@ class PitchVideoDemo(Node):
         self._last_inference_result = "pending..."
         self._last_gpu: dict | None = None
 
+        # Cap snapshots to one in flight at a time. Firing on a fixed timer
+        # without waiting lets goals queue up faster than the (serial) action
+        # server can process them, so inference falls further and further
+        # behind. Self-pacing keeps throughput at the node's real capacity.
+        self._inference_in_flight = False
+
         self._gpu_log_path = args.gpu_log
         self._gpu_log_file = open(self._gpu_log_path, "w", newline="")
         self._gpu_writer = csv.writer(self._gpu_log_file)
@@ -147,6 +153,10 @@ class PitchVideoDemo(Node):
         elapsed = time.monotonic() - self._start_time
         if elapsed > self._duration:
             return
+        # Skip this tick if a snapshot is still being processed; the timer only
+        # sets the *fastest* firing rate, never queues a backlog.
+        if self._inference_in_flight:
+            return
         extra_models, label = self._current_models(elapsed)
 
         command = VisionSnapshotCommand()
@@ -158,6 +168,7 @@ class PitchVideoDemo(Node):
         goal.command = command
 
         self.get_logger().info(f"[t={elapsed:4.1f}s] Requesting snapshot ({label})")
+        self._inference_in_flight = True
         send_future = self._action_client.send_goal_async(goal)
         send_future.add_done_callback(self._on_goal_response)
 
@@ -165,15 +176,21 @@ class PitchVideoDemo(Node):
         goal_handle = future.result()
         if not goal_handle.accepted:
             self._last_inference_result = "REJECTED"
+            self._inference_in_flight = False
             return
         result_future = goal_handle.get_result_async()
         result_future.add_done_callback(self._on_inference_result)
 
     def _on_inference_result(self, future) -> None:
-        response = future.result().result.response
-        self._last_inference_result = _RESULT_NAMES.get(response.result, str(response.result))
-        if response.error_msg:
-            self.get_logger().warn(f"Snapshot error: {response.error_msg}")
+        try:
+            response = future.result().result.response
+            self._last_inference_result = _RESULT_NAMES.get(response.result, str(response.result))
+            if response.error_msg:
+                self.get_logger().warn(f"Snapshot error: {response.error_msg}")
+        finally:
+            # Always clear the in-flight flag so the next tick can fire, even if
+            # the result errored - otherwise inference would stall permanently.
+            self._inference_in_flight = False
 
     def _on_gpu_tick(self) -> None:
         if self.finished:

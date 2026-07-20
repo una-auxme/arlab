@@ -142,6 +142,8 @@ class PitchVideoDemo(Node):
 
     # -- timers ----------------------------------------------------------------
     def _on_inference_tick(self) -> None:
+        if self.finished:
+            return
         elapsed = time.monotonic() - self._start_time
         if elapsed > self._duration:
             return
@@ -174,6 +176,8 @@ class PitchVideoDemo(Node):
             self.get_logger().warn(f"Snapshot error: {response.error_msg}")
 
     def _on_gpu_tick(self) -> None:
+        if self.finished:
+            return
         stats = _query_gpu()
         if stats is None:
             return

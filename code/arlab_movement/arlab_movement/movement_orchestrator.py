@@ -451,6 +451,16 @@ class NavigationOrchestrator(Node):
         self._teardown_annotation()
         return NavErr.OK, "auto-annotation stopped"
 
+    def _teardown_annotation(self):
+        """Cancel the annotation timer and remove the odom subscription if active."""
+        self.annotate_active = False
+        if self._annotate_timer is not None:
+            self._annotate_timer.cancel()
+            self._annotate_timer = None
+        if self._odom_sub is not None:
+            self.destroy_subscription(self._odom_sub)
+            self._odom_sub = None
+
     def stop_all(self):
         """
         Stop all navigation-related subprocesses.

@@ -470,6 +470,49 @@ class NavigationOrchestrator(Node):
         """Cache the latest odometry data for speed and turn rate checks"""
         self._latest_odom = msg
 
+    def _annotate_tick(self):
+        """
+        Evaluate the snapshot condition checks and log when a snapshot fires.
+
+        Gates / Checks:
+        - No snapshot in flight -> robot moving slowly linear speed and turn rate
+        - A minimum time interval has elapsed
+        - The robot has moved or turned enough since the last snapshot.
+        """
+        # inactive or not odom -> skip
+        if not self.annotate_active or self._latest_odom is None:
+            return
+        # if snapshot is already running -> skip
+        with self._snap_lock:
+            if self._snapshot_in_flight:
+                return
+
+        # get current odom data
+        x, y, yaw, speed, yaw_rate = self._pose_from_odom(self._latest_odom)
+        now = self.get_clock().now().nanoseconds * 1e-9
+
+        # speed and turn rate checks, if higher than threshold -> skip
+        if speed > float(self.get_parameter("annotate_max_speed").value):
+            return
+        if yaw_rate > float(self.get_parameter("annotate_max_yaw_rate").value):
+            return
+
+        # if last snapshot was too recent -> skip
+        if now - self._last_snap_time < float(self.get_parameter("annotate_min_interval").value):
+            return
+
+        # if last snapshot pose exits, check distance and turned to it, if too small -> skip
+        if self._last_snap_pose is not None:
+            moved = math.hypot(x - self._last_snap_pose[0], y - self._last_snap_pose[1])
+            turned = abs(self._angle_diff(yaw, self._last_snap_pose[2]))
+            if moved < float(self.get_parameter("annotate_min_dist").value) and turned < float(
+                self.get_parameter("annotate_min_yaw").value
+            ):
+                return
+
+        # if all checks pass -> fire snapshot
+        self._fire_snapshot(x, y, yaw, now)
+
     def _pose_from_odom(self, msg: Odometry) -> Tuple[float, float, float, float, float]:
         """Extract planar (x, y, yaw, linear_speed, abs_yaw_rate) from Odometry."""
         p = msg.pose.pose.position

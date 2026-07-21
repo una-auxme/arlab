@@ -42,6 +42,7 @@ class NavErr:
     MAP_SAVE_FAILED = -30
     DB_SERVICE_UNAVAILABLE = -31
     DB_SAVE_FAILED = -32
+    ANNOTATE_SERVER_UNAVAILABLE = -40
 
 
 class NavigationOrchestrator(Node):

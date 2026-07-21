@@ -15,6 +15,17 @@ navigation_orchestrator:
     database_service: "/arlab/knowledge/add_map"
     database_timeout: 10.0
 
+    # Auto-annotation (CV snapshot) parameters
+    snapshot_action_name: "/vision/snapshot"
+    odom_topic: "/odom"
+    annotate_tick_period: 1.0       # s, gate evaluation rate
+    annotate_min_dist: 0.75         # m moved since last snapshot
+    annotate_min_yaw: 0.5           # rad turned since last snapshot
+    annotate_min_interval: 6.0      # s floor between snapshots
+    annotate_max_speed: 0.10        # m/s; fire only when slower
+    annotate_max_yaw_rate: 0.20     # rad/s; fire only when slower
+    annotate_server_timeout: 10.0   # s, wait_for_server
+
 map_save_publisher:
   ros__parameters:
     # Auto-save interval in seconds (0 = disabled)

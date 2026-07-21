@@ -61,6 +61,17 @@ class NavigationOrchestrator(Node):
         # old topic API
         self.declare_parameter("enable_legacy_topics", False)
 
+        # auto-annotation by CV snapshot parameters.
+        self.declare_parameter("snapshot_action_name", "/vision/snapshot")
+        self.declare_parameter("odom_topic", "/odom")
+        self.declare_parameter("annotate_tick_period", 1.0)  # seconds betweeen checks for snapshot conditions
+        self.declare_parameter("annotate_min_dist", 0.75)  # m moved since last snapshot
+        self.declare_parameter("annotate_min_yaw", 0.5)  # rad turned since last snapshot
+        self.declare_parameter("annotate_min_interval", 6.0)  # min interval in seconds between snapshots
+        self.declare_parameter("annotate_max_speed", 0.10)  # only fire when slower than this
+        self.declare_parameter("annotate_max_yaw_rate", 0.20)  # only fire when turning slower than this
+        self.declare_parameter("annotate_server_timeout", 10.0)
+
         self.map_path = str(self.get_parameter("map_path").value)
         self.use_timestamp = bool(self.get_parameter("use_timestamp").value)
         self.save_to_database = bool(self.get_parameter("save_to_database").value)

@@ -513,6 +513,67 @@ class NavigationOrchestrator(Node):
         # if all checks pass -> fire snapshot
         self._fire_snapshot(x, y, yaw, now)
 
+    def _fire_snapshot(self, x: float, y: float, yaw: float, now: float):
+        """
+        Send one /vision/snapshot goal and publish to /arlab/movement/annotating.
+
+        Records the snapshot pose/time up front so the gates advance even while
+        the goal is in flight, marks the snapshot as in flight to prevent
+        overlap.
+        Entities are written to the knowledge base by the vision node itself.
+        """
+        goal = VisionSnapshotAction.Goal()
+        goal.command.clear_database = False  # accumulate annotations across the run
+        goal.command.mask_hand = False
+        # extra_models left empty to use general model for annotation
+
+        # set in-flight flag and current snapshot metadata
+        with self._snap_lock:
+            self._snapshot_in_flight = True
+        self._last_snap_pose = (x, y, yaw)
+        self._last_snap_time = now
+
+        # publish to /arlab/movement/annotating to signal operator for running snapshot
+        self.annotating_pub.publish(Bool(data=True))
+        self.get_logger().info(f"auto-annotate: SNAPSHOT IN PROGRESS at ({x:.2f}, {y:.2f}, {yaw:.2f} rad) - hold position.")
+
+        # call action server
+        send_future = self.snapshot_client.send_goal_async(goal)
+        send_future.add_done_callback(self._on_snapshot_goal)
+
+    def _on_snapshot_goal(self, future):
+        """Handle the goal-accepted response and chain to the result future."""
+        try:
+            handle = future.result()
+        # check for exceptions
+        except Exception as e:
+            self._clear_in_flight()
+            self.get_logger().warning(f"Snapshot goal send failed: {e}")
+            return
+        # check for rejection by action server
+        if not handle.accepted:
+            self._clear_in_flight()
+            self.get_logger().warning("Snapshot goal rejected by server.")
+            return
+        handle.get_result_async().add_done_callback(self._on_snapshot_result)
+
+    def _on_snapshot_result(self, future):
+        """Log the snapshot outcome and clear the in-flight flag/operator signal."""
+        self._clear_in_flight()
+        try:
+            response = future.result().result.response
+        except Exception as e:
+            self.get_logger().warning(f"Snapshot result failed: {e}")
+            return
+        if response.result != VisionSnapshotResponse.SUCCESS:
+            self.get_logger().warning(f"Snapshot failed: {response.error_msg}")
+
+    def _clear_in_flight(self):
+        """Mark no snapshot in flight and publish to /arlab/movement/annotating that snapshot finished."""
+        with self._snap_lock:
+            self._snapshot_in_flight = False
+        self.annotating_pub.publish(Bool(data=False))
+
     def _pose_from_odom(self, msg: Odometry) -> Tuple[float, float, float, float, float]:
         """Extract planar (x, y, yaw, linear_speed, abs_yaw_rate) from Odometry."""
         p = msg.pose.pose.position

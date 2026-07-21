@@ -461,6 +461,25 @@ class NavigationOrchestrator(Node):
             self.destroy_subscription(self._odom_sub)
             self._odom_sub = None
 
+    def _odom_callback(self, msg: Odometry):
+        """Cache the latest odometry data for speed and turn rate checks"""
+        self._latest_odom = msg
+
+    def _pose_from_odom(self, msg: Odometry) -> Tuple[float, float, float, float, float]:
+        """Extract planar (x, y, yaw, linear_speed, abs_yaw_rate) from Odometry."""
+        p = msg.pose.pose.position
+        q = msg.pose.pose.orientation
+        yaw = math.atan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z))
+        v = msg.twist.twist.linear
+        speed = math.hypot(v.x, v.y)
+        yaw_rate = abs(msg.twist.twist.angular.z)
+        return p.x, p.y, yaw, speed, yaw_rate
+
+    @staticmethod
+    def _angle_diff(a: float, b: float) -> float:
+        """Shortest signed difference between two angles (rad)."""
+        return math.atan2(math.sin(a - b), math.cos(a - b))
+
     def stop_all(self):
         """
         Stop all navigation-related subprocesses.

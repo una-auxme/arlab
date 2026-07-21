@@ -484,9 +484,11 @@ class NavigationOrchestrator(Node):
         """
         Stop all navigation-related subprocesses.
 
-        This shuts down AMCL, SLAM Toolbox, and Nav2 if they are running.
-        Used both for explicit "stop_all" commands and action cancellation.
+        This shuts down AMCL, SLAM Toolbox, and Nav2 if they are running, and
+        also stops auto-annotation if active. Used both for explicit "stop_all"
+        commands and action cancellation.
         """
+        self._teardown_annotation()
         self.amcl_process, _, _ = self._stop_process(self.amcl_process, "AMCL")
         self.slam_process, _, _ = self._stop_process(self.slam_process, "SLAM Toolbox")
         self.nav_process, _, _ = self._stop_process(self.nav_process, "Nav2")

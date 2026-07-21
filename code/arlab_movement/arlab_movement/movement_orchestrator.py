@@ -10,6 +10,7 @@ Maintainers:
     Luca Kahlenberg <luca.kahlenberg@uni-a.de>
 """
 
+import math
 import os
 import signal
 import subprocess
@@ -20,9 +21,11 @@ from typing import Optional, Tuple
 
 import rclpy
 import rclpy.executors
-from arlab_common_interfaces.action import MovementAction
+from arlab_common_interfaces.action import MovementAction, VisionSnapshotAction
+from arlab_common_interfaces.msg import VisionSnapshotResponse
 from arlab_knowledge_interfaces.srv import AddMap
-from nav_msgs.msg import OccupancyGrid
+from nav_msgs.msg import OccupancyGrid, Odometry
+from rclpy.action import ActionClient
 from rclpy.action.server import ActionServer, CancelResponse, GoalResponse
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
 from rclpy.node import Node

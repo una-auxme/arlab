@@ -86,6 +86,16 @@ class NavigationOrchestrator(Node):
         self.slam_process: Optional[subprocess.Popen] = None
         self.nav_process: Optional[subprocess.Popen] = None
 
+        # auto-annotation state
+        self.annotate_active = False
+        self._snapshot_in_flight = False
+        self._last_snap_pose: Optional[Tuple[float, float, float]] = None
+        self._last_snap_time = 0.0
+        self._latest_odom: Optional[Odometry] = None
+        self._annotate_timer = None
+        self._odom_sub = None
+        self._snap_lock = threading.Lock()
+
         # subscribe to the map topic to cache the latest map for saving
         self.map_subscription = self.create_subscription(OccupancyGrid, self.map_topic, self.map_callback, 10)
 
@@ -105,6 +115,13 @@ class NavigationOrchestrator(Node):
             cancel_callback=self.cancel_callback,
             callback_group=self.action_group,
         )
+
+        # auto-annotation: snapshot action client + topic publishin if snapshots being taken
+        self.snapshot_action_name = str(self.get_parameter("snapshot_action_name").value)
+        self.snapshot_client = ActionClient(
+            self, VisionSnapshotAction, self.snapshot_action_name, callback_group=self.action_group
+        )
+        self.annotating_pub = self.create_publisher(Bool, "/arlab/movement/annotating", 10)
 
         # legacy topic interface (subscription based control)
         if self.enable_legacy_topics:
@@ -203,6 +220,8 @@ class NavigationOrchestrator(Node):
                 err, msg = self.set_mapping(enable, publish_status)
             elif cmd == "nav":
                 err, msg = self.set_nav(enable, publish_status)
+            elif cmd == "auto_annotate":
+                err, msg = self.set_auto_annotate(enable, publish_status)
             elif cmd == "map_save":
                 err, msg = self.save_map(publish_status)
             elif cmd == "stop_all":
@@ -377,6 +396,60 @@ class NavigationOrchestrator(Node):
         publish_status("Stopping navigation (Nav2)")
         self.nav_process, err, msg = self._stop_process(self.nav_process, "Nav2")
         return err, msg
+
+    # auto-annotation
+    def set_auto_annotate(self, enable: bool, publish_status) -> Tuple[int, str]:
+        """
+        Start or stop periodic CV snapshots that auto-annotate the map.
+
+        When enabled, subscribes to odometry and starts a timer that decides, on
+        each tick:
+        Whether the robot has moved/turned enough since the last
+        snapshot
+        And is moving slowly enough for a stable frame.
+
+        Args:
+            enable (bool): True to start auto-annotation, False to stop it.
+            publish_status (Callable[[str], None]): Callback to publish feedback.
+
+        Returns:
+            Tuple:
+                - int: Error code (NavErr.OK on success)
+                - str: Status or error message
+        """
+        if enable:
+            # start auto-annotation: check for fallpits
+            if self.annotate_active:
+                return NavErr.OK, "auto-annotation already running"
+            if self.slam_process is None or self.slam_process.poll() is not None:
+                self.get_logger().warning("auto_annotate started without SLAM running. map frame may be unavailable.")
+            timeout = float(self.get_parameter("annotate_server_timeout").value)
+            if not self.snapshot_client.wait_for_server(timeout_sec=timeout):
+                return NavErr.ANNOTATE_SERVER_UNAVAILABLE, (f"Snapshot action '{self.snapshot_action_name}' not available")
+            publish_status("Starting auto-annotation (CV snapshots)")
+
+            self._last_snap_pose = None
+            self._last_snap_time = 0.0
+            self._latest_odom = None
+
+            # subscribe to odometry
+            self._odom_sub = self.create_subscription(
+                Odometry,
+                str(self.get_parameter("odom_topic").value),
+                self._odom_callback,
+                10,
+                callback_group=self.service_group,
+            )
+
+            # create a timer to periodically check if a snapshot should be taken / conditions are met
+            period = float(self.get_parameter("annotate_tick_period").value)
+            self._annotate_timer = self.create_timer(period, self._annotate_tick, callback_group=self.action_group)
+            self.annotate_active = True
+            return NavErr.OK, "auto-annotation started"
+
+        publish_status("Stopping auto-annotation")
+        self._teardown_annotation()
+        return NavErr.OK, "auto-annotation stopped"
 
     def stop_all(self):
         """

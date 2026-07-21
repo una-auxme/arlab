@@ -5,8 +5,9 @@ This node implements an action-based orchestrator for managing navigation-relate
 It provides functionality to start/stop localization (AMCL) [currently not used], mapping (SLAM Toolbox),
 and navigation (Nav2), as well as saving the current map to file and optionally to a knowledge database.
 
-Author: Jonas Platzer
-
+Maintainers:
+    Jonas Platzer
+    Luca Kahlenberg <luca.kahlenberg@uni-a.de>
 """
 
 import os

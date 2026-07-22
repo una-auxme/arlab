@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import os
 import wave
-from datetime import datetime
 
 import numpy as np
 import sounddevice as sd
@@ -50,7 +49,7 @@ def main():
 
                 filename = os.path.join(
                     OUTPUT_FOLDER,
-                    f"testaudio.wav",
+                    "testaudio.wav",
                 )
                 save_wav(filename, audio)
                 print(f"Saved: {filename}")

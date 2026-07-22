@@ -5,6 +5,8 @@
   <version>0.0.0</version>
   <description>Package for AR Lab robot movement and navigation.</description>
   <maintainer email="lukas.asam@uni-a.de">Lukas Asam</maintainer>
+  <maintainer email="luca.kahlenberg@uni-a.de>">Luca Kahlenberg</maintainer>
+  
   <license>MIT</license>
 
   <test_depend>python3-pytest</test_depend>

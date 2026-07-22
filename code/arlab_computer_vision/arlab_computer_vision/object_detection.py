@@ -25,6 +25,7 @@ import rclpy
 import rclpy.executors
 import ros2_numpy
 import torch
+import yaml
 from ament_index_python.packages import get_package_share_directory
 from arlab_common_interfaces.action import VisionSnapshotAction
 from arlab_common_interfaces.msg import VisionSnapshotCommand, VisionSnapshotResponse
@@ -57,25 +58,25 @@ from torchvision.transforms.functional import resize
 from ultralytics import YOLO
 
 
-# Maps VisionSnapshotCommand model constants to weights filenames (relative to yolo_weights/).
-# pinned=True models are loaded at startup and never evicted; all others are lazy-loaded.
-_MODEL_DEFINITIONS: dict[int, dict] = {
-    VisionSnapshotCommand.MODEL_GENERAL_OBJECTS_AND_PEOPLE: {
-        "name": "general_objects",
-        "weights": "person.pt",
-        "pinned": False,
-    },
-    VisionSnapshotCommand.MODEL_DISHWASHER: {
-        "name": "general_objects",
-        "weights": "open_img.pt",
-        "pinned": False,
-    },
-    VisionSnapshotCommand.MODEL_LAUNDRY: {
-        "name": "general_objects",
-        "weights": "yolo11n-seg_demo_day.pt",
-        "pinned": False,
-    },
-}
+def _load_model_definitions(path: str) -> dict[int, dict]:
+    """Load model definitions from a YAML config.
+
+    The YAML keys (e.g. "DISHWASHER") are resolved to VisionSnapshotCommand.MODEL_*
+    constants, so a typo or stale entry fails fast at startup instead of silently
+    mismatching a model ID. pinned=True models are loaded at startup and never
+    evicted; all others are lazy-loaded.
+    """
+    with open(path) as f:
+        raw = yaml.safe_load(f)["models"]
+    definitions: dict[int, dict] = {}
+    for key, defn in raw.items():
+        model_id = getattr(VisionSnapshotCommand, f"MODEL_{key}")
+        definitions[model_id] = {
+            "name": defn["name"],
+            "weights": defn["weights"],
+            "pinned": defn.get("pinned", False),
+        }
+    return definitions
 
 
 @dataclass
@@ -194,6 +195,7 @@ class ObjectDetection(Node):
 
         package_share_dir = get_package_share_directory("arlab_computer_vision")
         yolo_weights_dir = os.path.join(package_share_dir, "yolo_weights")
+        model_definitions = _load_model_definitions(os.path.join(package_share_dir, "config", "models.yaml"))
 
         # Declare configurable parameters.
         self.declare_parameter("model_ttl_minutes", 10)
@@ -290,7 +292,7 @@ class ObjectDetection(Node):
 
         warmup_size = self.max_image_width if self.max_image_width > 0 else 640
         self._model_registry = ModelRegistry(
-            definitions=_MODEL_DEFINITIONS,
+            definitions=model_definitions,
             weights_dir=yolo_weights_dir,
             device=self.device,
             logger=self.get_logger(),

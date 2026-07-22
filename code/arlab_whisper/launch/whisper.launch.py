@@ -6,19 +6,21 @@ import os
 
 def generate_launch_description():
 
-    #import the yaml parameters
+    # import the yaml parameters
     config = os.path.join(
         get_package_share_directory("arlab_whisper"),
         "config",
         "whisper.yaml",
     )
 
-    return LaunchDescription([
-        Node(
-            package="arlab_whisper",
-            executable="whisper",
-            name="whisper",
-            output="screen",
-            parameters=[config],
-        ),
-    ])
+    return LaunchDescription(
+        [
+            Node(
+                package="arlab_whisper",
+                executable="whisper",
+                name="whisper",
+                output="screen",
+                parameters=[config],
+            ),
+        ]
+    )

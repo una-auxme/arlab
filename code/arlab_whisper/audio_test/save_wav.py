@@ -7,7 +7,6 @@ import numpy as np
 import sounddevice as sd
 
 
-
 SAMPLE_RATE = 16000
 CHANNELS = 1
 DTYPE = np.int16
@@ -38,7 +37,7 @@ def main():
     each block to the path, records until interrupted
     """
     os.makedirs(OUTPUT_FOLDER, exist_ok=True)
-    #print(sd.query_devices())
+    # print(sd.query_devices())
     try:
         with sd.InputStream(
             samplerate=SAMPLE_RATE,
@@ -46,7 +45,6 @@ def main():
             dtype=DTYPE,
             blocksize=BLOCKSIZE,
         ) as stream:
-
             while True:
                 audio, overflowed = stream.read(BLOCKSIZE)
 
@@ -59,6 +57,7 @@ def main():
 
     except KeyboardInterrupt:
         print("\nStopped.")
+
 
 if __name__ == "__main__":
     main()

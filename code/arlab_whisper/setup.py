@@ -16,7 +16,8 @@ setup(
     zip_safe=True,
     maintainer="arlab",
     maintainer_email="tobias.neher@uni-a.de",
-    description="This package allows speech recognition using Faster-Whisper with wakeword detection. It continuously monitors microphone input, detects configurable wakewords, transcribes them and publishes the result",
+    description="This package allows speech recognition using Faster-Whisper with wakeword detection. "
+    "It continuously monitors microphone input, detects configurable wakewords, transcribes them and publishes the result",
     license="Apache-2.0",
     extras_require={
         "test": [

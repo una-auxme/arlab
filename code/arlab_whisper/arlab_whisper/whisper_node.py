@@ -11,7 +11,7 @@ import tempfile
 import time
 import wave
 from collections import deque
-from enum import Enum, auto
+from enum import Enum
 
 import numpy as np
 import re
@@ -351,7 +351,7 @@ class WhisperNode(Node):
         with wave.open(filename, "wb") as wf:
             wf.setnchannels(self.channels)
             wf.setsampwidth(2)
-            wf.setframerate(elf.sample_rate)
+            wf.setframerate(self.sample_rate)
             wf.writeframes(audio.tobytes())
         return filename
 

@@ -123,9 +123,7 @@ class NavigationOrchestrator(Node):
 
         # auto-annotation: snapshot action client + topic publishin if snapshots being taken
         self.snapshot_action_name = str(self.get_parameter("snapshot_action_name").value)
-        self.snapshot_client = ActionClient(
-            self, VisionSnapshotAction, self.snapshot_action_name, callback_group=self.action_group
-        )
+        self.snapshot_client = ActionClient(self, VisionSnapshotAction, self.snapshot_action_name, callback_group=self.action_group)
         self.annotating_pub = self.create_publisher(Bool, "/arlab/movement/annotating", 10)
 
         # legacy topic interface (subscription based control)

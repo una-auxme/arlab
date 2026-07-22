@@ -79,6 +79,34 @@ def _load_model_definitions(path: str) -> dict[int, dict]:
     return definitions
 
 
+def _load_label_definitions(path: str) -> dict[str, dict]:
+    """Load YOLO label -> KB entity type/category mappings from a YAML config.
+
+    Resolves each entry's "type" to an EntityType.* constant and optional
+    "object_category" to an EntityPickable.OBJECT_CATEGORY_* constant at load
+    time, so a typo fails fast at startup instead of at first detection.
+
+    A "type" naming a specific EntityFurniture submessage field (e.g.
+    "dishwasher", matching EntityFurniture.msg) may carry an "attributes" map,
+    whose entries are set directly on that submessage (e.g. dishwasher.open).
+    """
+    with open(path) as f:
+        raw = yaml.safe_load(f)["labels"]
+    definitions: dict[str, dict] = {}
+    for label, defn in raw.items():
+        object_category = None
+        if "object_category" in defn:
+            object_category = getattr(EntityPickable, f"OBJECT_CATEGORY_{defn['object_category'].upper()}")
+        attributes = defn.get("attributes", {})
+        definitions[label] = {
+            "entity_type_id": getattr(EntityType, defn["type"].upper()),
+            "object_category": object_category,
+            "furniture_field": defn["type"].lower() if attributes else None,
+            "attributes": attributes,
+        }
+    return definitions
+
+
 @dataclass
 class _ModelEntry:
     model: Any
@@ -196,6 +224,7 @@ class ObjectDetection(Node):
         package_share_dir = get_package_share_directory("arlab_computer_vision")
         yolo_weights_dir = os.path.join(package_share_dir, "yolo_weights")
         model_definitions = _load_model_definitions(os.path.join(package_share_dir, "config", "models.yaml"))
+        self._label_definitions = _load_label_definitions(os.path.join(package_share_dir, "config", "labels.yaml"))
 
         # Declare configurable parameters.
         self.declare_parameter("model_ttl_minutes", 10)
@@ -598,7 +627,9 @@ class ObjectDetection(Node):
                     self.debug_pointcloud_pub.publish(entity_pointcloud)
 
                     label = result.names[int(result.boxes.cls[i].item())]
-                    all_entities.append(create_entity(label, entity_points, entity_pointcloud.header))
+                    if label not in self._label_definitions:
+                        self.get_logger().warn(f"No label definition for '{label}', defaulting to pickable/unknown")
+                    all_entities.append(create_entity(label, entity_points, entity_pointcloud.header, self._label_definitions))
 
         # === 4. VISUALIZE (all models' detections on one frame) ===
         if self.visualize and annotated_image is not None:
@@ -841,9 +872,26 @@ class ObjectDetection(Node):
             return action_result
 
 
-def create_entity(label: str, structured_points: NDArray, points_header: Header) -> Tuple[Entity, Shape]:
+def create_entity(
+    label: str,
+    structured_points: NDArray,
+    points_header: Header,
+    label_definitions: dict[str, dict],
+) -> Tuple[Entity, Shape]:
+    defn = label_definitions.get(label)
+    if defn is None:
+        entity_type_id = EntityType.PICKABLE
+        object_category = EntityPickable.OBJECT_CATEGORY_UNKNOWN
+        furniture_field = None
+        attributes: dict = {}
+    else:
+        entity_type_id = defn["entity_type_id"]
+        object_category = defn["object_category"] or EntityPickable.OBJECT_CATEGORY_UNKNOWN
+        furniture_field = defn["furniture_field"]
+        attributes = defn["attributes"]
+
     entity = Entity()
-    entity.entity_type.id = EntityType.PICKABLE
+    entity.entity_type.id = entity_type_id
     entity.stamp = points_header.stamp
     entity.description = label
     entity.pose_reference_frame = points_header.frame_id
@@ -851,8 +899,11 @@ def create_entity(label: str, structured_points: NDArray, points_header: Header)
     entity.pose.position.y = float(np.average(structured_points["y"]))
     entity.pose.position.z = float(np.average(structured_points["z"]))
     entity.pickable.object_name = label
-    # TODO: Map YOLO class labels to KB object categories (placeholder default for now).
-    entity.pickable.object_category = EntityPickable.OBJECT_CATEGORY_CYLINDER
+    entity.pickable.object_category = object_category
+    if furniture_field is not None:
+        furniture_msg = getattr(entity.furniture, furniture_field)
+        for attr_name, attr_value in attributes.items():
+            setattr(furniture_msg, attr_name, attr_value)
     shape = Shape()
     shape.has_pointcloud = True
     shape.pointcloud = array_to_pointcloud2(structured_points)
@@ -862,9 +913,7 @@ def create_entity(label: str, structured_points: NDArray, points_header: Header)
 
 def main(args=None):
     """Entry point for the object_detection node."""
-    # from arlab_common.debugging import start_debugger
 
-    # start_debugger(wait_for_client=True)
 
     rclpy.init(args=args)
 

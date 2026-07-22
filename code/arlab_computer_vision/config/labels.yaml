@@ -97,8 +97,12 @@ labels:
 
   # Dishwasher model
   dishwasher-closed:
-    type: furniture
+    type: dishwasher
+    attributes:
+      open: closed
   dishwasher-open:
-    type: furniture
+    type: dishwasher
+    attributes:
+      open: open
   dishwasher-rack:
     type: pickable

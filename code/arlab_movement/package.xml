@@ -40,6 +40,8 @@
   <exec_depend>robot_state_publisher</exec_depend>
   <exec_depend>rviz2</exec_depend>
   <exec_depend>teleop_twist_keyboard</exec_depend>
+  <exec_depend>arlab_computer_vision</exec_depend>
+  <exec_depend>arlab_knowledge</exec_depend>
 
   <!--dependencie for rosbot_xl-->
   <depend>laser_filters</depend>

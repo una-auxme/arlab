@@ -63,6 +63,7 @@ except ImportError:
 # DATA MODELS
 # ============================================================================
 
+
 @dataclass
 class RuntimeState:
     """Internal UI-side representation of the current HRI output state.
@@ -121,6 +122,7 @@ PAGE_MAINTENANCE = 5
 # ============================================================================
 # UI COMPONENTS
 # ============================================================================
+
 
 class CameraView(QWidget):
     """Rounded camera panel with placeholder fallback and live frame updates."""
@@ -192,6 +194,7 @@ class RosInterfaceThread(QThread):
     The bridge is intentionally simple. It uses std_msgs/msg/String for UI
     actions until a structured HRI feedback message is defined.
     """
+
     speech_received = pyqtSignal(str)
     status_changed = pyqtSignal(str)
     action_published = pyqtSignal(str)
@@ -216,9 +219,7 @@ class RosInterfaceThread(QThread):
 
     def run(self):
         if not ROS_AVAILABLE:
-            self.status_changed.emit(
-                "ROS integration: unavailable in current Python environment"
-            )
+            self.status_changed.emit("ROS integration: unavailable in current Python environment")
             return
 
         try:
@@ -245,18 +246,11 @@ class RosInterfaceThread(QThread):
                     self.handle_camera_message,
                     10,
                 )
-                self.camera_status_changed.emit(
-                    f"Camera source: waiting for {self.camera_topic_name}"
-                )
+                self.camera_status_changed.emit(f"Camera source: waiting for {self.camera_topic_name}")
             else:
-                self.camera_status_changed.emit(
-                    "Camera source: placeholder image, camera dependencies unavailable"
-                )
+                self.camera_status_changed.emit("Camera source: placeholder image, camera dependencies unavailable")
 
-            self.status_changed.emit(
-                "ROS integration: subscribed to "
-                f"{self.tts_topic_name}, publishing to {self.action_topic_name}"
-            )
+            self.status_changed.emit(f"ROS integration: subscribed to {self.tts_topic_name}, publishing to {self.action_topic_name}")
 
             while self._running and rclpy.ok():
                 rclpy.spin_once(self.node, timeout_sec=0.1)
@@ -303,9 +297,7 @@ class RosInterfaceThread(QThread):
             ).copy()
 
             self.camera_frame_received.emit(qt_image)
-            self.camera_status_changed.emit(
-                f"Camera source: live ROS topic {self.camera_topic_name}"
-            )
+            self.camera_status_changed.emit(f"Camera source: live ROS topic {self.camera_topic_name}")
 
         except Exception as error:
             self.camera_status_changed.emit(f"Camera error: {error}")
@@ -341,8 +333,8 @@ class RosInterfaceThread(QThread):
 # MAIN WINDOW
 # ============================================================================
 
-class ZirbiDisplay(QMainWindow):
 
+class ZirbiDisplay(QMainWindow):
     # ============================================================================
     # INITIALIZATION
     # ============================================================================
@@ -452,20 +444,12 @@ class ZirbiDisplay(QMainWindow):
             self.ros_interface_thread = RosInterfaceThread("/tts_output", "/ui_action")
             self.ros_interface_thread.speech_received.connect(self.handle_ros_speech)
             self.ros_interface_thread.status_changed.connect(self.update_ros_status)
-            self.ros_interface_thread.action_published.connect(
-                self.handle_ros_action_published
-            )
-            self.ros_interface_thread.camera_frame_received.connect(
-                self.handle_ros_camera_frame
-            )
-            self.ros_interface_thread.camera_status_changed.connect(
-                self.update_camera_status
-            )
+            self.ros_interface_thread.action_published.connect(self.handle_ros_action_published)
+            self.ros_interface_thread.camera_frame_received.connect(self.handle_ros_camera_frame)
+            self.ros_interface_thread.camera_status_changed.connect(self.update_camera_status)
             self.ros_interface_thread.start()
         else:
-            self.ros_status_text = (
-                "ROS integration: unavailable in current Python environment"
-            )
+            self.ros_status_text = "ROS integration: unavailable in current Python environment"
 
     def update_clock(self):
         self.time_label.setText(QTime.currentTime().toString("HH:mm"))
@@ -971,9 +955,7 @@ class ZirbiDisplay(QMainWindow):
             self.next_action_label,
         ):
             label.setWordWrap(True)
-            label.setAlignment(
-                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
-            )
+            label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
 
         layout.addWidget(self.message_label)
         layout.addWidget(self.speech_label)
@@ -1028,21 +1010,13 @@ class ZirbiDisplay(QMainWindow):
         self.dev_hri_label.setObjectName("debugText")
         self.dev_system_label.setObjectName("debugText")
 
-        left_column.addWidget(
-            self.debug_card_with_label("Runtime State", self.dev_state_label)
-        )
+        left_column.addWidget(self.debug_card_with_label("Runtime State", self.dev_state_label))
 
-        left_column.addWidget(
-            self.debug_card_with_label("Camera Source", self.dev_camera_label)
-        )
+        left_column.addWidget(self.debug_card_with_label("Camera Source", self.dev_camera_label))
 
-        right_column.addWidget(
-            self.debug_card_with_label("HRI Output Model", self.dev_hri_label)
-        )
+        right_column.addWidget(self.debug_card_with_label("HRI Output Model", self.dev_hri_label))
 
-        right_column.addWidget(
-            self.debug_card_with_label("System State", self.dev_system_label)
-        )
+        right_column.addWidget(self.debug_card_with_label("System State", self.dev_system_label))
 
         root.addLayout(left_column, stretch=1)
         root.addLayout(right_column, stretch=1)
@@ -1083,11 +1057,7 @@ class ZirbiDisplay(QMainWindow):
         return self.build_placeholder_page(
             "Initial Scan",
             "Mapping and semantic setup",
-            "Suggested functions:\n"
-            "• Start mapping\n"
-            "• Detect room landmarks\n"
-            "• Save semantic labels\n"
-            "• Confirm map ready",
+            "Suggested functions:\n• Start mapping\n• Detect room landmarks\n• Save semantic labels\n• Confirm map ready",
             "Start Initial Scan",
         )
 
@@ -1095,12 +1065,7 @@ class ZirbiDisplay(QMainWindow):
         return self.build_placeholder_page(
             "Maintenance",
             "Diagnostics and recovery",
-            "Suggested functions:\n"
-            "• Reset robot\n"
-            "• Restart HRI\n"
-            "• Camera test\n"
-            "• Audio test\n"
-            "• Topic / node status",
+            "Suggested functions:\n• Reset robot\n• Restart HRI\n• Camera test\n• Audio test\n• Topic / node status",
             "Open Diagnostics",
         )
 
@@ -1326,17 +1291,11 @@ class ZirbiDisplay(QMainWindow):
         self.runtime_state = state
         self.current_view = state.subtask
 
-        self.message_label.setText(
-            f"Status ({state.message_type}):\n{state.display_text}"
-        )
+        self.message_label.setText(f"Status ({state.message_type}):\n{state.display_text}")
 
-        self.speech_label.setText(
-            f"Speech Output:\n{state.speech_text}"
-        )
+        self.speech_label.setText(f"Speech Output:\n{state.speech_text}")
 
-        self.next_action_label.setText(
-            f"Next Action:\n{state.next_action}"
-        )
+        self.next_action_label.setText(f"Next Action:\n{state.next_action}")
 
         self.primary_action_button.setText(state.action_labels[0])
         self.secondary_action_button.setText(state.action_labels[1])
@@ -1352,10 +1311,7 @@ class ZirbiDisplay(QMainWindow):
         state = self.runtime_state
 
         self.dev_state_label.setText(
-            f"Challenge: {state.challenge}\n"
-            f"Subtask: {state.subtask}\n"
-            f"Message type: {state.message_type}\n"
-            f"Next action: {state.next_action}"
+            f"Challenge: {state.challenge}\nSubtask: {state.subtask}\nMessage type: {state.message_type}\nNext action: {state.next_action}"
         )
 
         self.dev_camera_label.setText(
@@ -1852,6 +1808,7 @@ class ZirbiDisplay(QMainWindow):
 # ============================================================================
 # MAIN PROGRAM
 # ============================================================================
+
 
 def main():
     app = QApplication(sys.argv)

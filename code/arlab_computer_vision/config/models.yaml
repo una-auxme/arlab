@@ -1,0 +1,13 @@
+models:
+  PEOPLE:
+    name: general_objects
+    weights: person.pt
+    pinned: true
+  DISHWASHER:
+    name: general_objects
+    weights: open_img.pt
+    pinned: false
+  GENERAL_OBJECTS:
+    name: general_objects
+    weights: ycb.pt
+    pinned: false

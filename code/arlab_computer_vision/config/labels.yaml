@@ -1,0 +1,104 @@
+labels:
+  # YCB model
+  001_chips_can:
+    type: pickable
+    object_category: cylinder
+  002_master_chef_can:
+    type: pickable
+    object_category: cylinder
+  003_cracker_box:
+    type: pickable
+    object_category: cube
+  004_sugar_box:
+    type: pickable
+    object_category: cube
+  005_tomato_soup_can:
+    type: pickable
+    object_category: cylinder
+  006_mustard_bottle:
+    type: pickable
+    object_category: cylinder
+  007_tuna_fish_can:
+    type: pickable
+    object_category: cylinder
+  008_pudding_box:
+    type: pickable
+    object_category: cube
+  009_gelatin_box:
+    type: pickable
+    object_category: cube
+  010_potted_meat_can:
+    type: pickable
+    object_category: cylinder
+  011_banana:
+    type: pickable
+    object_category: capsule
+  012_strawberry:
+    type: pickable
+    object_category: sphere
+  013_apple:
+    type: pickable
+    object_category: sphere
+  014_lemon:
+    type: pickable
+    object_category: sphere
+  015_peach:
+    type: pickable
+    object_category: sphere
+  016_pear:
+    type: pickable
+    object_category: sphere
+  017_orange:
+    type: pickable
+    object_category: sphere
+  018_plum:
+    type: pickable
+    object_category: sphere
+  019_pitcher_base:
+    type: pickable
+    object_category: cylinder
+  023_wine_glass:
+    type: pickable
+    object_category: cone
+  024_bowl:
+    type: pickable
+    object_category: ring
+  025_mug:
+    type: pickable
+    object_category: cylinder
+  026_sponge:
+    type: pickable
+    object_category: cube
+  027-skillet:
+    type: pickable
+    object_category: cylinder
+  028_skillet_lid:
+    type: pickable
+    object_category: ring
+  029_plate:
+    type: pickable
+    object_category: ring
+  030_fork:
+    type: pickable
+    object_category: capsule
+  031_spoon:
+    type: pickable
+    object_category: capsule
+  032_knife:
+    type: pickable
+    object_category: capsule
+  033_spatula:
+    type: pickable
+    object_category: capsule
+
+  # Person model
+  person:
+    type: human
+
+  # Dishwasher model
+  dishwasher-closed:
+    type: furniture
+  dishwasher-open:
+    type: furniture
+  dishwasher-rack:
+    type: pickable

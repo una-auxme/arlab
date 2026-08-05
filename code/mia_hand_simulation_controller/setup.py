@@ -13,7 +13,7 @@ The key things defined here are:
 
 import os
 
-package_name = 'simulation_bridge'
+package_name = 'mia_hand_simulation_controller'
 
 # ---------------------------------------------------------------------------
 # Data files
@@ -65,8 +65,8 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'mia_hand_bridge = simulation_bridge.mia_hand_bridge:main',
-            'ur5e_bridge = simulation_bridge.ur5e_bridge:main'
+            'mia_hand_bridge = mia_hand_simulation_controller.mia_hand_bridge:main',
+            'ur5e_bridge = mia_hand_simulation_controller.ur5e_bridge:main'
         ],
     },
 )

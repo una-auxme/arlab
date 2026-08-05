@@ -1,9 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
+<!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com)
      Commit Version: 1.6.0-1-g15f4949  Build Version: 1.6.7594.29634
      For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+    <!--
+    Complete geometric and kinematic description of the AgileX Ranger Air base.
+
+    Macro parameters:
+      name              Prefix used for the optional joint to the parent model.
+      parent_link       Link to which the base is attached in a stationary setup.
+      xyz / rpy         Pose of the base relative to parent_link.
+      use_mock_hardware Compatibility parameter passed by the calling description;
+                        no hardware interface is created in this file.
+      attach_to_parent  If true, creates a fixed joint to parent_link. If false,
+                        ranger_base_link remains the movable root link in Gazebo.
+      fix_wheel_joints  If true, steering and wheel joints are fixed. If false,
+                        they are continuous joints and can rotate.
+
+    For most links, the sections have the following meaning:
+      inertial  Physical mass, centre of mass and inertia tensor for simulation.
+      visual    Mesh and material shown in RViz/Gazebo.
+      collision Geometry used by the physics engine and collision checking.
+    -->
    <xacro:macro name="ranger_air_description" params="name parent_link xyz rpy use_mock_hardware attach_to_parent:=true fix_wheel_joints:=false">
+    <!-- Main chassis link and reference frame for all components of the mobile base. -->
     <link name="ranger_base_link">
       <inertial>
         <origin
@@ -43,6 +63,7 @@
         </geometry>
       </collision>
     </link>
+    <!-- IMU housing. The following fixed joint places its frame on the chassis. -->
     <link
       name="imu_link">
       <inertial>
@@ -83,6 +104,7 @@
         </geometry>
       </collision>
     </link>
+    <!-- Rigidly attaches the IMU frame to ranger_base_link. -->
     <joint
       name="imu_joint"
       type="fixed">
@@ -96,6 +118,7 @@
       <axis
         xyz="0 0 0" />
     </joint>
+    <!-- Front 2D lidar housing. Its collision mesh is currently commented out. -->
     <link
       name="front_lidar_link">
       <inertial>
@@ -136,6 +159,7 @@
         </geometry>
       </collision>-->
     </link>
+    <!-- Fixed transform from the chassis to the front lidar frame. -->
     <joint
       name="front_lidar_joint"
       type="fixed">
@@ -149,6 +173,7 @@
       <axis
         xyz="0 0 0" />
     </joint>
+    <!-- Rear 2D lidar housing. Its collision mesh is currently commented out. -->
     <link
       name="back_lidar_link">
       <inertial>
@@ -189,6 +214,7 @@
         </geometry>
       </collision>-->
     </link>
+    <!-- Fixed transform from the chassis to the rear lidar frame. -->
     <joint
       name="back_lidar_joint"
       type="fixed">
@@ -202,6 +228,7 @@
       <axis
         xyz="0 0 0" />
     </joint>
+    <!-- Front camera housing and its physical properties. -->
     <link
       name="camera_link">
       <inertial>
@@ -242,6 +269,7 @@
         </geometry>
       </collision>
     </link>
+    <!-- Fixed transform from the chassis to the camera frame. -->
     <joint
       name="camera_joint"
       type="fixed">
@@ -255,6 +283,7 @@
       <axis
         xyz="0 0 0" />
     </joint>
+    <!-- Front-left wheel module (fl): the steering joint rotates the complete wheel carrier about its vertical axis -->
     <link
       name="fl_steering_link">
       <inertial>
@@ -295,6 +324,7 @@
         </geometry>
       </collision>-->
     </link>
+    <!-- Steering axis of the front-left module; optionally locked by fix_wheel_joints. -->
     <joint
       name="fl_steering_joint"
       type="${'fixed' if fix_wheel_joints else 'continuous'}">
@@ -308,6 +338,7 @@
       <axis
         xyz="0 0 -1" />
     </joint>
+    <!-- Rolling wheel of the front-left module. -->
     <link
       name="fl_wheel_link">
       <inertial>
@@ -348,6 +379,7 @@
         </geometry>
       </collision>
     </link>
+    <!-- Wheel rotation axis of the front-left module -->
     <joint
       name="fl_wheel_joint"
       type="${'fixed' if fix_wheel_joints else 'continuous'}">
@@ -361,6 +393,7 @@
       <axis
         xyz="0 0 -1" />
     </joint>
+    <!-- Front-right wheel module (fr): steerable carrier and driven wheel -->
     <link
       name="fr_steering_link">
       <inertial>
@@ -401,6 +434,7 @@
         </geometry>
       </collision>-->
     </link>
+    <!-- Steering axis of the front-right module; optionally locked by fix_wheel_joints -->
     <joint
       name="fr_steering_joint"
       type="${'fixed' if fix_wheel_joints else 'continuous'}">
@@ -414,6 +448,7 @@
       <axis
         xyz="0 0 -1" />
     </joint>
+     <!-- Rolling wheel of the front-right module -->
     <link
       name="fr_wheel_link">
       <inertial>
@@ -454,6 +489,7 @@
         </geometry>
       </collision>
     </link>
+    <!-- Wheel rotation axis of the front-right module -->
     <joint
       name="fr_wheel_joint"
       type="${'fixed' if fix_wheel_joints else 'continuous'}">
@@ -467,6 +503,7 @@
       <axis
         xyz="0 0 -1" />
     </joint>
+    <!-- Rear-right wheel module (rr): steerable carrier and driven wheel -->
     <link
       name="rr_steering_link">
       <inertial>
@@ -507,6 +544,7 @@
         </geometry>
       </collision>-->
     </link>
+    <!-- Steering axis of the rear-right module; optionally locked by fix_wheel_joints -->
     <joint
       name="rr_steering_joint"
       type="${'fixed' if fix_wheel_joints else 'continuous'}">
@@ -520,6 +558,7 @@
       <axis
         xyz="0 0 1" />
     </joint>
+     <!-- Rolling wheel of the rear-right module -->
     <link
       name="rr_wheel_link">
       <inertial>
@@ -560,6 +599,7 @@
         </geometry>
       </collision>
     </link>
+    <!-- Wheel rotation axis of the rear-right module -->
     <joint
       name="rr_wheel_joint"
       type="${'fixed' if fix_wheel_joints else 'continuous'}">
@@ -573,6 +613,7 @@
       <axis
         xyz="0 0 -1" />
     </joint>
+    <!-- Rear-left wheel module (rl): steerable carrier and driven wheel -->
     <link
       name="rl_steering_link">
       <inertial>
@@ -613,6 +654,7 @@
         </geometry>
       </collision>-->
     </link>
+    <!-- Steering axis of the rear-left module; optionally locked by fix_wheel_joints -->
     <joint
       name="rl_steering_joint"
       type="${'fixed' if fix_wheel_joints else 'continuous'}">
@@ -626,6 +668,7 @@
       <axis
         xyz="0 0 -1" />
     </joint>
+    <!-- Rolling wheel of the rear-left module -->
     <link
       name="rl_wheel_link">
       <inertial>
@@ -666,6 +709,7 @@
         </geometry>
       </collision>
     </link>
+    <!-- Wheel rotation axis of the rear-left module. -->
     <joint
       name="rl_wheel_joint"
       type="${'fixed' if fix_wheel_joints else 'continuous'}">

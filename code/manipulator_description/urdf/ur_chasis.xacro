@@ -1,9 +1,19 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!--
+    Adds the chassis carrying the UR arm to the mobile base.
+
+    Macro parameters:
+      name        Chassis name used to generate unique link and joint names.
+      parent_link Existing base link to which the chassis is attached.
+      xyz / rpy   Pose of the chassis link relative to parent_link.
+  -->
   <xacro:macro name="ur_chasis" params="name parent_link xyz rpy">
 
-    <!-- Neuer Link -->
+    <!-- Link containing the chassis mesh and its physical simulation model. -->
     <link name="${name}_link">
+      <!-- Mesh shown in RViz and Gazebo; origin aligns the CAD mesh with the link frame. -->
       <visual>
         <origin xyz="-0.2648 -0.2659 0.2685" rpy="1.57079 0 -3.14159"/>
         <geometry>
@@ -11,6 +21,7 @@
         </geometry>
       </visual>
 
+      <!-- Collision geometry used by Gazebo and collision checking. -->
       <collision>
         <origin xyz="-0.2648 -0.2659 0.291" rpy="1.57079 0 -3.14159"/>
         <geometry>
@@ -31,7 +42,7 @@
 
     </link>
 
-    <!-- Fixed Joint -->
+    <!-- Rigidly mounts the chassis at the requested pose on parent_link. -->
     <joint name="${name}_joint" type="fixed">
       <parent link="${parent_link}"/>
       <child  link="${name}_link"/>

@@ -1,9 +1,21 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!--
+    Adds the Apollo 2.0 base as a rigid component to an existing robot model.
+
+    Macro parameters:
+      name              Base name used to generate unique link and joint names.
+      parent_link       Existing link to which the Apollo base is attached.
+      xyz / rpy         Pose of the Apollo base relative to parent_link.
+      use_mock_hardware Compatibility parameter of the surrounding description;
+                        it is not evaluated in this purely geometric macro.
+  -->
   <xacro:macro name="apollo_base" params="name parent_link xyz rpy use_mock_hardware">
 
-    <!-- Neuer Link -->
+    <!-- Link containing display, collision and simulation properties of the base. -->
     <link name="${name}_link">
+      <!-- Geometry rendered in RViz and Gazebo. -->
       <visual>
         <origin xyz="0 0 0.03" rpy="3.14159 0 0"/>
         <geometry>
@@ -11,6 +23,7 @@
         </geometry>
       </visual>
 
+      <!-- Geometry used for collision checking and Gazebo contact calculation. -->
       <collision>
         <origin xyz="0 0 0.03" rpy="3.14159 0 0"/>
         <geometry>
@@ -18,6 +31,7 @@
         </geometry>
       </collision>
 
+      <!-- Hidden physical model: centre of mass, total mass and inertia tensor. -->
       <inertial>
         <origin xyz="0 0 0.5" rpy="0 0 0"/>
         <mass value="1"/>
@@ -26,7 +40,7 @@
 
     </link>
 
-    <!-- Fixed Joint -->
+    <!-- Rigid connection that positions the Apollo base relative to parent_link. -->
     <joint name="${name}_joint" type="fixed">
       <parent link="${parent_link}"/>
       <child  link="${name}_link"/>

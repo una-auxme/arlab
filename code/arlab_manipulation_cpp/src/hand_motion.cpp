@@ -16,7 +16,6 @@
 
 namespace {
 
-//constexpr char kGraspActionName[] = "/mia_hand/grasps/cylindrical/action";
 constexpr int kOpenClosurePercent = 10;
 constexpr int kClosedClosurePercent = 80;
 constexpr int kDefaultSpeedPercent = 15;
@@ -32,8 +31,6 @@ HandMotion::HandMotion(rclcpp::Node::SharedPtr node)
       arlab_common_interfaces::msg::ManipulationResponse::
       ORCHESTRATOR_LISTENER_NODE_NULL);
   }
-
-  // client_ = rclcpp_action::create_client<GraspAction>(node_, kGraspActionName);  
 }
 
 HandMotion::Client::SharedPtr
@@ -88,21 +85,6 @@ void HandMotion::Grasp(const std::string& action_name,
   if (target_closure_percent > kMaxClosurePercent) {
     target_closure_percent = kMaxClosurePercent;
   }
-
-  // DEBUG
-  RCLCPP_INFO(
-    node_->get_logger(),
-    "Waiting for action server '%s'",
-    action_name.c_str());
-
-  auto client = GetCreateClient(action_name);
-
-  // more DEBUG
-  bool ready = client->wait_for_action_server(server_wait);
-  RCLCPP_INFO(
-    node_->get_logger(),
-    "Server ready: %s",
-    ready ? "true" : "false");
 
   if (!client->wait_for_action_server(server_wait)) {
     throw ManipulationException(

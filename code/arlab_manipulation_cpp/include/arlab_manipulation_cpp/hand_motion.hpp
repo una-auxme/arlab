@@ -2,6 +2,7 @@
 // File: hand_motion.hpp
 // Package: arlab_manipulation_cpp
 // Maintainer: Leonie Schmidt <leonie1.schmidt@uni-a.de>
+//             Christopher Müller <christopher.mueller@uni-a.de>
 //
 // Declares HandMotion, a high-level wrapper around the Mia Hand grasp action
 // interface. It abstracts the open/close/grasp lifecycle into simple method

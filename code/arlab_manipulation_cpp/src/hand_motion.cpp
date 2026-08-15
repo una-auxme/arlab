@@ -2,6 +2,7 @@
 // File: hand_motion.cpp
 // Package: arlab_manipulation_cpp
 // Maintainer: Leonie Schmidt <leonie1.schmidt@uni-a.de>
+//             Christopher Müller <christopher.mueller@uni-a.de>
 //
 //
 // Implements the HandMotion class. Manages the lifecycle of a grasp action

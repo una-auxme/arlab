@@ -2,6 +2,7 @@
 // File: job_runner.hpp
 // Package: arlab_manipulation_cpp
 // Maintainer: Leonie Schmidt <leonie1.schmidt@uni-a.de>
+//             Christopher Müller <christopher.mueller@uni-a.de>
 //
 // Declares JobRunner, the central command dispatcher of the manipulation
 // stack. It receives an OrchestratorData message from the action server,

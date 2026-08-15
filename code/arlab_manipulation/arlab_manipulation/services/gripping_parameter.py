@@ -9,6 +9,7 @@ This module defines a ROS 2 node that maps semantic object information
 
 Maintainer:
     Sofia Öttl <sofia.oettl@uni-a.de>
+    Christopher Müller <christopher.mueller@uni-a.de>
 """
 
 import rclpy

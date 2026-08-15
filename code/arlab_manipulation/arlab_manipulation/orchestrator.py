@@ -8,6 +8,7 @@ execution by MoveIt or other downstream nodes.
 
 Maintainer:
     Sofia Öttl <sofia.oettl@uni-a.de>
+    Christopher Müller <christopher.mueller@uni-a.de>
 """
 
 from threading import Event
@@ -434,7 +435,7 @@ class orchestrator(Node):
         send_future = self._orchestrator_client.send_goal_async(msg)
         send_future.add_done_callback(self.handle_orchestrator_response)
 
-    def get_execution_command(self) -> str:
+    def get_execution_command(self):
         """Map a generic pick request to a hand-specific pick command.
            Non pick commands will be returned as is."""
 
@@ -442,6 +443,7 @@ class orchestrator(Node):
             return self.command_type
 
         grip_to_pick_command = {
+            # COMMAND_PICK maps to the default grasp -> cylindrical
             "cylindrical": ManipulationCommand.COMMAND_PICK,
             "pinch": ManipulationCommand.COMMAND_PICK_PINCH,
             "lateral": ManipulationCommand.COMMAND_PICK_LATERAL,
@@ -450,11 +452,6 @@ class orchestrator(Node):
         }
 
         execution_command = grip_to_pick_command.get(self.grip_type)
-        if execution_command is None:
-            raise ValueError(
-                f"Unsupported grip type for pick: '{self.grip_type}'"
-            )
-
         return execution_command
 
     def handle_orchestrator_response(self, future):

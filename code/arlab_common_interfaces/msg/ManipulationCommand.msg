@@ -1,4 +1,4 @@
-
+# Available commands
 string COMMAND_PICK="pick"
 string COMMAND_PLACE="place"
 string COMMAND_OPEN="open"

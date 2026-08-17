@@ -1,3 +1,4 @@
+import math
 import random
 
 import rclpy
@@ -13,28 +14,29 @@ from moveit_msgs.msg import Constraints, JointConstraint
 
 class Bridge(Node):
 
+    
+    
     def __init__(self):
         super().__init__("ur5e_controller")
 
 
-    
+        self.last_mia_hand_goal=None #contains last goal (e.g. c,85) that has been commissioned by move_robot
+        self.waiting_for_async_finish=False;# Boolean that tracks if moveit move has been completed by waiting for async callbacks
 
 
+        #get movegroup
         self.get_logger().info("Waiting for MoveGroup...")
-
         self.client = ActionClient(
             self,
             MoveGroup,
             "/move_action"
         )
-
-
-        self.waiting_for_async_finish=False;
-        
         self.get_logger().info("Got MoveGroup")
-
         self.client.wait_for_server()
-        # Execute every 5 seconds
+
+
+
+        # Execute move_robot every 0.1 seconds
         self.timer = self.create_timer(0.1, self.move_robot)
 
     
@@ -45,19 +47,29 @@ class Bridge(Node):
 
         if(self.waiting_for_async_finish==True):
             return
-       
-        goal = MoveGroup.Goal()
 
-        # Which MoveIt planning group to use
-        goal.request.group_name = "mia_hand"
 
-        # Joint goal
+        # insert topic call for manipulation goal here
+        mia_hand_goal= ['c',100]
+
+
+        if(mia_hand_goal==self.last_mia_hand_goal):
+            self.get_logger().info(f"already reached this mia hand goal")
+            return
+
+        self.last_mia_hand_goal=mia_hand_goal
+
+
+        goal = MoveGroup.Goal() #create new moveit goal
+        goal.request.group_name = "mia_hand"# Which MoveIt planning group to use
         joint_goal = Constraints()
 
-     
 
-        joints = self.get_joint_goal('p',100)
 
+        joints = self.get_joint_goal(mia_hand_goal[0],mia_hand_goal[1])#get aproximated joint values for given mia hand goal
+
+
+        # moveit goal request values
         for name, position in joints.items():
             constraint = JointConstraint()
             constraint.joint_name = name
@@ -66,13 +78,12 @@ class Bridge(Node):
             constraint.tolerance_below = 0.01
             constraint.weight = 1.0
             joint_goal.joint_constraints.append(constraint)
-
         goal.request.goal_constraints.append(joint_goal)
-
-
+        goal.request.planner_id = "PTP"
         goal.request.allowed_planning_time = 15.0
         goal.request.max_velocity_scaling_factor = 0.2
         goal.request.max_acceleration_scaling_factor = 0.2
+
 
         self.get_logger().info(f"Sending goal {joints}")
 
@@ -83,6 +94,7 @@ class Bridge(Node):
 
 
 
+    # wait for callback response: is goal valid and is robot busy with  other movement?
     def goal_response_callback(self, future):
 
         goal_handle = future.result()
@@ -97,7 +109,7 @@ class Bridge(Node):
         result_future = goal_handle.get_result_async()
         result_future.add_done_callback(self.result_callback)
 
-
+    # wait for callback response: has movement been executed properly?
     def result_callback(self, future):
 
         result = future.result()
@@ -117,10 +129,14 @@ class Bridge(Node):
 
  
 
-    def get_joint_goal(self, pinch_letter, open_percentage):
+    def get_joint_goal(self, pinch_letter, close_percentage):
         
-        '''standard values taken from, page 66: https://www.prensilia.com/wp-content/uploads/2026/05/260324_SERIAL_UserManual_MK2_v1-0.pdf'''
+        '''standard values taken from page 66: https://www.prensilia.com/wp-content/uploads/2026/05/260324_SERIAL_UserManual_MK2_v1-0.pdf'''
         grip_ids= ['c','p','l','u','d','s','t','r']
+
+
+        max_close_percentages= [90,95,60,100,100,100,100,100]
+
 
         motor_values=[
             [0,50,50,140,240,240],
@@ -140,15 +156,25 @@ class Bridge(Node):
             [-255,255],
             [0,255],
         ]
+
+
+
         
         grip_id=grip_ids.index(pinch_letter)
 
         motor_grip_values=motor_values[grip_id]
 
+        max_close_percentage=max_close_percentages[grip_id]
+
+        if(close_percentage>max_close_percentage):
+            close_percentage=max_close_percentage
+
+
+        self.get_logger().info(f"debug cp {close_percentage}")
         
-        motor1=self.remap(open_percentage,motor_grip_values[0],motor_grip_values[3],0,100)
-        motor2=self.remap(open_percentage,motor_grip_values[1],motor_grip_values[4],0,100)
-        motor3=self.remap(open_percentage,motor_grip_values[2],motor_grip_values[5],0,100)
+        motor1=self.remap(close_percentage,motor_grip_values[0],motor_grip_values[3],0,100)
+        motor2=self.remap(close_percentage,motor_grip_values[1],motor_grip_values[4],0,100)
+        motor3=self.remap(close_percentage,motor_grip_values[2],motor_grip_values[5],0,100)
 
 
 
@@ -166,13 +192,13 @@ class Bridge(Node):
 
         
 
-        
+        conv=0.01*360.0/255.0
 
         joints = {
-            "j_index_fle": float(r1),
-            "j_mrl_fle": float(r2),
-            "j_thumb_fle": float(r4),
-            "j_thumb_opp": float(r3),
+            "j_index_fle": float(r1)*conv,
+            "j_mrl_fle": float(r2)*conv,
+            "j_thumb_opp": float(r3)*conv,
+            "j_thumb_fle": float(r4)*conv,
         }
 
         return joints

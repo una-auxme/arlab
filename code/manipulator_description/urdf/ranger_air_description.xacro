@@ -86,7 +86,7 @@
           rpy="0 0 0" />
         <geometry>
           <mesh
-            filename="file://$(find manipulator_description)/meshes/imu_link.STL" />
+            filename="file://$(find manipulator_description)/meshes/dae/imu_link.dae" />
         </geometry>
         <material
           name="">
@@ -100,7 +100,7 @@
           rpy="0 0 0" />
         <geometry>
           <mesh
-            filename="file://$(find manipulator_description)/meshes/imu_link.STL" />
+            filename="file://$(find manipulator_description)/meshes/dae/imu_link.dae" />
         </geometry>
       </collision>
     </link>

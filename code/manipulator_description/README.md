@@ -2,7 +2,7 @@
 
 This project was built specifically for the `ARLab` at the University of Augsburg and developed in the context of the `Zirbi` robot.
 
-**Maintainer:** Leonie Schmidt &lt;<leonie1.schmidt@uni-a.de>&gt;, Luka Eberle &lt;<luka.eberle@uni-a.de>&gt;, Julian Schropp &lt;<julian-schropp@web.de>&gt;, Michael Wallner &lt;<michael.wallner@uni-a.de>&gt; 
+**Maintainer:** Leonie Schmidt &lt;<leonie1.schmidt@uni-a.de>&gt;, Luka Eberle &lt;<luka.eberle@uni-a.de>&gt;, Julian Schropp &lt;<julian-schropp@web.de>&gt;, Michael Wallner &lt;<michael.wallner@uni-a.de>&gt;
 **License:** Apache2.0  
 **ROS 2 build system:** ament_cmake
 

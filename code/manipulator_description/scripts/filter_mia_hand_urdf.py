@@ -101,9 +101,7 @@ def run_xacro(command: Iterable[str]) -> str:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Run xacro and optionally freeze MIA ring/little mimic joints."
-    )
+    parser = argparse.ArgumentParser(description="Run xacro and optionally freeze MIA ring/little mimic joints.")
     parser.add_argument(
         "--filter-mia-ring-little-mimic",
         action="store_true",

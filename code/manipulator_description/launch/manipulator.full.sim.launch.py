@@ -72,11 +72,7 @@ def launch_setup(context, *args, **kwargs):
     # Gazebo + ros2_control (simulated hardware + controllers)
     # -------------------------------------------------------------------------
     sim_control_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            PathJoinSubstitution(
-                [manipulator_pkg_share, "launch", "manipulator.control.sim.launch.py"]
-            )
-        ),
+        PythonLaunchDescriptionSource(PathJoinSubstitution([manipulator_pkg_share, "launch", "manipulator.control.sim.launch.py"])),
         launch_arguments={
             "ur_type": ur_type,
             "safety_limits": safety_limits,
@@ -102,9 +98,7 @@ def launch_setup(context, *args, **kwargs):
     # -------------------------------------------------------------------------
     moveit_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            PathJoinSubstitution(
-                [FindPackageShare("manipulator_ur_moveit_config"), "launch", "ur_moveit.launch.py"]
-            )
+            PathJoinSubstitution([FindPackageShare("manipulator_ur_moveit_config"), "launch", "ur_moveit.launch.py"])
         ),
         launch_arguments={
             "ur_type": ur_type,
@@ -119,15 +113,11 @@ def launch_setup(context, *args, **kwargs):
     # SLAM Toolbox (async mapping: map -> odom)
     # -------------------------------------------------------------------------
     slam_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            PathJoinSubstitution([movement_pkg_share, "launch", "slam_async.launch.py"])
-        ),
+        PythonLaunchDescriptionSource(PathJoinSubstitution([movement_pkg_share, "launch", "slam_async.launch.py"])),
         condition=IfCondition(launch_slam),
         launch_arguments={
             "use_sim_time": "true",
-            "slam_params_file": PathJoinSubstitution(
-                [movement_pkg_share, "params", "ranger_slam_params.yaml"]
-            ),
+            "slam_params_file": PathJoinSubstitution([movement_pkg_share, "params", "ranger_slam_params.yaml"]),
         }.items(),
     )
 
@@ -135,15 +125,11 @@ def launch_setup(context, *args, **kwargs):
     # Nav2 navigation stack (path planning + controller, uses /scan and /odom)
     # -------------------------------------------------------------------------
     nav2_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            PathJoinSubstitution([movement_pkg_share, "launch", "ranger_nav2.launch.py"])
-        ),
+        PythonLaunchDescriptionSource(PathJoinSubstitution([movement_pkg_share, "launch", "ranger_nav2.launch.py"])),
         condition=IfCondition(launch_nav2),
         launch_arguments={
             "use_sim_time": "true",
-            "params_file": PathJoinSubstitution(
-                [movement_pkg_share, "params", "ranger_nav2_params.yaml"]
-            ),
+            "params_file": PathJoinSubstitution([movement_pkg_share, "params", "ranger_nav2_params.yaml"]),
         }.items(),
     )
 
@@ -194,8 +180,12 @@ def launch_setup(context, *args, **kwargs):
         name="front_lidar_scoped_frame_tf",
         output="screen",
         arguments=[
-            "0", "0", "0",
-            "0", "0", "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
             "front_lidar_link",
             "ur5e/ranger_base_link/front_lidar",
         ],
@@ -237,7 +227,18 @@ def generate_launch_description():
             default_value="ur5e",
             description="Type/series of used UR robot.",
             choices=[
-                "ur3", "ur3e", "ur5", "ur5e", "ur7e", "ur10", "ur10e", "ur12e", "ur16e", "ur15", "ur20", "ur30",
+                "ur3",
+                "ur3e",
+                "ur5",
+                "ur5e",
+                "ur7e",
+                "ur10",
+                "ur10e",
+                "ur12e",
+                "ur16e",
+                "ur15",
+                "ur20",
+                "ur30",
             ],
         )
     )
@@ -253,9 +254,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "controllers_file",
-            default_value=PathJoinSubstitution(
-                [manipulator_pkg_share, "config", "manipulator_controllers.yaml"]
-            ),
+            default_value=PathJoinSubstitution([manipulator_pkg_share, "config", "manipulator_controllers.yaml"]),
             description="Absolute path to YAML file with the controllers configuration.",
         )
     )

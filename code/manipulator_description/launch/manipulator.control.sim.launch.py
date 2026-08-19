@@ -159,9 +159,7 @@ def launch_setup(context, *args, **kwargs):
         ]
     )
 
-    robot_description = {
-        "robot_description": ParameterValue(robot_description_content, value_type=str)
-    }
+    robot_description = {"robot_description": ParameterValue(robot_description_content, value_type=str)}
 
     robot_state_publisher_node = Node(
         package="robot_state_publisher",
@@ -649,10 +647,7 @@ def generate_launch_description():
         DeclareLaunchArgument(
             "world_file",
             default_value="empty.sdf",
-            description=(
-                "Gazebo world file. Can be an absolute path or a filename from "
-                "the Gazebo worlds collection."
-            ),
+            description=("Gazebo world file. Can be an absolute path or a filename from the Gazebo worlds collection."),
         )
     )
 

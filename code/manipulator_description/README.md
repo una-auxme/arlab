@@ -2,7 +2,7 @@
 
 This project was built specifically for the `ARLab` at the University of Augsburg and developed in the context of the `Zirbi` robot.
 
-**Maintainer:** Leonie Schmidt &lt;<leonie1.schmidt@uni-a.de>&gt;, Luka Eberle &lt;<luka.eberle@uni-a.de>&gt;, Julian Schropp &lt;<julian-schropp@web.de>&gt;, Michael Wallner &lt;<michael.wallner@uni-a.de>&gt; 
+**Maintainer:** Leonie Schmidt &lt;<leonie1.schmidt@uni-a.de>&gt;, Luka Eberle &lt;<luka.eberle@uni-a.de>&gt;, Julian Schropp &lt;<julian-schropp@web.de>&gt;, Michael Wallner &lt;<michael.wallner@uni-a.de>&gt;
 **License:** Apache2.0  
 **ROS 2 build system:** ament_cmake
 
@@ -104,9 +104,7 @@ manipulator.full.sim.launch.py
 | `launch_rviz_moveit` | `true` | Open RViz with MoveIt plugin |
 | `use_mock_hardware` | `false` (robot) / `true` (sim) | Use mock hardware instead of real drivers |
 
-
 ### Common launch arguments for manipulator.full.sim.launch.py
-
 
 | Argument | Default | Description |
 | --- | --- | --- |
@@ -124,9 +122,6 @@ manipulator.full.sim.launch.py
 | `launch_slam` | `true` | wether to launch slam |
 | `launch_nav2` | `true` | wether to launch nav2 |
 | `launch_nav2_rviz` | `true` | RViz Window for Nav2 control |
-
-
-
 
 ## Quickstart
 

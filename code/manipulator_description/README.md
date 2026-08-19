@@ -104,9 +104,7 @@ manipulator.full.sim.launch.py
 | `launch_rviz_moveit` | `true` | Open RViz with MoveIt plugin |
 | `use_mock_hardware` | `false` (robot) / `true` (sim) | Use mock hardware instead of real drivers |
 
-
 ### Common launch arguments for manipulator.full.sim.launch.py
-
 
 | Argument | Default | Description |
 | --- | --- | --- |
@@ -124,9 +122,6 @@ manipulator.full.sim.launch.py
 | `launch_slam` | `true` | wether to launch slam |
 | `launch_nav2` | `true` | wether to launch nav2 |
 | `launch_nav2_rviz` | `true` | RViz Window for Nav2 control |
-
-
-
 
 ## Quickstart
 

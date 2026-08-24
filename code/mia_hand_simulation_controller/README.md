@@ -1,4 +1,4 @@
-# Manipulator Description
+# Mia Hand Simulation Controller
 
 Placeholder package for simulation bridge. Converts manipulation commands for mia hand (e.g. 'p', 80) into commands for Moveit that are executed in Simulation.
 Functionality is complete, except Tie-In into Manipulation topic is missing.

@@ -2,7 +2,7 @@
 
 This project was built specifically for the `ARLab` at the University of Augsburg and developed in the context of the `Zirbi` robot.
 
-**Maintainer:** Sofia Öttl &lt;<sofia.oettl@uni-a.de>&gt;, Christopher Müller &lt;<christopher.mueller@uni-a.de>&gt;   
+**Maintainer:** Sofia Öttl &lt;<sofia.oettl@uni-a.de>&gt;, Christopher Müller &lt;<christopher.mueller@uni-a.de>&gt;  
 **License:** MIT  
 **ROS 2 build system:** ament_python
 

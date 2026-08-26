@@ -8,6 +8,10 @@
 // Implements the HandMotion class. Manages the lifecycle of a grasp action
 // goal: waiting for the action server, sending the goal, waiting for
 // acceptance, and finally waiting for the result.
+// Each grasp type (cylindrical, pinch, lateral, spherical, tridigital)
+// is exposed by the mia hand driver as its own action server topic.
+// HandMotion routes each corresponding method to the matching topic and caches
+// one client per grasp type.s
 // -----------------------------------------------------------------------------
 
 #include "arlab_manipulation_cpp/hand_motion.hpp"
@@ -43,7 +47,7 @@ HandMotion::GetCreateClient(const std::string &action_name)
 {
   if (client_cache_.find(action_name) == client_cache_.end())
   {
-    // create a new client for specific grasp action if not present already
+    // Create and cache a new client for specific grasp action if not present in cache already.
     client_cache_[action_name] = rclcpp_action::create_client<GraspAction>(node_, action_name);
   }
   return client_cache_[action_name];
@@ -51,11 +55,13 @@ HandMotion::GetCreateClient(const std::string &action_name)
 
 void HandMotion::Open(std::chrono::milliseconds timeout)
 {
+  // Opening the hand via cylindrical graps
   Grasp("/mia_hand/grasps/cylindrical/action", kOpenClosurePercent, kDefaultSpeedPercent, timeout);
 }
 
 void HandMotion::Close(std::chrono::milliseconds timeout)
 {
+  // Cylindrical grasp type serves as generic close motion
   Grasp("/mia_hand/grasps/cylindrical/action", kClosedClosurePercent, kDefaultSpeedPercent, timeout);
 }
 
@@ -80,11 +86,13 @@ void HandMotion::PointDown(std::chrono::milliseconds timeout)
 }
 void HandMotion::Spherical(std::chrono::milliseconds timeout)
 {
+  // NOTE: Not yet customized on mia hand driver side, see header WARNING
   Grasp("/mia_hand/grasps/spherical/action", kClosedClosurePercent, kDefaultSpeedPercent, timeout);
 }
 
 void HandMotion::Tridigital(std::chrono::milliseconds timeout)
 {
+  // NOTE: Not yet customized on mia hand driver side, see header WARNING
   Grasp("/mia_hand/grasps/tridigital/action", kClosedClosurePercent, kDefaultSpeedPercent, timeout);
 }
 

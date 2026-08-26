@@ -42,7 +42,9 @@ public:
   /**
    * Executes a single manipulation command described by the orchestrator message.
    * Reads incoming msg, dispatches the corresponding motion sequence, and forwards
-   * msg.pose when required.
+   * msg.pose when required. Supports open/close, individual grasp-type commands
+   * (cylindrical, pinch, lateral, spherical tridigital), full pick command sequences
+   * per grasp type, place home and move commands.
    * @param msg     OrchestratorData message.
    * @throws ManipulationException if the command is unknown or a motion operation fails.
    */

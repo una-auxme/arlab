@@ -68,10 +68,10 @@ void JobRunner::Run(const arlab_common_interfaces::msg::OrchestratorData &msg)
   const std::string cmd = msg.cmd.data;
   RCLCPP_INFO(logger_, "JobRunner received cmd='%s'", cmd.c_str());
 
-  // --                                      Grasping commands                                       --
+  // --                                      Grasp commands                                            --
   if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_OPEN)
   {
-    hand_.Open();
+    hand_.Open(); // Open hand via cylindrical hand topic
   }
   else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_CLOSE)
   {
@@ -79,7 +79,7 @@ void JobRunner::Run(const arlab_common_interfaces::msg::OrchestratorData &msg)
   }
   else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_CYLINDRICAL)
   {
-    hand_.Close();
+    hand_.Close(); // Cylindrical is default close grasp.
   }
   else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PINCH)
   {
@@ -121,7 +121,8 @@ void JobRunner::Run(const arlab_common_interfaces::msg::OrchestratorData &msg)
                            kReferenceFrame, kPlannerId);
 
     // -- Pick sequences: open (cylindrical type) → approach → close (specifyed type) → retreat → home --
-    // !! Spherical and tridigital to be customized, not in use currently !!
+    // !! Spherical and tridigital not yet customized on hand driver, currently not in use !!
+    //    See HandMotion::Spherical/Tridigital
   }
   else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PICK)
   {

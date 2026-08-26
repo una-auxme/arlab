@@ -5,7 +5,7 @@ GrippingParameterNode: Provide gripping parameters for robotic manipulation.
 
 This module defines a ROS 2 node that maps semantic object information
 (object name and group) to technical control parameters for a gripper
-(grip force, position mode, orientation mode, object weight).
+(grip force, grip type, position mode, orientation mode, object weight).
 
 Maintainer:
     Sofia Öttl <sofia.oettl@uni-a.de>
@@ -27,7 +27,7 @@ class GrippingParameterNode(Node):
 
     Topic Interface:
         * **Input**: objectname, objectgroup.
-        * **Output**: gripforce, grippos_mode, griporient_mode, object_weight.
+        * **Output**: gripforce, grip_type, grippos_mode, griporient_mode, object_weight.
 
     Notes:
         - Unknown objects fall back to default parameters to ensure safe gripping.
@@ -92,7 +92,7 @@ class GrippingParameterNode(Node):
     def callback(self, request, response):
         """Compute gripping parameters for a requested object.
 
-        Determines appropriate grip force, position mode, orientation mode,
+        Determines appropriate grip force, grip type, position mode, orientation mode,
         and weight. Defaults are used for unknown objects or groups to
         ensure safe handling.
 

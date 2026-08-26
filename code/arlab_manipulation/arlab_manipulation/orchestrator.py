@@ -44,8 +44,9 @@ class orchestrator(Node):
         - Accept manipulation commands via ManipulationAction.
         - Query object properties (GetEntity, GetShape) from the knowledge base.
         - Request gripping parameters via GrippingParameter service.
+        - Map received ripping parameters to a specific grip command.
         - Compute pick/place poses considering octomap occupancy.
-        - Send orchestrator goals to downstream MoveIt Action server.
+        - Send orchestrator goals to downstream MoveIt and mia hand action servers.
 
     Attributes:
         action_done_event: Threading event to synchronize asynchronous callbacks.
@@ -54,7 +55,7 @@ class orchestrator(Node):
         pickable: Flag if object is manipulable.
         pose / gripping / placing points: Computed target poses.
         octomap: Latest PlanningScene octomap data.
-        force / grip modes: Parameters from GrippingParameter service.
+        force / grip_type / grip modes: Parameters from GrippingParameter service.
         err / msg: Status code and message for manipulation responses.
     """
 
@@ -320,7 +321,7 @@ class orchestrator(Node):
     def handle_gripping_parameter_response(self, future):
         """Handle response from GrippingParameter service.
 
-        Updates gripping force and grip modes, then computes pick/place pose.
+        Updates gripping force, grip type and grip modes, then computes pick/place pose.
 
         Side Effects:
             - Updates self.force, self.grip_pos_mode, self.grip_orient_mode, self.grip_type
@@ -436,8 +437,18 @@ class orchestrator(Node):
         send_future.add_done_callback(self.handle_orchestrator_response)
 
     def get_execution_command(self):
-        """Map a generic pick request to a hand-specific pick command.
-           Non pick commands will be returned as is."""
+        """ Map a generic pick request to a hand-specific pick command.
+            Supported grasp types for picking objects are:
+            -   cylindrical
+            -   pinch
+            -   lateral
+            -   spherical (! Currently unmapped on hardware !)
+            -   tridigital (! Currently unmapped on hardware !)
+            Non pick commands will be returned as is.
+
+            Returns:
+                Specific manipulation pick command string, or original command type.
+        """
 
         if self.command_type != ManipulationCommand.COMMAND_PICK:
             return self.command_type

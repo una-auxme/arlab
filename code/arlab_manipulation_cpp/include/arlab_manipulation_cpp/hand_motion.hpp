@@ -42,7 +42,7 @@ public:
 
   /**
    * Opens the hand to a predefined low-closure configuration.
-   * Acts as the default hand opening motion
+   * Acts as the default hand opening motion (via cylindrical action).
    * @param timeout   Maximum time to wait for goal acceptance.
                       Defaults to 3000 ms.
    * @throws ManipulationException on any action-level failure.
@@ -98,7 +98,7 @@ public:
 
   /**
    * Closes the hand to a spherical grasp configuration.
-   * WARNING: Mia hand openes hand completely on spherical grasp!
+   * WARNING: Mia hand opens hand completely on spherical grasp!
    *          Spherical grasp not yet mapped/customized.
    * @param timeout   Maximum time to wait for goal acceptance.
                       Defaults to 3000 ms.
@@ -109,7 +109,7 @@ public:
 
   /**
    * Closes the hand to a tridigital grasp configuration.
-   * WARNING: Mia hand openes hand completely on tridigital grasp!
+   * WARNING: Mia hand opens hand completely on tridigital grasp!
    *          Tridigital grasp not yet mapped/customized.
    * @param timeout   Maximum time to wait for goal acceptance.
                       Defaults to 3000 ms.
@@ -121,6 +121,7 @@ public:
   /**
    * Sends a grasp goal to the hand action server and waits for a result.
    * @param action_name             Specifies grasp action server to publish to.
+   *                                Selects which grasp type is executed.
    * @param target_closure_percent  Desired hand closure in percent [0, 100].
    * @param speed_for_percent       Closing speed in percent. Defaults to 15.
    * @param timeout                 Per-step wait duration for goal acceptance

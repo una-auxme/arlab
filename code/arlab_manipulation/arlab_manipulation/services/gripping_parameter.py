@@ -84,9 +84,9 @@ class GrippingParameterNode(Node):
 
         # Table: Object name → mia hand grip type (cylindrical, pinch, lateral, spherical, tridigital)
         self.grip_type_table = {
-            "beer" : "cylindrical",
-            "chipsbag" : "pinch",
-            "default" : "cylindrical",  # Default: if object name not found
+            "beer": "cylindrical",
+            "chipsbag": "pinch",
+            "default": "cylindrical",  # Default: if object name not found
         }
 
     def callback(self, request, response):

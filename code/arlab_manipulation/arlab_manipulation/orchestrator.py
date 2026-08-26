@@ -437,17 +437,17 @@ class orchestrator(Node):
         send_future.add_done_callback(self.handle_orchestrator_response)
 
     def get_execution_command(self):
-        """ Map a generic pick request to a hand-specific pick command.
-            Supported grasp types for picking objects are:
-            -   cylindrical
-            -   pinch
-            -   lateral
-            -   spherical (! Currently unmapped on hardware !)
-            -   tridigital (! Currently unmapped on hardware !)
-            Non pick commands will be returned as is.
+        """Map a generic pick request to a hand-specific pick command.
+        Supported grasp types for picking objects are:
+        -   cylindrical
+        -   pinch
+        -   lateral
+        -   spherical (! Currently unmapped on hardware !)
+        -   tridigital (! Currently unmapped on hardware !)
+        Non pick commands will be returned as is.
 
-            Returns:
-                Specific manipulation pick command string, or original command type.
+        Returns:
+            Specific manipulation pick command string, or original command type.
         """
 
         if self.command_type != ManipulationCommand.COMMAND_PICK:

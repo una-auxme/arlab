@@ -11,6 +11,10 @@ Furniture types:
 - Door: A door
 - Shelf: A shelf that is part of a cupboard
 - Table: A table
+- Dishwaser: A dishwasher
+- Washer: A washing machine
+- TrashBin: A trash bin
+- LaundryBasket: A laundry basket
 
 The furniture system uses polymorphic inheritance to handle different furniture
 types while maintaining a unified database schema. Each furniture type has
@@ -404,4 +408,296 @@ class Table(Furniture):
         m = super().to_ros_msg()
         # Populate table-specific field in the nested message structure
         m.furniture.table.height = self.height
+        return m
+
+
+class Dishwasher(Furniture):
+    """A dishwasher.
+
+    This subclass represents a dishwasher furniture object. Dishwashers have
+    specific dimensions (width, height) and an open/closed state.
+    """
+
+    __tablename__ = "entity_furniture_dishwasher"
+    id: Mapped[int] = mapped_column(
+        ForeignKey("entity_furniture.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    """Foreign key to the parent furniture record.
+
+    This column serves as the primary key for the dishwasher table while also
+    linking to the parent Furniture record. When the parent is deleted,
+    this dishwasher record is also deleted (CASCADE).
+    """
+
+    height: Mapped[float]
+    """Height of the dishwasher in meters."""
+
+    width: Mapped[float]
+    """Width of the dishwasher in meters."""
+
+    open: Mapped[str]
+    """Open state of the dishwasher.
+
+    Stores the open/closed state as a string (e.g., "open", "closed").
+    """
+
+    __mapper_args__ = {
+        "polymorphic_identity": "entity_furniture_dishwasher",
+    }
+
+    @classmethod
+    def _extract_kwargs(cls, m: msg.Entity) -> Dict:
+        """Extracts keyword arguments for creating a Dishwasher instance.
+
+        This method calls the parent's _extract_kwargs to get common attributes,
+        then extracts dishwasher-specific attributes from the ROS message.
+
+        Args:
+            m: The ROS Entity message to extract data from
+
+        Returns:
+            A dictionary containing attributes from the parent class plus
+            width, height, and open from the dishwasher-specific message fields
+        """
+        kwargs = super()._extract_kwargs(m)
+        # Extract dishwasher-specific attributes from the nested message structure
+        kwargs["height"] = m.furniture.dishwasher.height
+        kwargs["width"] = m.furniture.dishwasher.width
+        kwargs["open"] = m.furniture.dishwasher.open
+        return kwargs
+
+    def to_ros_msg(self) -> msg.Entity:
+        """Converts this dishwasher instance to a ROS message.
+
+        This method calls the parent's to_ros_msg and populates the dishwasher-specific
+        fields in the nested message structure.
+
+        Returns:
+            A ROS Entity message populated with this instance's data
+        """
+        m = super().to_ros_msg()
+        # Populate dishwasher-specific fields in the nested message structure
+        m.furniture.dishwasher.height = self.height
+        m.furniture.dishwasher.width = self.width
+        m.furniture.dishwasher.open = self.open
+        return m
+
+
+class Washer(Furniture):
+    """A washing machine.
+
+    This subclass represents a washing machine furniture object. Washers have
+    specific dimensions (width, height) and an open/closed state.
+    """
+
+    __tablename__ = "entity_furniture_washer"
+    id: Mapped[int] = mapped_column(
+        ForeignKey("entity_furniture.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    """Foreign key to the parent furniture record.
+
+    This column serves as the primary key for the washer table while also
+    linking to the parent Furniture record. When the parent is deleted,
+    this washer record is also deleted (CASCADE).
+    """
+
+    height: Mapped[float]
+    """Height of the washer in meters."""
+
+    width: Mapped[float]
+    """Width of the washer in meters."""
+
+    open: Mapped[str]
+    """Open state of the washer.
+
+    Stores the open/closed state as a string (e.g., "open", "closed").
+    """
+
+    __mapper_args__ = {
+        "polymorphic_identity": "entity_furniture_washer",
+    }
+
+    @classmethod
+    def _extract_kwargs(cls, m: msg.Entity) -> Dict:
+        """Extracts keyword arguments for creating a Washer instance.
+
+        This method calls the parent's _extract_kwargs to get common attributes,
+        then extracts washer-specific attributes from the ROS message.
+
+        Args:
+            m: The ROS Entity message to extract data from
+
+        Returns:
+            A dictionary containing attributes from the parent class plus
+            width, height, and open from the washer-specific message fields
+        """
+        kwargs = super()._extract_kwargs(m)
+        # Extract washer-specific attributes from the nested message structure
+        kwargs["height"] = m.furniture.washer.height
+        kwargs["width"] = m.furniture.washer.width
+        kwargs["open"] = m.furniture.washer.open
+        return kwargs
+
+    def to_ros_msg(self) -> msg.Entity:
+        """Converts this washer instance to a ROS message.
+
+        This method calls the parent's to_ros_msg and populates the washer-specific
+        fields in the nested message structure.
+
+        Returns:
+            A ROS Entity message populated with this instance's data
+        """
+        m = super().to_ros_msg()
+        # Populate washer-specific fields in the nested message structure
+        m.furniture.washer.height = self.height
+        m.furniture.washer.width = self.width
+        m.furniture.washer.open = self.open
+        return m
+
+
+class LaundryBasket(Furniture):
+    """A laundry basket.
+
+    This subclass represents a laundry basket furniture object. Laundry baskets
+    have specific dimensions (width, height).
+    """
+
+    __tablename__ = "entity_furniture_laundry_basket"
+    id: Mapped[int] = mapped_column(
+        ForeignKey("entity_furniture.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    """Foreign key to the parent furniture record.
+
+    This column serves as the primary key for the laundry basket table while
+    also linking to the parent Furniture record. When the parent is deleted,
+    this laundry basket record is also deleted (CASCADE).
+    """
+
+    height: Mapped[float]
+    """Height of the laundry basket in meters."""
+
+    width: Mapped[float]
+    """Width of the laundry basket in meters."""
+
+    __mapper_args__ = {
+        "polymorphic_identity": "entity_furniture_laundry_basket",
+    }
+
+    @classmethod
+    def _extract_kwargs(cls, m: msg.Entity) -> Dict:
+        """Extracts keyword arguments for creating a LaundryBasket instance.
+
+        This method calls the parent's _extract_kwargs to get common attributes,
+        then extracts laundry basket-specific attributes from the ROS message.
+
+        Args:
+            m: The ROS Entity message to extract data from
+
+        Returns:
+            A dictionary containing attributes from the parent class plus
+            width and height from the laundry basket-specific message fields
+        """
+        kwargs = super()._extract_kwargs(m)
+        # Extract laundry basket-specific attributes from the nested message structure
+        kwargs["height"] = m.furniture.laundry_basket.height
+        kwargs["width"] = m.furniture.laundry_basket.width
+        return kwargs
+
+    def to_ros_msg(self) -> msg.Entity:
+        """Converts this laundry basket instance to a ROS message.
+
+        This method calls the parent's to_ros_msg and populates the laundry basket-specific
+        fields in the nested message structure.
+
+        Returns:
+            A ROS Entity message populated with this instance's data
+        """
+        m = super().to_ros_msg()
+        # Populate laundry basket-specific fields in the nested message structure
+        m.furniture.laundry_basket.height = self.height
+        m.furniture.laundry_basket.width = self.width
+        return m
+
+
+class TrashBin(Furniture):
+    """A trash bin.
+
+    This subclass represents a trash bin furniture object. Trash bins have
+    specific dimensions (width, height), a lid indicator, and an open/closed state.
+    """
+
+    __tablename__ = "entity_furniture_trash_bin"
+    id: Mapped[int] = mapped_column(
+        ForeignKey("entity_furniture.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    """Foreign key to the parent furniture record.
+
+    This column serves as the primary key for the trash bin table while also
+    linking to the parent Furniture record. When the parent is deleted,
+    this trash bin record is also deleted (CASCADE).
+    """
+
+    height: Mapped[float]
+    """Height of the trash bin in meters."""
+
+    width: Mapped[float]
+    """Width of the trash bin in meters."""
+
+    has_lid: Mapped[str]
+    """Whether the trash bin has a lid.
+
+    Stores the lid presence as a string (e.g., "true", "false").
+    """
+
+    open: Mapped[str]
+    """Open state of the trash bin.
+
+    Stores the open/closed state as a string (e.g., "open", "closed").
+    """
+
+    __mapper_args__ = {
+        "polymorphic_identity": "entity_furniture_trash_bin",
+    }
+
+    @classmethod
+    def _extract_kwargs(cls, m: msg.Entity) -> Dict:
+        """Extracts keyword arguments for creating a TrashBin instance.
+
+        This method calls the parent's _extract_kwargs to get common attributes,
+        then extracts trash bin-specific attributes from the ROS message.
+
+        Args:
+            m: The ROS Entity message to extract data from
+
+        Returns:
+            A dictionary containing attributes from the parent class plus
+            width, height, has_lid, and open from the trash bin-specific message fields
+        """
+        kwargs = super()._extract_kwargs(m)
+        # Extract trash bin-specific attributes from the nested message structure
+        kwargs["height"] = m.furniture.trash_bin.height
+        kwargs["width"] = m.furniture.trash_bin.width
+        kwargs["has_lid"] = m.furniture.trash_bin.has_lid
+        kwargs["open"] = m.furniture.trash_bin.open
+        return kwargs
+
+    def to_ros_msg(self) -> msg.Entity:
+        """Converts this trash bin instance to a ROS message.
+
+        This method calls the parent's to_ros_msg and populates the trash bin-specific
+        fields in the nested message structure.
+
+        Returns:
+            A ROS Entity message populated with this instance's data
+        """
+        m = super().to_ros_msg()
+        # Populate trash bin-specific fields in the nested message structure
+        m.furniture.trash_bin.height = self.height
+        m.furniture.trash_bin.width = self.width
+        m.furniture.trash_bin.has_lid = self.has_lid
+        m.furniture.trash_bin.open = self.open
         return m

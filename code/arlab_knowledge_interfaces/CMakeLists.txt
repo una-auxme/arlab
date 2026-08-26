@@ -40,6 +40,10 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/EntityFurnitureDoor.msg"
   "msg/EntityFurnitureShelf.msg"
   "msg/EntityFurnitureTable.msg"
+  "msg/EntityFurnitureDishwasher.msg"
+  "msg/EntityFurnitureWasher.msg"
+  "msg/EntityFurnitureLaundryBasket.msg"
+  "msg/EntityFurnitureTrashBin.msg"
 
   "msg/EntityType.msg"
   "msg/Result.msg"

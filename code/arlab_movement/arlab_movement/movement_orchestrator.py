@@ -5,10 +5,12 @@ This node implements an action-based orchestrator for managing navigation-relate
 It provides functionality to start/stop localization (AMCL) [currently not used], mapping (SLAM Toolbox),
 and navigation (Nav2), as well as saving the current map to file and optionally to a knowledge database.
 
-Author: Jonas Platzer
-
+Maintainers:
+    Jonas Platzer
+    Luca Kahlenberg <luca.kahlenberg@uni-a.de>
 """
 
+import math
 import os
 import signal
 import subprocess
@@ -19,9 +21,11 @@ from typing import Optional, Tuple
 
 import rclpy
 import rclpy.executors
-from arlab_common_interfaces.action import MovementAction
+from arlab_common_interfaces.action import MovementAction, VisionSnapshotAction
+from arlab_common_interfaces.msg import VisionSnapshotResponse
 from arlab_knowledge_interfaces.srv import AddMap
-from nav_msgs.msg import OccupancyGrid
+from nav_msgs.msg import OccupancyGrid, Odometry
+from rclpy.action import ActionClient
 from rclpy.action.server import ActionServer, CancelResponse, GoalResponse
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
 from rclpy.node import Node
@@ -38,6 +42,7 @@ class NavErr:
     MAP_SAVE_FAILED = -30
     DB_SERVICE_UNAVAILABLE = -31
     DB_SAVE_FAILED = -32
+    ANNOTATE_SERVER_UNAVAILABLE = -40
 
 
 class NavigationOrchestrator(Node):
@@ -61,6 +66,17 @@ class NavigationOrchestrator(Node):
         # old topic API
         self.declare_parameter("enable_legacy_topics", False)
 
+        # auto-annotation by CV snapshot parameters.
+        self.declare_parameter("snapshot_action_name", "/vision/snapshot")
+        self.declare_parameter("odom_topic", "/odom")
+        self.declare_parameter("annotate_tick_period", 1.0)  # seconds betweeen checks for snapshot conditions
+        self.declare_parameter("annotate_min_dist", 0.75)  # m moved since last snapshot
+        self.declare_parameter("annotate_min_yaw", 0.5)  # rad turned since last snapshot
+        self.declare_parameter("annotate_min_interval", 6.0)  # min interval in seconds between snapshots
+        self.declare_parameter("annotate_max_speed", 0.10)  # only fire when slower than this
+        self.declare_parameter("annotate_max_yaw_rate", 0.20)  # only fire when turning slower than this
+        self.declare_parameter("annotate_server_timeout", 10.0)
+
         self.map_path = str(self.get_parameter("map_path").value)
         self.use_timestamp = bool(self.get_parameter("use_timestamp").value)
         self.save_to_database = bool(self.get_parameter("save_to_database").value)
@@ -74,6 +90,16 @@ class NavigationOrchestrator(Node):
         self.amcl_process: Optional[subprocess.Popen] = None
         self.slam_process: Optional[subprocess.Popen] = None
         self.nav_process: Optional[subprocess.Popen] = None
+
+        # auto-annotation state
+        self.annotate_active = False
+        self._snapshot_in_flight = False
+        self._last_snap_pose: Optional[Tuple[float, float, float]] = None
+        self._last_snap_time = 0.0
+        self._latest_odom: Optional[Odometry] = None
+        self._annotate_timer = None
+        self._odom_sub = None
+        self._snap_lock = threading.Lock()
 
         # subscribe to the map topic to cache the latest map for saving
         self.map_subscription = self.create_subscription(OccupancyGrid, self.map_topic, self.map_callback, 10)
@@ -94,6 +120,11 @@ class NavigationOrchestrator(Node):
             cancel_callback=self.cancel_callback,
             callback_group=self.action_group,
         )
+
+        # auto-annotation: snapshot action client + topic publishin if snapshots being taken
+        self.snapshot_action_name = str(self.get_parameter("snapshot_action_name").value)
+        self.snapshot_client = ActionClient(self, VisionSnapshotAction, self.snapshot_action_name, callback_group=self.action_group)
+        self.annotating_pub = self.create_publisher(Bool, "/arlab/movement/annotating", 10)
 
         # legacy topic interface (subscription based control)
         if self.enable_legacy_topics:
@@ -192,6 +223,8 @@ class NavigationOrchestrator(Node):
                 err, msg = self.set_mapping(enable, publish_status)
             elif cmd == "nav":
                 err, msg = self.set_nav(enable, publish_status)
+            elif cmd == "auto_annotate":
+                err, msg = self.set_auto_annotate(enable, publish_status)
             elif cmd == "map_save":
                 err, msg = self.save_map(publish_status)
             elif cmd == "stop_all":
@@ -367,13 +400,202 @@ class NavigationOrchestrator(Node):
         self.nav_process, err, msg = self._stop_process(self.nav_process, "Nav2")
         return err, msg
 
+    # auto-annotation
+    def set_auto_annotate(self, enable: bool, publish_status) -> Tuple[int, str]:
+        """
+        Start or stop periodic CV snapshots that auto-annotate the map.
+
+        When enabled, subscribes to odometry and starts a timer that decides, on
+        each tick:
+        Whether the robot has moved/turned enough since the last
+        snapshot
+        And is moving slowly enough for a stable frame.
+
+        Args:
+            enable (bool): True to start auto-annotation, False to stop it.
+            publish_status (Callable[[str], None]): Callback to publish feedback.
+
+        Returns:
+            Tuple:
+                - int: Error code (NavErr.OK on success)
+                - str: Status or error message
+        """
+        if enable:
+            # start auto-annotation: check for fallpits
+            if self.annotate_active:
+                return NavErr.OK, "auto-annotation already running"
+            if self.slam_process is None or self.slam_process.poll() is not None:
+                self.get_logger().warning("auto_annotate started without SLAM running. map frame may be unavailable.")
+            timeout = float(self.get_parameter("annotate_server_timeout").value)
+            if not self.snapshot_client.wait_for_server(timeout_sec=timeout):
+                return NavErr.ANNOTATE_SERVER_UNAVAILABLE, (f"Snapshot action '{self.snapshot_action_name}' not available")
+            publish_status("Starting auto-annotation (CV snapshots)")
+
+            self._last_snap_pose = None
+            self._last_snap_time = 0.0
+            self._latest_odom = None
+
+            # subscribe to odometry
+            self._odom_sub = self.create_subscription(
+                Odometry,
+                str(self.get_parameter("odom_topic").value),
+                self._odom_callback,
+                10,
+                callback_group=self.service_group,
+            )
+
+            # create a timer to periodically check if a snapshot should be taken / conditions are met
+            period = float(self.get_parameter("annotate_tick_period").value)
+            self._annotate_timer = self.create_timer(period, self._annotate_tick, callback_group=self.action_group)
+            self.annotate_active = True
+            return NavErr.OK, "auto-annotation started"
+
+        publish_status("Stopping auto-annotation")
+        self._teardown_annotation()
+        return NavErr.OK, "auto-annotation stopped"
+
+    def _teardown_annotation(self):
+        """Cancel the annotation timer and remove the odom subscription if active."""
+        self.annotate_active = False
+        if self._annotate_timer is not None:
+            self._annotate_timer.cancel()
+            self._annotate_timer = None
+        if self._odom_sub is not None:
+            self.destroy_subscription(self._odom_sub)
+            self._odom_sub = None
+
+    def _odom_callback(self, msg: Odometry):
+        """Cache the latest odometry data for speed and turn rate checks"""
+        self._latest_odom = msg
+
+    def _annotate_tick(self):
+        """
+        Evaluate the snapshot condition checks and log when a snapshot fires.
+
+        Gates / Checks:
+        - No snapshot in flight -> robot moving slowly linear speed and turn rate
+        - A minimum time interval has elapsed
+        - The robot has moved or turned enough since the last snapshot.
+        """
+        # inactive or not odom -> skip
+        if not self.annotate_active or self._latest_odom is None:
+            return
+        # if snapshot is already running -> skip
+        with self._snap_lock:
+            if self._snapshot_in_flight:
+                return
+
+        # get current odom data
+        x, y, yaw, speed, yaw_rate = self._pose_from_odom(self._latest_odom)
+        now = self.get_clock().now().nanoseconds * 1e-9
+
+        # speed and turn rate checks, if higher than threshold -> skip
+        if speed > float(self.get_parameter("annotate_max_speed").value):
+            return
+        if yaw_rate > float(self.get_parameter("annotate_max_yaw_rate").value):
+            return
+
+        # if last snapshot was too recent -> skip
+        if now - self._last_snap_time < float(self.get_parameter("annotate_min_interval").value):
+            return
+
+        # if last snapshot pose exits, check distance and turned to it, if too small -> skip
+        if self._last_snap_pose is not None:
+            moved = math.hypot(x - self._last_snap_pose[0], y - self._last_snap_pose[1])
+            turned = abs(self._angle_diff(yaw, self._last_snap_pose[2]))
+            if moved < float(self.get_parameter("annotate_min_dist").value) and turned < float(
+                self.get_parameter("annotate_min_yaw").value
+            ):
+                return
+
+        # if all checks pass -> fire snapshot
+        self._fire_snapshot(x, y, yaw, now)
+
+    def _fire_snapshot(self, x: float, y: float, yaw: float, now: float):
+        """
+        Send one /vision/snapshot goal and publish to /arlab/movement/annotating.
+
+        Records the snapshot pose/time up front so the gates advance even while
+        the goal is in flight, marks the snapshot as in flight to prevent
+        overlap.
+        Entities are written to the knowledge base by the vision node itself.
+        """
+        goal = VisionSnapshotAction.Goal()
+        goal.command.clear_database = False  # accumulate annotations across the run
+        goal.command.mask_hand = False
+        # extra_models left empty to use general model for annotation
+
+        # set in-flight flag and current snapshot metadata
+        with self._snap_lock:
+            self._snapshot_in_flight = True
+        self._last_snap_pose = (x, y, yaw)
+        self._last_snap_time = now
+
+        # publish to /arlab/movement/annotating to signal operator for running snapshot
+        self.annotating_pub.publish(Bool(data=True))
+        self.get_logger().info(f"auto-annotate: SNAPSHOT IN PROGRESS at ({x:.2f}, {y:.2f}, {yaw:.2f} rad) - hold position.")
+
+        # call action server
+        send_future = self.snapshot_client.send_goal_async(goal)
+        send_future.add_done_callback(self._on_snapshot_goal)
+
+    def _on_snapshot_goal(self, future):
+        """Handle the goal-accepted response and chain to the result future."""
+        try:
+            handle = future.result()
+        # check for exceptions
+        except Exception as e:
+            self._clear_in_flight()
+            self.get_logger().warning(f"Snapshot goal send failed: {e}")
+            return
+        # check for rejection by action server
+        if not handle.accepted:
+            self._clear_in_flight()
+            self.get_logger().warning("Snapshot goal rejected by server.")
+            return
+        handle.get_result_async().add_done_callback(self._on_snapshot_result)
+
+    def _on_snapshot_result(self, future):
+        """Log the snapshot outcome and clear the in-flight flag/operator signal."""
+        self._clear_in_flight()
+        try:
+            response = future.result().result.response
+        except Exception as e:
+            self.get_logger().warning(f"Snapshot result failed: {e}")
+            return
+        if response.result != VisionSnapshotResponse.SUCCESS:
+            self.get_logger().warning(f"Snapshot failed: {response.error_msg}")
+
+    def _clear_in_flight(self):
+        """Mark no snapshot in flight and publish to /arlab/movement/annotating that snapshot finished."""
+        with self._snap_lock:
+            self._snapshot_in_flight = False
+        self.annotating_pub.publish(Bool(data=False))
+
+    def _pose_from_odom(self, msg: Odometry) -> Tuple[float, float, float, float, float]:
+        """Extract planar (x, y, yaw, linear_speed, abs_yaw_rate) from Odometry."""
+        p = msg.pose.pose.position
+        q = msg.pose.pose.orientation
+        yaw = math.atan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z))
+        v = msg.twist.twist.linear
+        speed = math.hypot(v.x, v.y)
+        yaw_rate = abs(msg.twist.twist.angular.z)
+        return p.x, p.y, yaw, speed, yaw_rate
+
+    @staticmethod
+    def _angle_diff(a: float, b: float) -> float:
+        """Shortest signed difference between two angles (rad)."""
+        return math.atan2(math.sin(a - b), math.cos(a - b))
+
     def stop_all(self):
         """
         Stop all navigation-related subprocesses.
 
-        This shuts down AMCL, SLAM Toolbox, and Nav2 if they are running.
-        Used both for explicit "stop_all" commands and action cancellation.
+        This shuts down AMCL, SLAM Toolbox, and Nav2 if they are running, and
+        also stops auto-annotation if active. Used both for explicit "stop_all"
+        commands and action cancellation.
         """
+        self._teardown_annotation()
         self.amcl_process, _, _ = self._stop_process(self.amcl_process, "AMCL")
         self.slam_process, _, _ = self._stop_process(self.slam_process, "SLAM Toolbox")
         self.nav_process, _, _ = self._stop_process(self.nav_process, "Nav2")

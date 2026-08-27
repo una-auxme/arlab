@@ -5,6 +5,8 @@
   <version>0.0.0</version>
   <description>Package for AR Lab robot movement and navigation.</description>
   <maintainer email="lukas.asam@uni-a.de">Lukas Asam</maintainer>
+  <maintainer email="luca.kahlenberg@uni-a.de>">Luca Kahlenberg</maintainer>
+  
   <license>MIT</license>
 
   <test_depend>python3-pytest</test_depend>
@@ -21,9 +23,9 @@
   <depend>nav2_costmap_2d</depend>
   <depend>nav2_route</depend>
   <depend>nav2_waypoint_follower</depend>
-  <depend>rclpy</depend> 
-  <depend>geometry_msgs</depend> 
-  <depend>tf2_ros</depend> 
+  <depend>rclpy</depend>
+  <depend>geometry_msgs</depend>
+  <depend>tf2_ros</depend>
 
   <depend>turtlebot3</depend>
   <depend>turtlebot3_navigation2</depend>
@@ -40,6 +42,8 @@
   <exec_depend>robot_state_publisher</exec_depend>
   <exec_depend>rviz2</exec_depend>
   <exec_depend>teleop_twist_keyboard</exec_depend>
+  <exec_depend>arlab_computer_vision</exec_depend>
+  <exec_depend>arlab_knowledge</exec_depend>
 
   <!--dependencie for rosbot_xl-->
   <depend>laser_filters</depend>

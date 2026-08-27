@@ -20,6 +20,10 @@ from arlab_knowledge.db.entities.furniture import (
     Furniture,
     Shelf,
     Table,
+    Dishwasher,
+    Washer,
+    LaundryBasket,
+    TrashBin,
 )
 from arlab_knowledge.db.entities.human import Human
 from arlab_knowledge.db.entities.pickable import Pickable
@@ -185,6 +189,62 @@ def get_table():
         pose_reference_frame="map",
         stamp=TimeData(stamp),
         height=1.5,
+    )
+
+
+def get_dishwasher():
+    pose = create_pose()
+    stamp = create_stamp()
+    return Dishwasher(
+        description="TestDishwasher",
+        pose=PoseData(pose),
+        pose_reference_frame="map",
+        stamp=TimeData(stamp),
+        width=0.6,
+        height=0.85,
+        open="false",
+    )
+
+
+def get_washer():
+    pose = create_pose()
+    stamp = create_stamp()
+    return Washer(
+        description="TestWasher",
+        pose=PoseData(pose),
+        pose_reference_frame="map",
+        stamp=TimeData(stamp),
+        width=0.6,
+        height=0.85,
+        open="false",
+    )
+
+
+def get_laundry_basket():
+    pose = create_pose()
+    stamp = create_stamp()
+    return LaundryBasket(
+        description="TestLaundryBasket",
+        pose=PoseData(pose),
+        pose_reference_frame="map",
+        stamp=TimeData(stamp),
+        height=0.5,
+        width=0.4,
+    )
+
+
+def get_trash_bin():
+    pose = create_pose()
+    stamp = create_stamp()
+    return TrashBin(
+        description="TestTrashBin",
+        pose=PoseData(pose),
+        pose_reference_frame="map",
+        stamp=TimeData(stamp),
+        height=0.5,
+        width=0.4,
+        has_lid="false",
+        open="true",
     )
 
 

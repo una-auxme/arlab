@@ -1,3 +1,19 @@
+# YOLO models available to the ObjectDetection node.
+#
+# Loaded by _load_model_definitions() in object_detection.py.
+#
+# Each key must match a MODEL_<KEY> constant in VisionSnapshotCommand.msg
+# (arlab_common_interfaces) - that constant is the ID a snapshot request uses to
+# ask for this model. An unknown key aborts node startup.
+#
+# Fields per entry:
+#   name:    Label used in log output only.
+#   weights: .pt filename, relative to the package's yolo_weights/ directory.
+#            A missing file is warned about at load time and the model is
+#            skipped; the node keeps running without it.
+#   pinned:  true  -> loaded at startup and run on every processed frame.
+#            false -> loaded on first request and released again after the
+#                     node's `model_ttl_minutes` parameter of idle time.
 models:
   PEOPLE:
     name: general_objects
@@ -7,6 +23,7 @@ models:
     name: general_objects
     weights: open_img.pt
     pinned: false
+# NOTE: YCB is not added yet to the directory due to bad performance
   GENERAL_OBJECTS:
     name: general_objects
     weights: ycb.pt

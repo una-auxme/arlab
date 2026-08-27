@@ -1,3 +1,29 @@
+# Mapping from YOLO class label to the knowledge base entity it represents.
+#
+# Loaded by _load_label_definitions() in object_detection.py and applied by
+# create_entity(). A label missing from this file still becomes an entity, but
+# degrades to a pickable of unknown category and logs a warning - so a newly
+# trained model works before its labels are added here.
+#
+# Fields per entry:
+#   type:            Uppercased to an EntityType constant (EntityType.msg):
+#                    entity, human, pickable, furniture, door, table, cupboard,
+#                    shelf, dishwasher, washer, laundry_basket, trash_bin.
+#   object_category: Only meaningful for type: pickable. Uppercased to an
+#                    EntityPickable.OBJECT_CATEGORY_* constant
+#                    (EntityPickable.msg): sphere, cube, cylinder, cone, ring,
+#                    capsule, unknown. Drives the gripping force calculation.
+#   attributes:      Only for a type naming an EntityFurniture submessage
+#                    (EntityFurniture.msg). Each key is set directly on that
+#                    submessage, so it must be one of its fields - e.g.
+#                    type: dishwasher with `open: closed` sets
+#                    entity.furniture.dishwasher.open (EntityFurnitureDishwasher.msg).
+#
+# An unknown type or object_category aborts node startup, so typos surface
+# immediately rather than at the first detection.
+#
+# The section comments below group the labels by the model they belong to; see
+# models.yaml.
 labels:
   # YCB model
   001_chips_can:

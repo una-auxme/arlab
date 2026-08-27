@@ -5,10 +5,21 @@ using Ultralytics YOLO segmentation, converts results into
 semantic/geometric entities, and communicates with a knowledge base (KB)
 via ROS services.
 
+Overview of the main components:
+- ObjectDetection: the ROS node; owns the camera subscriptions, the
+  `/vision/snapshot` action server and the KB service clients.
+- ModelRegistry: caches YOLO models, loading pinned ones eagerly and all
+  others on first use, evicts idle ones to free GPU memory.
+- create_entity(): converts one detection (label + point cloud) into the
+  Entity/Shape message pair the KB stores.
+
+Both the set of available models and the YOLO label -> KB entity mapping are
+configured in `config/models.yaml` and `config/labels.yaml` rather than in
+this file; see `_load_model_definitions` and `_load_label_definitions`.
 
 Maintainers:
     Simeon Wagner <simeon.wagner@uni-a.de>
-    Lars Britz <lars.britz@uni-a.de>
+    Lars Britz    <lars.britz@uni-a.de>
 """
 
 import os
@@ -62,9 +73,21 @@ def _load_model_definitions(path: str) -> dict[int, dict]:
     """Load model definitions from a YAML config.
 
     The YAML keys (e.g. "DISHWASHER") are resolved to VisionSnapshotCommand.MODEL_*
-    constants, so a typo or stale entry fails fast at startup instead of silently
-    mismatching a model ID. pinned=True models are loaded at startup and never
+    constants, a typo or stale entry fails fast at startup. pinned=True models are loaded at startup and never
     evicted; all others are lazy-loaded.
+
+    Args:
+        path: Path to the models YAML file in which a model is declared
+
+    Returns:
+        dict[int, dict]: Maps a VisionSnapshotCommand.MODEL_* ID to its
+            definition with the keys "name" (str, for log output), "weights"
+            (str, filename relative to the package's yolo_weights/ directory)
+            and "pinned" (bool).
+
+    Raises:
+        AttributeError: If a YAML key has no matching VisionSnapshotCommand
+            constant.
     """
     with open(path) as f:
         raw = yaml.safe_load(f)["models"]
@@ -88,13 +111,30 @@ def _load_label_definitions(path: str) -> dict[str, dict]:
 
     A "type" naming a specific EntityFurniture submessage field (e.g.
     "dishwasher", matching EntityFurniture.msg) may carry an "attributes" map,
-    whose entries are set directly on that submessage (e.g. dishwasher.open).
+    whose entries are set directly on that submessage (right now just the with its attribut dishwasher.open).
+
+    Args:
+        path: Path to the labels YAML file, expected to hold a top-level
+            "labels" mapping keyed by YOLO class name.
+
+    Returns:
+        dict[str, dict]: Maps a YOLO label to its definition with the keys
+            "entity_type_id" (int, an EntityType.* constant), "object_category"
+            (int | None, an EntityPickable.OBJECT_CATEGORY_* constant),
+            "furniture_field" (str | None, the EntityFurniture submessage field
+            to populate) and "attributes" (dict, values to set on it). Labels
+            missing from this mapping are handled by `create_entity`.
+
+    Raises:
+        AttributeError: If a "type" or "object_category" has no matching
+            EntityType / EntityPickable constant.
     """
     with open(path) as f:
         raw = yaml.safe_load(f)["labels"]
     definitions: dict[str, dict] = {}
     for label, defn in raw.items():
         object_category = None
+        # NOTE has the premise that only "pickable entities" have an object category (i.e. sphere, cylinder etc.). To be discussed.
         if "object_category" in defn:
             object_category = getattr(EntityPickable, f"OBJECT_CATEGORY_{defn['object_category'].upper()}")
         attributes = defn.get("attributes", {})
@@ -109,13 +149,30 @@ def _load_label_definitions(path: str) -> dict[str, dict]:
 
 @dataclass
 class _ModelEntry:
+    """One loaded YOLO model together with its cache bookkeeping.
+
+    Attributes:
+        model (YOLO): The loaded and (on CUDA) warmed up Ultralytics model.
+        pinned (bool): If true, the entry is exempt from TTL eviction.
+        last_used (float): `time.time()` epoch of the last `get_model` call, based on this timestamp eviction occurs if TTL is surpassed
+    """
+
     model: Any
     pinned: bool
     last_used: float
 
 
 class ModelRegistry:
-    """Manages YOLO models with lazy loading and TTL eviction for non-pinned models."""
+    """Manages YOLO models with lazy loading and TTL eviction for non-pinned models.
+
+    Pinned models are loaded once at startup and kept resident because they run
+    on every frame. All other models are loaded on their first request and
+    released again after an idle timeout, so rarely used weights do not occupy
+    GPU memory permanently.
+
+    All access is serialized through an internal lock, since models are
+    requested from the ROS executor's worker threads.
+    """
 
     def __init__(
         self,
@@ -125,6 +182,21 @@ class ModelRegistry:
         logger: Any,
         warmup_size: int = 640,
     ) -> None:
+        """Set up an empty registry.
+
+        No weights are read here; call `load_pinned` to populate the registry
+        with the pinned models.
+
+        Args:
+            definitions: Model definitions as returned by
+                `_load_model_definitions`.
+            weights_dir: Directory the definitions' "weights" filenames are
+                resolved against.
+            device: Torch device to run inference on, "cuda" or "cpu".
+            logger: ROS logger used to report loading and eviction.
+            warmup_size: Edge length of the square dummy image used to warm up
+                a freshly loaded CUDA model.
+        """
         self._definitions = definitions
         self._weights_dir = weights_dir
         self._device = device
@@ -134,16 +206,38 @@ class ModelRegistry:
         self._lock = Lock()
 
     def load_pinned(self) -> None:
-        """Load all pinned models into GPU memory with warmup."""
+        """Load all pinned models into GPU memory with warmup.
+
+        Called once during node construction so the first frame does not pay
+        the loading cost. A model whose weights are missing is skipped with a
+        warning rather than aborting startup.
+        """
         for model_id, defn in self._definitions.items():
             if defn.get("pinned", False):
                 with self._lock:
                     self._ensure_loaded(model_id)
 
     def get_pinned_ids(self) -> list[int]:
+        """Return the IDs of the models that run on every processed frame.
+
+        Returns:
+            list[int]: VisionSnapshotCommand.MODEL_* IDs marked pinned in the
+                configuration, regardless of whether they loaded successfully.
+        """
         return [mid for mid, defn in self._definitions.items() if defn.get("pinned", False)]
 
     def get_model(self, model_id: int) -> Any | None:
+        """Return a ready-to-use model, loading it on first request.
+
+        Marks the entry as used, which resets its eviction timeout.
+
+        Args:
+            model_id: A VisionSnapshotCommand.MODEL_* constant.
+
+        Returns:
+            Any | None: The Ultralytics model, or None if the ID is unknown or
+                its weights file is missing. Callers must handle None.
+        """
         with self._lock:
             self._ensure_loaded(model_id)
             entry = self._registry.get(model_id)
@@ -153,7 +247,14 @@ class ModelRegistry:
         return None
 
     def evict_stale(self, ttl_seconds: float) -> None:
-        """Remove non-pinned models that have not been used within ttl_seconds."""
+        """Remove non-pinned models that have not been used within ttl_seconds.
+
+        Dropping the reference releases the model's GPU memory; a later request
+        simply reloads it.
+
+        Args:
+            ttl_seconds: Idle time after which a non-pinned model is released.
+        """
         now = time.time()
         with self._lock:
             to_evict = [mid for mid, entry in self._registry.items() if not entry.pinned and (now - entry.last_used) > ttl_seconds]
@@ -162,7 +263,18 @@ class ModelRegistry:
                 self._logger.info(f"Evicted model '{self._definitions[mid]['name']}'")
 
     def _ensure_loaded(self, model_id: int) -> None:
-        """Load model if not already cached. Caller must hold self._lock."""
+        """Load model if not already cached. Caller must hold self._lock.
+
+        On CUDA the model is run over dummy images before being cached,
+        to force kernel compilation and memory allocation.
+
+        Args:
+            model_id: A VisionSnapshotCommand.MODEL_* constant.
+
+        Notes:
+            An unknown ID or a missing weights file is reported as a warning
+            and leaves the registry unchanged, so `get_model` returns None.
+        """
         if model_id in self._registry:
             return
         if model_id not in self._definitions:
@@ -196,29 +308,85 @@ class ObjectDetection(Node):
     """ROS2 node for real-time object detection and KB synchronization.
 
     The node:
-        1) Subscribes to RGB images and camera intrinsics.
-        2) Runs YOLO segmentation on incoming frames.
-        3) Converts detections to semantic entities (label, bbox, point cloud,
-           pose).
+        1) Subscribes to RGB images, camera intrinsics and (when `use_depth` is
+           set) a time-synchronized point cloud.
+        2) Runs every pinned YOLO segmentation model on the frame, plus any
+           extra models a snapshot request asks for.
+        3) Converts detections to semantic entities (label, point cloud, pose)
+           using the label mapping from `config/labels.yaml`.
         4) Interacts with a knowledge base through ROS services to insert or
            update entities.
 
+    Processing runs in one of two modes, selected by the `snapshot_mode`
+    parameter: continuously on every incoming frame, or only on demand when a
+    `/vision/snapshot` action goal arrives.
+
     Attributes:
         bridge (CvBridge): ROS-OpenCV conversion bridge.
-        model (YOLO): Ultralytics YOLO segmentation model.
-        camera_intrinsics (dict[str, float] | None): Focal lengths and principal
-            point.
-        service_client_group (MutuallyExclusiveCallbackGroup): Callback group for
-            services.
+        device (str): Torch device used for inference, "cuda" or "cpu".
+        _model_registry (ModelRegistry): Cache of the YOLO models this node may
+            run; see `config/models.yaml`.
+        _label_definitions (dict[str, dict]): YOLO label -> KB entity mapping;
+            see `config/labels.yaml`.
+        _snapshot_mode (bool): If true, frames are only processed on a
+            `/vision/snapshot` goal instead of continuously.
+        camera_intrinsics_matrix (NDArray | None): 3x3 intrinsic matrix K, set
+            once the first `camera_info` message arrives.
+        tf_buffer (Buffer): TF2 buffer used to transform the point cloud into
+            `target_frame` and to project it into the color image.
+        target_frame (str): TF frame the published entity poses refer to.
         prefix (str): Namespace prefix for KB services.
         client_get_entities: Service client for fetching entities.
         client_del_entities: Service client for deleting entities.
         client_add_entities: Service client for adding an entity.
         client_upd_shape: Service client for updating entity shapes.
+        segmented_image_pub: Publisher for the annotated debug image.
+        debug_pointcloud_pub: Publisher for the per-entity debug point cloud.
     """
 
     def __init__(self) -> None:
-        """Initialize the node, parameters, subscriptions, and service clients."""
+        """Initialize the node, parameters, subscriptions, and service clients.
+
+        Loads the model and label configuration from the package share
+        directory, brings up the pinned YOLO models, and connects the camera,
+        TF and knowledge base interfaces.
+
+        Parameters:
+            model_ttl_minutes (int): Idle time after which a non-pinned model is
+                released from memory. Read on every eviction cycle, so it takes
+                effect at runtime.
+            visualize (bool): Publish the annotated image on
+                `/vision/segmented_image`.
+            log_level (str): Logger severity, one of DEBUG, INFO, WARN, ERROR,
+                FATAL.
+            use_depth (bool): Consume a point cloud alongside the RGB image.
+                Without it no 3D geometry, and therefore no entity, can be
+                produced.
+            sync_tolerance (float): Maximum timestamp difference in seconds
+                between an RGB image and a point cloud for them to be paired.
+            use_clustering (bool): Reduce each detection's points to its largest
+                DBSCAN cluster. Read per detection, so it takes effect at
+                runtime.
+            delete_old_entities (bool): In continuous mode, delete the
+                previously stored pickables after each frame. In snapshot mode
+                the action goal decides instead.
+            clear_db_on_no_detection (bool): Also delete the old entities when
+                the current frame detected nothing, keeping the KB in sync with
+                what the camera currently sees.
+            max_image_width (int): Edge length the image is scaled to before
+                inference; 0 keeps the original resolution.
+            target_frame (str): TF frame the entity poses and point clouds are
+                expressed in.
+            snapshot_mode (bool): Process frames only on a `/vision/snapshot`
+                goal rather than continuously.
+
+        Side Effects:
+            - Loads all pinned YOLO models onto the GPU.
+            - Starts the `/vision/snapshot` action server when snapshot mode is
+              enabled.
+            - Starts timers for KB service discovery, frame statistics and model
+              eviction.
+        """
         super().__init__(type(self).__name__)
 
         package_share_dir = get_package_share_directory("arlab_computer_vision")
@@ -226,35 +394,23 @@ class ObjectDetection(Node):
         model_definitions = _load_model_definitions(os.path.join(package_share_dir, "config", "models.yaml"))
         self._label_definitions = _load_label_definitions(os.path.join(package_share_dir, "config", "labels.yaml"))
 
-        # Declare configurable parameters.
+        # Declare configurable parameters; see the Parameters section above.
         self.declare_parameter("model_ttl_minutes", 10)
         self.declare_parameter("visualize", True)
         self.declare_parameter("log_level", "INFO")
         self.declare_parameter("use_depth", True)
-        self.declare_parameter("sync_tolerance", 0.5)  # 500ms tolerance (default)
-        # Enable/disable depth clustering (default: True)
+        self.declare_parameter("sync_tolerance", 0.5) 
         self.declare_parameter("use_clustering", True)
-        # Delete old entities before adding new ones
         self.declare_parameter("delete_old_entities", True)
-        # Clear DB when no objects are detected (keeps DB in sync with camera)
         self.declare_parameter("clear_db_on_no_detection", True)
-        # Maximum image width for YOLO inference (0 = no scaling)
-        # Reduces memory usage and speeds up inference for large images
         self.declare_parameter("max_image_width", 640)
-        # Target frame for TF transformations (default: "camera_tool_link")
         self.declare_parameter("target_frame", "camera_tool_link")
-
-        # Enable snapshot mode
         self.declare_parameter("snapshot_mode", True)
 
-        # If the model output should be plotted and published
         self.visualize = self.get_parameter("visualize").get_parameter_value().bool_value
 
-        # Load parameters.
-        # Visualization parameter removed for performance reasons
         log_level_str = self.get_parameter("log_level").get_parameter_value().string_value
 
-        # Set logger level
         from rclpy.impl.logging_severity import LoggingSeverity
 
         log_level_map = {
@@ -271,22 +427,18 @@ class ObjectDetection(Node):
         self.use_depth = self.get_parameter("use_depth").get_parameter_value().bool_value
         self.sync_tolerance = self.get_parameter("sync_tolerance").get_parameter_value().double_value
 
-        # Load delete old entities parameter
         self._delete_old_entities = self.get_parameter("delete_old_entities").get_parameter_value().bool_value
         self.get_logger().info(f"Delete old entities: {self._delete_old_entities}")
 
-        # Load clear DB on no detection parameter
         self._clear_db_on_no_detection = self.get_parameter("clear_db_on_no_detection").get_parameter_value().bool_value
         self.get_logger().info(f"Clear DB on no detection: {self._clear_db_on_no_detection}")
 
-        # Load max image width parameter
         self.max_image_width = self.get_parameter("max_image_width").get_parameter_value().integer_value
         if self.max_image_width > 0:
             self.get_logger().info(f"YOLO input size: {self.max_image_width}x{self.max_image_width} (images will be scaled to square size)")
         else:
             self.get_logger().info("Image scaling disabled - using original image size for YOLO")
 
-        # Enable snapshot mode?
         self._snapshot_mode = self.get_parameter("snapshot_mode").get_parameter_value().bool_value
         self.get_logger().info(f"Snapshot mode: {self._snapshot_mode}")
 
@@ -301,9 +453,10 @@ class ObjectDetection(Node):
                 callback_group=self._snapshot_group,
             )
 
+        # Guards the cached frame against concurrent access by the camera
+        # callback and the snapshot execution thread.
         self.vision_data_mutex = Lock()
 
-        # Init CV bridge.
         self.bridge = CvBridge()
         device = "cuda" if torch.cuda.is_available() else "cpu"
         if device == "cuda":
@@ -333,18 +486,17 @@ class ObjectDetection(Node):
         self._frames_processed = 0
         self._frames_skipped = 0
 
+        # Camera intrinsics; populated asynchronously by camera_info_callback.
+        # Until they arrive, _process_data cannot build 3D geometry.
         self.camera_intrinsics_matrix: Optional[NDArray] = None
         self.camera_intrinsics: dict[str, float] | None = None
         self._camera_intrinsics_set = False
-        # Cached intrinsics values for faster access
         self._fx: float | None = None
         self._fy: float | None = None
         self._cx: float | None = None
         self._cy: float | None = None
-        # Store RGB image resolution for intrinsics scaling
         self._rgb_width: int | None = None
         self._rgb_height: int | None = None
-        # Store depth image resolution
         self._depth_width: int | None = None
         self._depth_height: int | None = None
 
@@ -373,10 +525,9 @@ class ObjectDetection(Node):
             callback_group=self.service_client_group,
         )
 
-        # Flag to track if KB services are available
+        # Set by _check_kb_services; every KB interaction is skipped while false.
         self._kb_services_available = False
 
-        # Load target frame parameter
         self.target_frame = self.get_parameter("target_frame").get_parameter_value().string_value
         self.get_logger().info(f"Target frame for TF transformations: '{self.target_frame}'")
 
@@ -395,22 +546,19 @@ class ObjectDetection(Node):
 
         # Subscribe to RGB and depth image streams with synchronization.
         if self.use_depth:
-            # Create subscribers for message_filters
             rgb_sub = Subscriber(self, Image, "camera_color_image")
             pointcloud_sub = Subscriber(self, PointCloud2, "camera_point_cloud")
 
-            # Create time synchronizer
-            # queue_size=1 minimizes memory usage - only buffer 1 synchronized pair
-            # This prevents OOM during slow inference and reduces swap pressure
+            # queue_size=1 buffers only a single synchronized pair, which
+            # prevents OOM during slow inference and reduces swap pressure.
             self.sync = ApproximateTimeSynchronizer(
                 [rgb_sub, pointcloud_sub],
-                queue_size=1,  # Minimized to reduce memory footprint
+                queue_size=1,
                 slop=self.sync_tolerance,
             )
             self.sync.registerCallback(self._image_data_callback)
             self.get_logger().info(f"Subscribed to synchronized RGB and depth topics (tolerance: {self.sync_tolerance}s)")
         else:
-            # Subscribe to RGB image stream only.
             self.create_subscription(
                 Image,
                 "camera_color_image",
@@ -424,8 +572,9 @@ class ObjectDetection(Node):
         self.segmented_image_pub = self.create_publisher(Image, "/vision/segmented_image", qos_profile=1)
         self.debug_pointcloud_pub = self.create_publisher(PointCloud2, "/vision/debug_pc", qos_profile=1)
 
+        # The timer cancels itself once the KB has come up; the immediate call
+        # avoids waiting a full period when it is already running.
         self._knowledge_timer = self.create_timer(timer_period_sec=5.0, callback=self._check_kb_services)
-        # Check services availability initially
         self._check_kb_services()
         self.create_timer(timer_period_sec=5.0, callback=self._frame_statistics_reporter)
         self.create_timer(timer_period_sec=60.0, callback=self._evict_stale_models)
@@ -450,13 +599,17 @@ class ObjectDetection(Node):
         return available
 
     def _frame_statistics_reporter(self):
-        """Report frame statistics every 10 seconds."""
+        """Log how many frames were processed and dropped, and reset the counters.
+
+        Timer callback (5 s). A high skip rate means inference is slower than
+        the camera's frame rate.
+        """
         total = self._frames_processed + self._frames_skipped
         if total > 0:
             processed_pct = self._frames_processed / total * 100 if total > 0 else 0.0
             skipped_pct = self._frames_skipped / total * 100 if total > 0 else 0.0
             self.get_logger().info(
-                f"Frame statistics (last 10s): "
+                f"Frame statistics (last 5s): "
                 f"Processed: {self._frames_processed} ({processed_pct:.1f}%), "
                 f"Skipped: {self._frames_skipped} ({skipped_pct:.1f}%), "
                 f"Total: {total}"
@@ -470,6 +623,17 @@ class ObjectDetection(Node):
         rgb_msg: Image,
         pointcloud_msg: PointCloud2 | None = None,
     ) -> None:
+        """Cache the latest camera frame and, outside snapshot mode, process it.
+
+        Registered either on the RGB subscription directly or on the
+        RGB/point cloud `ApproximateTimeSynchronizer`, depending on `use_depth`.
+        The cached frame is what a later `/vision/snapshot` goal operates on.
+
+        Args:
+            rgb_msg: Incoming `sensor_msgs/Image`.
+            pointcloud_msg: Matching `sensor_msgs/PointCloud2`, or None when
+                depth is disabled.
+        """
         with self.vision_data_mutex:
             self.color_image = rgb_msg
             self.pointcloud = pointcloud_msg
@@ -494,16 +658,30 @@ class ObjectDetection(Node):
         Depth preparation (TF lookups, point projection) is done once and
         shared across all model results.
 
+        Each detection's segmentation mask selects the point cloud points that
+        fall inside it, this points yield the 3D geometry and pose. Without
+        a point cloud or camera intrinsics no entities can be produced and the method only
+        publishes the annotated image.
+
         Args:
             rgb_msg: Incoming RGB `sensor_msgs/Image`.
             pointcloud_msg: Optional incoming `sensor_msgs/PointCloud2`.
             delete_old_entities: If true, delete previously stored entities first.
             mask_hand: If true, zero the lower image region to suppress hand detections.
             extra_models: Additional model IDs (VisionSnapshotCommand.MODEL_*) to run.
+
+        Side Effects:
+            - Publishes to `/vision/segmented_image` and `/vision/debug_pc`.
+            - Adds the detected entities to the knowledge base and, when asked,
+              deletes the pickables that were stored before this frame.
+
+        Raises:
+            tf2_ros.TransformException: If the point cloud cannot be transformed
+                into `target_frame` or the color frame within the timeout.
         """
         t_start = time.perf_counter()
 
-        # === 1. PREPROCESSING (CPU) ===
+        # PREPROCESSING (CPU)
         t_pre = time.perf_counter()
         rgb_image = self.bridge.imgmsg_to_cv2(rgb_msg, desired_encoding="bgr8")
         original_height, original_width = rgb_image.shape[:2]
@@ -518,12 +696,15 @@ class ObjectDetection(Node):
             scale_x = scale_y = 1.0
         preprocess_ms = (time.perf_counter() - t_pre) * 1000
 
-        # === 2. DEPTH PREPARATION (once, shared across all models) ===
+        # DEPTH PREPARATION
         structured_points = None
         camera_points_idxs = None
         points_header = None
 
         if pointcloud_msg is not None and self.use_depth and self.camera_intrinsics_matrix is not None:
+            # (a) Express the points in target_frame, which is what the entity
+            # poses are reported in. Time(seconds=0.0) requests the latest
+            # available transform, as this pair is expected to be static.
             depth_to_target_msg = self.tf_buffer.lookup_transform(
                 self.target_frame,
                 pointcloud_msg.header.frame_id,
@@ -532,6 +713,8 @@ class ObjectDetection(Node):
             )
             depth_to_target: NDArray = ros2_numpy.numpify(depth_to_target_msg.transform)
 
+            # Deep copy because the transformed coordinates are written back
+            # into the array in place.
             structured_points = deepcopy(pointcloud2_to_array(pointcloud_msg))
             sp_np = np.stack(
                 (
@@ -547,6 +730,9 @@ class ObjectDetection(Node):
             structured_points["y"] = target_sp[1]
             structured_points["z"] = target_sp[2]
 
+            # (b) Independently, project the points into the color image so each
+            # point can be tested against a segmentation mask. Uses the image's
+            # own stamp, since this transform may move with the camera.
             depth_to_color_msg = self.tf_buffer.lookup_transform(
                 rgb_msg.header.frame_id,
                 pointcloud_msg.header.frame_id,
@@ -560,17 +746,22 @@ class ObjectDetection(Node):
             np_points = np.concatenate([np_points, np.ones((1, np_points.shape[-1]))])
             np_points = depth_to_color @ np_points
             camera_points = self.camera_intrinsics_matrix @ np_points[:3]
+            # Perspective divide, leaving homogeneous pixel coordinates (u, v).
             camera_points = camera_points / camera_points[2]
             camera_points = camera_points[:2]
             camera_points_idxs = camera_points.astype(np.int32)
+            # Swap to (row, column) order so the result indexes a mask directly.
             camera_points_idxs[[0, 1]] = camera_points_idxs[[1, 0]]
+            # Points projecting outside the image are clamped to the border
+            # rather than dropped, which keeps this array index-aligned with
+            # structured_points.
             camera_points_idxs[0] = np.clip(camera_points_idxs[0], 0, original_height - 1)
             camera_points_idxs[1] = np.clip(camera_points_idxs[1], 0, original_width - 1)
 
             points_header = deepcopy(pointcloud_msg.header)
             points_header.frame_id = self.target_frame
 
-        # === 3. RUN MODELS ===
+        # RUN INFERENCE
         model_ids = self._model_registry.get_pinned_ids()
         if extra_models:
             for mid in extra_models:
@@ -580,6 +771,8 @@ class ObjectDetection(Node):
         all_entities: List[Tuple[Entity, Shape]] = []
         annotated_image = None
         t_yolo_total = 0.0
+        # Snapshot the existing entities before inserting anything, so the
+        # deletion below cannot remove entities this frame just added.
         old_entity_ids = self._kb_get_entities_for_deletion()
 
         for model_id in model_ids:
@@ -600,6 +793,7 @@ class ObjectDetection(Node):
             if num_detections == 0:
                 continue
 
+            # Undo the preprocessing scale so boxes refer to the original image.
             if scale_x != 1.0 or scale_y != 1.0:
                 if hasattr(result, "boxes") and result.boxes is not None:
                     if hasattr(result.boxes, "xywh") and result.boxes.xywh is not None:
@@ -612,6 +806,8 @@ class ObjectDetection(Node):
 
             if structured_points is not None and masks is not None and camera_points_idxs is not None:
                 for i, mask in enumerate(masks):
+                    # Look up each point's pixel in the mask, giving one flag
+                    # per point in structured_points order.
                     point_mask = mask[camera_points_idxs[0], camera_points_idxs[1]]
                     entity_points = structured_points[point_mask > 0.5]
 
@@ -631,14 +827,16 @@ class ObjectDetection(Node):
                         self.get_logger().warn(f"No label definition for '{label}', defaulting to pickable/unknown")
                     all_entities.append(create_entity(label, entity_points, entity_pointcloud.header, self._label_definitions))
 
-        # === 4. VISUALIZE (all models' detections on one frame) ===
+        # VISUALIZE
         if self.visualize and annotated_image is not None:
             self.segmented_image_pub.publish(self.bridge.cv2_to_imgmsg(annotated_image, "bgr8"))
 
-        # === 5. KB UPDATE ===
+        # UPDATE KNOWLEDGE BASE
         if self._kb_services_available:
             self.kb_add_entities(all_entities)
         if delete_old_entities:
+            # An empty frame only clears the KB if that is explicitly wanted;
+            # otherwise a single bad frame would wipe still-valid entities.
             if len(all_entities) > 0 or self._clear_db_on_no_detection:
                 self._kb_delete_entities(ids=old_entity_ids)
 
@@ -649,6 +847,20 @@ class ObjectDetection(Node):
         )
 
     def cluster_entity_points(self, entity_points):
+        """Reduce a detection's points to its largest spatially connected cluster.
+
+        A segmentation mask is rarely pixel-perfect, so points from the
+        background behind the object are usually included as well. Those points
+        are spatially separated from the object and would otherwise drag the
+        entity's centroid away from it.
+
+        Args:
+            entity_points: Structured point array with "x", "y" and "z" fields.
+
+        Returns:
+            The subset of points forming the largest cluster, or an empty list
+            if the input was empty or DBSCAN classified everything as noise.
+        """
         if len(entity_points) == 0:
             return []
         # 1. Preparing data for sklearn dbscan
@@ -673,6 +885,15 @@ class ObjectDetection(Node):
             return []
 
     def _kb_get_entities_for_deletion(self) -> List[int]:
+        """Fetch the IDs of the pickables currently stored in the knowledge base.
+
+        Only pickables are considered, so furniture and humans survive a
+        refresh.
+
+        Returns:
+            List[int]: Entity IDs, or an empty list if the KB is unavailable or
+                the query failed.
+        """
         if not self._kb_services_available:
             return []
         get_req = GetEntities.Request()
@@ -687,6 +908,14 @@ class ObjectDetection(Node):
         return response.entities
 
     def _kb_delete_entities(self, ids: List[int]):
+        """Delete the given entities from the knowledge base.
+
+        Does nothing if the KB is unavailable or the list is empty. Failures are
+        logged but not raised, so a KB problem cannot abort frame processing.
+
+        Args:
+            ids: Entity IDs to remove.
+        """
         if not self._kb_services_available:
             self.get_logger().warn(
                 "Not deleting entities: Kb services not available!",
@@ -704,6 +933,19 @@ class ObjectDetection(Node):
             self.get_logger().error(f"Failed to delete entities: {del_response.result.error}")
 
     def kb_add_entities(self, entities: List[Tuple[Entity, Shape]]):
+        """Store detected entities and their geometry in the knowledge base.
+
+        Each pair takes two service calls, because a shape can only be attached
+        to an entity that already exists: `AddEntity` returns the new ID, which
+        `UpdShape` then references. If the first call fails the shape is
+        skipped and the next entity is attempted.
+
+        Does nothing if the KB is unavailable. Failures are logged but not
+        raised, so a KB problem cannot abort frame processing.
+
+        Args:
+            entities: (Entity, Shape) pairs as produced by `create_entity`.
+        """
         if not self._kb_services_available:
             self.get_logger().warn(
                 "Not adding entities: Kb services not available!",
@@ -735,8 +977,12 @@ class ObjectDetection(Node):
     def camera_info_callback(self, msg: CameraInfo) -> None:
         """Extract camera intrinsics from CameraInfo message.
 
+        The intrinsics are required to project the point cloud into the color
+        image; until the first message arrives `_process_data` cannot produce
+        entities.
+
         Args:
-            msg: CameraInfo message with intrinsic matrix K.
+            msg: `sensor_msgs/CameraInfo` message with intrinsic matrix K.
         """
         K = np.array(msg.k, dtype=float).reshape(3, 3)
         new_intrinsics = {
@@ -746,24 +992,21 @@ class ObjectDetection(Node):
             "cy": K[1, 2],
         }
 
-        # Store RGB image resolution for intrinsics scaling
         self._rgb_width = msg.width
         self._rgb_height = msg.height
 
-        # Only log if this is the first time or if values changed
+        # This topic publishes continuously, so only the first message is
+        # logged; later ones update the values silently.
         if not self._camera_intrinsics_set:
             self.camera_intrinsics = new_intrinsics
             self._camera_intrinsics_set = True
-            # Cache intrinsics values for faster access
             self._fx = new_intrinsics["fx"]
             self._fy = new_intrinsics["fy"]
             self._cx = new_intrinsics["cx"]
             self._cy = new_intrinsics["cy"]
             self.get_logger().info(f"Camera intrinsics set: {msg.width}x{msg.height}, fx={K[0, 0]:.1f}, fy={K[1, 1]:.1f}")
         else:
-            # Update silently (intrinsics shouldn't change, but update just in case)
             self.camera_intrinsics = new_intrinsics
-            # Update cached values
             self._fx = new_intrinsics["fx"]
             self._fy = new_intrinsics["fy"]
             self._cx = new_intrinsics["cx"]
@@ -779,7 +1022,8 @@ class ObjectDetection(Node):
             model: YOLO model instance to use.
 
         Returns:
-            Tuple of (YOLO result, number of detections).
+            tuple[Any, int]: The YOLO result for the single input image and its
+                number of detections.
         """
         results = model(rgb_image, verbose=False, device=self.device)
         result = results[0]
@@ -787,6 +1031,11 @@ class ObjectDetection(Node):
         return result, num_detections
 
     def _evict_stale_models(self) -> None:
+        """Release models that have been idle for longer than their TTL.
+
+        Timer callback (60 s). The `model_ttl_minutes` parameter is read on each
+        call so it can be changed at runtime.
+        """
         ttl = self.get_parameter("model_ttl_minutes").get_parameter_value().integer_value * 60.0
         self._model_registry.evict_stale(ttl)
 
@@ -803,7 +1052,9 @@ class ObjectDetection(Node):
             mask_hand: ignore the hand portion of the image
 
         Returns:
-            Binary masks as numpy array (N x H x W) or None if no masks.
+            np.ndarray | None: Binary masks (N x H x W) scaled to the original
+                image size, or None if the result carries no masks - which is
+                the case for a detection-only model.
         """
         has_masks = hasattr(result, "masks") and result.masks is not None and len(result.masks) > 0
         if not has_masks:
@@ -832,14 +1083,42 @@ class ObjectDetection(Node):
         return result_masks
 
     def _snapshot_goal_callback(self, goal_request: VisionSnapshotAction.Goal):
+        """Accept every incoming `/vision/snapshot` goal.
+
+        Args:
+            goal_request: The requested `VisionSnapshotAction.Goal`.
+
+        Returns:
+            GoalResponse: Always ACCEPT. Goals are never rejected here; problems
+                are reported through the result instead.
+        """
         self.get_logger().info(f"Received goal from Decision Making. Delete old: {goal_request.command.clear_database}")
         return GoalResponse.ACCEPT
 
     def _snapshot_execute_callback(self, goal_handle):
+        """Process one frame on request and report the outcome to the caller.
+
+        The cached frame is discarded first and a fresh one awaited, because the
+        camera is mounted on the arm: a buffered frame may still show the pose
+        the robot was in before it moved to the observation position.
+
+        Args:
+            goal_handle: Handle of the accepted `VisionSnapshotAction` goal,
+                carrying the `VisionSnapshotCommand` to execute.
+
+        Returns:
+            VisionSnapshotAction.Result: With `response.result` set to
+                VisionSnapshotResponse.SUCCESS, ERROR_NO_IMAGE_DATA if no frame
+                arrived in time, or ERROR_UNKNOWN if processing raised.
+
+        Notes:
+            The goal always succeeds, even on error - failures are communicated
+            in the result rather than by aborting the goal.
+        """
         with self.vision_data_mutex:
             self.color_image = None
             self.pointcloud = None
-        # sleep to make sure position has stabilized
+        # Wait up to 5s for a frame captured after the arm settled.
         for _ in range(5):
             sleep(1.0)
             with self.vision_data_mutex:
@@ -878,6 +1157,34 @@ def create_entity(
     points_header: Header,
     label_definitions: dict[str, dict],
 ) -> Tuple[Entity, Shape]:
+    """Convert one detection into the Entity/Shape pair the knowledge base stores.
+
+    The label decides what kind of entity is created: `label_definitions` maps
+    it to an EntityType and, depending on that type, either a pickable object
+    category or a furniture submessage with its attributes (e.g. marking a
+    detected "dishwasher_open" as a dishwasher whose `open` field is true).
+
+    The entity's pose is the centroid of its points and carries no orientation;
+    the full geometry is kept in the returned Shape's point cloud.
+
+    Args:
+        label: YOLO class name of the detection.
+        structured_points: The detection's points, as a structured array with
+            "x", "y" and "z" fields, already expressed in `points_header`'s
+            frame.
+        points_header: Header of the point cloud the points came from; supplies
+            the entity's timestamp and reference frame.
+        label_definitions: Label mapping as returned by
+            `_load_label_definitions`.
+
+    Returns:
+        Tuple[Entity, Shape]: The semantic entity and its geometry.
+
+    Notes:
+        An unknown label degrades to a pickable of unknown category rather than
+        being dropped, so a newly trained model still yields something graspable
+        before its labels are added to `config/labels.yaml`.
+    """
     defn = label_definitions.get(label)
     if defn is None:
         entity_type_id = EntityType.PICKABLE
@@ -901,6 +1208,8 @@ def create_entity(
     entity.pickable.object_name = label
     entity.pickable.object_category = object_category
     if furniture_field is not None:
+        # Select the EntityFurniture submessage matching this label's type and
+        # apply the attributes configured for it in labels.yaml.
         furniture_msg = getattr(entity.furniture, furniture_field)
         for attr_name, attr_value in attributes.items():
             setattr(furniture_msg, attr_name, attr_value)
@@ -912,19 +1221,20 @@ def create_entity(
 
 
 def main(args=None):
-    """Entry point for the object_detection node."""
+    """Entry point for the object_detection node.
 
+    Spins the node on a multi-threaded executor with three threads, one for
+    each concurrent activity: the camera data callback, the snapshot execution
+    callback, and the action server's own internal callbacks. The split is not
+    enforced by the executor, but with fewer threads the node deadlocks: the
+    snapshot callback blocks on synchronous KB service calls, whose responses
+    can then no longer be delivered.
 
+    Args:
+        args: Command line arguments passed to `rclpy.init`.
+    """
     rclpy.init(args=args)
 
-    # Executor with exactly three threads
-    # - One for the vision data callback
-    # - One for the snapshot execution callback
-    # - One for internal ros callback (action)
-    # Note that this thread split is not enforced, but the two threads
-    #   are necessary to not deadlock the node when issuing service calls
-    # IMPORTANT: services must only be called
-    #   from inside the timer callback -> from inside the behaviours
     executor = rclpy.executors.MultiThreadedExecutor(num_threads=3)
 
     try:

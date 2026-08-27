@@ -18,6 +18,27 @@ High-level dataflow:
 3. Convert detections to 3D geometry using TF + (when enabled) point cloud + camera intrinsics
 4. Create/update KB entities via ROS services
 
+## Model & Label Configuration
+
+Which models exist and what their detections mean is configured in `config/`,
+not in the node's source:
+
+- `config/models.yaml`: the available YOLO models. Each key must match a
+  `MODEL_<KEY>` constant in `VisionSnapshotCommand.msg`, which is the ID a
+  snapshot request uses to select it. `weights` is a filename relative to
+  `yolo_weights/`. `pinned: true` models are loaded at startup and run on every
+  frame; the others are loaded on first request and released again after
+  `model_ttl_minutes` of disuse.
+- `config/labels.yaml`: maps each YOLO class label to a KB entity. `type`
+  becomes an `EntityType` constant, `object_category` an
+  `EntityPickable.OBJECT_CATEGORY_*` constant (pickables only), and
+  `attributes` sets fields on the matching `EntityFurniture` submessage — e.g.
+  `dishwasher-open` is stored as a dishwasher whose `open` field is `"open"`.
+
+Labels absent from `labels.yaml` still produce an entity, falling back to a
+pickable of unknown category with a runtime warning. An unknown `type`,
+`object_category` or model key aborts node startup.
+
 ## Expected Inputs
 
 The node subscribes to these *logical* topics:
@@ -48,8 +69,9 @@ Depending on parameters, the node can publish:
 
 ## Important Parameters (ROS params)
 
-- `yolo_weights` (string)
-  - Path to the `.pt` file used for YOLO inference (default is `yolo_weights/yolo11n-seg_demo_day.pt`)
+- `model_ttl_minutes` (int, default: `10`)
+  - Idle time after which a non-pinned model is released from GPU memory
+  - Model selection itself is configured in `config/models.yaml`, not via a parameter
 - `use_depth` (bool, default: `true`)
   - If `true`, the node needs synchronized `camera_info` + `camera_point_cloud` to build 3D geometry
 - `snapshot_mode` (bool, default: `true`)
@@ -76,5 +98,7 @@ Notes:
 ## Where to Look (fast navigation)
 
 - `launch/object_detection_launch.py`: topic remappings + default parameter set
+- `config/models.yaml`: available YOLO models and their loading policy
+- `config/labels.yaml`: YOLO label -> KB entity mapping
 - `yolo_weights/`: shipped `.pt` weights
 - `object_detection.py`: the complete CV -> geometry -> KB pipeline

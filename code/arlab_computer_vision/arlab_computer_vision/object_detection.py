@@ -399,7 +399,7 @@ class ObjectDetection(Node):
         self.declare_parameter("visualize", True)
         self.declare_parameter("log_level", "INFO")
         self.declare_parameter("use_depth", True)
-        self.declare_parameter("sync_tolerance", 0.5) 
+        self.declare_parameter("sync_tolerance", 0.5)
         self.declare_parameter("use_clustering", True)
         self.declare_parameter("delete_old_entities", True)
         self.declare_parameter("clear_db_on_no_detection", True)

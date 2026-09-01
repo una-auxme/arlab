@@ -37,7 +37,7 @@ class GrippingParameterNode(Node):
     Attributes:
         group_parameter_table: Mapping from object group → [grip force, pos mode, orient mode].
         object_weight_table: Mapping from object name → weight [kg].
-        grip_type_table: Mapping from object name → mia hand grip type (cylindrical, pinch, lateral, spherical, tridigital)
+        grip_type_table: Mapping from object name → mia hand grip type (cylindrical, pinch, lateral, spherical, tridigital. CAUTION USING SPHERICAL AND TRIDIGITAL! They are not mapped on hardware yet)
     """
 
     def __init__(self):

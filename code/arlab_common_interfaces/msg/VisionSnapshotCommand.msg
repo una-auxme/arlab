@@ -1,7 +1,8 @@
 # Vision snapshot command message
 
 # Available model type constants
-uint8 MODEL_GENERAL_OBJECTS_AND_PEOPLE=0
+uint8 MODEL_GENERAL_OBJECTS=0
+uint8 MODEL_PEOPLE=1
 uint8 MODEL_DISHWASHER=2
 uint8 MODEL_LAUNDRY=3
 

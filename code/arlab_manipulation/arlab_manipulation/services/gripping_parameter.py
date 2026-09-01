@@ -5,10 +5,11 @@ GrippingParameterNode: Provide gripping parameters for robotic manipulation.
 
 This module defines a ROS 2 node that maps semantic object information
 (object name and group) to technical control parameters for a gripper
-(grip force, position mode, orientation mode, object weight).
+(grip force, grip type, position mode, orientation mode, object weight).
 
 Maintainer:
     Sofia Öttl <sofia.oettl@uni-a.de>
+    Christopher Müller <christopher.mueller@uni-a.de>
 """
 
 import rclpy
@@ -26,7 +27,7 @@ class GrippingParameterNode(Node):
 
     Topic Interface:
         * **Input**: objectname, objectgroup.
-        * **Output**: gripforce, grippos_mode, griporient_mode, object_weight.
+        * **Output**: gripforce, grip_type, grippos_mode, griporient_mode, object_weight.
 
     Notes:
         - Unknown objects fall back to default parameters to ensure safe gripping.
@@ -36,6 +37,8 @@ class GrippingParameterNode(Node):
     Attributes:
         group_parameter_table: Mapping from object group → [grip force, pos mode, orient mode].
         object_weight_table: Mapping from object name → weight [kg].
+        grip_type_table: Mapping from object name → mia hand grip type (cylindrical, pinch, lateral, spherical, tridigital)
+                         CAUTION USING SPHERICAL AND TRIDIGITAL! They are not mapped on hardware yet.
     """
 
     def __init__(self):
@@ -80,10 +83,17 @@ class GrippingParameterNode(Node):
             "default": 1.0,  # Default: if object name not found
         }
 
+        # Table: Object name → mia hand grip type (cylindrical, pinch, lateral, spherical, tridigital)
+        self.grip_type_table = {
+            "beer": "cylindrical",
+            "chipsbag": "pinch",
+            "default": "cylindrical",  # Default: if object name not found
+        }
+
     def callback(self, request, response):
         """Compute gripping parameters for a requested object.
 
-        Determines appropriate grip force, position mode, orientation mode,
+        Determines appropriate grip force, grip type, position mode, orientation mode,
         and weight. Defaults are used for unknown objects or groups to
         ensure safe handling.
 
@@ -104,6 +114,9 @@ class GrippingParameterNode(Node):
         # Look up grip parameters; fall back to default if group is unknown
         grip_parameter = self.group_parameter_table.get(request.objectgroup, self.group_parameter_table["default"])
 
+        # Look up grip types; fall back to default if group is unknown
+        grip_type = self.grip_type_table.get(request.objectname, self.grip_type_table["default"])
+
         # Unpack the parameters for direct use in the service response
         gripforce, grippos_mode, griporient_mode = grip_parameter
 
@@ -111,6 +124,7 @@ class GrippingParameterNode(Node):
             f"Send parameter for object '{request.objectname}' "
             f"(group: '{request.objectgroup}') → "
             f"Gripping force = {gripforce} N, "
+            f"Gripping type = {grip_type}, "
             f"Gripping position mode = {grippos_mode}, "
             f"Gripping orientation mode = {griporient_mode}, "
             f"Object weight = {object_weight} kg"
@@ -118,6 +132,7 @@ class GrippingParameterNode(Node):
 
         # Populate and return the response
         response.gripforce = gripforce
+        response.grip_type = grip_type
         response.grippos_mode = grippos_mode
         response.griporient_mode = griporient_mode
         response.object_weight = object_weight

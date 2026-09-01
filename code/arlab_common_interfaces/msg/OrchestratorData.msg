@@ -2,5 +2,7 @@
 geometry_msgs/Pose pose
 # Force for gripping the object
 std_msgs/Float64 grip_force
+# Grip type for gripping the object
+std_msgs/String grip_type
 # Pass on command from Decision Making
 std_msgs/String cmd

@@ -96,7 +96,11 @@ mia_joint_trajectory_controller:
   ros__parameters:
     action_monitor_rate: 50.0  # Hz
 
+    # MoveIt/RViz executes the named states hand_open and hand_close through this
+    # FollowJointTrajectory controller. Therefore it must cover every joint in
+    # the SRDF planning group mia_hand, including j_thumb_opp.
     joints:
+      - j_thumb_opp
       - j_thumb_fle
       - j_index_fle
       - j_mrl_fle
@@ -108,9 +112,15 @@ mia_joint_trajectory_controller:
       - position
       - velocity
 
+    allow_partial_joints_goal: false
+    allow_nonzero_velocity_at_trajectory_end: true
+
     constraints:
       goal_time: 10.0
       stopped_velocity_tolerance: 0.01
+      j_thumb_opp:
+        goal: 0.1
+        trajectory: 0.1
       j_thumb_fle:
         goal: 0.1
         trajectory: 0.1

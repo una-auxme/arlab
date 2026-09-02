@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!--
+    Adds the chassis carrying the UR arm to the mobile base.
+
+    Macro parameters:
+      name        Chassis name used to generate unique link and joint names.
+      parent_link Existing base link to which the chassis is attached.
+      xyz / rpy   Pose of the chassis link relative to parent_link.
+  -->
+  <xacro:macro name="ur_chasis" params="name parent_link xyz rpy">
+
+    <!-- Link containing the chassis mesh and its physical simulation model. -->
+    <link name="${name}_link">
+      <!-- Mesh shown in RViz and Gazebo; origin aligns the CAD mesh with the link frame. -->
+      <visual>
+        <origin xyz="-0.2648 -0.2659 0.2685" rpy="1.57079 0 -3.14159"/>
+        <geometry>
+          <mesh filename="file://$(find manipulator_description)/meshes/chasis.obj" scale="0.017 0.017 0.017"/>
+        </geometry>
+      </visual>
+
+      <!-- Collision geometry used by Gazebo and collision checking. -->
+      <collision>
+        <origin xyz="-0.2648 -0.2659 0.291" rpy="1.57079 0 -3.14159"/>
+        <geometry>
+          <mesh filename="file://$(find manipulator_description)/meshes/chasis.obj" scale="0.017 0.017 0.017"/>
+        </geometry>
+      </collision>
+
+      <!-- Stabilised inertial model:
+           The old centre of mass was 0.5 m above the chassis link, which made
+           the mobile manipulator very top-heavy in Gazebo. The visual/collision
+           geometry is unchanged; only the hidden inertial model is moved down
+           and made numerically stiff against roll/pitch. -->
+      <inertial>
+        <origin xyz="0 0 0.12" rpy="0 0 0"/>
+        <mass value="60"/>
+        <inertia ixx="300"  ixy="0"  ixz="0" iyy="300" iyz="0" izz="300" />
+      </inertial>
+
+    </link>
+
+    <!-- Rigidly mounts the chassis at the requested pose on parent_link. -->
+    <joint name="${name}_joint" type="fixed">
+      <parent link="${parent_link}"/>
+      <child  link="${name}_link"/>
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+    </joint>
+
+  </xacro:macro>
+
+</robot>

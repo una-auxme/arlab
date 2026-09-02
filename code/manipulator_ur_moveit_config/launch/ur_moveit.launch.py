@@ -157,7 +157,7 @@ def generate_launch_description():
         output="screen",
     )
 
-    rviz_config_file = PathJoinSubstitution([FindPackageShare("ur_moveit_config"), "config", "moveit.rviz"])
+    rviz_config_file = PathJoinSubstitution([FindPackageShare("manipulator_ur_moveit_config"), "config", "moveit.rviz"])
     rviz_node = Node(
         package="rviz2",
         condition=IfCondition(launch_rviz_moveit),

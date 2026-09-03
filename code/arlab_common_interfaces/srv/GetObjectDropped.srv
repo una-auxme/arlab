@@ -2,5 +2,5 @@
 
 ---
 
-# Response: simple callback to check if the Object was dropped
+# Response: simple callback to check if the Object was dropped during motion
 bool object_dropped

@@ -49,7 +49,7 @@ class orchestrator(Node):
         - Map received gripping parameters to a specific grip command.
         - Compute pick/place poses considering octomap occupancy.
         - Send orchestrator goals to downstream MoveIt and mia hand action servers.
-        - Checks the force monitor for a dropped object after pick and place.
+        - Check the force monitor for a dropped object after pick and place.
         - Publish the placement result on /object_placed.
 
     Attributes:
@@ -185,9 +185,9 @@ class orchestrator(Node):
             4. Request GrippingParameter if pickable.
             5. Compute pick/place pose.
             6. Send orchestrator goal to MoveIt.
-            7. For pick and place, checks the force monitor if 
+            7. For pick and place, check the force monitor if 
                the object was dropped.
-            8. For place, publishes if the placement succeeded.
+            8. For place, publishe if the placement succeeded.
 
         Side Effects:
             Sets self.err / self.msg for ManipulationResponse.
@@ -231,7 +231,7 @@ class orchestrator(Node):
         if not goal_handle.is_active:
             return
 
-        self.get_logger().info("Action response send to desicion maker")
+        self.get_logger().info("Action response sent to desicion maker")
         self.action_result.response.error_code = self.err
         self.action_result.response.message = self.msg
 

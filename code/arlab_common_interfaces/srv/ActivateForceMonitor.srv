@@ -1,5 +1,6 @@
 # Request
 bool activate
+# Grip type to monitor, e.g. cylindrical, pinch, lateral
 string grip_type
 
 ---

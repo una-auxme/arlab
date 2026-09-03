@@ -11,6 +11,8 @@ Maintainers:
 """
 
 from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
@@ -22,6 +24,12 @@ def generate_launch_description():
             object_detection node.
     """
     ld = LaunchDescription()
+
+    declare_target_frame = DeclareLaunchArgument(
+        "target_frame",
+        default_value="world",
+        description="TF frame the detected entities are transformed into and stored as.",
+    )
 
     # Object detection node with topic remapping
     object_detection_node = Node(
@@ -35,7 +43,7 @@ def generate_launch_description():
         parameters=[
             {"log_level": "INFO"},  # Node parameter for logging verbosity
             {"sync_tolerance": 5.0},
-            {"target_frame": "world"},
+            {"target_frame": LaunchConfiguration("target_frame")},
             {"snapshot_mode": True},
         ],
         arguments=[
@@ -49,7 +57,8 @@ def generate_launch_description():
         ],
     )
 
-    # Add node to the launch description
+    # Add declared arguments and node to the launch description
+    ld.add_action(declare_target_frame)
     ld.add_action(object_detection_node)
 
     return ld

@@ -5,10 +5,11 @@ GrippingParameterNode: Provide gripping parameters for robotic manipulation.
 
 This module defines a ROS 2 node that maps semantic object information
 (object name and group) to technical control parameters for a gripper
-(grip force, position mode, orientation mode, object weight).
+(grip force, grip type, position mode, orientation mode, object weight).
 
 Maintainer:
     Sofia Öttl <sofia.oettl@uni-a.de>
+    Christopher Müller <christopher.mueller@uni-a.de>
 """
 
 import rclpy
@@ -26,7 +27,7 @@ class GrippingParameterNode(Node):
 
     Topic Interface:
         * **Input**: objectname, objectgroup.
-        * **Output**: gripforce, grippos_mode, griporient_mode, object_weight.
+        * **Output**: gripforce, grip_type, grippos_mode, griporient_mode, object_weight.
 
     Notes:
         - Unknown objects fall back to default parameters to ensure safe gripping.
@@ -37,6 +38,7 @@ class GrippingParameterNode(Node):
         group_parameter_table: Mapping from object group → [grip force, pos mode, orient mode].
         object_weight_table: Mapping from object name → weight [kg].
         grip_type_table: Mapping from object name → mia hand grip type (cylindrical, pinch, lateral, spherical, tridigital)
+                         CAUTION USING SPHERICAL AND TRIDIGITAL! They are not mapped on hardware yet.
     """
 
     def __init__(self):
@@ -83,15 +85,15 @@ class GrippingParameterNode(Node):
 
         # Table: Object name → mia hand grip type (cylindrical, pinch, lateral, spherical, tridigital)
         self.grip_type_table = {
-            "beer" : "cylindrical",
-            "chipsbag" : "pinch",
-            "default" : "cylindrical",  # Default: if object name not found
+            "beer": "cylindrical",
+            "chipsbag": "pinch",
+            "default": "cylindrical",  # Default: if object name not found
         }
 
     def callback(self, request, response):
         """Compute gripping parameters for a requested object.
 
-        Determines appropriate grip force, position mode, orientation mode,
+        Determines appropriate grip force, grip type, position mode, orientation mode,
         and weight. Defaults are used for unknown objects or groups to
         ensure safe handling.
 

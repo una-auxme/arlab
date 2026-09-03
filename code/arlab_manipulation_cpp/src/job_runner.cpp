@@ -2,6 +2,7 @@
 // File: job_runner.cpp
 // Package: arlab_manipulation_cpp
 // Maintainer: Leonie Schmidt <leonie1.schmidt@uni-a.de>
+//             Christopher Müller <christopher.mueller@uni-a.de>
 //
 // Implements JobRunner::Run(), the central command dispatch function. Each
 // supported command string is mapped to a sequence of ArmMotion and
@@ -20,24 +21,26 @@
 #include "arlab_manipulation_cpp/manipulator_exception.hpp"
 #include "arlab_manipulation_cpp/force_monitor_switch.hpp"
 
-namespace {
+namespace
+{
 
-constexpr double kBoxPositionTolerance = 0.1;
-constexpr double kBoxOrientationTolerance = 0.05;
-constexpr double kApproachDistance = 0.1;
-constexpr double kLiftOffset = 0.05;
-constexpr char kEndEffectorLink[] = "tcp_helper";
-constexpr char kReferenceFrame[] = "world";
-constexpr char kPlannerId[] = "RRTConnectkConfigDefault";
+  constexpr double kBoxPositionTolerance = 0.1;
+  constexpr double kBoxOrientationTolerance = 0.05;
+  constexpr double kApproachDistance = 0.1;
+  constexpr double kLiftOffset = 0.05;
+  constexpr char kEndEffectorLink[] = "tcp_helper";
+  constexpr char kReferenceFrame[] = "world";
+  constexpr char kPlannerId[] = "RRTConnectkConfigDefault";
 
-}  // namespace
+} // namespace
 
 JobRunner::JobRunner(rclcpp::Node& node, ArmMotion& arm, HandMotion& hand, HandForceSwitch& force_switch, ForceMonitorSwitch& monitor_switch)
     : logger_(node.get_logger()), arm_(arm), hand_(hand), force_switch_(force_switch), monitor_switch_(monitor_switch) {}
 
 geometry_msgs::msg::Pose JobRunner::CreatePose(double x, double y, double z,
-                                              double qx, double qy, double qz,
-                                              double qw) const {
+                                               double qx, double qy, double qz,
+                                               double qw) const
+{
   geometry_msgs::msg::Pose pose;
   pose.position.x = x;
   pose.position.y = y;
@@ -52,50 +55,79 @@ geometry_msgs::msg::Pose JobRunner::CreatePose(double x, double y, double z,
 std::map<std::string, double> JobRunner::CreateJointPos(
     double shoulder_pan_joint, double shoulder_lift_joint,
     double elbow_joint, double wrist_1_joint, double wrist_2_joint,
-    double wrist_3_joint) const {
+    double wrist_3_joint) const
+{
   return {
-    {"shoulder_pan_joint", shoulder_pan_joint},
-    {"shoulder_lift_joint", shoulder_lift_joint},
-    {"elbow_joint", elbow_joint},
-    {"wrist_1_joint", wrist_1_joint},
-    {"wrist_2_joint", wrist_2_joint},
-    {"wrist_3_joint", wrist_3_joint}
-  };
+      {"shoulder_pan_joint", shoulder_pan_joint},
+      {"shoulder_lift_joint", shoulder_lift_joint},
+      {"elbow_joint", elbow_joint},
+      {"wrist_1_joint", wrist_1_joint},
+      {"wrist_2_joint", wrist_2_joint},
+      {"wrist_3_joint", wrist_3_joint}};
 }
 
-void JobRunner::Run(const arlab_common_interfaces::msg::OrchestratorData& msg) {
+void JobRunner::Run(const arlab_common_interfaces::msg::OrchestratorData &msg)
+{
   const std::string cmd = msg.cmd.data;
   RCLCPP_INFO(logger_, "JobRunner received cmd='%s'", cmd.c_str());
 
-  if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_OPEN) {
-    hand_.Open();
-  } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_CLOSE) {
+  // --                                      Grasp commands                                            --
+  if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_OPEN)
+  {
+    hand_.Open(); // Open hand via cylindrical hand topic
+  }
+  else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_CLOSE)
+  {
     hand_.Close();
-  } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_CYLINDRICAL) {
-    hand_.Close();
-  } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PINCH) {
+  }
+  else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_CYLINDRICAL)
+  {
+    hand_.Close(); // Cylindrical is default close grasp.
+  }
+  else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PINCH)
+  {
     hand_.Pinch();
-  } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_LATERAL) {
+  }
+  else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_LATERAL)
+  {
     hand_.Lateral();
-  } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_POINTUP) {
+  }
+  else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_POINTUP)
+  {
     hand_.PointUp();
-  } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_POINTDOWN) {
+  }
+  else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_POINTDOWN)
+  {
     hand_.PointDown();
-  } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_SPHERICAL) {
+  }
+  else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_SPHERICAL)
+  {
     hand_.Spherical();
-  } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_TRIDIGITAL) {
+  }
+  else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_TRIDIGITAL)
+  {
     hand_.Tridigital();
-  } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_HOME) {
+  }
+  else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_HOME)
+  {
     arm_.MoveToHome();
-  } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_MOVE) {
+  }
+  else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_MOVE)
+  {
     arm_.MoveToPose(msg.pose);
-  } else if (
-      cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_MOVE_TO_BOX) {
+  }
+  else if (
+      cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_MOVE_TO_BOX)
+  {
     arm_.MoveToPoseBoxGoal(msg.pose, kBoxPositionTolerance, false,
                           kBoxOrientationTolerance, kEndEffectorLink,
                           kReferenceFrame,kPlannerId);
-  } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PICK) {
-    // Full pick sequence: open → approach → close → enable force stream → activate force monitor → retreat → home.
+  }
+  else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PICK)
+    // -- Pick sequence: open (cylindrical type) → approach → close (specifyed type) → enable force stream → activate force monitor → retreat → home --
+    // !! Spherical and tridigital not yet customized on hand driver, currently not in use !!
+    //    See HandMotion::Spherical/Tridigital
+  {
     hand_.Open();
     auto approach_pose = arm_.MakeApproachPose(msg.pose, kApproachDistance, kLiftOffset);
     arm_.MoveToPose(approach_pose);
@@ -105,8 +137,9 @@ void JobRunner::Run(const arlab_common_interfaces::msg::OrchestratorData& msg) {
     monitor_switch_.ActivateMonitor(msg.grip_type.data);
     arm_.MoveToPose(approach_pose);
     arm_.MoveToHome();
-  } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PICK_PINCH) {
-    // Full pick sequence: open → approach → close → enable force stream → activate force monitor → retreat → home.
+  }
+  else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PICK_PINCH)
+  {
     hand_.Open();
     auto approach_pose = arm_.MakeApproachPose(msg.pose, kApproachDistance, kLiftOffset);
     arm_.MoveToPose(approach_pose);
@@ -116,8 +149,9 @@ void JobRunner::Run(const arlab_common_interfaces::msg::OrchestratorData& msg) {
     monitor_switch_.ActivateMonitor(msg.grip_type.data);
     arm_.MoveToPose(approach_pose);
     arm_.MoveToHome();
-  } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PICK_LATERAL) {
-    // Full pick sequence: open → approach → close → enable force stream → activate force monitor → retreat → home.
+  }
+  else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PICK_LATERAL)
+  {
     hand_.Open();
     auto approach_pose = arm_.MakeApproachPose(msg.pose, kApproachDistance, kLiftOffset);
     arm_.MoveToPose(approach_pose);
@@ -127,8 +161,9 @@ void JobRunner::Run(const arlab_common_interfaces::msg::OrchestratorData& msg) {
     monitor_switch_.ActivateMonitor(msg.grip_type.data);
     arm_.MoveToPose(approach_pose);
     arm_.MoveToHome();
-  } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PICK_SPHERICAL) {
-    // Full pick sequence: open → approach → close → enable force stream → activate force monitor → retreat → home.
+  }
+  else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PICK_SPHERICAL)
+  {
     hand_.Open();
     auto approach_pose = arm_.MakeApproachPose(msg.pose, kApproachDistance, kLiftOffset);
     arm_.MoveToPose(approach_pose);
@@ -138,8 +173,9 @@ void JobRunner::Run(const arlab_common_interfaces::msg::OrchestratorData& msg) {
     monitor_switch_.ActivateMonitor(msg.grip_type.data);
     arm_.MoveToPose(approach_pose);
     arm_.MoveToHome();
-  } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PICK_TRIDIGITAL) {
-    // Full pick sequence: open → approach → close → enable force stream → activate force monitor → retreat → home.
+  }
+  else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PICK_TRIDIGITAL)
+  {
     hand_.Open();
     auto approach_pose = arm_.MakeApproachPose(msg.pose, kApproachDistance, kLiftOffset);
     arm_.MoveToPose(approach_pose);
@@ -149,8 +185,9 @@ void JobRunner::Run(const arlab_common_interfaces::msg::OrchestratorData& msg) {
     monitor_switch_.ActivateMonitor(msg.grip_type.data);
     arm_.MoveToPose(approach_pose);
     arm_.MoveToHome();
-  } else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PLACE) {
-    // Full place sequence: approach → disable force stream → open → retreat → home.
+  }
+  else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PLACE)
+  {
     auto approach_pose = arm_.MakeApproachPose(msg.pose, kApproachDistance, kLiftOffset);
     arm_.MoveToPose(approach_pose);
     arm_.MoveToPose(msg.pose);
@@ -159,7 +196,9 @@ void JobRunner::Run(const arlab_common_interfaces::msg::OrchestratorData& msg) {
     hand_.Open();
     arm_.MoveToPose(approach_pose);
     arm_.MoveToHome();
-  } else {
+  }
+  else
+  {
     RCLCPP_WARN(logger_, "Unknown command: %s", cmd.c_str());
     throw ManipulationException(arlab_common_interfaces::msg::ManipulationResponse::UNKNOWN_JOB_COMMAND);
   }

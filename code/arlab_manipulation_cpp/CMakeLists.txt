@@ -22,6 +22,7 @@ add_executable(
   src/hand_motion.cpp 
   src/hand_force_switch.cpp
   src/manipulator_exception.cpp
+  src/force_monitor_switch.cpp
   )
 
 target_include_directories(Manipulation_CPP PUBLIC

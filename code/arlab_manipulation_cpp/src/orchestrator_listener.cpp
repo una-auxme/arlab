@@ -21,6 +21,7 @@
 #include "arlab_manipulation_cpp/hand_force_switch.hpp"
 #include "arlab_manipulation_cpp/job_runner.hpp"
 #include "arlab_manipulation_cpp/manipulator_exception.hpp"
+#include "arlab_manipulation_cpp/force_monitor_switch.hpp"
 
 namespace {
 
@@ -42,7 +43,7 @@ void OrchestratorActionServer::Init() {
   hand_ = std::make_unique<HandMotion>(shared_from_this());
   force_switch_ = std::make_unique<HandForceSwitch>(shared_from_this()
     ,"mia_hand/data_streams/fingers/forces/switch");
-  monitor_switch_ = std::make_unique<HandForceSwitch>(shared_from_this()
+  monitor_switch_ = std::make_unique<ForceMonitorSwitch>(shared_from_this()
     ,"/force_monitor/activate");
   runner_ = std::make_unique<JobRunner>(*this, *arm_, *hand_, *force_switch_, *monitor_switch_);
 

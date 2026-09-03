@@ -21,6 +21,7 @@
 class ArmMotion;
 class HandMotion;
 class HandForceSwitch;
+class ForceMonitorSwitch;
 class JobRunner;
 
 /**
@@ -84,7 +85,8 @@ class OrchestratorActionServer : public rclcpp::Node {
 
     std::unique_ptr<ArmMotion> arm_;
     std::unique_ptr<HandMotion> hand_;
-    std::unique_ptr<HandForceSwitch> force_switch_, monitor_switch_;
+    std::unique_ptr<HandForceSwitch> force_switch_;
+    std::unique_ptr<ForceMonitorSwitch> monitor_switch_;
     std::unique_ptr<JobRunner> runner_;
 };
 

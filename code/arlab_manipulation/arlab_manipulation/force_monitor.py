@@ -124,21 +124,21 @@ class force_monitor(Node):
         # after implementing one or both, the right force sensors should be addressed here
         if self.grip_type == "pinch":
             dropped = (
-            (msg.thumb_nfor - self.thumb_nforce_median) > self.allowed_force_jitter
-            and (self.index_nforce_median - msg.index_nfor) > self.allowed_force_jitter
+            (self.thumb_nforce_median - msg.thumb_nfor) > self.allowed_force_jitter
+            and (msg.index_nfor - self.index_nforce_median) > self.allowed_force_jitter
         )
         
         elif self.grip_type == "lateral":
             dropped = (
-            (self.thumb_nforce_median - msg.thumb_nfor) > self.allowed_force_jitter
+            (msg.thumb_nfor - self.thumb_nforce_median) > self.allowed_force_jitter
         )      
 
         # All other grip types are processed together 
         else:
             dropped = (
             (self.thumb_nforce_median - msg.thumb_nfor) > self.allowed_force_jitter
-            and (self.index_nforce_median - msg.index_nfor) > self.allowed_force_jitter
-            and (self.mrl_nforce_median - msg.mrl_nfor) > self.allowed_force_jitter
+            and (msg.index_nfor - self.index_nforce_median) > self.allowed_force_jitter
+            and (msg.mrl_nfor - self.mrl_nforce_median) > self.allowed_force_jitter
         )     
         
         if dropped:

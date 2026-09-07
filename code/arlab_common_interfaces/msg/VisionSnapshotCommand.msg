@@ -13,6 +13,6 @@ bool clear_database
 # Mask the hand in the snapshot
 bool mask_hand
 
-# Extra specialized models to run alongside always-on models (general + people).
+# Extra specialized models to run alongside always-on models (people).
 # Use the MODEL_* constants above to populate this list.
 uint8[] extra_models

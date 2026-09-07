@@ -2,7 +2,7 @@
 
 This project was built specifically for the `ARLab` at the University of Augsburg and developed in the context of the `Zirbi` robot.
 
-**Maintainer:** Leonie Schmidt &lt;<leonie1.schmidt@uni-a.de>&gt;  
+**Maintainer:** Leonie Schmidt &lt;<leonie1.schmidt@uni-a.de>&gt;, Christopher Müller &lt;<christopher.mueller@uni-a.de>&gt;  
 **License:** MIT  
 **ROS 2 build system:** ament_cmake
 
@@ -12,7 +12,7 @@ This project was built specifically for the `ARLab` at the University of Augsbur
 with an attached robotic hand. It exposes a single ROS 2 action interface
 (`/orchestrator/action`) through which the external manipulator orchestrator can trigger
 high-level manipulation commands such as picking and placing objects, opening and closing
-the hand, or moving the arm to the home position or arbitrary poses.
+the hand in multiple different ways, or moving the arm to the home position or arbitrary poses.
 
 ## Package Structure
 

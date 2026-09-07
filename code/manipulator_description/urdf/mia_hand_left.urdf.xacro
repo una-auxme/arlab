@@ -1,0 +1,452 @@
+<?xml version="1.0"?>
+
+<robot xmlns:xacro="http://wiki.ros.org/xacro" name="mia_hand_left" > 
+
+  <xacro:macro 
+    name="mia_hand_left" 
+    params=
+      "joint_limits_config_file:='$(find mia_hand_description)/calibration/joint_limits_default.yaml' 
+      parent 
+      prefix 
+      *origin">
+
+    <!-- Importing joint limits macro -->
+    <xacro:include filename="$(find mia_hand_description)/urdf/inc/joint_limits.xacro"/>
+
+    <!-- Adding joint limits from YAML file -->
+    <xacro:joint_limits joint_limits_config_file="${joint_limits_config_file}"/>
+
+	  <!-- URDF of the hand using loaded data -->
+	  <link name="${prefix}index_fle">
+      <inertial>
+        <origin xyz="-0.0004201640000000076 -0.007306024999999994 0.00012276300000000143" rpy="0.0 0.0 0.0"/>
+        <mass value="0.011300000177428476"/>
+        <inertia ixx="1.486e-06" ixy="4.4020342926387455e-23" ixz="4.1244785364824567e-23" iyy="1.9999999999999989e-07" iyz="5.669943681230195e-23" izz="8.31e-07"/>
+      </inertial>
+
+      <collision name="${prefix}collision_index_pre_sensor">
+        <origin rpy="-1.6113561390000037 -1.4799022670000004 0.009164201000003185" xyz="0.000159710999999986 -0.023606974999999975 0.001508414999999999"/>
+        <geometry>
+        <cylinder length="0.016970543" radius="0.007128496"/>
+        </geometry>
+      </collision>
+	  </link>
+
+	  <link name="${prefix}index_sensor">
+      <inertial>
+        <origin xyz="2.7755575615628914e-17 -5.551115123125783e-17 0.0" rpy="0.0 0.0 0.0"/>
+        <mass value="0.017650000000000006"/>
+        <inertia ixx="2.0700000000000005e-05" ixy="-4.2800000000000005e-06" ixz="7.049999999998916e-09" iyy="1.71e-06" iyz="5.4000000000000045e-09" izz="2.19e-05"/>
+      </inertial>
+
+      <visual>
+        <origin xyz="-0.016737007999999984 0.126896188 -0.05126988099999999" rpy="-0.4576287570000001 -1.3752514120000008 -0.7764700059999996"/>
+        <geometry>
+          <mesh filename="file://$(find mia_hand_description)/meshes/stl/index_finger_mirrored.stl" scale="0.000999987 0.000999987 0.000999987"/>
+        </geometry>
+        <material name="BLACK"/>
+      </visual>
+
+      <visual>
+        <origin xyz="-0.016737007999999984 0.126896188 -0.05126988099999999" rpy="-0.4576287570000001 -1.3752514120000008 -0.7764700059999996"/>
+        <geometry>
+          <mesh filename="file://$(find mia_hand_description)/meshes/stl/index_tip_l.stl" scale="0.000999987 0.000999987 0.000999987"/>
+        </geometry>
+        <material name="WHITE"/>
+      </visual>
+
+      <collision name="${prefix}collision_index_distal">
+        <origin xyz="-0.001899779999999962 -0.041263822000000006 0.0013814489999999999" rpy="-1.8261358740000022 -1.5023586750000004 -0.1150276209999981"/>
+        <geometry>
+          <cylinder radius="0.007957384" length="0.030371139"/>
+        </geometry>
+      </collision>
+
+      <collision name="${prefix}collision_index_post_sensor">
+        <origin xyz="0.0027022380000000096 -0.014599777999999952 0.0012778419999999943" rpy="-1.3072565789999953 -1.5023586750000004 -0.11502718900000425"/>
+        <geometry>
+          <cylinder radius="0.007128496" length="0.014262128"/>
+        </geometry>
+      </collision>
+
+      <collision name="${prefix}collision_index_tip">
+        <origin xyz="-0.010449272999999981 -0.059659246000000055 0.000670581999999996" rpy="0.714036822 -1.367512941000001 -1.09491086"/>
+        <geometry>
+          <sphere radius="0.006627174"/>
+        </geometry>
+      </collision>
+	  </link>
+
+	  <link name="${prefix}little_fle">
+      <inertial>
+        <origin xyz="-0.001550004000000011 -0.0207999940000001 -3.580499999998599e-05" rpy="0.0 0.0 0.0"/>
+        <mass value="0.020700013671416113"/>
+        <inertia ixx="7.686e-06" ixy="2.1332935418172385e-22" ixz="1.484923295436135e-24" iyy="6.519999999999998e-07" iyz="-3.64624996862517e-22" izz="7.899999999999997e-06"/>
+      </inertial>
+
+      <visual>
+        <origin xyz="0.021799004000000007 0.07988440999999996 -0.042128361999999996" rpy="-3.052930736589794 -1.2229504905897923 1.5371122675897937"/>
+        <geometry>
+          <mesh filename="file://$(find mia_hand_description)/meshes/stl/little_finger_l.stl" scale="0.000999987 0.000999987 0.000999987"/>
+        </geometry>
+        <material name="BLACK"/>
+      </visual>
+
+      <visual>
+        <origin xyz="0.021799004000000007 0.07988440999999996 -0.042128361999999996" rpy="-3.052930736589794 -1.2229504905897923 1.5371122675897937"/>
+        <geometry>
+          <mesh filename="file://$(find mia_hand_description)/meshes/stl/little_tip_l.stl" scale="0.000999987 0.000999987 0.000999987"/>
+        </geometry>
+        <material name="WHITE"/>
+      </visual>
+
+      <collision name="${prefix}collision_little_distal">
+        <origin xyz="-0.009071624000000004 -0.052363340000000036 0.0004058520000000121" rpy="-2.0120470519999967 -1.5477037430000058 -0.01483035700000064"/>
+        <geometry>
+          <cylinder radius="0.007603541" length="0.029933618"/>
+        </geometry>
+      </collision>
+
+      <collision name="${prefix}collision_little_proximal">
+        <origin xyz="-0.001978740999999982 -0.027301730999999996 -4.468100000001862e-05" rpy="-1.6393235920000067 -1.5405069589999965 0.010815141000007286"/>
+        <geometry>
+          <cylinder radius="0.007827825" length="0.030442065"/>
+        </geometry>
+      </collision>
+
+      <collision name="${prefix}collision_little_tip">
+        <origin xyz="-0.01659559299999998 -0.06473196999999997 -0.0003637950000000001" rpy="-2.005732568589794 -1.222952516589793 1.580262931589794"/>
+        <geometry>
+          <sphere radius="0.00484472"/>
+        </geometry>
+      </collision>
+	  </link>
+
+	  <link name="${prefix}middle_fle">
+      <inertial>
+        <origin xyz="6.938893903907228e-18 0.0 0.0" rpy="0.0 0.0 0.0"/>
+        <mass value="0.012100000000000007"/>
+        <inertia ixx="1.4200000000000004e-06" ixy="1.0600000000000045e-08" ixz="2.019999999999999e-12" iyy="1.9799999999999995e-07" iyz="-2.2699999999999993e-11" izz="1.2999999999999996e-06"/>
+      </inertial>
+
+      <collision name="${prefix}collision_middle_pre_sensor">
+        <origin rpy="-1.5723423976472346 -1.570796133653773 1.9948061559834813e-09" xyz="5.486800000001346e-05 -0.020098642 0.0007359570000000006"/>
+        <geometry>
+          <cylinder radius="0.006834489" length="0.017823514"/>
+        </geometry>
+      </collision>
+	  </link>
+
+	  <link name="${prefix}middle_sensor">
+      <inertial>
+        <origin xyz="-1.3877787807814457e-17 0.0 -8.673617379884035e-19" rpy="0.0 0.0 0.0"/>
+        <mass value="0.017699999999999994"/>
+        <inertia ixx="2.069999999999999e-05" ixy="-4.279999999999998e-06" ixz="7.049999999999999e-09" iyy="1.7099999999999995e-06" iyz="5.3999999999999994e-08" izz="2.19e-05"/>
+      </inertial>
+
+      <visual>
+        <origin xyz="0.007670808999999987 0.12344343200000002 -0.045149997000000004" rpy="-1.396263361 -1.5707962796732875 0.0"/>
+        <geometry>
+          <mesh filename="file://$(find mia_hand_description)/meshes/stl/middle_finger_l.stl" scale="0.000999987 0.000999987 0.000999987"/>
+        </geometry>
+        <material name="BLACK"/>
+      </visual>
+
+      <visual>
+        <origin xyz="0.007670808999999987 0.12344343200000002 -0.045149997000000004" rpy="-1.396263361 -1.5707962796732875 0.0"/>
+        <geometry>
+          <mesh filename="file://$(find mia_hand_description)/meshes/stl/middle_tip_l.stl" scale="0.000999987 0.000999987 0.000999987"/>
+        </geometry>
+        <material name="WHITE"/>
+      </visual>
+
+      <collision name="${prefix}collision_middle_distal">
+        <origin xyz="-0.008653791000000001 -0.039425145999999966 0.000735379999999999" rpy="-2.091221809 -1.5707962796732875 0.0"/>
+        <geometry>
+          <cylinder radius="0.00812763" length="0.038238775"/>
+        </geometry>
+      </collision>
+
+      <collision name="${prefix}collision_middle_post_sensor">
+        <origin xyz="-0.0004143679999999983 -0.01092091499999992 0.000735379999999999" rpy="-1.572342396 -1.570796284648048 0.0"/>
+        <geometry>
+          <cylinder radius="0.006834489" length="0.011829441"/>
+        </geometry>
+      </collision>
+
+      <collision name="${prefix}collision_middle_tip">
+        <origin xyz="-0.020539755000000014 -0.05640377499999999 0.000735379999999999" rpy="-0.525144994 -1.570796282091413 0.0"/>
+        <geometry>
+          <sphere radius="0.005627528"/>
+        </geometry>
+      </collision>
+	  </link>
+
+	  <link name="${prefix}palm">
+      <inertial>
+        <origin xyz="0.00268 -0.06710001100000004 -0.015999995000000003" rpy="0.0 0.0 0.0"/>
+        <mass value="0.27400616630854535"/>
+        <inertia ixx="0.000301" ixy="0.0" ixz="0.0" iyy="0.00013" iyz="-1.7205356741102974e-27" izz="0.000343"/>
+      </inertial>
+
+      <visual>
+        <origin xyz="0.0030352360000000006 -0.07537201000000002 -0.02520417400000001" rpy="0.261799425 0.0 0.0"/>
+        <geometry>
+          <mesh filename="file://$(find mia_hand_description)/meshes/stl/dorsum_simple_l.stl" scale="0.076673768 0.104274847 0.076673813"/>
+        </geometry>
+        <material name="BLACK"/>
+      </visual>
+
+      <visual>
+        <origin xyz="0.0038002250000000004 -0.06597451100000004 -0.012054904000000005" rpy="0.261799395 0.0 0.0"/>
+        <geometry>
+          <mesh filename="file://$(find mia_hand_description)/meshes/stl/palm_simple_l.stl" scale="0.122026987 0.122027062 0.122027062"/>
+        </geometry>
+        <material name="BLACK"/>
+      </visual>
+
+      <visual>
+        <origin xyz="-0.039999999 -0.015274559999999993 -0.023892664999999993" rpy="-1.308997035 0.0 0.0"/>
+        <geometry>
+          <mesh filename="file://$(find mia_hand_description)/meshes/stl/wrist_l.stl" scale="0.000999999 0.000999999 0.001"/>
+        </geometry>
+        <material name="GREY"/>
+      </visual>
+
+      <collision name="${prefix}collision_hand_distal">
+        <origin xyz="0.00039632600000000007 -0.09512931100000002 -0.021126964999999998" rpy="0.2609775959999999 0.02436436200000003 -0.046443645000000006"/>
+        <geometry>
+          <box size="0.072641067 0.047533799 0.033261057"/>
+        </geometry>
+      </collision>
+
+      <collision name="${prefix}collision_hand_proximal">
+        <origin xyz="0.001288421 -0.04622656099999997 -0.005689065000000007" rpy="0.265261948 -0.1795282359999999 -0.10142163900000001"/>
+        <geometry>
+          <box size="0.062414549 0.056382515 0.028578525"/>
+        </geometry>
+      </collision>
+	  </link>
+
+	  <link name="${prefix}hand_ee_link">
+      <inertial>
+        <origin xyz="0.0 5.551115123125783e-17 0.0" rpy="0.0 0.0 0.0"/>
+        <mass value="0.0"/>
+        <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.0" iyz="0.0" izz="0.0"/>
+      </inertial>
+	  </link>
+
+	  <link name="${prefix}ring_fle">
+      <inertial>
+        <origin xyz="-0.001120001999999988 -0.026399990999999956 0.00020399299999999954" rpy="0.0 0.0 0.0"/>
+        <mass value="0.026300044884193397"/>
+        <inertia ixx="1.577e-05" ixy="-5.0387142170031056e-39" ixz="2.211425487175233e-22" iyy="9.02e-07" iyz="-7.245905264685602e-22" izz="1.609999999999999e-05"/>
+      </inertial>
+
+      <visual>
+        <origin xyz="0.011046086000000024 0.09006697700000002 -0.043558831999999985" rpy="3.141592484589792 -1.396262438589792 1.7278762185897947"/>
+        <geometry>
+          <mesh filename="file://$(find mia_hand_description)/meshes/stl/ring_finger_l.stl" scale="0.000999987 0.000999987 0.000999987"/>
+        </geometry>
+        <material name="BLACK"/>
+      </visual>
+
+      <visual>
+        <origin xyz="0.011046086000000024 0.09006697700000002 -0.043558831999999985" rpy="3.141592484589792 -1.396262438589792 1.7278762185897947"/>
+        <geometry>
+          <mesh filename="file://$(find mia_hand_description)/meshes/stl/ring_tip_l.stl" scale="0.000999987 0.000999987 0.000999987"/>
+        </geometry>
+        <material name="WHITE"/>
+      </visual>
+
+      <collision name="${prefix}collision_ring_distal">
+        <origin xyz="-0.00852139399999998 -0.06327532999999996 0.0002190839999999944" rpy="1.0424310285898013 -1.5635660015898032 3.1210785095897973"/>
+        <geometry>
+          <cylinder radius="0.00760354" length="0.029933633"/>
+        </geometry>
+      </collision>
+
+      <collision name="${prefix}collision_ring_proximal">
+        <origin xyz="0.0011869150000000175 -0.028925124999999996 0.0002191030000000052" rpy="-1.570796132 -1.570796247945363 0.0"/>
+        <geometry>
+          <cylinder radius="0.007827824" length="0.036828272"/>
+        </geometry>
+      </collision>
+
+      <collision name="${prefix}collision_ring_tip">
+        <origin xyz="-0.018231223999999983 -0.07664214100000005 -0.00018971899999999792" rpy="-2.094395430589795 -1.3962631545897932 1.5707965215897945"/>
+        <geometry>
+          <sphere radius="0.004873112"/>
+        </geometry>
+      </collision>
+	  </link>
+
+	  <link name="${prefix}thumb_fle">
+      <inertial>
+        <origin xyz="0.012771533000000002 -0.029501937000000006 0.00017054800000000647" rpy="0.0 0.0 0.0"/>
+        <mass value="0.059200142739743014"/>
+        <inertia ixx="3.999999999999999e-05" ixy="-1.3000000000002052e-08" ixz="-3.3864022697116525e-21" iyy="3e-06" iyz="-4.000000000004553e-09" izz="4.1000000000000014e-05"/>
+      </inertial>
+
+      <visual>
+        <origin xyz="-0.003567815000000002 0.07197549199999997 0.054485790000000034" rpy="-0.6284931299999997 1.0878636839999998 -0.2584831419999999"/>
+        <geometry>
+          <mesh filename="file://$(find mia_hand_description)/meshes/stl/thumb_cover_l.stl" scale="0.000999987 0.000999987 0.000999987"/>
+        </geometry>
+        <material name="WHITE"/>
+      </visual>
+
+      <visual>
+        <origin xyz="-0.003567815000000002 0.07197549199999997 0.054485790000000034" rpy="-0.6284931299999997 1.0878636839999998 -0.2584831419999999"/>
+        <geometry>
+          <mesh filename="file://$(find mia_hand_description)/meshes/stl/thumb_frame_l.stl" scale="0.000999987 0.000999987 0.000999987"/>
+        </geometry>
+        <material name="GREY"/>
+      </visual>
+
+      <collision name="${prefix}collision_thumb_distal">
+        <origin xyz="0.015668901000000013 -0.04738465000000003 0.0014038980000000145" rpy="-1.4705629350000002 0.19513231499999995 0.04718067099999997"/>
+        <geometry>
+          <cylinder radius="0.011694114" length="0.055018354"/>
+        </geometry>
+      </collision>
+
+      <collision name="${prefix}collision_thumb_proximal">
+        <origin xyz="0.01561331199999999 -0.03260755900000001 6.218300000000732e-05" rpy="-1.5438443419999999 0.2386662810000002 0.0800582539999999"/>
+        <geometry>
+          <cylinder radius="0.012714386" length="0.059818532"/>
+        </geometry>
+      </collision>
+
+      <collision name="${prefix}collision_thumb_tip">
+        <origin xyz="0.015702189999999977 -0.06996402899999998 -0.0007597769999999893" rpy="0.3828289509999998 0.5834124680000001 -0.6482225059999998"/>
+        <geometry>
+          <sphere radius="0.010514786"/>
+        </geometry>
+      </collision>
+	  </link>
+
+	  <link name="${prefix}thumb_opp">
+      <inertial>
+        <origin xyz="0.0002609900000000165 -0.007620005999999988 0.001219993000000058" rpy="0.0 0.0 0.0"/>
+        <mass value="0.01300000026709666"/>
+        <inertia ixx="1.12e-06" ixy="-6.88338275267597e-23" ixz="1.408595462493168e-23" iyy="1.2e-07" iyz="5.45397060847108e-23" izz="1.1499999999999996e-06"/>
+      </inertial>
+
+      <visual>
+        <origin xyz="-0.054523785 0.04869516900000001 0.027307285000000042" rpy="0.128456235 -0.36407548200000006 -0.32445660200000004"/>
+        <geometry>
+          <mesh filename="file://$(find mia_hand_description)/meshes/stl/thumb_metacarpus_l.stl" scale="0.000999987 0.000999987 0.000999987"/>
+        </geometry>
+        <material name="GREY"/>
+      </visual>
+	  </link>
+
+	  <link name="${prefix}thumb_sensor">
+      <inertial>
+        <origin xyz="-1.5000000019860238e-08 9.000000009140585e-09 -3.999999970139001e-09" rpy="0.0 0.0 0.0"/>
+        <mass value="0.000643"/>
+        <inertia ixx="1.5e-08" ixy="-8.326672684688673e-25" ixz="-1.561251128379126e-24" iyy="8e-09" iyz="1.3877787807814535e-26" izz="1.4999999999999992e-08"/>
+      </inertial>
+	  </link>
+
+    <joint name="${prefix}j_palm" type="fixed">
+      <xacro:insert_block name="origin"/>
+      <parent link="${parent}"/>
+      <child link="${prefix}palm"/>
+    </joint>
+
+	  <joint name="${prefix}palm_to_hand_ee_link" type="fixed">
+      <origin xyz="0.0 -0.13000000000000003 0.03" rpy="0.65 0.0 0.0"/>
+      <parent link="${prefix}palm"/>
+      <child link="${prefix}hand_ee_link"/>
+	  </joint>
+
+	  <joint name="${prefix}j_index_fle" type="revolute">
+      <origin xyz="0.026305504000000004 -0.11021699000000004 -0.021520773000000007" rpy="0.5969194769999983 1.4155536889999998 0.7498065829999984"/>
+      <parent link="${prefix}palm"/>
+      <child link="${prefix}index_fle"/>
+      <dynamics damping="0.1"/>
+      <axis xyz="0 0 -1"/>
+      <limit lower="${j_index_fle_lower_limit}" upper="${j_index_fle_upper_limit}" effort="1.75" velocity="3.140000105"/>
+	  </joint>
+
+	  <joint name="${prefix}j_index_sensor" type="fixed">
+      <origin xyz="-0.0003992640000000103 -0.02423698099999999 -0.00018396999999999858" rpy="-0.000630706000000008 -0.00020911199999984476 -0.17208260299999997"/>
+      <parent link="${prefix}index_fle"/>
+      <child link="${prefix}index_sensor"/>
+    </joint>
+
+    <joint name="${prefix}j_little_fle" type="revolute">
+      <origin xyz="-0.027859999000000003 -0.107325219 -0.02060511899999999" rpy="1.863250048589795 1.3656738125897925 1.5144063555897949"/>
+      <parent link="${prefix}palm"/>
+      <child link="${prefix}little_fle"/>
+      <dynamics damping="0.1"/>
+      <axis xyz="0 0 -1"/>
+      <limit lower="${j_mrl_fle_lower_limit}" upper="${j_mrl_fle_upper_limit}" effort="1.75" velocity="3.140000105"/>
+      <mimic joint="${prefix}j_mrl_fle" multiplier="1" offset="0" /> <!-- Necessary for Rviz2 -->
+	  </joint>
+
+	  <joint name="${prefix}j_mrl_fle" type="revolute">
+      <origin xyz="0.00514942 -0.11355503600000003 -0.024345281999999996" rpy="1.5707941060000015 1.4835299250000018 1.5707939860000009"/>
+      <parent link="${prefix}palm"/>
+      <child link="${prefix}middle_fle"/>
+      <dynamics damping="0.1"/>
+      <axis xyz="0 0 -1"/>
+      <limit lower="${j_mrl_fle_lower_limit}" upper="${j_mrl_fle_upper_limit}" effort="1.75" velocity="3.140000105"/>
+	  </joint>
+
+	  <joint name="${prefix}j_middle_sensor" type="fixed">
+      <origin xyz="0.00044401200000001445 -0.02549753199999999 5.810000000003659e-07" rpy="-1.8000000000000002e-08 2.0700000002982222e-07 1.4999999988728386e-08"/>
+      <parent link="${prefix}middle_fle"/>
+      <child link="${prefix}middle_sensor"/>
+	  </joint>
+
+	  <joint name="${prefix}j_ring_fle" type="revolute">
+      <origin xyz="-0.012250358000000001 -0.11202888899999999 -0.02393635699999999" rpy="1.990784438589791 1.460348041589791 1.819812687589792"/>
+      <parent link="${prefix}palm"/>
+      <child link="${prefix}ring_fle"/>
+      <dynamics damping="0.1"/>
+      <axis xyz="0 0 -1"/>
+      <limit lower="${j_mrl_fle_lower_limit}" upper="${j_mrl_fle_upper_limit}" effort="1.75" velocity="3.140000105"/>
+      <mimic joint="${prefix}j_mrl_fle" multiplier="1" offset="0" /> <!-- Necessary for Rviz2 -->
+	  </joint>
+
+	  <joint name="${prefix}j_thumb_fle" type="revolute">
+      <origin xyz="-2.7414000000017258e-05 -0.008989776000000005 -1.0546000000000166e-05" rpy="1.5706005099999993 -1.1325702670000002 -1.5705155129999995"/>
+      <parent link="${prefix}thumb_sensor"/>
+      <child link="${prefix}thumb_fle"/>
+      <dynamics damping="0.1"/>
+      <axis xyz="0 0 -1"/>
+      <limit lower="${j_thumb_fle_lower_limit}" upper="${j_thumb_fle_upper_limit}" effort="3.5" velocity="1.570000052"/>
+	  </joint>
+
+	  <joint name="${prefix}j_thumb_opp" type="revolute">
+      <origin xyz="0.013073999000000001 -0.06810817100000002 -0.0019494180000000014" rpy="-1.4371908900000006 0.369162738 -0.31859204200000013"/>
+      <parent link="${prefix}palm"/>
+      <child link="${prefix}thumb_opp"/>
+      <dynamics damping="0.2"/>
+      <axis xyz="0 0 -1"/>
+      <limit lower="${j_thumb_opp_lower_limit}" upper="${j_thumb_opp_upper_limit}" effort="3.5" velocity="4.0"/>
+	  </joint>
+
+	  <joint name="${prefix}j_thumb_sensor" type="fixed">
+      <origin xyz="-5.931000000000686e-06 -0.00899765399999999 2.433000000051644e-06" rpy="-1.9869999999658673e-06 1.49000000115862e-07 1.3900000002698198e-07"/>
+      <parent link="${prefix}thumb_opp"/>
+      <child link="${prefix}thumb_sensor"/>
+	  </joint>
+
+	  <material name="BLACK">
+		  <color rgba="0.01568627450980392 0.01568627450980392 0.01568627450980392 1.0"/>
+	  </material>
+
+	  <material name="GREY">
+		  <color rgba="0.25098039215686274 0.25098039215686274 0.25098039215686274 1.0"/>
+	  </material>
+
+	  <material name="WHITE">
+		  <color rgba="1.0 1.0 1.0 1.0"/>
+	  </material>
+  </xacro:macro>
+
+</robot>

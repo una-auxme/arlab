@@ -1,0 +1,40 @@
+
+whisper:
+  ros__parameters:
+
+    "wakewords":
+        - robot
+        - assistant
+        - computer    
+        
+    use_zirbi_wakewords: true
+    
+    "zirbi_wakewords":
+        - sylvie
+        - serbian
+        - serbi
+        - serby
+        - zybi
+        - zerbi
+        - zirbi
+
+    # tiny, base, small, medium, large-v3, large-v3-turbo
+    wakeword_model: "small"
+    command_model: "large-v3-turbo"
+
+    device: "cuda"
+    compute_type: "int8" #better than int8
+
+    sample_rate: 32000 #16000 is the max resolution for whisper
+    channels: 1
+
+    #audio command length
+    rolling_buffer_seconds: 2.75
+    command_record_seconds: 3.5
+
+    #detect speech audio threshold
+    speech_threshold: 75
+
+    check_interval: 0.25
+    language: "en"
+    beam_size: 5

@@ -43,6 +43,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/ManipulationCommand.msg"
   "msg/VisionSnapshotCommand.msg"
 
+  "msg/WhisperTranscript.msg"
+
   "action/MovementAction.action"
   "action/ManipulationAction.action"
   "action/OrchestratorAction.action"

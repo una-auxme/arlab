@@ -119,7 +119,7 @@ class orchestrator(Node):
         self.obj_placed_pub = self.create_publisher(Bool, "/object_placed", 10)
 
         # service client for dropped objects
-        self.dropped_client = self.create_client(GetObjectDropped, '/object_dropped', callback_group=self.service_group)
+        self.dropped_client = self.create_client(GetObjectDropped, "/object_dropped", callback_group=self.service_group)
 
         # Default state initialization
         self.entity_id = None

@@ -16,6 +16,7 @@ from mia_hand_msgs.msg import ForceData
 from arlab_common_interfaces.srv import GetObjectDropped, ActivateForceMonitor
 import rclpy
 
+
 class force_monitor(Node):
     """ROS2 Node for monitoring the Mia Hand force sensors for load drops.
 
@@ -76,9 +77,9 @@ class force_monitor(Node):
         self.nforce_lists = {"thumb": [], "index": [], "mrl": []}
         self.nforce_medians = {"thumb": 0, "index": 0, "mrl": 0}
 
-        self.create_subscription(ForceData, '/mia_hand/data_streams/fingers/forces/data', self.get_data, 10)
-        self.activation_status = self.create_service(ActivateForceMonitor, '/force_monitor/activate', self.activation_callback)
-        self.dropped_service = self.create_service(GetObjectDropped, '/object_dropped', self.object_dropped_response)
+        self.create_subscription(ForceData, "/mia_hand/data_streams/fingers/forces/data", self.get_data, 10)
+        self.activation_status = self.create_service(ActivateForceMonitor, "/force_monitor/activate", self.activation_callback)
+        self.dropped_service = self.create_service(GetObjectDropped, "/object_dropped", self.object_dropped_response)
 
     def activation_callback(self, request, response):
         """Arm and disarm requests from the job-runner when picking and placing objects.
@@ -166,15 +167,12 @@ class force_monitor(Node):
         # tridigital and spherical are custom grip types that are not defined yet
         # after implementing one or both, the relevant force sensors for the grips should be addressed here
         if self.grip_type == "pinch":
-            dropped = (
-                (self.nforce_medians["thumb"] - forces["thumb"]) > self.allowed_force_jitter
-                and (forces["index"] - self.nforce_medians["index"]) > self.allowed_force_jitter
-            )
+            dropped = (self.nforce_medians["thumb"] - forces["thumb"]) > self.allowed_force_jitter and (
+                forces["index"] - self.nforce_medians["index"]
+            ) > self.allowed_force_jitter
 
         elif self.grip_type == "lateral":
-            dropped = (
-                (forces["thumb"] - self.nforce_medians["thumb"]) > self.allowed_force_jitter
-            )
+            dropped = (forces["thumb"] - self.nforce_medians["thumb"]) > self.allowed_force_jitter
 
         else:
             dropped = (
@@ -226,6 +224,7 @@ class force_monitor(Node):
         response.object_dropped = self.drop_reported
         return response
 
+
 def main(args=None):
     """Start the force monitor node."""
 
@@ -234,5 +233,6 @@ def main(args=None):
     rclpy.spin(node)
     rclpy.shutdown()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

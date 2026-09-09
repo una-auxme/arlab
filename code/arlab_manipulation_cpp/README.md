@@ -41,7 +41,11 @@ arlab_manipulation_cpp/
 
 ## Package Workflow
 
-An incoming action goal is received by the `OrchestratorActionServer`, handed to the `JobRunner` which resolves the command into a concrete motion sequence, that is then executed by `ArmMotion` via MoveIt or `HandMotion` via the Mia Hand grasp action. For pick and place sequences the `JobRunner` additionally switches the Mia Hand force data stream via `HandForceSwitch` and arms the external force monitor via `ForceMonitorSwitch`.
+An incoming action goal is received by the `OrchestratorActionServer`, handed to the `JobRunner`
+which resolves the command into a concrete motion sequence, that is then executed by `ArmMotion`
+via MoveIt or `HandMotion` via the Mia Hand grasp action. For pick and place sequences the
+`JobRunner` additionally switches the Mia Hand force data stream via `HandForceSwitch` and arms
+the external force monitor via `ForceMonitorSwitch`.
 
 ```text
     Manipulation Orchestrator (external)

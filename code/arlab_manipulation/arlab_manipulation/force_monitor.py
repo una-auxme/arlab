@@ -4,17 +4,17 @@ Force Monitor Node for detecting load drops on the mia hand force sensors.
 
 This Node provides an activation service for the orchestrator,
 subscribes to the mia hand force stream, creates a baseline from the first
-values after being armed, checks the incoming values for sudden force 
+values after being armed, checks the incoming values for sudden force
 drops and provides a service if a force drop was detected
 
 Maintainer:
     Marc Stumpp <marc.stumpp@uni-a.de>
 """
 
-from rclpy.node import Node 
+from rclpy.node import Node
 from mia_hand_msgs.msg import ForceData
 from arlab_common_interfaces.srv import GetObjectDropped, ActivateForceMonitor
-import rclpy 
+import rclpy
 
 class force_monitor(Node):
     """ROS2 Node for monitoring the Mia Hand force sensors for load drops.
@@ -49,7 +49,7 @@ class force_monitor(Node):
 
     def __init__(self):
         """ROS2 node for detection state, services, and subscription.
- 
+
         Side Effects:
             - Subscribes to /mia_hand/data_streams/fingers/forces/data for forces.
             - Registers /force_monitor/activate to arm and disarm the monitor.
@@ -57,7 +57,7 @@ class force_monitor(Node):
         """
 
         super().__init__("force_monitor")
-        
+
         self.armed = False
         self.median_complete = False
         self.drop_reported = False
@@ -85,7 +85,7 @@ class force_monitor(Node):
 
         Arming resets the dropped state, warns on an unknown grip type and sets the default type.
         Sets self.armed last, so no value is processed against a half-reset
-        state. Disarming only stops the evaluation and keeps the dropped status, 
+        state. Disarming only stops the evaluation and keeps the dropped status,
         so that it can be checked later by the orchestrator.
 
         Side Effects:
@@ -170,19 +170,19 @@ class force_monitor(Node):
                 (self.nforce_medians["thumb"] - forces["thumb"]) > self.allowed_force_jitter
                 and (forces["index"] - self.nforce_medians["index"]) > self.allowed_force_jitter
             )
-        
+
         elif self.grip_type == "lateral":
             dropped = (
                 (forces["thumb"] - self.nforce_medians["thumb"]) > self.allowed_force_jitter
-            )      
+            )
 
         else:
             dropped = (
                 (self.nforce_medians["thumb"] - forces["thumb"]) > self.allowed_force_jitter
                 and (forces["index"] - self.nforce_medians["index"]) > self.allowed_force_jitter
                 and (forces["mrl"] - self.nforce_medians["mrl"]) > self.allowed_force_jitter
-            )     
-        
+            )
+
         if dropped:
             self.report_counter += 1
         else:
@@ -191,13 +191,13 @@ class force_monitor(Node):
         if self.report_counter >= self.allowed_reports and not self.drop_reported:
             self.get_logger().warn("Force drop detected. Object lost")
             self.drop_reported = True
-                
+
     def calculate_median(self):
         """Calculate the baseline force per sensor from the collected values.
- 
+
         A median is used so that single outliers in the stream do not shift the
         baseline.
- 
+
         Side Effects:
             - Sorts the lists in self.nforce_lists in place
             - Updates self.nforce_medians
@@ -211,14 +211,14 @@ class force_monitor(Node):
 
     def object_dropped_response(self, request, response):
         """Provides the saved drop status.
- 
+
         The value refers to the grasp from when the node was last armed and stays valid
         after disarming.
- 
+
         Args:
             request: GetObjectDropped request, takes no arguments.
             response: Response object to be filled with the drop status.
- 
+
         Returns:
             GetObjectDropped response containing object_dropped.
         """

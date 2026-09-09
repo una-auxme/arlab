@@ -185,7 +185,7 @@ class orchestrator(Node):
             4. Request GrippingParameter if pickable.
             5. Compute pick/place pose.
             6. Send orchestrator goal to MoveIt.
-            7. For pick and place, check the force monitor if 
+            7. For pick and place, check the force monitor if
                the object was dropped.
             8. For place, publishe if the placement succeeded.
 
@@ -432,15 +432,15 @@ class orchestrator(Node):
         if not self.dropped_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().warn("Force monitor service not available. Cannot detect if object was dropped")
             return False
-    
+
         drop_request = GetObjectDropped.Request()
         drop_future = self.dropped_client.call_async(drop_request)
         rclpy.spin_until_future_complete(self, drop_future, timeout_sec=2.0)
-    
+
         if not drop_future.done() or drop_future.result() is None:
             self.get_logger().warn("Force monitor did not respond in time. Cannot detect if object was dropped")
             return False
-    
+
         return drop_future.result().object_dropped
 
     def send_goal(self):

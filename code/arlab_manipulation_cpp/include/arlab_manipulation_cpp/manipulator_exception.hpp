@@ -30,41 +30,41 @@ class ManipulationException : public std::exception {
     /**
      * Creates an exception from a numeric error code. The message is derived
      * automatically via ErrorMessageFromCode().
-     * @param code    Numeric manipulation error code.
+     * @param code  Numeric manipulation error code.
      */
     explicit ManipulationException(int code);
 
     /**
      * Creates an exception from a numeric error code and a custom message.
-     * @param code    Numeric manipulation error code.
-     * @param msg     Human-readable description; ownership is transferred.
+     * @param code  Numeric manipulation error code.
+     * @param msg   Human-readable description; ownership is transferred.
      */
     explicit ManipulationException(int code, std::string&& msg);
 
     /**
      * Creates an exception from a MoveIt error code. The numeric value and
      * the standard MoveIt error string are extracted automatically.
-     * @param code    A MoveIt error code returned by planning or execution calls.
+     * @param code  A MoveIt error code returned by planning or execution calls.
      */
     explicit ManipulationException(const moveit::core::MoveItErrorCode& code);
 
     /**
      * Returns the stored human-readable error message.
-     * @returns Null-terminated C string valid for the lifetime of this object.
+     * @return  Null-terminated C string valid for the lifetime of this object.
      */
     const char* what() const noexcept override;
 
       /**
      * Returns the stored numeric error code.
-     * @returns Numeric manipulation error code.
+     * @return  Numeric manipulation error code.
      */
     int code() const noexcept { return code_; }
 
      /**
      * Converts a numeric error code into a human-readable error message.
      * Returns "Unknown error code" for any value that is not explicitly mapped.
-     * @param code    Numeric manipulation error code.
-     * @returns Descriptive string for the given code.
+     * @param code  Numeric manipulation error code.
+     * @return  Descriptive string for the given code.
      */
     std::string ErrorMessageFromCode(int code);
 

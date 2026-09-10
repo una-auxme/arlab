@@ -11,7 +11,7 @@
 // Each grasp type (cylindrical, pinch, lateral, spherical, tridigital)
 // is exposed by the mia hand driver as its own action server topic.
 // HandMotion routes each corresponding method to the matching topic and caches
-// one client per grasp type.s
+// one client per grasp type.
 // -----------------------------------------------------------------------------
 
 #include "arlab_manipulation_cpp/hand_motion.hpp"

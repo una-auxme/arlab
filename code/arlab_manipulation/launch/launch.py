@@ -18,9 +18,11 @@ def generate_launch_description():
     Nodes started:
         1. GetGrippingParameter service node
            - Provides gripping force, grip modes, and object weight for manipulator.
-        2. Orchestrator Python node
+        2. Force monitor Python node
+           - Watches the hand force sensors and reports a lost object.
+        3. Orchestrator Python node
            - Handles action requests, queries knowledge, computes grasp/placement.
-        3. OrchestratorSubscriber C++ node
+        4. OrchestratorSubscriber C++ node
            - Subscribes to orchestrator data for downstream MoveIt or robot control.
 
     Returns:
@@ -29,10 +31,10 @@ def generate_launch_description():
     ld = LaunchDescription()
 
     # Service node for providing gripping force recommendations
-    GetParameter = Node(
-        package="arlab_manipulation",
-        executable="gripping_parameter",
-    )
+    GetParameter = Node(package="arlab_manipulation", executable="gripping_parameter")
+
+    # Force monitor node that detects load drops on the hand force sensors
+    ForceMonitor = Node(package="arlab_manipulation", executable="force_monitor")
 
     # Python orchestrator node that handles perception and planning
     Orchestrator = Node(package="arlab_manipulation", executable="orchestrator")
@@ -42,6 +44,7 @@ def generate_launch_description():
 
     # Add nodes to the launch description
     ld.add_action(GetParameter)
+    ld.add_action(ForceMonitor)
     ld.add_action(Orchestrator)
     ld.add_action(Manipulation_CPP)
 

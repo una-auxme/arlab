@@ -32,6 +32,8 @@ find_package(sensor_msgs REQUIRED)
 # Add all your interface files here:
 rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GrippingParameter.srv"
+  "srv/GetObjectDropped.srv"
+  "srv/ActivateForceMonitor.srv"
 
   "msg/OrchestratorData.msg"
   "msg/Destination.msg"

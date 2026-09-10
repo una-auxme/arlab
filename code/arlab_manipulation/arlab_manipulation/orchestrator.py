@@ -187,7 +187,7 @@ class orchestrator(Node):
             6. Send orchestrator goal to MoveIt.
             7. For pick and place, check the force monitor if
                the object was dropped.
-            8. For place, publishe if the placement succeeded.
+            8. For place, publish if the placement succeeded.
 
         Side Effects:
             Sets self.err / self.msg for ManipulationResponse.

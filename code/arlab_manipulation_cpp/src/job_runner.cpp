@@ -3,18 +3,24 @@
 // Package: arlab_manipulation_cpp
 // Maintainer: Leonie Schmidt <leonie1.schmidt@uni-a.de>
 //             Christopher Müller <christopher.mueller@uni-a.de>
+//             Marc Stumpp <marc.stumpp@uni-a.de>
 //
 // Implements JobRunner::Run(), the central command dispatch function. Each
 // supported command string is mapped to a sequence of ArmMotion and
-// HandMotion calls. Motion constants are isolated in the anonymous namespace
+// HandMotion calls. The pick sequences additionally enable the hand force
+// stream and arm the force monitor once the hand has closed. The place
+// sequence switches both off again before the hand opens.
+// Motion constants are isolated in the anonymous namespace
 // for easy tuning without touching the header.
 // -----------------------------------------------------------------------------
 
 #include "arlab_manipulation_cpp/job_runner.hpp"
 
-#include "arlab_common_interfaces/msg/manipulation_response.hpp"
 #include "arlab_common_interfaces/msg/manipulation_command.hpp"
+#include "arlab_common_interfaces/msg/manipulation_response.hpp"
 #include "arlab_manipulation_cpp/arm_motion.hpp"
+#include "arlab_manipulation_cpp/force_monitor_switch.hpp"
+#include "arlab_manipulation_cpp/hand_force_switch.hpp"
 #include "arlab_manipulation_cpp/hand_motion.hpp"
 #include "arlab_manipulation_cpp/manipulator_exception.hpp"
 
@@ -31,8 +37,11 @@ namespace
 
 } // namespace
 
-JobRunner::JobRunner(rclcpp::Node &node, ArmMotion &arm, HandMotion &hand)
-    : logger_(node.get_logger()), arm_(arm), hand_(hand) {}
+JobRunner::JobRunner(rclcpp::Node &node, ArmMotion &arm, HandMotion &hand,
+                     HandForceSwitch &force_switch,
+                     ForceMonitorSwitch &monitor_switch)
+    : logger_(node.get_logger()), arm_(arm), hand_(hand),
+      force_switch_(force_switch), monitor_switch_(monitor_switch) {}
 
 geometry_msgs::msg::Pose JobRunner::CreatePose(double x, double y, double z,
                                                double qx, double qy, double qz,
@@ -68,7 +77,7 @@ void JobRunner::Run(const arlab_common_interfaces::msg::OrchestratorData &msg)
   const std::string cmd = msg.cmd.data;
   RCLCPP_INFO(logger_, "JobRunner received cmd='%s'", cmd.c_str());
 
-  // --                                      Grasp commands                                            --
+  // --  Grasp commands  --
   if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_OPEN)
   {
     hand_.Open(); // Open hand via cylindrical hand topic
@@ -113,17 +122,16 @@ void JobRunner::Run(const arlab_common_interfaces::msg::OrchestratorData &msg)
   {
     arm_.MoveToPose(msg.pose);
   }
-  else if (
-      cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_MOVE_TO_BOX)
+  else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_MOVE_TO_BOX)
   {
     arm_.MoveToPoseBoxGoal(msg.pose, kBoxPositionTolerance, false,
                            kBoxOrientationTolerance, kEndEffectorLink,
                            kReferenceFrame, kPlannerId);
-
-    // -- Pick sequences: open (cylindrical type) → approach → close (specifyed type) → retreat → home --
-    // !! Spherical and tridigital not yet customized on hand driver, currently not in use !!
-    //    See HandMotion::Spherical/Tridigital
   }
+  // -- Pick sequence: open (cylindrical type) → approach → close (specified type)
+  //    → enable force stream → activate force monitor → retreat → home --
+  // !! Spherical and tridigital not yet customized on hand driver, currently not in use !!
+  //    See HandMotion::Spherical/Tridigital
   else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PICK)
   {
     hand_.Open();
@@ -131,6 +139,8 @@ void JobRunner::Run(const arlab_common_interfaces::msg::OrchestratorData &msg)
     arm_.MoveToPose(approach_pose);
     arm_.MoveToPose(msg.pose);
     hand_.Close();
+    force_switch_.EnableStream();
+    monitor_switch_.ActivateMonitor(msg.grip_type.data);
     arm_.MoveToPose(approach_pose);
     arm_.MoveToHome();
   }
@@ -141,6 +151,8 @@ void JobRunner::Run(const arlab_common_interfaces::msg::OrchestratorData &msg)
     arm_.MoveToPose(approach_pose);
     arm_.MoveToPose(msg.pose);
     hand_.Pinch();
+    force_switch_.EnableStream();
+    monitor_switch_.ActivateMonitor(msg.grip_type.data);
     arm_.MoveToPose(approach_pose);
     arm_.MoveToHome();
   }
@@ -151,6 +163,8 @@ void JobRunner::Run(const arlab_common_interfaces::msg::OrchestratorData &msg)
     arm_.MoveToPose(approach_pose);
     arm_.MoveToPose(msg.pose);
     hand_.Lateral();
+    force_switch_.EnableStream();
+    monitor_switch_.ActivateMonitor(msg.grip_type.data);
     arm_.MoveToPose(approach_pose);
     arm_.MoveToHome();
   }
@@ -161,6 +175,8 @@ void JobRunner::Run(const arlab_common_interfaces::msg::OrchestratorData &msg)
     arm_.MoveToPose(approach_pose);
     arm_.MoveToPose(msg.pose);
     hand_.Spherical();
+    force_switch_.EnableStream();
+    monitor_switch_.ActivateMonitor(msg.grip_type.data);
     arm_.MoveToPose(approach_pose);
     arm_.MoveToHome();
   }
@@ -171,14 +187,20 @@ void JobRunner::Run(const arlab_common_interfaces::msg::OrchestratorData &msg)
     arm_.MoveToPose(approach_pose);
     arm_.MoveToPose(msg.pose);
     hand_.Tridigital();
+    force_switch_.EnableStream();
+    monitor_switch_.ActivateMonitor(msg.grip_type.data);
     arm_.MoveToPose(approach_pose);
     arm_.MoveToHome();
   }
+  // -- Place sequence: approach → disable force stream → deactivate force monitor
+  //    → open (cylindrical type) → retreat → home --
   else if (cmd == arlab_common_interfaces::msg::ManipulationCommand::COMMAND_PLACE)
   {
     auto approach_pose = arm_.MakeApproachPose(msg.pose, kApproachDistance, kLiftOffset);
     arm_.MoveToPose(approach_pose);
     arm_.MoveToPose(msg.pose);
+    force_switch_.DisableStream();
+    monitor_switch_.DeactivateMonitor();
     hand_.Open();
     arm_.MoveToPose(approach_pose);
     arm_.MoveToHome();
@@ -186,8 +208,7 @@ void JobRunner::Run(const arlab_common_interfaces::msg::OrchestratorData &msg)
   else
   {
     RCLCPP_WARN(logger_, "Unknown command: %s", cmd.c_str());
-    throw ManipulationException(arlab_common_interfaces::msg::ManipulationResponse::UNKNOWN_JOB_COMMAND);
+    throw ManipulationException(
+        arlab_common_interfaces::msg::ManipulationResponse::UNKNOWN_JOB_COMMAND);
   }
-
-  return;
 }

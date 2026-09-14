@@ -35,7 +35,7 @@ public:
 
   /**
    * Creates a HandMotion and initialises the internal grasp action client.
-   * @param node    Shared pointer to the owning ROS 2 node. Must not be null.
+   * @param node        Shared pointer to the owning ROS 2 node. Must not be null.
    * @throws ManipulationException if node is null.
    */
   explicit HandMotion(rclcpp::Node::SharedPtr node);
@@ -43,8 +43,8 @@ public:
   /**
    * Opens the hand to a predefined low-closure configuration.
    * Acts as the default hand opening motion (via cylindrical action).
-   * @param timeout   Maximum time to wait for goal acceptance.
-                      Defaults to 3000 ms.
+   * @param timeout     Maximum time to wait for goal acceptance.
+                        Defaults to 3000 ms.
    * @throws ManipulationException on any action-level failure.
    */
   void Open(
@@ -53,8 +53,8 @@ public:
   /**
    * Closes the hand to a cylindrical grasp configuration.
    * Acts as the default hand closing motion
-   * @param timeout   Maximum time to wait for goal acceptance.
-                      Defaults to 3000 ms.
+   * @param timeout     Maximum time to wait for goal acceptance.
+                        Defaults to 3000 ms.
    * @throws ManipulationException on any action-level failure.
    */
   void Close(
@@ -62,8 +62,8 @@ public:
 
   /**
    * Closes the hand to a pinch grasp configuration.
-   * @param timeout   Maximum time to wait for goal acceptance.
-                      Defaults to 3000 ms.
+   * @param timeout     Maximum time to wait for goal acceptance.
+                        Defaults to 3000 ms.
    * @throws ManipulationException on any action-level failure.
    */
   void Pinch(
@@ -71,8 +71,8 @@ public:
 
   /**
    * Closes the hand to a lateral grasp configuration.
-   * @param timeout   Maximum time to wait for goal acceptance.
-                      Defaults to 3000 ms.
+   * @param timeout     Maximum time to wait for goal acceptance.
+                        Defaults to 3000 ms.
    * @throws ManipulationException on any action-level failure.
    */
   void Lateral(
@@ -80,8 +80,8 @@ public:
 
   /**
    * Move the hand to a pointing up configuration.
-   * @param timeout   Maximum time to wait for goal acceptance.
-                      Defaults to 3000 ms.
+   * @param timeout     Maximum time to wait for goal acceptance.
+                        Defaults to 3000 ms.
    * @throws ManipulationException on any action-level failure.
    */
   void PointUp(
@@ -89,8 +89,8 @@ public:
 
   /**
    * Move the hand to a pointing down configuration.
-   * @param timeout   Maximum time to wait for goal acceptance.
-                      Defaults to 3000 ms.
+   * @param timeout     Maximum time to wait for goal acceptance.
+                        Defaults to 3000 ms.
    * @throws ManipulationException on any action-level failure.
    */
   void PointDown(
@@ -100,8 +100,8 @@ public:
    * Closes the hand to a spherical grasp configuration.
    * WARNING: Mia hand opens hand completely on spherical grasp!
    *          Spherical grasp not yet mapped/customized.
-   * @param timeout   Maximum time to wait for goal acceptance.
-                      Defaults to 3000 ms.
+   * @param timeout     Maximum time to wait for goal acceptance.
+                        Defaults to 3000 ms.
    * @throws ManipulationException on any action-level failure.
    */
   void Spherical(
@@ -111,8 +111,8 @@ public:
    * Closes the hand to a tridigital grasp configuration.
    * WARNING: Mia hand opens hand completely on tridigital grasp!
    *          Tridigital grasp not yet mapped/customized.
-   * @param timeout   Maximum time to wait for goal acceptance.
-                      Defaults to 3000 ms.
+   * @param timeout     Maximum time to wait for goal acceptance.
+                        Defaults to 3000 ms.
    * @throws ManipulationException on any action-level failure.
    */
   void Tridigital(
@@ -120,17 +120,17 @@ public:
 
   /**
    * Sends a grasp goal to the hand action server and waits for a result.
-   * @param action_name             Specifies grasp action server to publish to.
-   *                                Selects which grasp type is executed.
-   * @param target_closure_percent  Desired hand closure in percent [0, 100].
-   * @param speed_for_percent       Closing speed in percent. Defaults to 15.
-   * @param timeout                 Per-step wait duration for goal acceptance
-   *                                and result retrieval. Defaults to 3000 ms.
-   * WARNING:                       Timeout currently NOT enforced for result
-   *                                retrieval (see inline TODO).
+   * @param action_name                 Specifies grasp action server to publish to.
+   *                                    Selects which grasp type is executed.
+   * @param target_closure_percent      Desired hand closure in percent [0, 100].
+   * @param speed_for_percent           Closing speed in percent. Defaults to 15.
+   * @param timeout                     Per-step wait duration for goal acceptance
+   *                                    and result retrieval. Defaults to 3000 ms.
+   * WARNING:                           Timeout currently NOT enforced for result
+   *                                    retrieval (see inline TODO).
    *
-   * @param server_wait             Time to wait for the action server to become
-   *                                available. Defaults to 2000 ms.
+   * @param server_wait                 Time to wait for the action server to become
+   *                                    available. Defaults to 2000 ms.
    * @throws ManipulationException if the server is not ready, the goal is
    *         rejected, or goal acceptance times out.
    */
@@ -145,7 +145,7 @@ private:
   /**
    * Returns the action client for the given action name, creating and
    * caching it if it does not already exist.
-   * @param action_name  Name of the grasp action server to connect to.
+   * @param action_name     Name of the grasp action server to connect to.
    * @return Shared pointer to the cached (or newly created) action client.
    */
   Client::SharedPtr GetCreateClient(const std::string &action_name);

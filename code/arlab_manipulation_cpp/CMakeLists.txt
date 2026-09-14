@@ -10,10 +10,20 @@ find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(moveit_ros_planning_interface REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 find_package(arlab_common_interfaces REQUIRED)
 find_package(mia_hand_msgs REQUIRED)
 
-add_executable(Manipulation_CPP src/orchestrator_listener.cpp src/job_runner.cpp src/arm_motion.cpp src/hand_motion.cpp src/manipulator_exception.cpp)
+add_executable(
+  Manipulation_CPP 
+  src/orchestrator_listener.cpp 
+  src/job_runner.cpp 
+  src/arm_motion.cpp 
+  src/hand_motion.cpp 
+  src/hand_force_switch.cpp
+  src/manipulator_exception.cpp
+  src/force_monitor_switch.cpp
+  )
 
 target_include_directories(Manipulation_CPP PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -26,6 +36,7 @@ ament_target_dependencies(
   moveit_core
   moveit_ros_planning_interface
   rclcpp
+  std_srvs
   rclcpp_action
   geometry_msgs
   std_msgs
@@ -36,7 +47,8 @@ ament_target_dependencies(
   tf2_ros
 )
 
-install(TARGETS Manipulation_CPP
+install(TARGETS 
+  Manipulation_CPP
   DESTINATION lib/${PROJECT_NAME})
 
 ament_package()

@@ -33,8 +33,8 @@ class ArmMotion {
     /**
      * Creates an ArmMotion helper and initialises the MoveGroupInterface with
      * package-level planning defaults.
-     * @param node      Shared pointer to the owning ROS 2 node. Must not be null.
-     * @param group     MoveIt planning group name (e.g. "ur_manipulator").
+     * @param node    Shared pointer to the owning ROS 2 node. Must not be null.
+     * @param group   MoveIt planning group name (e.g. "ur_manipulator").
      * @throws ManipulationException if node is null.
      */
     explicit ArmMotion(const rclcpp::Node::SharedPtr& node, const std::string& group);
@@ -106,7 +106,7 @@ class ArmMotion {
      * @param target      Reference target pose.
      * @param dz_tool     Offset along the tool Z axis [m].
      * @param dz_world    Offset along the world Z axis [m].
-     * @returns Approach pose.
+     * @return  Approach pose.
      */
     geometry_msgs::msg::Pose MakeApproachPose(
       const geometry_msgs::msg::Pose& target,

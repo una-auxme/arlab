@@ -24,6 +24,7 @@ More documentation in the corresponding ROS definitions: EntityFurniture.msg
 
 Maintainers:
     Peter Viechter <peter.viechter@uni-a.de>
+    Luca Kahlenberg <luca.kahlenberg@uni-a.de>
 """
 
 from typing import Dict, List

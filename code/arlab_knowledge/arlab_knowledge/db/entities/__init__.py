@@ -14,6 +14,7 @@ The entity type conversion functions enable polymorphic behavior:
 
 Maintainers:
     Peter Viechter <peter.viechter@uni-a.de>
+    Luca Kahlenberg <luca.kahlenberg@uni-a.de>
 """
 
 from arlab_knowledge_interfaces import msg

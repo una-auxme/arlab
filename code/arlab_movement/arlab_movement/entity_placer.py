@@ -20,10 +20,10 @@ from tf2_geometry_msgs.tf2_geometry_msgs import do_transform_pose_stamped
 
 
 class EntityPlacer(Node):
-    """Node that stages rviz pose clicks and offers a service to add a new entity with staged pose to knowledge base
+    """Node that stages rviz pose clicks and offers a service to add a new entity with staged pose to knowledge base.
 
-    We need the possibility to add entities manually to the knowledge base, to enable semantic annotation of map.
-    (kitchen, laundry area) This node is the fallback if automatic annotation via CV fails.
+    We need the possibility to add entities manually to the knowledge base, to enable semantic annotation of map (kitchen, laundry area).
+    This node is the fallback if automatic annotation via CV fails.
 
     Workflow:
         - Set topic of 2D Goal Pose in rviz to /arlab/entity_pose using Panel Tool Properties
@@ -78,7 +78,7 @@ class EntityPlacer(Node):
         self.get_logger().info(
             f"Staging poses from '{self.pose_topic}'.\n"
             f"Place Entity / Add to DB via '{self._place_service_name}'.\n"
-            f"Entities are added in frame '{self.target_frame}')."
+            f"Entities are added in frame '{self.target_frame}'."
         )
 
     def _pose_callback(self, msg: PoseStamped):
@@ -148,7 +148,7 @@ class EntityPlacer(Node):
 
     def _to_target_frame(self, msg: PoseStamped) -> Optional[PoseStamped]:
         """
-        Transforms any PoseStamped to target frame (map).
+        Transforms any PoseStamped to target_frame (default: map).
 
         Args:
             msg (PoseStamped): The pose to transform.
@@ -172,7 +172,7 @@ class EntityPlacer(Node):
 
 
 def main(args=None):
-    """Entry point for node"""
+    """Entry point for node."""
     rclpy.init(args=args)
     node = EntityPlacer()
     rclpy.spin(node)

@@ -128,7 +128,12 @@ class DatabaseNode(Node):
         """
         async with self.db_engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
-        self._init_services()
+
+        try:
+            self._init_services()
+        except Exception as e:
+            self.get_logger().fatal(f"_init_services crashed: {e}", exc_info=True)
+            raise
 
     def _init_services(self):
         """Create all services"""

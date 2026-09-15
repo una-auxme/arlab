@@ -37,6 +37,7 @@ setup(
         "console_scripts": [
             "orchestrator = arlab_manipulation.orchestrator:main",
             "gripping_parameter = arlab_manipulation.services.gripping_parameter:main",
+            "force_monitor = arlab_manipulation.force_monitor:main",
         ],
     },
 )

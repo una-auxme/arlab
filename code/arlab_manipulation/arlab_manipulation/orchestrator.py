@@ -4,10 +4,13 @@ Orchestrator Node for Robotic Manipulation (ROS2).
 
 This node subscribes to manipulation commands via Action, queries gripping
 parameters, computes gripping poses, and publishes orchestrator data for
-execution by MoveIt or other downstream nodes.
+execution by MoveIt or other downstream nodes. After execution it checks the
+force monitor for a dropped object and reports the result.
 
 Maintainer:
     Sofia Öttl <sofia.oettl@uni-a.de>
+    Christopher Müller <christopher.mueller@uni-a.de>
+    Marc Stumpp <marc.stumpp@uni-a.de>
 """
 
 from threading import Event
@@ -17,8 +20,8 @@ import rclpy
 import rclpy.executors
 import tf2_ros
 from arlab_common_interfaces.action import ManipulationAction, OrchestratorAction
-from arlab_common_interfaces.msg import ManipulationResponse
-from arlab_common_interfaces.srv import GrippingParameter
+from arlab_common_interfaces.srv import GrippingParameter, GetObjectDropped
+from arlab_common_interfaces.msg import ManipulationResponse, ManipulationCommand
 from arlab_knowledge_interfaces.srv import GetEntity, GetShape
 from geometry_msgs.msg import Point, Pose, Quaternion
 from moveit_msgs.msg import PlanningScene
@@ -43,8 +46,11 @@ class orchestrator(Node):
         - Accept manipulation commands via ManipulationAction.
         - Query object properties (GetEntity, GetShape) from the knowledge base.
         - Request gripping parameters via GrippingParameter service.
+        - Map received gripping parameters to a specific grip command.
         - Compute pick/place poses considering octomap occupancy.
-        - Send orchestrator goals to downstream MoveIt Action server.
+        - Send orchestrator goals to downstream MoveIt and mia hand action servers.
+        - Check the force monitor for a dropped object after pick and place.
+        - Publish the placement result on /object_placed.
 
     Attributes:
         action_done_event: Threading event to synchronize asynchronous callbacks.
@@ -53,8 +59,10 @@ class orchestrator(Node):
         pickable: Flag if object is manipulable.
         pose / gripping / placing points: Computed target poses.
         octomap: Latest PlanningScene octomap data.
-        force / grip modes: Parameters from GrippingParameter service.
+        force / grip_type / grip modes: Parameters from GrippingParameter service.
         err / msg: Status code and message for manipulation responses.
+        dropped_client: Service client for the force monitor drop status.
+        obj_placed_pub: Publisher for the placement result.
     """
 
     def __init__(self):
@@ -64,7 +72,10 @@ class orchestrator(Node):
             - Registers multiple asynchronous callbacks.
             - Initializes TF2 buffer and listener.
             - Subscribes to /monitored_planning_scene to receive octomap updates.
+            - Publishes the placement result on /object_placed.
+            - Creates a client for /object_dropped to check the force monitor.
         """
+
         super().__init__("orchestrator")
         self.service_group = MutuallyExclusiveCallbackGroup()
 
@@ -107,6 +118,9 @@ class orchestrator(Node):
         # publisher for object placed
         self.obj_placed_pub = self.create_publisher(Bool, "/object_placed", 10)
 
+        # service client for dropped objects
+        self.dropped_client = self.create_client(GetObjectDropped, "/object_dropped", callback_group=self.service_group)
+
         # Default state initialization
         self.entity_id = None
         self.command_type = "home"
@@ -115,6 +129,7 @@ class orchestrator(Node):
         self.pickable = False
         self.ref_frame = "camera_link"
         self.force = 5.0
+        self.grip_type = "cylindrical"
         self.gripping_point_pos = Point()
         self.gripping_point_orient = Quaternion(w=1.0)
         self.placing_point_pos = Point()
@@ -138,7 +153,7 @@ class orchestrator(Node):
         if not self.octomap:
             # Lines below to treat an empty octomap as an error (uncomment for testing without working octomap):
             # self.get_logger().warn("Octomap is empty")
-            # self.err = -40
+            # self.err = ManipulationResponse.OCTOMAP_EMPTY
             # self.msg = "Octomap is empty"
             # self.finish_action()
             return
@@ -170,10 +185,14 @@ class orchestrator(Node):
             4. Request GrippingParameter if pickable.
             5. Compute pick/place pose.
             6. Send orchestrator goal to MoveIt.
+            7. For pick and place, check the force monitor if
+               the object was dropped.
+            8. For place, publish if the placement succeeded.
 
         Side Effects:
             Sets self.err / self.msg for ManipulationResponse.
             Uses threading event to wait for async service responses.
+            Publishes on /object_placed for place commands.
         """
 
         self.action_result = ManipulationAction.Result()
@@ -198,17 +217,21 @@ class orchestrator(Node):
         self.action_done_event.wait()
         self.action_done_event.clear()
 
+        # Get information from force monitor if object was dropped
+        if self.command_type in ["pick", "place"] and self.check_object_dropped():
+            self.err = ManipulationResponse.OBJECT_DROPPED
+
         # Give feedback if object was correctly placed
         if self.command_type == "place":
             placed = Bool()
-            placed.data = self.err == ManipulationResponse.SUCCESS  # ← Erfolg-Wert bestätigen
+            placed.data = self.err == ManipulationResponse.SUCCESS
             self.obj_placed_pub.publish(placed)
-            self.get_logger().info(f"Publishing {placed.data} on /object_placed")  # DEBUG
+            self.get_logger().info(f"Publishing {placed.data} on /object_placed")
 
         if not goal_handle.is_active:
             return
 
-        self.get_logger().info("Action response send to desicion maker")
+        self.get_logger().info("Action response sent to desicion maker")
         self.action_result.response.error_code = self.err
         self.action_result.response.message = self.msg
 
@@ -251,7 +274,7 @@ class orchestrator(Node):
             # Transform pose from the entity's reference frame to base_link
             self.pose, err, msg = transform_pose(self.tf_buffer, cast(Pose, self.pose), self.stamp, self.ref_frame)
 
-            if err == 1:
+            if err == ManipulationResponse.SUCCESS:
                 # Continue chain: request shape data for grasp/place planning
                 self.req_get_shape = GetShape.Request()
                 self.req_get_shape.entityid = self.entity_id
@@ -264,7 +287,7 @@ class orchestrator(Node):
 
         except Exception as e:
             self.get_logger().error(f"GetEntity failed: {e}")
-            self.err = -41
+            self.err = ManipulationResponse.GET_ENTITY_FAILED
             self.msg = "GetEntity from Knowledgebase failed"
             self.finish_action()
 
@@ -301,6 +324,7 @@ class orchestrator(Node):
                 # Continue chain: fetch gripping parameters for this object group
                 self.req_gripping_parameter = GrippingParameter.Request()
                 self.req_gripping_parameter.objectgroup = self.object_group
+                self.req_gripping_parameter.objectname = self.object_name
                 future_param = self.client_gripping_parameter.call_async(self.req_gripping_parameter)
                 future_param.add_done_callback(self.handle_gripping_parameter_response)
             else:
@@ -310,17 +334,17 @@ class orchestrator(Node):
 
         except Exception as e:
             self.get_logger().error(f"GetShape failed: {e}")
-            self.err = -42
+            self.err = ManipulationResponse.GET_SHAPE_FAILED
             self.msg = "GetShape from Knowledgebase failed"
             self.finish_action()
 
     def handle_gripping_parameter_response(self, future):
         """Handle response from GrippingParameter service.
 
-        Updates gripping force and grip modes, then computes pick/place pose.
+        Updates gripping force, grip type and grip modes, then computes pick/place pose.
 
         Side Effects:
-            - Updates self.force, self.grip_pos_mode, self.grip_orient_mode
+            - Updates self.force, self.grip_pos_mode, self.grip_orient_mode, self.grip_type
             - Calls compute_goal_pose
             - Updates self.err / self.msg if service fails
 
@@ -332,10 +356,11 @@ class orchestrator(Node):
             self.force = response.gripforce
             self.grip_pos_mode = response.grippos_mode
             self.grip_orient_mode = response.griporient_mode
+            self.grip_type = response.grip_type
             self.compute_goal_pose()
         except Exception as e:
             self.get_logger().error(f"GetGrippingParameter failed: {e}")
-            self.err = -43
+            self.err = ManipulationResponse.GET_GRIPPING_PARAMETER_FAILED
             self.msg = "GetGrippingParameter from ParameterService failed"
             self.finish_action()
 
@@ -359,7 +384,7 @@ class orchestrator(Node):
             if self.pose is not None:
                 self.gripping_point_pos = self.pose.position
                 # Static offsets to align the gripper with the object centre.
-                # TODO: Replace with a proper grasp planner.
+                # TODO: Replace with a proper grasp planner. Every grasp type will need their own offset.
                 self.gripping_point_pos.x += -0.085
                 self.gripping_point_pos.y += 0.01
                 self.gripping_point_pos.z = 0.19
@@ -368,7 +393,7 @@ class orchestrator(Node):
                 self.gripping_point_orient = Quaternion(x=0.243005, y=0.808244, z=-0.0517573, w=0.533864)
                 self.send_goal()
             else:
-                self.err = -52
+                self.err = ManipulationResponse.NO_POSE_CALCULATED
                 self.msg = "No pose calculated"
                 self.finish_action()
 
@@ -382,7 +407,7 @@ class orchestrator(Node):
                     offset_x=0.05,  # Additional clearance along gripper X-axis [m]
                     offset_y=0.05,  # Additional clearance along gripper Y-axis [m]
                 )
-                if err == 1:
+                if err == ManipulationResponse.SUCCESS:
                     self.placing_point_pos = Point(x=pose.position.x, y=pose.position.y, z=pose.position.z)
                     # Reuse the grasp orientation for placing
                     self.placing_point_orient = self.gripping_point_orient
@@ -392,12 +417,38 @@ class orchestrator(Node):
                     self.msg = self.msg
                     self.finish_action()
 
+    def check_object_dropped(self):
+        """Checks the force monitor if the object was dropped.
+
+        The monitor is armed by the job runner after Close() and disarmed
+        before Open(), so the status refers to the current grasp. If the
+        service is unavailable or does not answer in time, a warning is logged
+        and no drop is assumed, so a missing monitor cannot fail a manipulation.
+
+        Returns:
+            True if the force monitor reported a drop, False otherwise.
+        """
+
+        if not self.dropped_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().warn("Force monitor service not available. Cannot detect if object was dropped")
+            return False
+
+        drop_request = GetObjectDropped.Request()
+        drop_future = self.dropped_client.call_async(drop_request)
+        rclpy.spin_until_future_complete(self, drop_future, timeout_sec=2.0)
+
+        if not drop_future.done() or drop_future.result() is None:
+            self.get_logger().warn("Force monitor did not respond in time. Cannot detect if object was dropped")
+            return False
+
+        return drop_future.result().object_dropped
+
     def send_goal(self):
         """Send computed pick/place pose as OrchestratorAction goal.
 
         Side Effects:
             - Waits for OrchestratorAction server
-            - Sends goal with pose, grip force, and command type
+            - Sends goal with pose, grip force, grip type and command type
             - Registers callback for response
             - Updates self.err / self.msg if server unavailable
         """
@@ -414,20 +465,51 @@ class orchestrator(Node):
             # For commands like "home", use a provided target pose or identity
             goal_pose = self.target_pose or Pose()
 
+        execution_command = self.get_execution_command()
         msg = OrchestratorAction.Goal()
         msg.data.pose = goal_pose
+        msg.data.grip_type = String(data=self.grip_type)
         msg.data.grip_force = Float64(data=self.force)
-        msg.data.cmd = String(data=self.command_type)
+        msg.data.cmd = String(data=execution_command)
 
         if not self._orchestrator_client.wait_for_server(timeout_sec=5.0):
             self.get_logger().error("OrchestratorAction server is not available")
-            self.err = -44
+            self.err = ManipulationResponse.ORCHESTRATOR_ACTIONSERVER_UNAVAILABLE
             self.msg = "Orchestrator Actionserver is not available"
             self.finish_action()
             return
 
         send_future = self._orchestrator_client.send_goal_async(msg)
         send_future.add_done_callback(self.handle_orchestrator_response)
+
+    def get_execution_command(self):
+        """Map a generic pick request to a hand-specific pick command.
+        Supported grasp types for picking objects are:
+        -   cylindrical
+        -   pinch
+        -   lateral
+        -   spherical (! Currently unmapped on hardware !)
+        -   tridigital (! Currently unmapped on hardware !)
+        Non pick commands will be returned as is.
+
+        Returns:
+            Specific manipulation pick command string, or original command type.
+        """
+
+        if self.command_type != ManipulationCommand.COMMAND_PICK:
+            return self.command_type
+
+        grip_to_pick_command = {
+            # COMMAND_PICK maps to the default grasp -> cylindrical
+            "cylindrical": ManipulationCommand.COMMAND_PICK,
+            "pinch": ManipulationCommand.COMMAND_PICK_PINCH,
+            "lateral": ManipulationCommand.COMMAND_PICK_LATERAL,
+            "spherical": ManipulationCommand.COMMAND_PICK_SPHERICAL,
+            "tridigital": ManipulationCommand.COMMAND_PICK_TRIDIGITAL,
+        }
+
+        execution_command = grip_to_pick_command.get(self.grip_type)
+        return execution_command
 
     def handle_orchestrator_response(self, future):
         """Handle goal acceptance from OrchestratorAction server.
@@ -441,7 +523,7 @@ class orchestrator(Node):
             self.goal_handle = future.result()
             if not self.goal_handle.accepted:
                 self.get_logger().error("Orchestrator goal rejected")
-                self.err = -45
+                self.err = ManipulationResponse.ORCHESTRATOR_GOAL_REJECTED
                 self.msg = "Orchestrator Actiongoal from MoveIt rejected"
                 self.finish_action()
 
@@ -450,7 +532,7 @@ class orchestrator(Node):
 
         except Exception as e:
             self.get_logger().error(f"Failed to receive orchestrator goal: {e}")
-            self.err = -46
+            self.err = ManipulationResponse.ORCHESTRATOR_GOAL_NOT_RECEIVED
             self.msg = "Failed to receive orchestrator goal"
             self.finish_action()
 
@@ -472,7 +554,7 @@ class orchestrator(Node):
 
         except Exception as e:
             self.get_logger().error(f"Handle orchestrator action result failed: {e}")
-            self.err = -48
+            self.err = ManipulationResponse.ORCHESTRATOR_ACTION_RESULT_FAIL
             self.msg = "Handle orchestrator action result failed"
             self.finish_action()
 

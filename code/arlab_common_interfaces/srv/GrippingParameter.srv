@@ -13,3 +13,6 @@ int32 griporient_mode
 
 # weight of the object for UR5 parameterization
 float64 object_weight
+
+# used grasp
+string grip_type

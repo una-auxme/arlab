@@ -26,10 +26,10 @@ class EntityPlacer(Node):
     (kitchen, laundry area) This node is the fallback if automatic annotation via CV fails.
 
     Workflow:
-    - Set topic of 2D Goal Pose in rviz to /arlab/entity_pose using Panel Tool Properties
-    - Click on displayed /map in rviz to select pose
-    - Call /arlab/entity_placer/place service to add entity (pose, stamp, reference_frame are already set)
-    - Display entities in rviz using topic /arlab/knowledge/visualization
+        - Set topic of 2D Goal Pose in rviz to /arlab/entity_pose using Panel Tool Properties
+        - Click on displayed /map in rviz to select pose
+        - Call /arlab/entity_placer/place service to add entity (pose, stamp, reference_frame are already set)
+        - Display entities in rviz using topic /arlab/knowledge/visualization
 
     Parameters:
         pose_topic (str): Topic the rviz poses are staged from. Defaults to "/arlab/entity_pose".

@@ -41,15 +41,11 @@ class EntityPlacer(Node):
     def __init__(self):
         super().__init__(type(self).__name__)
 
-        # declare parameters
-
         self.declare_parameter("pose_topic", "/arlab/entity_pose")
         self.declare_parameter("target_frame", "map")
 
         self.declare_parameter("add_entity_service", "/arlab/knowledge/add_entity")
         self.declare_parameter("place_service", "/arlab/entity_placer/place")
-
-        # set self vars
 
         self.target_frame = self.get_parameter("target_frame").get_parameter_value().string_value
         self.pose_topic = self.get_parameter("pose_topic").get_parameter_value().string_value
@@ -63,12 +59,8 @@ class EntityPlacer(Node):
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
 
-        # callback groups
-
         self.subscription_group = MutuallyExclusiveCallbackGroup()
         self.trigger_group = MutuallyExclusiveCallbackGroup()
-
-        # sub to pose topic
 
         self.create_subscription(
             PoseStamped,
@@ -78,16 +70,12 @@ class EntityPlacer(Node):
             callback_group=self.subscription_group,
         )
 
-        # create services
-
         self.create_service(
             AddEntity,
             self._place_service_name,
             self._place_callback,
             callback_group=self.trigger_group,
         )
-
-        # log info
 
         self.get_logger().info(
             f"Staging poses from '{self.pose_topic}'.\n"
@@ -102,11 +90,11 @@ class EntityPlacer(Node):
         Args:
             msg (PoseStamped): The pose selected in rviz.
         """
-        # save pose
         pose = self._to_target_frame(msg)
         if pose is None:
             return
 
+        # only the latest click is staged, a new click overwrites the previous pose
         self._pending_pose = pose
         self.get_logger().info(f"Received and staged new pose: {pose}")
 
@@ -135,8 +123,6 @@ class EntityPlacer(Node):
         request.data.pose = pose.pose
         request.data.pose_reference_frame = pose.header.frame_id
         request.data.stamp = pose.header.stamp
-
-        # call add_entity service
 
         client = self.create_client(AddEntity, self.add_entity_service)
 

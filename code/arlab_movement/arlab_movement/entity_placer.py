@@ -149,7 +149,7 @@ class EntityPlacer(Node):
             res = await client.call_async(request)
         except Exception as e:
             response.result.result_type = Result.ERROR_DBAPI
-            response.result.error = f"AddEntity sercive call failed: {e}"
+            response.result.error = f"AddEntity service call failed: {e}"
             return response
 
         response.entityid = res.entityid

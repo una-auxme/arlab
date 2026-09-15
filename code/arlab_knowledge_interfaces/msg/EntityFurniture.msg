@@ -18,7 +18,7 @@ EntityFurnitureDishwasher dishwasher
 # Attributes for a washer (valid if entity_type == washer)
 EntityFurnitureWasher washer
 
-#Attributes for a laundry basket (valid if entity_type == laundry_basket)
+# Attributes for a laundry basket (valid if entity_type == laundry_basket)
 EntityFurnitureLaundryBasket laundry_basket
 
 # Attributes for a trash bin (valid if entity_type == trash_bin)

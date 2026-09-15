@@ -11,7 +11,7 @@ Furniture types:
 - Door: A door
 - Shelf: A shelf that is part of a cupboard
 - Table: A table
-- Dishwaser: A dishwasher
+- Dishwasher: A dishwasher
 - Washer: A washing machine
 - TrashBin: A trash bin
 - LaundryBasket: A laundry basket

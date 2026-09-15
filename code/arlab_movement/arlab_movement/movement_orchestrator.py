@@ -69,7 +69,7 @@ class NavigationOrchestrator(Node):
         # auto-annotation by CV snapshot parameters.
         self.declare_parameter("snapshot_action_name", "/vision/snapshot")
         self.declare_parameter("odom_topic", "/odom")
-        self.declare_parameter("annotate_tick_period", 1.0)  # seconds betweeen checks for snapshot conditions
+        self.declare_parameter("annotate_tick_period", 1.0)  # seconds between checks for snapshot conditions
         self.declare_parameter("annotate_min_dist", 0.75)  # m moved since last snapshot
         self.declare_parameter("annotate_min_yaw", 0.5)  # rad turned since last snapshot
         self.declare_parameter("annotate_min_interval", 6.0)  # min interval in seconds between snapshots
@@ -121,7 +121,7 @@ class NavigationOrchestrator(Node):
             callback_group=self.action_group,
         )
 
-        # auto-annotation: snapshot action client + topic publishin if snapshots being taken
+        # auto-annotation: snapshot action client + topic publishing if snapshots being taken
         self.snapshot_action_name = str(self.get_parameter("snapshot_action_name").value)
         self.snapshot_client = ActionClient(self, VisionSnapshotAction, self.snapshot_action_name, callback_group=self.action_group)
         self.annotating_pub = self.create_publisher(Bool, "/arlab/movement/annotating", 10)
@@ -405,11 +405,8 @@ class NavigationOrchestrator(Node):
         """
         Start or stop periodic CV snapshots that auto-annotate the map.
 
-        When enabled, subscribes to odometry and starts a timer that decides, on
-        each tick:
-        Whether the robot has moved/turned enough since the last
-        snapshot
-        And is moving slowly enough for a stable frame.
+        When enabled, subscribes to odometry and starts a timer that evaluates
+        the snapshot condition checks on each tick, see `_annotate_tick`.
 
         Args:
             enable (bool): True to start auto-annotation, False to stop it.

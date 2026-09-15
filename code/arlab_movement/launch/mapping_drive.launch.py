@@ -24,7 +24,14 @@ MOVEMENT_ACTION_TYPE = "arlab_common_interfaces/action/MovementAction"
 
 
 def _send_movement_goal(cmd: str) -> ExecuteProcess:
-    """Build an ExecuteProcess that sends a single MovementAction goal via the ros2 CLI."""
+    """Build an ExecuteProcess that sends a single MovementAction goal via the ros2 CLI.
+
+    Args:
+        cmd (str): MovementAction command, e.g. "mapping" or "auto_annotate".
+
+    Returns:
+        ExecuteProcess: Process that sends the goal with enable set to true.
+    """
     return ExecuteProcess(
         cmd=[
             "ros2",
@@ -39,7 +46,14 @@ def _send_movement_goal(cmd: str) -> ExecuteProcess:
 
 
 def launch_setup(context, *args, **kwargs):
-    """Resolve arguments and assemble the orchestrator node and auto-start timers."""
+    """Resolve arguments and assemble the orchestrator node and auto-start timers.
+
+    Args:
+        context (LaunchContext): Context used to resolve the launch arguments.
+
+    Returns:
+        list: Launch actions for the knowledge base, orchestrator, object detection and auto-start timers.
+    """
     params_file = LaunchConfiguration("params_file").perform(context)
     auto_start = LaunchConfiguration("auto_start").perform(context) == "true"
     mapping_delay = float(LaunchConfiguration("mapping_delay").perform(context))
@@ -95,7 +109,11 @@ def launch_setup(context, *args, **kwargs):
 
 
 def generate_launch_description():
-    """Generate the launch description for the mapping drive bring-up."""
+    """Generate the launch description for the mapping drive bring-up.
+
+    Returns:
+        LaunchDescription: LaunchDescription object containing the mapping drive bring-up.
+    """
     default_params_file = os.path.join(
         get_package_share_directory("arlab_movement"),
         "params",

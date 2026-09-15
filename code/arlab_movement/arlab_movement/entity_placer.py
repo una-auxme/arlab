@@ -1,10 +1,13 @@
-"""Interactive entity placer node
+"""entity_placer.py
+
 Node for manually placing entities (POIs) for semantic annotation of map / env,
 using rviz for pose selection on map and extension of AddEntity.srv for metadata.
 
 Maintainers:
-Luca Kahlenberg <luca.kahlenberg@uni-a.de>
+    Luca Kahlenberg <luca.kahlenberg@uni-a.de>
 """
+
+from typing import Optional
 
 import rclpy
 import tf2_ros
@@ -27,6 +30,12 @@ class EntityPlacer(Node):
     - Click on displayed /map in rviz to select pose
     - Call /arlab/entity_placer/place service to add entity (pose, stamp, reference_frame are already set)
     - Display entities in rviz using topic /arlab/knowledge/visualization
+
+    Parameters:
+        pose_topic (str): Topic the rviz poses are staged from. Defaults to "/arlab/entity_pose".
+        target_frame (str): TF frame the entities are added in. Defaults to "map".
+        add_entity_service (str): AddEntity service of the knowledge base. Defaults to "/arlab/knowledge/add_entity".
+        place_service (str): Service offered by this node. Defaults to "/arlab/entity_placer/place".
     """
 
     def __init__(self):
@@ -89,6 +98,9 @@ class EntityPlacer(Node):
     def _pose_callback(self, msg: PoseStamped):
         """
         Callback for /arlab/entity_pose topic, transforms pose to target_frame and stages pose for later use.
+
+        Args:
+            msg (PoseStamped): The pose selected in rviz.
         """
         # save pose
         pose = self._to_target_frame(msg)
@@ -101,8 +113,17 @@ class EntityPlacer(Node):
     async def _place_callback(self, request: AddEntity.Request, response: AddEntity.Response) -> AddEntity.Response:
         """
         Callback for /arlab/entity_placer/place service.
+
         Extends AddEntity service by using staged pose, reference_frame and stamp already set by staged pose.
         Calls AddEntity service to add entity to knowledge base and returns result.
+
+        Args:
+            request (AddEntity.Request): Entity data, pose, pose_reference_frame and stamp are set from the staged pose.
+            response (AddEntity.Response): The response to fill.
+
+        Returns:
+            AddEntity.Response: entityid and result of the AddEntity call, or an error result if no pose is staged
+                or the service is not available.
         """
         if self._pending_pose is None:
             response.result.result_type = Result.ERROR_INVALID_INPUT
@@ -141,9 +162,15 @@ class EntityPlacer(Node):
 
         return response
 
-    def _to_target_frame(self, msg: PoseStamped) -> PoseStamped:
+    def _to_target_frame(self, msg: PoseStamped) -> Optional[PoseStamped]:
         """
-        transforms any PoseStamped to target frame (map)
+        Transforms any PoseStamped to target frame (map).
+
+        Args:
+            msg (PoseStamped): The pose to transform.
+
+        Returns:
+            PoseStamped or None: The pose in target_frame, None if the transform failed.
         """
         if msg.header.frame_id == self.target_frame:
             return msg

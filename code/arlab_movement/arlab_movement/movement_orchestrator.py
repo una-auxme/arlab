@@ -465,7 +465,12 @@ class NavigationOrchestrator(Node):
             self._odom_sub = None
 
     def _odom_callback(self, msg: Odometry):
-        """Cache the latest odometry data for speed and turn rate checks"""
+        """
+        Cache the latest odometry data for speed and turn rate checks.
+
+        Args:
+            msg (Odometry): The latest odometry message.
+        """
         self._latest_odom = msg
 
     def _annotate_tick(self):
@@ -519,6 +524,12 @@ class NavigationOrchestrator(Node):
         the goal is in flight, marks the snapshot as in flight to prevent
         overlap.
         Entities are written to the knowledge base by the vision node itself.
+
+        Args:
+            x (float): X position of the robot in m.
+            y (float): Y position of the robot in m.
+            yaw (float): Yaw of the robot in rad.
+            now (float): Current time in s.
         """
         goal = VisionSnapshotAction.Goal()
         goal.command.clear_database = False  # accumulate annotations across the run
@@ -540,7 +551,12 @@ class NavigationOrchestrator(Node):
         send_future.add_done_callback(self._on_snapshot_goal)
 
     def _on_snapshot_goal(self, future):
-        """Handle the goal-accepted response and chain to the result future."""
+        """
+        Handle the goal-accepted response and chain to the result future.
+
+        Args:
+            future (Future): Future of the snapshot goal request.
+        """
         try:
             handle = future.result()
         # check for exceptions
@@ -556,7 +572,12 @@ class NavigationOrchestrator(Node):
         handle.get_result_async().add_done_callback(self._on_snapshot_result)
 
     def _on_snapshot_result(self, future):
-        """Log the snapshot outcome and clear the in-flight flag/operator signal."""
+        """
+        Log the snapshot outcome and clear the in-flight flag/operator signal.
+
+        Args:
+            future (Future): Future of the snapshot goal result.
+        """
         self._clear_in_flight()
         try:
             response = future.result().result.response
@@ -573,7 +594,20 @@ class NavigationOrchestrator(Node):
         self.annotating_pub.publish(Bool(data=False))
 
     def _pose_from_odom(self, msg: Odometry) -> Tuple[float, float, float, float, float]:
-        """Extract planar (x, y, yaw, linear_speed, abs_yaw_rate) from Odometry."""
+        """
+        Extract planar (x, y, yaw, linear_speed, abs_yaw_rate) from Odometry.
+
+        Args:
+            msg (Odometry): The odometry to extract from.
+
+        Returns:
+            Tuple:
+                - float: x
+                - float: y
+                - float: yaw
+                - float: linear speed
+                - float: absolute yaw rate
+        """
         p = msg.pose.pose.position
         q = msg.pose.pose.orientation
         yaw = math.atan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z))
@@ -584,7 +618,16 @@ class NavigationOrchestrator(Node):
 
     @staticmethod
     def _angle_diff(a: float, b: float) -> float:
-        """Shortest signed difference between two angles (rad)."""
+        """
+        Shortest signed difference between two angles (rad).
+
+        Args:
+            a (float): First angle in rad.
+            b (float): Second angle in rad.
+
+        Returns:
+            float: Signed difference a - b in rad, in [-pi, pi].
+        """
         return math.atan2(math.sin(a - b), math.cos(a - b))
 
     def stop_all(self):

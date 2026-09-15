@@ -7,6 +7,7 @@ Luca Kahlenberg <luca.kahlenberg@uni-a.de>
 """
 
 import rclpy
+import tf2_ros
 from arlab_knowledge_interfaces.msg import Result
 from arlab_knowledge_interfaces.srv import AddEntity
 from geometry_msgs.msg import PoseStamped
@@ -47,6 +48,11 @@ class EntityPlacer(Node):
         self._place_service_name = self.get_parameter("place_service").get_parameter_value().string_value
         self._pending_pose = None
         self.service_timeout = 5.0
+
+        # tf buffer and listener for transforming staged poses to target_frame
+
+        self.tf_buffer = tf2_ros.Buffer()
+        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
 
         # callback groups
 

@@ -421,7 +421,6 @@ class NavigationOrchestrator(Node):
                 - str: Status or error message
         """
         if enable:
-            # start auto-annotation: check for fallpits
             if self.annotate_active:
                 return NavErr.OK, "auto-annotation already running"
             if self.slam_process is None or self.slam_process.poll() is not None:
@@ -435,7 +434,6 @@ class NavigationOrchestrator(Node):
             self._last_snap_time = 0.0
             self._latest_odom = None
 
-            # subscribe to odometry
             self._odom_sub = self.create_subscription(
                 Odometry,
                 str(self.get_parameter("odom_topic").value),
@@ -444,7 +442,6 @@ class NavigationOrchestrator(Node):
                 callback_group=self.service_group,
             )
 
-            # create a timer to periodically check if a snapshot should be taken / conditions are met
             period = float(self.get_parameter("annotate_tick_period").value)
             self._annotate_timer = self.create_timer(period, self._annotate_tick, callback_group=self.action_group)
             self.annotate_active = True
@@ -530,17 +527,15 @@ class NavigationOrchestrator(Node):
         goal.command.mask_hand = False
         # extra_models left empty to use general model for annotation
 
-        # set in-flight flag and current snapshot metadata
         with self._snap_lock:
             self._snapshot_in_flight = True
         self._last_snap_pose = (x, y, yaw)
         self._last_snap_time = now
 
-        # publish to /arlab/movement/annotating to signal operator for running snapshot
+        # signal operator for running snapshot
         self.annotating_pub.publish(Bool(data=True))
         self.get_logger().info(f"auto-annotate: SNAPSHOT IN PROGRESS at ({x:.2f}, {y:.2f}, {yaw:.2f} rad) - hold position.")
 
-        # call action server
         send_future = self.snapshot_client.send_goal_async(goal)
         send_future.add_done_callback(self._on_snapshot_goal)
 
@@ -553,12 +548,10 @@ class NavigationOrchestrator(Node):
         """
         try:
             handle = future.result()
-        # check for exceptions
         except Exception as e:
             self._clear_in_flight()
             self.get_logger().warning(f"Snapshot goal send failed: {e}")
             return
-        # check for rejection by action server
         if not handle.accepted:
             self._clear_in_flight()
             self.get_logger().warning("Snapshot goal rejected by server.")

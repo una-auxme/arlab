@@ -34,6 +34,8 @@ from arlab_knowledge_interfaces.msg import Result
 
 
 class NavErr:
+    """Error codes reported in the MovementAction result."""
+
     OK = 1
     UNDEFINED = 0
     BAD_COMMAND = -10
@@ -803,6 +805,7 @@ class NavigationOrchestrator(Node):
 
 
 def main(args=None):
+    """Start the navigation orchestrator node with a multi-threaded executor."""
     rclpy.init(args=args)
     executor = rclpy.executors.MultiThreadedExecutor(num_threads=2)
     node = NavigationOrchestrator()

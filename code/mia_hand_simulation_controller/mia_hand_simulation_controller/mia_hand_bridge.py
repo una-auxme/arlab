@@ -72,6 +72,7 @@ class Bridge(Node):
 
         if not goal_handle.accepted:
             self.get_logger().error("Goal rejected")
+            self.waiting_for_async_finish = False
             return
 
         self.get_logger().info("Goal accepted")

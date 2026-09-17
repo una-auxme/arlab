@@ -23,9 +23,9 @@ whisper:
     command_model: "large-v3-turbo"
 
     device: "cuda"
-    compute_type: "int8" #better than int8
+    compute_type: "int8"
 
-    sample_rate: 32000 #16000 is the max resolution for whisper
+    sample_rate: 32000 #16000 is the max resolution for whisper, higher resolutions could improve other pipeline stages
     channels: 1
 
     #audio command length

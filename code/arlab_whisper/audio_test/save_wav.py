@@ -1,3 +1,7 @@
+"""
+This test script stores audio input to a wave file until interrupted.
+"""
+
 #!/usr/bin/env python3
 import os
 import wave
@@ -30,7 +34,7 @@ def save_wav(filename, audio):
 
 
 def main():
-    """continuously record audio and save stores it to a wav file
+    """continuously record audio and stores it to a wav file
 
     creates the output subdirectory, opens an audio stream, records audio and saves
     each block to the path, records until interrupted

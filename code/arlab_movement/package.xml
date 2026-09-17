@@ -26,6 +26,7 @@
   <depend>rclpy</depend>
   <depend>geometry_msgs</depend>
   <depend>tf2_ros</depend>
+  <depend>tf2_geometry_msgs</depend>
 
   <depend>turtlebot3</depend>
   <depend>turtlebot3_navigation2</depend>

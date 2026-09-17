@@ -1,6 +1,6 @@
 # ARLAB whisper
 
-This package provides a speech-to-text pipeline including a wakeword-detection-based faster-whisper model to generate a transcript from an audio input stream. 
+This package provides a speech-to-text pipeline including a wakeword-detection-based faster-whisper model to generate a transcript from an audio input stream.
 
 ## Package structure
 
@@ -16,7 +16,6 @@ arlab_whisper/
 
 ## Key features
 
- - Generates a transcript of audio input via a faster-whisper model
- - Only activated via a small faster-whisper model, which is used as a wakeword detection
- - Config files are provided
-
+- Generates a transcript of audio input via a faster-whisper model
+- Only activated via a small faster-whisper model, which is used as a wakeword detection
+- Config files are provided

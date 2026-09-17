@@ -34,6 +34,8 @@ from arlab_knowledge_interfaces.msg import Result
 
 
 class NavErr:
+    """Error codes reported in the MovementAction result."""
+
     OK = 1
     UNDEFINED = 0
     BAD_COMMAND = -10
@@ -69,7 +71,7 @@ class NavigationOrchestrator(Node):
         # auto-annotation by CV snapshot parameters.
         self.declare_parameter("snapshot_action_name", "/vision/snapshot")
         self.declare_parameter("odom_topic", "/odom")
-        self.declare_parameter("annotate_tick_period", 1.0)  # seconds betweeen checks for snapshot conditions
+        self.declare_parameter("annotate_tick_period", 1.0)  # seconds between checks for snapshot conditions
         self.declare_parameter("annotate_min_dist", 0.75)  # m moved since last snapshot
         self.declare_parameter("annotate_min_yaw", 0.5)  # rad turned since last snapshot
         self.declare_parameter("annotate_min_interval", 6.0)  # min interval in seconds between snapshots
@@ -121,7 +123,7 @@ class NavigationOrchestrator(Node):
             callback_group=self.action_group,
         )
 
-        # auto-annotation: snapshot action client + topic publishin if snapshots being taken
+        # auto-annotation: snapshot action client + topic publishing if snapshots being taken
         self.snapshot_action_name = str(self.get_parameter("snapshot_action_name").value)
         self.snapshot_client = ActionClient(self, VisionSnapshotAction, self.snapshot_action_name, callback_group=self.action_group)
         self.annotating_pub = self.create_publisher(Bool, "/arlab/movement/annotating", 10)
@@ -405,11 +407,8 @@ class NavigationOrchestrator(Node):
         """
         Start or stop periodic CV snapshots that auto-annotate the map.
 
-        When enabled, subscribes to odometry and starts a timer that decides, on
-        each tick:
-        Whether the robot has moved/turned enough since the last
-        snapshot
-        And is moving slowly enough for a stable frame.
+        When enabled, subscribes to odometry and starts a timer that evaluates
+        the snapshot condition checks on each tick, see `_annotate_tick`.
 
         Args:
             enable (bool): True to start auto-annotation, False to stop it.
@@ -421,7 +420,6 @@ class NavigationOrchestrator(Node):
                 - str: Status or error message
         """
         if enable:
-            # start auto-annotation: check for fallpits
             if self.annotate_active:
                 return NavErr.OK, "auto-annotation already running"
             if self.slam_process is None or self.slam_process.poll() is not None:
@@ -435,7 +433,6 @@ class NavigationOrchestrator(Node):
             self._last_snap_time = 0.0
             self._latest_odom = None
 
-            # subscribe to odometry
             self._odom_sub = self.create_subscription(
                 Odometry,
                 str(self.get_parameter("odom_topic").value),
@@ -444,7 +441,6 @@ class NavigationOrchestrator(Node):
                 callback_group=self.service_group,
             )
 
-            # create a timer to periodically check if a snapshot should be taken / conditions are met
             period = float(self.get_parameter("annotate_tick_period").value)
             self._annotate_timer = self.create_timer(period, self._annotate_tick, callback_group=self.action_group)
             self.annotate_active = True
@@ -465,41 +461,41 @@ class NavigationOrchestrator(Node):
             self._odom_sub = None
 
     def _odom_callback(self, msg: Odometry):
-        """Cache the latest odometry data for speed and turn rate checks"""
+        """
+        Cache the latest odometry data for speed and turn rate checks.
+
+        Args:
+            msg (Odometry): The latest odometry message.
+        """
         self._latest_odom = msg
 
     def _annotate_tick(self):
         """
-        Evaluate the snapshot condition checks and log when a snapshot fires.
+        Evaluate the snapshot condition checks and fire a snapshot when all pass.
 
         Gates / Checks:
-        - No snapshot in flight -> robot moving slowly linear speed and turn rate
-        - A minimum time interval has elapsed
-        - The robot has moved or turned enough since the last snapshot.
+        - Auto-annotation is active, odometry was received and no snapshot is in flight
+        - The robot is moving slowly (linear speed and turn rate below threshold)
+        - A minimum time interval has elapsed since the last snapshot
+        - The robot has moved or turned enough since the last snapshot
         """
-        # inactive or not odom -> skip
         if not self.annotate_active or self._latest_odom is None:
             return
-        # if snapshot is already running -> skip
         with self._snap_lock:
             if self._snapshot_in_flight:
                 return
 
-        # get current odom data
         x, y, yaw, speed, yaw_rate = self._pose_from_odom(self._latest_odom)
         now = self.get_clock().now().nanoseconds * 1e-9
 
-        # speed and turn rate checks, if higher than threshold -> skip
         if speed > float(self.get_parameter("annotate_max_speed").value):
             return
         if yaw_rate > float(self.get_parameter("annotate_max_yaw_rate").value):
             return
 
-        # if last snapshot was too recent -> skip
         if now - self._last_snap_time < float(self.get_parameter("annotate_min_interval").value):
             return
 
-        # if last snapshot pose exits, check distance and turned to it, if too small -> skip
         if self._last_snap_pose is not None:
             moved = math.hypot(x - self._last_snap_pose[0], y - self._last_snap_pose[1])
             turned = abs(self._angle_diff(yaw, self._last_snap_pose[2]))
@@ -508,7 +504,6 @@ class NavigationOrchestrator(Node):
             ):
                 return
 
-        # if all checks pass -> fire snapshot
         self._fire_snapshot(x, y, yaw, now)
 
     def _fire_snapshot(self, x: float, y: float, yaw: float, now: float):
@@ -519,36 +514,43 @@ class NavigationOrchestrator(Node):
         the goal is in flight, marks the snapshot as in flight to prevent
         overlap.
         Entities are written to the knowledge base by the vision node itself.
+
+        Args:
+            x (float): X position of the robot in m.
+            y (float): Y position of the robot in m.
+            yaw (float): Yaw of the robot in rad.
+            now (float): Current time in s.
         """
         goal = VisionSnapshotAction.Goal()
         goal.command.clear_database = False  # accumulate annotations across the run
         goal.command.mask_hand = False
         # extra_models left empty to use general model for annotation
 
-        # set in-flight flag and current snapshot metadata
         with self._snap_lock:
             self._snapshot_in_flight = True
         self._last_snap_pose = (x, y, yaw)
         self._last_snap_time = now
 
-        # publish to /arlab/movement/annotating to signal operator for running snapshot
+        # signal operator for running snapshot
         self.annotating_pub.publish(Bool(data=True))
         self.get_logger().info(f"auto-annotate: SNAPSHOT IN PROGRESS at ({x:.2f}, {y:.2f}, {yaw:.2f} rad) - hold position.")
 
-        # call action server
         send_future = self.snapshot_client.send_goal_async(goal)
         send_future.add_done_callback(self._on_snapshot_goal)
 
     def _on_snapshot_goal(self, future):
-        """Handle the goal-accepted response and chain to the result future."""
+        """
+        Handle the goal-accepted response and chain to the result future.
+
+        Args:
+            future (Future): Future of the snapshot goal request.
+        """
         try:
             handle = future.result()
-        # check for exceptions
         except Exception as e:
             self._clear_in_flight()
             self.get_logger().warning(f"Snapshot goal send failed: {e}")
             return
-        # check for rejection by action server
         if not handle.accepted:
             self._clear_in_flight()
             self.get_logger().warning("Snapshot goal rejected by server.")
@@ -556,7 +558,12 @@ class NavigationOrchestrator(Node):
         handle.get_result_async().add_done_callback(self._on_snapshot_result)
 
     def _on_snapshot_result(self, future):
-        """Log the snapshot outcome and clear the in-flight flag/operator signal."""
+        """
+        Log the snapshot outcome and clear the in-flight flag/operator signal.
+
+        Args:
+            future (Future): Future of the snapshot goal result.
+        """
         self._clear_in_flight()
         try:
             response = future.result().result.response
@@ -573,7 +580,20 @@ class NavigationOrchestrator(Node):
         self.annotating_pub.publish(Bool(data=False))
 
     def _pose_from_odom(self, msg: Odometry) -> Tuple[float, float, float, float, float]:
-        """Extract planar (x, y, yaw, linear_speed, abs_yaw_rate) from Odometry."""
+        """
+        Extract planar (x, y, yaw, linear_speed, abs_yaw_rate) from Odometry.
+
+        Args:
+            msg (Odometry): The odometry to extract from.
+
+        Returns:
+            Tuple:
+                - float: x
+                - float: y
+                - float: yaw
+                - float: linear speed
+                - float: absolute yaw rate
+        """
         p = msg.pose.pose.position
         q = msg.pose.pose.orientation
         yaw = math.atan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z))
@@ -584,7 +604,16 @@ class NavigationOrchestrator(Node):
 
     @staticmethod
     def _angle_diff(a: float, b: float) -> float:
-        """Shortest signed difference between two angles (rad)."""
+        """
+        Shortest signed difference between two angles (rad).
+
+        Args:
+            a (float): First angle in rad.
+            b (float): Second angle in rad.
+
+        Returns:
+            float: Signed difference a - b in rad, in [-pi, pi].
+        """
         return math.atan2(math.sin(a - b), math.cos(a - b))
 
     def stop_all(self):
@@ -776,6 +805,7 @@ class NavigationOrchestrator(Node):
 
 
 def main(args=None):
+    """Start the navigation orchestrator node with a multi-threaded executor."""
     rclpy.init(args=args)
     executor = rclpy.executors.MultiThreadedExecutor(num_threads=2)
     node = NavigationOrchestrator()

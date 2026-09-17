@@ -8,6 +8,7 @@ Note: The new entities (Dishwasher, Washer, LaundryBasket, TrashBin) are not yet
 Maintainers:
     Peter Viechter <peter.viechter@uni-a.de>
     Daniel Gabler <daniel.gabler@uni-a.de>
+    Luca Kahlenberg <luca.kahlenberg@uni-a.de>
 """
 
 import arlab_knowledge.db.entities as entities

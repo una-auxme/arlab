@@ -3,6 +3,7 @@
 Maintainers:
     Peter Viechter <peter.viechter@uni-a.de>
     Daniel Gabler <daniel.gabler@uni-a.de>
+    Luca Kahlenberg <luca.kahlenberg@uni-a.de>
 """
 
 from arlab_knowledge_interfaces import msg

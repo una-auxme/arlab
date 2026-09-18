@@ -5,6 +5,9 @@
   <version>0.1.0</version>
   <description>Description of Zirbi Manipulator (ur5 with mia hand)</description>
   <maintainer email="leonie1.schmidt@uni-a.de">Leonie Schmidt</maintainer>
+  <maintainer email="luka.eberle@uni-a.de">Luka Eberle</maintainer>
+  <maintainer email="michael.wallner@uni-a.de">Michael Wallner</maintainer>
+  <maintainer email="julian-schropp@web.de">Julian Schropp</maintainer>
   <license>Apache2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
@@ -15,6 +18,8 @@
   <exec_depend>launch_ros</exec_depend>
   <exec_depend>ros_gz_bridge</exec_depend>
   <exec_depend>ros_gz_sim</exec_depend>
+  <exec_depend>small_house</exec_depend>
+  <exec_depend>arlab_movement</exec_depend>
   <exec_depend>rviz2</exec_depend>
   <exec_depend>ur_controllers</exec_depend>
   <exec_depend>ur_description</exec_depend>

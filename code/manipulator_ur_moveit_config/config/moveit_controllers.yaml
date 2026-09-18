@@ -11,6 +11,7 @@ moveit_simple_controller_manager:
   controller_names:
     - scaled_joint_trajectory_controller
     - joint_trajectory_controller
+    - mia_joint_trajectory_controller
 
   scaled_joint_trajectory_controller:
     action_ns: follow_joint_trajectory
@@ -36,3 +37,13 @@ moveit_simple_controller_manager:
       - wrist_1_joint
       - wrist_2_joint
       - wrist_3_joint
+
+  mia_joint_trajectory_controller:
+    action_ns: follow_joint_trajectory
+    type: FollowJointTrajectory
+    default: false
+    joints:
+      - j_thumb_opp
+      - j_thumb_fle
+      - j_index_fle
+      - j_mrl_fle

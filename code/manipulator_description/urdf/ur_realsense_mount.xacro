@@ -1,24 +1,37 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!--
+    Adds the mechanical holder for the Intel RealSense camera.
+
+    Macro parameters:
+      parent_link Link on which the holder is mounted.
+      xyz / rpy   Pose values used both for the mesh origin inside the mount link
+                  and for the fixed joint relative to parent_link. Changes to
+                  these parameters therefore affect both transforms.
+  -->
   <xacro:macro name="ur_realsense_mount" params="parent_link xyz rpy">
 
-    <!-- Neuer Link -->
+    <!-- Link representing the physical camera holder. -->
     <link name="ur_realsense_mount_link">
+      <!-- Visible STL mesh; millimetres are converted to metres by scale=0.001. -->
       <visual>
         <origin xyz="${xyz}" rpy="${rpy}"/>
         <geometry>
-          <mesh filename="package://manipulator_description/meshes/halterung_realsense.stl" scale="0.001 0.001 0.001"/>
+          <mesh filename="file://$(find manipulator_description)/meshes/halterung_realsense.stl" scale="0.001 0.001 0.001"/>
         </geometry>
         <material name="MYBLACK"/>
       </visual>
 
+      <!-- Same holder mesh used as collision geometry. -->
       <collision>
         <origin xyz="${xyz}" rpy="${rpy}"/>
         <geometry>
-          <mesh filename="package://manipulator_description/meshes/halterung_realsense.stl" scale="0.001 0.001 0.001"/>
+          <mesh filename="file://$(find manipulator_description)/meshes/halterung_realsense.stl" scale="0.001 0.001 0.001"/>
         </geometry>
       </collision>
 
+      <!-- Simplified mass and diagonal inertia used by the physics engine. -->
       <inertial>
         <mass value="0.1"/>
         <inertia
@@ -28,7 +41,7 @@
       </inertial>
     </link>
 
-    <!-- Fixed Joint -->
+    <!-- Rigid connection from the selected parent link to the holder link. -->
     <joint name="ur_realsense_mount_joint" type="fixed">
       <parent link="${parent_link}"/>
       <child  link="ur_realsense_mount_link"/>

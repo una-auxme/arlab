@@ -5,6 +5,9 @@
   <version>0.1.0</version>
   <description>Description of Zirbi Manipulator (ur5 with mia hand)</description>
   <maintainer email="leonie1.schmidt@uni-a.de">Leonie Schmidt</maintainer>
+  <maintainer email="luka.eberle@uni-a.de">Luka Eberle</maintainer>
+  <maintainer email="michael.wallner@uni-a.de">Michael Wallner</maintainer>
+  <maintainer email="julian-schropp@web.de">Julian Schropp</maintainer>
   <license>Apache2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>

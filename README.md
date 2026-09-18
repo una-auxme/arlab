@@ -144,6 +144,7 @@ The following tables provide an overview of the ROS 2 packages in the [`code`](.
 | Package | Description | Documentation |
 | ----------- | --------------- | ---------------- |
 | [`arlab_speech_controller`](./code/arlab_speech_controller/) | Speech synthesis and audio processing (MOSHI TTS) | [Read more](./code/arlab_speech_controller/README.md) |
+| [`arlab_whisper`](./code/arlab_whisper/) | Text-to-Speech pipeline using faster_whisper | [Read more](./code/arlab_whisper/README.md) |
 
 ### Safety
 

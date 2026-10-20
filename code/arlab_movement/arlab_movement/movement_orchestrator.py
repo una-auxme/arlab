@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """movement_orchestrator.py
 
-This node implements an action-based orchestrator for managing navigation-related processes.
-It provides functionality to start/stop localization (AMCL) [currently not used], mapping (SLAM Toolbox),
-and navigation (Nav2), as well as saving the current map to file and optionally to a knowledge database.
+Action server that starts and stops the robot's navigation stack on demand.
+
+Clients (e.g. the behavior trees in arlab_decision_making) send a MovementAction
+goal with a `cmd` and an `enable` flag. The orchestrator runs SLAM Toolbox and Nav2
+as launch subprocesses, saves the current map to file and optionally to the
+knowledge base (arlab_knowledge), and can run auto-annotation: triggering CV
+snapshots while the robot drives, so detected objects are added to the map.
+Commands: mapping, nav, auto_annotate, map_save, stop_all.
 
 Maintainers:
     Jonas Platzer
@@ -34,7 +39,11 @@ from arlab_knowledge_interfaces.msg import Result
 
 
 class NavErr:
-    """Error codes reported in the MovementAction result."""
+    """
+    Error codes reported in MovementAction.Result.error_code.
+
+    Grouped by area: process handling (-2x), map saving (-3x), auto-annotation (-4x).
+    """
 
     OK = 1
     UNDEFINED = 0
@@ -48,16 +57,18 @@ class NavErr:
 
 
 class NavigationOrchestrator(Node):
-    """Action-based orchestrator for navigation stack processes and map saving."""
+    """
+    Node owning the navigation subprocesses, map saving and auto-annotation.
+    """
 
     def __init__(self):
         super().__init__("navigation_orchestrator")
 
-        # Match manipulation orchestrator pattern: isolate services
+        # services/subscriptions mutually exclusive, actions reentrant so a running goal does not block other callbacks
         self.service_group = MutuallyExclusiveCallbackGroup()
         self.action_group = ReentrantCallbackGroup()
 
-        # Initialize parameters set in ../params/arlab_navigation_params.yaml
+        # defaults, overridden by ../params/arlab_navigation_params.yaml
         self.declare_parameter("map_path", "/workspace/src/arlab/code/arlab_movement/map/my_map")
         self.declare_parameter("use_timestamp", False)
         self.declare_parameter("save_to_database", False)
@@ -65,10 +76,7 @@ class NavigationOrchestrator(Node):
         self.declare_parameter("database_service", "/arlab/knowledge/add_map")
         self.declare_parameter("database_timeout", 10.0)
 
-        # old topic API
-        self.declare_parameter("enable_legacy_topics", False)
-
-        # auto-annotation by CV snapshot parameters.
+        # auto-annotation: thresholds deciding when a CV snapshot is taken
         self.declare_parameter("snapshot_action_name", "/vision/snapshot")
         self.declare_parameter("odom_topic", "/odom")
         self.declare_parameter("annotate_tick_period", 1.0)  # seconds between checks for snapshot conditions
@@ -85,15 +93,14 @@ class NavigationOrchestrator(Node):
         self.map_topic = str(self.get_parameter("map_topic").value)
         self.database_service = str(self.get_parameter("database_service").value)
         self.database_timeout = float(self.get_parameter("database_timeout").value)
-        self.enable_legacy_topics = bool(self.get_parameter("enable_legacy_topics").value)
 
-        # initialize states
         self.current_map: Optional[OccupancyGrid] = None
-        self.amcl_process: Optional[subprocess.Popen] = None
+
+        # Popen handles of the launched subprocesses, None when not running
         self.slam_process: Optional[subprocess.Popen] = None
         self.nav_process: Optional[subprocess.Popen] = None
 
-        # auto-annotation state
+        # auto-annotation state, reset on every start
         self.annotate_active = False
         self._snapshot_in_flight = False
         self._last_snap_pose: Optional[Tuple[float, float, float]] = None
@@ -103,16 +110,16 @@ class NavigationOrchestrator(Node):
         self._odom_sub = None
         self._snap_lock = threading.Lock()
 
-        # subscribe to the map topic to cache the latest map for saving
+        # cache latest /map so map_save can send it to the knowledge base
         self.map_subscription = self.create_subscription(OccupancyGrid, self.map_topic, self.map_callback, 10)
 
-        # initialize database client
+        # AddMap client, only created if maps are stored in the knowledge base
         self.database_client = None
         if self.save_to_database:
             self.database_client = self.create_client(AddMap, self.database_service, callback_group=self.service_group)
             self.get_logger().info(f"Database client created: {self.database_service}")
 
-        # action server for movement commands
+        # main interface, one goal per command, see execute_callback
         self._action_server = ActionServer(
             self,
             MovementAction,
@@ -123,7 +130,7 @@ class NavigationOrchestrator(Node):
             callback_group=self.action_group,
         )
 
-        # auto-annotation: snapshot action client + topic publishing if snapshots being taken
+        # auto-annotation: client for the CV snapshot action + topic telling the operator to hold position while a snapshot runs
         self.snapshot_action_name = str(self.get_parameter("snapshot_action_name").value)
         self.snapshot_client = ActionClient(self, VisionSnapshotAction, self.snapshot_action_name, callback_group=self.action_group)
         self.annotating_pub = self.create_publisher(Bool, "/arlab/movement/annotating", 10)
@@ -131,13 +138,13 @@ class NavigationOrchestrator(Node):
         self.get_logger().info("NavigationOrchestrator ActionServer started.")
         self.get_logger().info("Action name: /movement/action")
 
-    # Map subscription
+    # map subscription
     def map_callback(self, msg: OccupancyGrid):
         """
         Cache the latest occupancy grid map.
 
-        This callback stores the most recent /map message so that it can be
-        saved to file or sent to the knowledge database on a map_save command.
+        Only used when saving to the knowledge base. The file save uses
+        map_saver_cli, which subscribes to /map itself.
 
         Args:
             msg (OccupancyGrid): The current map published by SLAM or Nav2.
@@ -145,13 +152,14 @@ class NavigationOrchestrator(Node):
         self.current_map = msg
         self.get_logger().debug("Map updated.")
 
-    # Action callbacks
+    # action callbacks
     def goal_callback(self, goal_request: MovementAction.Goal):
         """
-        Validate and accept incoming MovementAction goals.
+        Accept every incoming MovementAction goal.
 
-        This method is called when a new action goal is received.
-        Currently, all goals are accepted and validated later during execution.
+        The cmd is not checked here. Unknown cmds are still accepted and fail in
+        `execute_callback` with error_code BAD_COMMAND.
+
 
         Args:
             goal_request (MovementAction.Goal): The requested action goal.
@@ -164,10 +172,10 @@ class NavigationOrchestrator(Node):
 
     def cancel_callback(self, goal_handle):
         """
-        Handle cancellation requests for an active action goal.
+        Stop all subprocesses and auto-annotation on cancel.
 
-        When a cancel request is received, all navigation-related processes
-        (AMCL, SLAM Toolbox, Nav2) are stopped as a safety measure.
+        Cancelling any goal works as a stop for the whole navigation stack,
+        not only for the cancelled command.
 
         Args:
             goal_handle: The active action goal handle.
@@ -183,13 +191,15 @@ class NavigationOrchestrator(Node):
         """
         Execute a MovementAction goal.
 
-        Sends the requested command to the appropriate handler:
-          - start/stop localization, mapping, or navigation
-          - save the map
-          - stop all processes
+        Commands:
+          - mapping: start/stop SLAM Toolbox
+          - nav: start/stop Nav2
+          - auto_annotate: start/stop CV snapshot triggering
+          - map_save: save the map to file and optionally the knowledge base, enable is ignored
+          - stop_all: stop everything above, enable is ignored
 
-        Publishes status feedback during execution and returns a structured
-        result with an error code, message, and success flag.
+        Publishes status feedback during execution. The goal always ends as
+        succeeded, the outcome is reported in result.success and result.error_code.
 
         Args:
             goal_handle: The active action goal handle.
@@ -241,12 +251,15 @@ class NavigationOrchestrator(Node):
 
         return result
 
-    # Process helpers
+    # process helpers
     def _start_process(self, cmd_list, name: str) -> Tuple[Optional[subprocess.Popen], int, str]:
         """
-        Start a navigation-related subprocess.
+        Launch a command as a subprocess in its own process group.
 
-        Executes the given command in a new process group.
+        The command runs in bash with the workspace sourced, so `ros2 launch`
+        finds our packages. The own process group lets `_stop_process` reach the
+        launch file and every node it started. Waits 2 s to catch commands that
+        exit immediately, e.g. a missing package.
 
         Args:
             cmd_list (list[str]): Command and arguments to execute.
@@ -277,7 +290,7 @@ class NavigationOrchestrator(Node):
                 text=True,
             )
 
-            # giving the process time to start and check if it exited immediately
+            # give the process time to start, catch immediate exits
             time.sleep(2.0)
 
             if proc.poll() is not None:
@@ -289,10 +302,10 @@ class NavigationOrchestrator(Node):
 
     def _stop_process(self, proc: Optional[subprocess.Popen], name: str) -> Tuple[Optional[subprocess.Popen], int, str]:
         """
-        Stop a running navigation-related subprocess.
+        Stop a subprocess started by `_start_process`.
 
-        Sends SIGINT to the process group of the subprocess to allow
-        clean shutdown.
+        Sends SIGINT to its process group, same as Ctrl+C on the launch.
+        Does not wait for the process to exit.
 
         Args:
             proc (subprocess.Popen or None): The process to stop.
@@ -313,35 +326,10 @@ class NavigationOrchestrator(Node):
         except Exception as e:
             return proc, NavErr.PROCESS_STOP_FAILED, f"Failed to stop {name}: {e}"
 
-    # Commands
-    def set_localization(self, enable: bool, publish_status) -> Tuple[int, str]:
-        """
-        CURRENTLY NOT USED. AMCL NODE GETS STARTED BUT CANT BE UTILIZED BY THE TURTLEBOT.
-
-        Start or stop localization (AMCL).
-
-        Args:
-            enable (bool): True to start AMCL, False to stop it.
-            publish_status (Callable[[str], None]): Callback to publish feedback.
-
-        Returns:
-            Tuple:
-                - int: Error code (NavErr.OK on success)
-                - str: Status or error message
-        """
-        if enable:
-            if self.amcl_process is None or self.amcl_process.poll() is not None:
-                publish_status("Starting localization (AMCL)")
-                self.amcl_process, err, msg = self._start_process(["ros2", "run", "nav2_amcl", "amcl"], "AMCL")
-                return err, msg
-            return NavErr.OK, "AMCL already running"
-        publish_status("Stopping localization (AMCL)")
-        self.amcl_process, err, msg = self._stop_process(self.amcl_process, "AMCL")
-        return err, msg
-
+    # commands
     def set_mapping(self, enable: bool, publish_status) -> Tuple[int, str]:
         """
-        Start or stop mapping using SLAM Toolbox.
+        Start or stop SLAM Toolbox (async) via arlab_movement/slam_async.launch.py.
 
         Args:
             enable (bool): True to start SLAM Toolbox, False to stop it.
@@ -368,7 +356,9 @@ class NavigationOrchestrator(Node):
 
     def set_nav(self, enable: bool, publish_status) -> Tuple[int, str]:
         """
-        Start or stop the Nav2 navigation stack.
+        Start or stop Nav2 via arlab_movement/nav2.launch.py.
+
+        This node only manages the stack, navigation goals are sent to Nav2 directly.
 
         Args:
             enable (bool): True to start Nav2, False to stop it.
@@ -398,8 +388,10 @@ class NavigationOrchestrator(Node):
         """
         Start or stop periodic CV snapshots that auto-annotate the map.
 
-        When enabled, subscribes to odometry and starts a timer that evaluates
-        the snapshot condition checks on each tick, see `_annotate_tick`.
+        Used during mapping drives to fill the knowledge base with detected
+        objects. When enabled, subscribes to odometry and starts a timer that
+        evaluates the snapshot condition checks on each tick, see `_annotate_tick`.
+        Warns if SLAM is not running, since object poses need the map frame.
 
         Args:
             enable (bool): True to start auto-annotation, False to stop it.
@@ -466,9 +458,9 @@ class NavigationOrchestrator(Node):
 
         Gates / Checks:
         - Auto-annotation is active, odometry was received and no snapshot is in flight
-        - The robot is moving slowly (linear speed and turn rate below threshold)
+        - The robot is moving slowly (linear speed and turn rate below threshold) for a stable frame
         - A minimum time interval has elapsed since the last snapshot
-        - The robot has moved or turned enough since the last snapshot
+        - The robot has moved or turned enough since the last snapshot, to avoid duplicate snapshots of the same view
         """
         if not self.annotate_active or self._latest_odom is None:
             return
@@ -611,7 +603,7 @@ class NavigationOrchestrator(Node):
         """
         Stop all navigation-related subprocesses.
 
-        This shuts down AMCL, SLAM Toolbox, and Nav2 if they are running, and
+        This shuts down SLAM Toolbox and Nav2 if they are running, and
         also stops auto-annotation if active. Used both for explicit "stop_all"
         commands and action cancellation.
         """
@@ -619,13 +611,14 @@ class NavigationOrchestrator(Node):
         self.slam_process, _, _ = self._stop_process(self.slam_process, "SLAM Toolbox")
         self.nav_process, _, _ = self._stop_process(self.nav_process, "Nav2")
 
-    # Map saving
+    # map saving
     def save_map(self, publish_status) -> Tuple[int, str]:
         """
         Save the current map.
 
         Saves the map to a file using nav2_map_server's map_saver_cli.
         Optionally saves the map to the knowledge base.
+        Needs SLAM or a map server publishing /map.
 
         Args:
             publish_status (Callable[[str], None]): Callback to publish feedback.
@@ -682,7 +675,8 @@ class NavigationOrchestrator(Node):
         """
         Save the current map to the knowledge database.
 
-        Sends the cached OccupancyGrid to the AddMap service.
+        Sends the cached OccupancyGrid to the AddMap service. Blocks up to
+        database_timeout.
 
         Returns:
             Tuple:
@@ -703,6 +697,7 @@ class NavigationOrchestrator(Node):
 
         future = self.database_client.call_async(req)
 
+        # the executor already spins this node, so wait on an event instead of spin_until_future_complete
         done = threading.Event()
 
         def _cb(_):
@@ -736,14 +731,19 @@ class NavigationOrchestrator(Node):
         """
         Shut down the orchestrator node.
 
-        Stops all navigation-related subprocesses before destroying the node.
+        Stops all navigation-related subprocesses first, so no SLAM or Nav2
+        processes outlive the node.
         """
         self.stop_all()
         super().destroy_node()
 
 
 def main(args=None):
-    """Start the navigation orchestrator node with a multi-threaded executor."""
+    """
+    Start the navigation orchestrator node with a multi-threaded executor.
+
+    Two threads, so a running action goal does not block the snapshot and service callbacks.
+    """
     rclpy.init(args=args)
     executor = rclpy.executors.MultiThreadedExecutor(num_threads=2)
     node = NavigationOrchestrator()

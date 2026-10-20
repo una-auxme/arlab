@@ -128,13 +128,6 @@ class NavigationOrchestrator(Node):
         self.snapshot_client = ActionClient(self, VisionSnapshotAction, self.snapshot_action_name, callback_group=self.action_group)
         self.annotating_pub = self.create_publisher(Bool, "/arlab/movement/annotating", 10)
 
-        # legacy topic interface (subscription based control)
-        if self.enable_legacy_topics:
-            self.create_subscription(Bool, "localization_bool", self.legacy_localization_callback, 10)
-            self.create_subscription(Bool, "mapping_bool", self.legacy_mapping_callback, 10)
-            self.create_subscription(Bool, "nav_bool", self.legacy_nav_callback, 10)
-            self.create_subscription(Bool, "map_save", self.legacy_map_save_callback, 10)
-
         self.get_logger().info("NavigationOrchestrator ActionServer started.")
         self.get_logger().info("Action name: /movement/action")
 
@@ -219,9 +212,7 @@ class NavigationOrchestrator(Node):
         msg = "UNDEFINED"
 
         try:
-            if cmd == "localization":
-                err, msg = self.set_localization(enable, publish_status)
-            elif cmd == "mapping":
+            if cmd == "mapping":
                 err, msg = self.set_mapping(enable, publish_status)
             elif cmd == "nav":
                 err, msg = self.set_nav(enable, publish_status)
@@ -625,7 +616,6 @@ class NavigationOrchestrator(Node):
         commands and action cancellation.
         """
         self._teardown_annotation()
-        self.amcl_process, _, _ = self._stop_process(self.amcl_process, "AMCL")
         self.slam_process, _, _ = self._stop_process(self.slam_process, "SLAM Toolbox")
         self.nav_process, _, _ = self._stop_process(self.nav_process, "Nav2")
 
@@ -741,58 +731,6 @@ class NavigationOrchestrator(Node):
                 )
 
         return NavErr.DB_SAVE_FAILED, "Database save failed"
-
-    # ----------------------
-    # Legacy topic callbacks
-    # ----------------------
-    def legacy_localization_callback(self, msg: Bool):
-        """
-        Legacy topic-based interface for localization control.
-
-        Starts or stops AMCL based on the received Bool message.
-        Provided for backward compatibility during migration to actions.
-
-        Args:
-            msg (Bool): True to start localization, False to stop it.
-        """
-        self.set_localization(bool(msg.data), lambda _: None)
-
-    def legacy_mapping_callback(self, msg: Bool):
-        """
-        Legacy topic-based interface for mapping control.
-
-        Starts or stops SLAM Toolbox based on the received Bool message.
-        Provided for backward compatibility during migration to actions.
-
-        Args:
-            msg (Bool): True to start mapping, False to stop it.
-        """
-        self.set_mapping(bool(msg.data), lambda _: None)
-
-    def legacy_nav_callback(self, msg: Bool):
-        """
-        Legacy topic-based interface for navigation control.
-
-        Starts or stops Nav2 based on the received Bool message.
-        Provided for backward compatibility during migration to actions.
-
-        Args:
-            msg (Bool): True to start navigation, False to stop it.
-        """
-        self.set_nav(bool(msg.data), lambda _: None)
-
-    def legacy_map_save_callback(self, msg: Bool):
-        """
-        Legacy topic-based interface for saving the map.
-
-        Triggers a map save when a True message is received.
-        Provided for backward compatibility during migration to actions.
-
-        Args:
-            msg (Bool): True to save the map.
-        """
-        if msg.data:
-            self.save_map(lambda _: None)
 
     def destroy_node(self):
         """

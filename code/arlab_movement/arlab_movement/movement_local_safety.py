@@ -1,16 +1,12 @@
-"""Local safety monitor node for Zirbi system submodules.
+"""Local safety monitor node for Zirbi system submodule movement (navigation).
+
+This node is based on the template in 'arlab_templates/arlab_templates/template_local_safety.py'.
 
 Tracks heartbeat messages from local module nodes and sends global heartbeat
 messages to the CentralSafetyNode.
 
-TODO:
-    - [ ] Implement actual safety checks in `local_safety_checks()`.
-    - [ ] Replace magic numbers (-1, 0) with enums
-          for readability and precise error tracking.
-
 Maintainers:
-    Aleksander Michalak <aleksander.michalak@web.de>
-    Daniel Gabler <daniel.gabler@uni-a.de>
+    Luca Kahlenberg <luca.kahlenberg@uni-a.de>
 """
 
 import rclpy
@@ -18,7 +14,7 @@ from rclpy.node import Node
 from std_msgs.msg import Int32, Int32MultiArray
 
 
-class LocalSafety(Node):
+class MovementLocalSafety(Node):
     """ROS2 node for local safety monitoring within a subsystem.
 
     Attributes:
@@ -33,7 +29,9 @@ class LocalSafety(Node):
         super().__init__(type(self).__name__)
 
         # Static table: node_id -> is_alive
-        self.module_node_table: dict[int, bool] = {}
+        self.module_node_table: dict[int, bool] = {
+            1: False, #movement_orchestrator
+        }
 
         # Module 1 = movement, module 2 = manipulation
         self.module_id = 1
@@ -49,7 +47,7 @@ class LocalSafety(Node):
         )
         self.create_subscription(
             Int32,
-            "/local_module_heartbeat",
+            "/arlab/movement/heartbeat",
             self.callback,
             10,
         )
@@ -109,7 +107,7 @@ def main(args=None) -> None:
     """Main entry point for LocalSafetyNode."""
     rclpy.init(args=args)
 
-    my_ros2_node = LocalSafety()
+    my_ros2_node = MovementLocalSafety()
     my_ros2_node.pub_module_heartbeat()
 
     try:

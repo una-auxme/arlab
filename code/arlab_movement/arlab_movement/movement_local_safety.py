@@ -52,6 +52,11 @@ class MovementLocalSafety(Node):
             10,
         )
 
+        # startup grace period
+        self.declare_parameter("startup_grace_period", 5.0)
+        self.startup_grace_period = float(self.get_parameter("startup_grace_period").value)
+        self.start_time = self.get_clock().now()
+
     def pub_module_heartbeat(self) -> None:
         """Publish a global heartbeat to the CentralSafetyNode.
 
@@ -83,12 +88,17 @@ class MovementLocalSafety(Node):
 
         Notes:
             - Marks non-responsive nodes with their ID in health_state.
+            - During the startup grace period, all nodes are considered alive.
             - Sends updated heartbeat to CentralSafetyNode.
         """
+
+        in_grace_period = (self.get_clock().now() - self.start_time).nanoseconds / 1e9 < self.startup_grace_period
+
         for node_id, is_alive in self.module_node_table.items():
             if not is_alive:
-                # Error encoding for CentralSafetyNode
-                self.health_state = node_id
+                if not in_grace_period:
+                    # Error encoding for CentralSafetyNode
+                    self.health_state = node_id
             else:
                 self.module_node_table[node_id] = False
 

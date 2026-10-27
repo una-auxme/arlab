@@ -35,6 +35,7 @@ setup(
             "dummy = arlab_movement.dummy:main",
             "movement_orchestrator = arlab_movement.movement_orchestrator:main",
             "entity_placer = arlab_movement.entity_placer:main",
+            "movement_local_safety = arlab_movement.movement_local_safety:main",
         ],
     },
 )

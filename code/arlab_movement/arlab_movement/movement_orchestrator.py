@@ -34,7 +34,7 @@ from rclpy.action import ActionClient
 from rclpy.action.server import ActionServer, CancelResponse, GoalResponse
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
 from rclpy.node import Node
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, Int32
 from arlab_knowledge_interfaces.msg import Result
 
 
@@ -75,6 +75,10 @@ class NavigationOrchestrator(Node):
         self.declare_parameter("map_topic", "/map")
         self.declare_parameter("database_service", "/arlab/knowledge/add_map")
         self.declare_parameter("database_timeout", 10.0)
+
+        # heartbeat to the local movement_local_safety node
+        self.declare_parameter("heartbeat_node_id", 1) # movement_orchestrator := id 1
+        self.declare_parameter("heartbeat_period", 0.05) # seconds between heartbeat messages
 
         # auto-annotation: thresholds deciding when a CV snapshot is taken
         self.declare_parameter("snapshot_action_name", "/vision/snapshot")
@@ -134,6 +138,14 @@ class NavigationOrchestrator(Node):
         self.snapshot_action_name = str(self.get_parameter("snapshot_action_name").value)
         self.snapshot_client = ActionClient(self, VisionSnapshotAction, self.snapshot_action_name, callback_group=self.action_group)
         self.annotating_pub = self.create_publisher(Bool, "/arlab/movement/annotating", 10)
+
+        # heartbeat
+        self.heartbeat_node_id = int(self.get_parameter("heartbeat_node_id").value)
+        self.heartbeat_period = float(self.get_parameter("heartbeat_period").value)
+
+        self.heartbeat_group = MutuallyExclusiveCallbackGroup()
+        self.heartbeat_pub = self.create_publisher(Int32, "/arlab/movement/heartbeat", 10)
+        self.heartbeat_timer = self.create_timer(self.heartbeat_period, self.heartbeat_callback, callback_group=self.heartbeat_group)
 
         self.get_logger().info("NavigationOrchestrator ActionServer started.")
         self.get_logger().info("Action name: /movement/action")
@@ -250,6 +262,16 @@ class NavigationOrchestrator(Node):
             goal_handle.succeed()
 
         return result
+
+    # heartbeat callback
+    def heartbeat_callback(self):
+        """
+        Publish a heartbeat message to the local movement_local_safety node.
+
+        The message contains the node ID of this orchestrator, which is
+        configured via the `heartbeat_node_id` parameter.
+        """
+        self.heartbeat_pub.publish(Int32(data=self.heartbeat_node_id))
 
     # process helpers
     def _start_process(self, cmd_list, name: str) -> Tuple[Optional[subprocess.Popen], int, str]:
@@ -745,7 +767,7 @@ def main(args=None):
     Two threads, so a running action goal does not block the snapshot and service callbacks.
     """
     rclpy.init(args=args)
-    executor = rclpy.executors.MultiThreadedExecutor(num_threads=2)
+    executor = rclpy.executors.MultiThreadedExecutor(num_threads=3)
     node = NavigationOrchestrator()
     executor.add_node(node)
 

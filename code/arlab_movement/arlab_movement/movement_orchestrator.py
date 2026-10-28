@@ -36,6 +36,7 @@ from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallb
 from rclpy.node import Node
 from std_msgs.msg import Bool, Int32
 from arlab_knowledge_interfaces.msg import Result
+from arlab_movement.movement_safety_ids import MovementSafetyIDs
 
 
 class NavErr:
@@ -77,7 +78,6 @@ class NavigationOrchestrator(Node):
         self.declare_parameter("database_timeout", 10.0)
 
         # heartbeat to the local movement_local_safety node
-        self.declare_parameter("heartbeat_node_id", 1) # movement_orchestrator := id 1
         self.declare_parameter("heartbeat_period", 0.05) # seconds between heartbeat messages
 
         # auto-annotation: thresholds deciding when a CV snapshot is taken
@@ -140,7 +140,6 @@ class NavigationOrchestrator(Node):
         self.annotating_pub = self.create_publisher(Bool, "/arlab/movement/annotating", 10)
 
         # heartbeat
-        self.heartbeat_node_id = int(self.get_parameter("heartbeat_node_id").value)
         self.heartbeat_period = float(self.get_parameter("heartbeat_period").value)
 
         self.heartbeat_group = MutuallyExclusiveCallbackGroup()
@@ -269,9 +268,9 @@ class NavigationOrchestrator(Node):
         Publish a heartbeat message to the local movement_local_safety node.
 
         The message contains the node ID of this orchestrator, which is
-        configured via the `heartbeat_node_id` parameter.
+        defined in movement_safety_ids.py.
         """
-        self.heartbeat_pub.publish(Int32(data=self.heartbeat_node_id))
+        self.heartbeat_pub.publish(Int32(data=MovementSafetyIDs.MOVEMENT_ORCHESTRATOR))
 
     # process helpers
     def _start_process(self, cmd_list, name: str) -> Tuple[Optional[subprocess.Popen], int, str]:

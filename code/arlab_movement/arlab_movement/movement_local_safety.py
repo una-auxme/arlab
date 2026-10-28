@@ -12,6 +12,7 @@ Maintainers:
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Int32, Int32MultiArray
+from arlab_movement.movement_safety_ids import MovementSafetyIDs
 
 
 class MovementLocalSafety(Node):
@@ -29,9 +30,7 @@ class MovementLocalSafety(Node):
         super().__init__(type(self).__name__)
 
         # Static table: node_id -> is_alive
-        self.module_node_table: dict[int, bool] = {
-            1: False, #movement_orchestrator
-        }
+        self.module_node_table: dict[int, bool] = {node_id: False for node_id in MovementSafetyIDs}
 
         # Module 1 = movement, module 2 = manipulation
         self.module_id = 1

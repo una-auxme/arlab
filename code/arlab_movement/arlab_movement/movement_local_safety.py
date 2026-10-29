@@ -30,7 +30,7 @@ class MovementLocalSafety(Node):
         super().__init__(type(self).__name__)
 
         # Static table: node_id -> is_alive
-        self.module_node_table: dict[int, bool] = {node_id: False for node_id in MovementSafetyIDs}
+        self.module_node_table: dict[int, bool] = {}#{node_id: False for node_id in MovementSafetyIDs}
 
         # Module 1 = movement, module 2 = manipulation
         self.module_id = 1

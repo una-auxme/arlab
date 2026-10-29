@@ -29,12 +29,14 @@ import rclpy.executors
 from arlab_common_interfaces.action import MovementAction, VisionSnapshotAction
 from arlab_common_interfaces.msg import VisionSnapshotResponse
 from arlab_knowledge_interfaces.srv import AddMap
+from lifecycle_msgs.srv import GetState
 from nav_msgs.msg import OccupancyGrid, Odometry
 from rclpy.action import ActionClient
 from rclpy.action.server import ActionServer, CancelResponse, GoalResponse
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
 from rclpy.node import Node
 from std_msgs.msg import Bool, Int32
+from std_srvs.srv import Trigger
 from arlab_knowledge_interfaces.msg import Result
 from arlab_movement.movement_safety_ids import MovementSafetyIDs
 
@@ -145,6 +147,12 @@ class NavigationOrchestrator(Node):
         self.heartbeat_group = MutuallyExclusiveCallbackGroup()
         self.heartbeat_pub = self.create_publisher(Int32, "/arlab/movement/heartbeat", 10)
         self.heartbeat_timer = self.create_timer(self.heartbeat_period, self.heartbeat_callback, callback_group=self.heartbeat_group)
+
+        # monitor subprocesses (nav2, slam)
+        self.monitor_group = MutuallyExclusiveCallbackGroup()
+        self.nav2_active_client = self.create_client(Trigger, "/lifecycle_manager_navigation/is_active", callback_group=self.monitor_group)
+        self.slam_state_client = self.create_client(GetState, "/slam_toolbox/get_state", callback_group=self.monitor_group)
+        self.monitor_timer = self.create_timer(1.0, self._monitor_stack, callback_group=self.monitor_group)
 
         self.get_logger().info("NavigationOrchestrator ActionServer started.")
         self.get_logger().info("Action name: /movement/action")
@@ -271,6 +279,51 @@ class NavigationOrchestrator(Node):
         defined in movement_safety_ids.py.
         """
         self.heartbeat_pub.publish(Int32(data=MovementSafetyIDs.MOVEMENT_ORCHESTRATOR))
+
+    # monitor subprocesses
+    def _monitor_stack(self):
+        """" Check if SLAM and NAV2 are running and healthy when excpected to."""
+        if self.nav_process is not None :
+            if self.nav_process.poll() is not None:
+                self._report_stack_failure("NAV2", "launch process exited")
+            elif self._nav2_check_pending:
+                # previous request still pending, likely failure?
+                self._report_stack_failure("NAV2", "lifecycle manager not responding")
+            elif not self.nav2_active_client.service_is_ready():
+                self._report_stack_failure("NAV2", "is_active service not available")
+            else:
+                self._nav2_check_pending = True
+                self.nav2_active_client.call_async(Trigger.Request()).add_done_callback(self._on_nav2_active)
+
+        if self.slam_process is not None:
+            if self.slam_process.poll() is not None:
+                self._report_stack_failure("SLAM", "launch process exited")
+            elif self._slam_check_pending:
+                # previous request unanswered for a whole tick
+                self._report_stack_failure("SLAM Toolbox", "slam_toolbox not responding")
+            elif not self.slam_state_client.service_is_ready():
+                self._report_stack_failure("SLAM Toolbox", "get_state service unavailable")
+            else:
+                self._slam_check_pending = True
+                self.slam_state_client.call_async(GetState.Request()).add_done_callback(self._on_slam_state)
+
+
+    def _report_stack_failure(self, stack_name: str, reason: str):
+        pass
+
+    def _on_nav2_active(self, future):
+        """Handle the response from the Nav2 active check service."""
+        self._nav2_check_pending = False
+        response = future.result()
+        if not response.success:
+            self._report_stack_failure("NAV2", f"lifecycle manager reports not active: {response.message}")
+
+    def _on_slam_state(self, future):
+        """Handle the response from the SLAM Toolbox state service."""
+        self._slam_check_pending = False
+        response = future.result()
+        if response.current_state.id != 3:  # 3 is ACTIVE
+            self._report_stack_failure("SLAM", f"state is not active: {response.current_state.label}")
 
     # process helpers
     def _start_process(self, cmd_list, name: str) -> Tuple[Optional[subprocess.Popen], int, str]:

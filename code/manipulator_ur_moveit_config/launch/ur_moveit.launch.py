@@ -112,7 +112,8 @@ def generate_launch_description():
     moveit_config = (
         MoveItConfigsBuilder(robot_name="ur", package_name="manipulator_ur_moveit_config")
         .robot_description_semantic(Path("srdf") / "manipulator.srdf.xacro", {"name": ur_type})
-        .to_moveit_configs()
+        .sensors_3d(file_path="../config/sensor3D.yaml")
+	.to_moveit_configs()
     )
 
     warehouse_ros_config = {

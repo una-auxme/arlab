@@ -14,7 +14,7 @@ camera_1_depth_image:
     shadow_threshold: 0.2
     padding_scale: 1.0
     padding_offset: 0.03
-    max_update_rate: 10.0
+    max_update_rate: 30.0  # = camera depth fps; faster updates clear stale voxels sooner
     filtered_cloud_topic: ""
     ns: ""
 

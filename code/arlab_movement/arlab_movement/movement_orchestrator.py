@@ -153,6 +153,8 @@ class NavigationOrchestrator(Node):
         self.nav2_active_client = self.create_client(Trigger, "/lifecycle_manager_navigation/is_active", callback_group=self.monitor_group)
         self.slam_state_client = self.create_client(GetState, "/slam_toolbox/get_state", callback_group=self.monitor_group)
         self.monitor_timer = self.create_timer(1.0, self._monitor_stack, callback_group=self.monitor_group)
+        self._nav2_check_pending = False
+        self._slam_check_pending = False
 
         self.get_logger().info("NavigationOrchestrator ActionServer started.")
         self.get_logger().info("Action name: /movement/action")
@@ -309,7 +311,10 @@ class NavigationOrchestrator(Node):
 
 
     def _report_stack_failure(self, stack_name: str, reason: str):
-        pass
+        self._slam_check_pending = False
+        self._nav2_check_pending = False
+        
+        self.get_logger().error(f"{stack_name} failure: {reason}")
 
     def _on_nav2_active(self, future):
         """Handle the response from the Nav2 active check service."""

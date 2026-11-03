@@ -1,22 +1,22 @@
 # ROS 2 Architecture Analysis Run
 
-- Timestamp (UTC): `2026-11-03T07:30:27+00:00`
+- Timestamp (UTC): `2026-11-03T07:46:01+00:00`
 - Repository: `/home/jessa/robotics/arlab_docker/src/arlab`
 - Python: `3.14.4`
-- Duration: `0.28s`
+- Duration: `0.29s`
 
 ## Results
 
-- Interface declarations: **83**
+- Interface declarations: **78**
 - Static connection candidates: **19**
-- Unmatched declarations: **51**
+- Unmatched declarations: **46**
 - Merged architecture relationships: **28**
 - Merge review entries: **0**
 
 ## Pipeline
 
-- Extract ROS2 interfaces: 0.14s
-- Match communication endpoints: 0.03s
+- Extract ROS2 interfaces: 0.17s
+- Match communication endpoints: 0.02s
 - Merge architecture documentation: 0.02s
 - Generate complete architecture diagram: 0.09s
 

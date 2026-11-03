@@ -49,17 +49,12 @@ arlab_manipulation,code/arlab_manipulation/arlab_manipulation/services/gripping_
 arlab_movement,code/arlab_movement/arlab_movement/entity_placer.py,63,topic,/arlab/entity_pose,PoseStamped,subscriber,resolved_parameter_default,ros_parameter:pose_topic,ROS 2 parameter default; launch/YAML overrides not evaluated,
 arlab_movement,code/arlab_movement/arlab_movement/entity_placer.py,71,service,/arlab/entity_placer/place,AddEntity,server,resolved_parameter_default,ros_parameter:place_service,ROS 2 parameter default; launch/YAML overrides not evaluated,
 arlab_movement,code/arlab_movement/arlab_movement/entity_placer.py,125,service,/arlab/knowledge/add_entity,AddEntity,client,resolved_parameter_default,ros_parameter:add_entity_service,ROS 2 parameter default; launch/YAML overrides not evaluated,
-arlab_movement,code/arlab_movement/arlab_movement/map_save_publisher.py,34,topic,/map_save,Bool,publisher,literal,string_literal,,
-arlab_movement,code/arlab_movement/arlab_movement/movement_orchestrator.py,107,topic,/map,OccupancyGrid,subscriber,resolved_parameter_default,ros_parameter:map_topic,ROS 2 parameter default; launch/YAML overrides not evaluated,
-arlab_movement,code/arlab_movement/arlab_movement/movement_orchestrator.py,112,service,/arlab/knowledge/add_map,AddMap,client,resolved_parameter_default,ros_parameter:database_service,ROS 2 parameter default; launch/YAML overrides not evaluated,self.save_to_database
-arlab_movement,code/arlab_movement/arlab_movement/movement_orchestrator.py,116,action,/movement/action,MovementAction,server,literal,string_literal,,
-arlab_movement,code/arlab_movement/arlab_movement/movement_orchestrator.py,128,action,/vision/snapshot,VisionSnapshotAction,client,resolved_parameter_default,ros_parameter:snapshot_action_name,ROS 2 parameter default; launch/YAML overrides not evaluated,
-arlab_movement,code/arlab_movement/arlab_movement/movement_orchestrator.py,129,topic,/arlab/movement/annotating,Bool,publisher,literal,string_literal,,
-arlab_movement,code/arlab_movement/arlab_movement/movement_orchestrator.py,133,topic,localization_bool,Bool,subscriber,literal,string_literal,,self.enable_legacy_topics
-arlab_movement,code/arlab_movement/arlab_movement/movement_orchestrator.py,134,topic,mapping_bool,Bool,subscriber,literal,string_literal,,self.enable_legacy_topics
-arlab_movement,code/arlab_movement/arlab_movement/movement_orchestrator.py,135,topic,nav_bool,Bool,subscriber,literal,string_literal,,self.enable_legacy_topics
-arlab_movement,code/arlab_movement/arlab_movement/movement_orchestrator.py,136,topic,map_save,Bool,subscriber,literal,string_literal,,self.enable_legacy_topics
-arlab_movement,code/arlab_movement/arlab_movement/movement_orchestrator.py,436,topic,/odom,Odometry,subscriber,resolved_parameter_default,ros_parameter:odom_topic,ROS 2 parameter default; launch/YAML overrides not evaluated,enable
+arlab_movement,code/arlab_movement/arlab_movement/movement_orchestrator.py,114,topic,/map,OccupancyGrid,subscriber,resolved_parameter_default,ros_parameter:map_topic,ROS 2 parameter default; launch/YAML overrides not evaluated,
+arlab_movement,code/arlab_movement/arlab_movement/movement_orchestrator.py,119,service,/arlab/knowledge/add_map,AddMap,client,resolved_parameter_default,ros_parameter:database_service,ROS 2 parameter default; launch/YAML overrides not evaluated,self.save_to_database
+arlab_movement,code/arlab_movement/arlab_movement/movement_orchestrator.py,123,action,/movement/action,MovementAction,server,literal,string_literal,,
+arlab_movement,code/arlab_movement/arlab_movement/movement_orchestrator.py,135,action,/vision/snapshot,VisionSnapshotAction,client,resolved_parameter_default,ros_parameter:snapshot_action_name,ROS 2 parameter default; launch/YAML overrides not evaluated,
+arlab_movement,code/arlab_movement/arlab_movement/movement_orchestrator.py,136,topic,/arlab/movement/annotating,Bool,publisher,literal,string_literal,,
+arlab_movement,code/arlab_movement/arlab_movement/movement_orchestrator.py,419,topic,/odom,Odometry,subscriber,resolved_parameter_default,ros_parameter:odom_topic,ROS 2 parameter default; launch/YAML overrides not evaluated,enable
 arlab_perception,code/arlab_perception/arlab_perception/lidar_data.py,53,topic,/scan,LaserScan,subscriber,literal,string_literal,,
 arlab_perception,code/arlab_perception/arlab_perception/lidar_data.py,60,topic,/relay_scan,LaserScan,publisher,literal,string_literal,,
 arlab_safety,code/arlab_safety/arlab_safety/central_safety_node.py,42,topic,/global_heartbeat,Int32MultiArray,subscriber,literal,string_literal,,

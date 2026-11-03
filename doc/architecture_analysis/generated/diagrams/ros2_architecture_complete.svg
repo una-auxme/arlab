@@ -74,7 +74,7 @@
 <title>ROS2Architecture</title>
 <polygon fill="white" stroke="none" points="-25.2,25.2 -25.2,-1474.94 1303.63,-1474.94 1303.63,25.2 -25.2,25.2" />
 <text xml:space="preserve" text-anchor="middle" x="639.22" y="-1426.74" font-family="Helvetica,sans-Serif" font-size="20.00" fill="#0f172a">ROS 2 Communication Architecture</text>
-<text xml:space="preserve" text-anchor="middle" x="639.22" y="-1402.74" font-family="Helvetica,sans-Serif" font-size="20.00" fill="#0f172a">Static documentation snapshot: 2026-11-03 08:30:28</text>
+<text xml:space="preserve" text-anchor="middle" x="639.22" y="-1402.74" font-family="Helvetica,sans-Serif" font-size="20.00" fill="#0f172a">Static documentation snapshot: 2026-11-03 08:46:01</text>
 <g id="clust1" class="cluster">
 <title>cluster_0</title>
 <path fill="#f1f5f9" stroke="#cbd5e1" d="M412.8,-938.74C412.8,-938.74 535.72,-938.74 535.72,-938.74 541.72,-938.74 547.72,-944.74 547.72,-950.74 547.72,-950.74 547.72,-1143.74 547.72,-1143.74 547.72,-1149.74 541.72,-1155.74 535.72,-1155.74 535.72,-1155.74 412.8,-1155.74 412.8,-1155.74 406.8,-1155.74 400.8,-1149.74 400.8,-1143.74 400.8,-1143.74 400.8,-950.74 400.8,-950.74 400.8,-944.74 406.8,-938.74 412.8,-938.74" />
@@ -274,7 +274,7 @@
 
 <g id="connection_8" class="edge">
 <title>Movement Orchestrator-&gt;Computer Vision</title>
-<g id="a_connection_8"><a ns1:title="Source: Movement Orchestrator&#10;Target: Computer Vision&#10;Kind: action&#10;Interface: /vision/snapshot&#10;Type: VisionSnapshotAction&#10;Integration status: implemented&#10;Evidence: [S]&#10;Merge status: matched&#10;Documentation source: manual+automatic&#10;Static match: yes&#10;Source reference: arlab_movement/movement_orchestrator.py&#10;Target reference: code/arlab_computer_vision/arlab_computer_vision/object_detection.py:447&#10;Source resolution: resolved_parameter_default&#10;Target resolution: literal&#10;Target activation: self._snapshot_mode&#10;Notes: Used for automatic map annotation; Additional static source reference: code/arlab_movement/arlab_movement/movement_orchestrator.py:128; Matching source declarations found; runtime communication not verified">
+<g id="a_connection_8"><a ns1:title="Source: Movement Orchestrator&#10;Target: Computer Vision&#10;Kind: action&#10;Interface: /vision/snapshot&#10;Type: VisionSnapshotAction&#10;Integration status: implemented&#10;Evidence: [S]&#10;Merge status: matched&#10;Documentation source: manual+automatic&#10;Static match: yes&#10;Source reference: arlab_movement/movement_orchestrator.py&#10;Target reference: code/arlab_computer_vision/arlab_computer_vision/object_detection.py:447&#10;Source resolution: resolved_parameter_default&#10;Target resolution: literal&#10;Target activation: self._snapshot_mode&#10;Notes: Used for automatic map annotation; Additional static source reference: code/arlab_movement/arlab_movement/movement_orchestrator.py:135; Matching source declarations found; runtime communication not verified">
 <path fill="none" stroke="#2563eb" stroke-width="1.5" d="M170.65,-133.19C236.27,-152.61 339.2,-183.07 406.46,-202.98" />
 <polygon fill="#2563eb" stroke="#2563eb" stroke-width="1.5" points="405.59,-205.46 413.53,-205.07 407.08,-200.42 405.59,-205.46" />
 </a>
@@ -285,7 +285,7 @@
 
 <g id="connection_9" class="edge">
 <title>Movement Orchestrator-&gt;Knowledge Database</title>
-<g id="a_connection_9"><a ns1:title="Source: Movement Orchestrator&#10;Target: Knowledge Database&#10;Kind: service&#10;Interface: /arlab/knowledge/add_map&#10;Type: AddMap&#10;Integration status: conditional&#10;Evidence: [S]&#10;Merge status: matched&#10;Documentation source: manual+automatic&#10;Static match: yes&#10;Source reference: arlab_movement/movement_orchestrator.py&#10;Target reference: code/arlab_knowledge/arlab_knowledge/database_node.py:210&#10;Source resolution: resolved_parameter_default&#10;Target resolution: resolved_static&#10;Source activation: self.save_to_database&#10;Notes: Only when database saving is enabled; Additional static source reference: code/arlab_movement/arlab_movement/movement_orchestrator.py:112; Matching source declarations found; runtime communication not verified">
+<g id="a_connection_9"><a ns1:title="Source: Movement Orchestrator&#10;Target: Knowledge Database&#10;Kind: service&#10;Interface: /arlab/knowledge/add_map&#10;Type: AddMap&#10;Integration status: conditional&#10;Evidence: [S]&#10;Merge status: matched&#10;Documentation source: manual+automatic&#10;Static match: yes&#10;Source reference: arlab_movement/movement_orchestrator.py&#10;Target reference: code/arlab_knowledge/arlab_knowledge/database_node.py:210&#10;Source resolution: resolved_parameter_default&#10;Target resolution: resolved_static&#10;Source activation: self.save_to_database&#10;Notes: Only when database saving is enabled; Additional static source reference: code/arlab_movement/arlab_movement/movement_orchestrator.py:119; Matching source declarations found; runtime communication not verified">
 <path fill="none" stroke="#16a34a" stroke-width="1.5" stroke-dasharray="5,2" d="M186.88,-106.55C338.35,-92.35 663.89,-70.16 754.59,-130.74 840.85,-188.36 867.18,-321.53 874.72,-379.7" />
 <polygon fill="#16a34a" stroke="#16a34a" stroke-width="1.5" points="872.11,-379.95 875.61,-387.09 877.32,-379.32 872.11,-379.95" />
 </a>

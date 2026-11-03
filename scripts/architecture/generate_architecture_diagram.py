@@ -33,15 +33,15 @@ DEFAULT_OUTPUT_DIR = REPO_ROOT / "doc" / "generated" / "architecture"
 
 INTERFACE_STYLES = {
     "action": {
-        "color": "#2563EB",
+        "color": "#0077B6",
         "label": "Action",
     },
     "service": {
-        "color": "#16A34A",
+        "color": "#00854A",
         "label": "Service",
     },
     "topic": {
-        "color": "#9333EA",
+        "color": "#CD5038",
         "label": "Topic",
     },
 }
@@ -380,21 +380,21 @@ def generate_legend():
 
     <TR>
         <TD>
-            <FONT COLOR="#2563EB">━━━━━━</FONT>
+            <FONT COLOR="#0077B6">━━━━━━</FONT>
         </TD>
         <TD ALIGN="LEFT">Action</TD>
     </TR>
 
     <TR>
         <TD>
-            <FONT COLOR="#16A34A">━━━━━━</FONT>
+            <FONT COLOR="#00854A">━━━━━━</FONT>
         </TD>
         <TD ALIGN="LEFT">Service</TD>
     </TR>
 
     <TR>
         <TD>
-            <FONT COLOR="#9333EA">━━━━━━</FONT>
+            <FONT COLOR="#CD5038">━━━━━━</FONT>
         </TD>
         <TD ALIGN="LEFT">Topic</TD>
     </TR>

@@ -3,12 +3,12 @@
 ## Input
 
 - Manual connections: 27
-- Automatic connection candidates: 19
+- Automatic connection candidates: 23
 
 ## Merge Results
 
-- Matched connections: 18
-- Manual-only connections: 9
+- Matched connections: 22
+- Manual-only connections: 5
 - Automatic-only connections: 0
 - Excluded connections: 1
 - Unresolved component mappings: 0

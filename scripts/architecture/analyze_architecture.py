@@ -28,6 +28,14 @@ STEPS = [
         "extract_ros2_interfaces_v3.py",
     ),
     (
+        "Extract C++ ROS2 interfaces",
+        "extract_ros2_interfaces_cpp.py",
+    ),
+    (
+        "Combine Python and C++ interfaces",
+        "combine_ros2_interfaces.py",
+    ),
+    (
         "Match communication endpoints",
         "generate_ros2_connections.py",
     ),
@@ -43,6 +51,8 @@ STEPS = [
 
 EXPECTED_OUTPUTS = [
     INTERFACES / "ros2_interfaces_v3.csv",
+    INTERFACES / "ros2_interfaces_cpp.csv",
+    INTERFACES / "ros2_interfaces_combined.csv",
     INTERFACES / "ros2_connections_auto.csv",
     INTERFACES / "ros2_unmatched_interfaces.csv",
     VALIDATION / "ros2_architecture_merged.csv",
@@ -105,7 +115,7 @@ def main():
     if missing:
         raise SystemExit("ERROR: Expected output files missing:\n" + "\n".join(missing))
 
-    interface_count = count_csv_rows(INTERFACES / "ros2_interfaces_v3.csv")
+    interface_count = count_csv_rows(INTERFACES / "ros2_interfaces_combined.csv")
 
     connection_count = count_csv_rows(INTERFACES / "ros2_connections_auto.csv")
 
@@ -148,7 +158,7 @@ def main():
             "## Limitations",
             "",
             "- Static source analysis does not verify runtime communication.",
-            "- C++ and external packages may not be fully represented.",
+            "- C++ parsing may be incomplete in files with syntax errors; external packages may not be represented.",
             "- Configured or conditional interfaces may differ at runtime.",
             "- Manual architecture entries are preserved, but are not automatically verified against current code.",
             "- Component mappings are partly manually maintained.",

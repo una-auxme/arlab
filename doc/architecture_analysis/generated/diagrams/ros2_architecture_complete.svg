@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:ns1="http://www.w3.org/1999/xlink" width="2158.00pt" height="1530.00pt" viewBox="0 0 2158.00 1530.00"><rect x="0" y="0" width="2158.00" height="1530.00" fill="#FFFFFF" /><g transform="translate(15.00,15.00)"><g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(7.2 759.95)">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:ns1="http://www.w3.org/1999/xlink" width="2156.00pt" height="1530.00pt" viewBox="0 0 2156.00 1530.00"><rect x="0" y="0" width="2156.00" height="1530.00" fill="#FFFFFF" /><g transform="translate(15.00,15.00)"><g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(7.2 759.95)">
 <title>Legend</title>
 <polygon fill="white" stroke="none" points="-7.2,7.2 -7.2,-759.95 757.2,-759.95 757.2,7.2 -7.2,7.2" />
 <g id="clust1" class="cluster">
@@ -72,9 +72,9 @@
 </g>
 </g><g transform="translate(814.00,15.00)"><g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(25.2 1474.94)">
 <title>ROS2Architecture</title>
-<polygon fill="white" stroke="none" points="-25.2,25.2 -25.2,-1474.94 1303.63,-1474.94 1303.63,25.2 -25.2,25.2" />
-<text xml:space="preserve" text-anchor="middle" x="639.22" y="-1426.74" font-family="Helvetica,sans-Serif" font-size="20.00" fill="#0f172a">ROS 2 Communication Architecture</text>
-<text xml:space="preserve" text-anchor="middle" x="639.22" y="-1402.74" font-family="Helvetica,sans-Serif" font-size="20.00" fill="#0f172a">Static documentation snapshot: 2026-11-03 17:01:35</text>
+<polygon fill="white" stroke="none" points="-25.2,25.2 -25.2,-1474.94 1302.13,-1474.94 1302.13,25.2 -25.2,25.2" />
+<text xml:space="preserve" text-anchor="middle" x="638.47" y="-1426.74" font-family="Helvetica,sans-Serif" font-size="20.00" fill="#0f172a">ROS 2 Communication Architecture</text>
+<text xml:space="preserve" text-anchor="middle" x="638.47" y="-1402.74" font-family="Helvetica,sans-Serif" font-size="20.00" fill="#0f172a">Static documentation snapshot: 2026-11-03 19:43:57</text>
 <g id="clust1" class="cluster">
 <title>cluster_0</title>
 <path fill="#f1f5f9" stroke="#cbd5e1" d="M412.8,-938.74C412.8,-938.74 535.72,-938.74 535.72,-938.74 541.72,-938.74 547.72,-944.74 547.72,-950.74 547.72,-950.74 547.72,-1143.74 547.72,-1143.74 547.72,-1149.74 541.72,-1155.74 535.72,-1155.74 535.72,-1155.74 412.8,-1155.74 412.8,-1155.74 406.8,-1155.74 400.8,-1149.74 400.8,-1143.74 400.8,-1143.74 400.8,-950.74 400.8,-950.74 400.8,-944.74 406.8,-938.74 412.8,-938.74" />
@@ -87,8 +87,8 @@
 </g>
 <g id="clust3" class="cluster">
 <title>cluster_2</title>
-<path fill="#f1f5f9" stroke="#cbd5e1" d="M380.92,-704.74C380.92,-704.74 1258.43,-704.74 1258.43,-704.74 1264.43,-704.74 1270.43,-710.74 1270.43,-716.74 1270.43,-716.74 1270.43,-918.74 1270.43,-918.74 1270.43,-924.74 1264.43,-930.74 1258.43,-930.74 1258.43,-930.74 380.92,-930.74 380.92,-930.74 374.92,-930.74 368.92,-924.74 368.92,-918.74 368.92,-918.74 368.92,-716.74 368.92,-716.74 368.92,-710.74 374.92,-704.74 380.92,-704.74" />
-<text xml:space="preserve" text-anchor="middle" x="819.68" y="-913.44" font-family="Helvetica,sans-Serif" font-size="14.00" fill="#334155">Manipulation</text>
+<path fill="#f1f5f9" stroke="#cbd5e1" d="M380.92,-704.74C380.92,-704.74 1256.93,-704.74 1256.93,-704.74 1262.93,-704.74 1268.93,-710.74 1268.93,-716.74 1268.93,-716.74 1268.93,-918.74 1268.93,-918.74 1268.93,-924.74 1262.93,-930.74 1256.93,-930.74 1256.93,-930.74 380.92,-930.74 380.92,-930.74 374.92,-930.74 368.92,-924.74 368.92,-918.74 368.92,-918.74 368.92,-716.74 368.92,-716.74 368.92,-710.74 374.92,-704.74 380.92,-704.74" />
+<text xml:space="preserve" text-anchor="middle" x="818.93" y="-913.44" font-family="Helvetica,sans-Serif" font-size="14.00" fill="#334155">Manipulation</text>
 </g>
 <g id="clust4" class="cluster">
 <title>cluster_3</title>
@@ -164,23 +164,23 @@
 
 <g id="connection_1" class="edge">
 <title>Decision Making-&gt;Manipulation Orchestrator</title>
-<g id="a_connection_1"><a ns1:title="Source: Decision Making&#10;Target: Manipulation Orchestrator&#10;Kind: action&#10;Interface: /manipulation/action&#10;Type: ManipulationAction&#10;Integration status: implemented&#10;Evidence: [M]&#10;Merge status: manual_only&#10;Documentation source: manual&#10;Static match: no&#10;Source reference: arlab_decision_making/behaviours/manipulation/generic_manipulation.py&#10;Notes: Action client through RosActionBehaviour">
+<g id="a_connection_1"><a ns1:title="Source: Decision Making&#10;Target: Manipulation Orchestrator&#10;Kind: action&#10;Interface: /manipulation/action&#10;Type: ManipulationAction&#10;Integration status: implemented&#10;Evidence: [S]&#10;Merge status: matched&#10;Documentation source: manual+automatic&#10;Static match: yes&#10;Source reference: arlab_decision_making/behaviours/manipulation/generic_manipulation.py&#10;Target reference: code/arlab_manipulation/arlab_manipulation/orchestrator.py:91&#10;Source resolution: resolved_static&#10;Target resolution: literal&#10;Notes: Action client through RosActionBehaviour; Additional static source reference: code/arlab_decision_making/arlab_decision_making/behaviours/manipulation/generic_manipulation.py:57; Matching source declarations found; runtime communication not verified">
 <path fill="none" stroke="#0077b6" stroke-width="1.5" d="M136.06,-522.06C201.33,-565.16 364.6,-672.98 437.32,-721.02" />
 <polygon fill="#0077b6" stroke="#0077b6" stroke-width="1.5" points="435.72,-723.1 443.43,-725.04 438.61,-718.72 435.72,-723.1" />
 </a>
 </g>
-<text xml:space="preserve" text-anchor="middle" x="287.8" y="-684.13" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#0077b6">[M] /manipulation/action</text>
+<text xml:space="preserve" text-anchor="middle" x="287.8" y="-684.13" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#0077b6">[S] /manipulation/action</text>
 <text xml:space="preserve" text-anchor="middle" x="287.8" y="-672.88" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#0077b6">[ManipulationAction]</text>
 </g>
 
 <g id="connection_19" class="edge">
 <title>Decision Making-&gt;Computer Vision</title>
-<g id="a_connection_19"><a ns1:title="Source: Decision Making&#10;Target: Computer Vision&#10;Kind: action&#10;Interface: /vision/snapshot&#10;Type: VisionSnapshotAction&#10;Integration status: implemented&#10;Evidence: [M]&#10;Merge status: manual_only&#10;Documentation source: manual&#10;Static match: no&#10;Source reference: arlab_decision_making/behaviours/common/vision_snapshot.py&#10;Notes: Vision snapshot behaviour">
+<g id="a_connection_19"><a ns1:title="Source: Decision Making&#10;Target: Computer Vision&#10;Kind: action&#10;Interface: /vision/snapshot&#10;Type: VisionSnapshotAction&#10;Integration status: implemented&#10;Evidence: [S]&#10;Merge status: matched&#10;Documentation source: manual+automatic&#10;Static match: yes&#10;Source reference: arlab_decision_making/behaviours/common/vision_snapshot.py&#10;Target reference: code/arlab_computer_vision/arlab_computer_vision/object_detection.py:447&#10;Source resolution: literal&#10;Target resolution: literal&#10;Target activation: self._snapshot_mode&#10;Notes: Vision snapshot behaviour; Additional static source reference: code/arlab_decision_making/arlab_decision_making/behaviours/common/vision_snapshot.py:43; Matching source declarations found; runtime communication not verified">
 <path fill="none" stroke="#0077b6" stroke-width="1.5" d="M113.03,-485.31C123.97,-446.09 154.89,-353.9 214.67,-304.24 269.35,-258.82 349.5,-238.63 406.04,-229.71" />
 <polygon fill="#0077b6" stroke="#0077b6" stroke-width="1.5" points="406.34,-232.32 413.37,-228.6 405.56,-227.12 406.34,-232.32" />
 </a>
 </g>
-<text xml:space="preserve" text-anchor="middle" x="287.8" y="-318.19" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#0077b6">[M] /vision/snapshot</text>
+<text xml:space="preserve" text-anchor="middle" x="287.8" y="-318.19" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#0077b6">[S] /vision/snapshot</text>
 <text xml:space="preserve" text-anchor="middle" x="287.8" y="-306.94" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#0077b6">[VisionSnapshotAction]</text>
 </g>
 
@@ -208,12 +208,12 @@
 
 <g id="connection_2" class="edge">
 <title>Manipulation Orchestrator-&gt;Manipulation C++ Orchestrator</title>
-<g id="a_connection_2"><a ns1:title="Source: Manipulation Orchestrator&#10;Target: Manipulation C++ Orchestrator&#10;Kind: action&#10;Interface: /orchestrator/action&#10;Type: OrchestratorAction&#10;Integration status: configured&#10;Evidence: [M]&#10;Merge status: manual_only&#10;Documentation source: manual&#10;Static match: no&#10;Source reference: arlab_manipulation/orchestrator.py&#10;Notes: Python to C++ manipulation orchestration">
+<g id="a_connection_2"><a ns1:title="Source: Manipulation Orchestrator&#10;Target: Manipulation C++ Orchestrator&#10;Kind: action&#10;Interface: /orchestrator/action&#10;Type: OrchestratorAction&#10;Integration status: configured&#10;Evidence: [S]&#10;Merge status: matched&#10;Documentation source: manual+automatic&#10;Static match: yes&#10;Source reference: arlab_manipulation/orchestrator.py&#10;Target reference: code/arlab_manipulation_cpp/src/orchestrator_listener.cpp:57&#10;Source resolution: literal&#10;Target resolution: resolved_static&#10;Notes: Python to C++ manipulation orchestration; Additional static source reference: code/arlab_manipulation/arlab_manipulation/orchestrator.py:83; Matching source declarations found; runtime communication not verified">
 <path fill="none" stroke="#0077b6" stroke-width="1.5" d="M560.08,-744.32C620.83,-744.02 703.15,-743.61 768.74,-743.29" />
 <polygon fill="#0077b6" stroke="#0077b6" stroke-width="1.5" points="768.54,-745.91 776.03,-743.25 768.51,-740.66 768.54,-745.91" />
 </a>
 </g>
-<text xml:space="preserve" text-anchor="middle" x="669.09" y="-758.1" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#0077b6">[M] /orchestrator/action</text>
+<text xml:space="preserve" text-anchor="middle" x="669.09" y="-758.1" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#0077b6">[S] /orchestrator/action</text>
 <text xml:space="preserve" text-anchor="middle" x="669.09" y="-746.85" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#0077b6">[OrchestratorAction]</text>
 </g>
 
@@ -231,12 +231,12 @@
 <g id="connection_6" class="edge">
 <title>Manipulation Orchestrator-&gt;Force Monitor</title>
 <g id="a_connection_6"><a ns1:title="Source: Manipulation Orchestrator&#10;Target: Force Monitor&#10;Kind: service&#10;Interface: /object_dropped&#10;Type: GetObjectDropped&#10;Integration status: configured&#10;Evidence: [S]&#10;Merge status: matched&#10;Documentation source: manual+automatic&#10;Static match: yes&#10;Source reference: arlab_manipulation/orchestrator.py&#10;Target reference: code/arlab_manipulation/arlab_manipulation/force_monitor.py:82&#10;Source resolution: literal&#10;Target resolution: literal&#10;Notes: Query dropped object status; Additional static source reference: code/arlab_manipulation/arlab_manipulation/orchestrator.py:122; Matching source declarations found; runtime communication not verified">
-<path fill="none" stroke="#00854a" stroke-width="1.5" d="M494.54,-763.16C514.87,-781.26 548.73,-807.87 583.59,-819.74 777.8,-885.92 1026.95,-856.13 1139.15,-837.16" />
-<polygon fill="#00854a" stroke="#00854a" stroke-width="1.5" points="1139.42,-839.78 1146.37,-835.92 1138.53,-834.6 1139.42,-839.78" />
+<path fill="none" stroke="#00854a" stroke-width="1.5" d="M494.54,-763.16C514.87,-781.26 548.73,-807.87 583.59,-819.74 777.08,-885.67 1025.24,-856.13 1137.37,-837.2" />
+<polygon fill="#00854a" stroke="#00854a" stroke-width="1.5" points="1137.64,-839.82 1144.58,-835.96 1136.75,-834.65 1137.64,-839.82" />
 </a>
 </g>
-<text xml:space="preserve" text-anchor="middle" x="878.55" y="-874.49" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[S] /object_dropped</text>
-<text xml:space="preserve" text-anchor="middle" x="878.55" y="-863.24" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[GetObjectDropped]</text>
+<text xml:space="preserve" text-anchor="middle" x="878.55" y="-874.39" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[S] /object_dropped</text>
+<text xml:space="preserve" text-anchor="middle" x="878.55" y="-863.14" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[GetObjectDropped]</text>
 </g>
 
 <g id="connection_3" class="edge">
@@ -263,13 +263,13 @@
 
 <g id="connection_7" class="edge">
 <title>Manipulation C++ Orchestrator-&gt;Force Monitor</title>
-<g id="a_connection_7"><a ns1:title="Source: Manipulation C++ Orchestrator&#10;Target: Force Monitor&#10;Kind: service&#10;Interface: /force_monitor/activate&#10;Type: ActivateForceMonitor&#10;Integration status: configured&#10;Evidence: [M]&#10;Merge status: manual_only&#10;Documentation source: manual&#10;Static match: no&#10;Source reference: arlab_manipulation_cpp/src/force_monitor_switch.cpp&#10;Notes: Activate force monitoring">
-<path fill="none" stroke="#00854a" stroke-width="1.5" d="M950.36,-761.17C1006.99,-775.9 1085.49,-796.32 1138.95,-810.23" />
-<polygon fill="#00854a" stroke="#00854a" stroke-width="1.5" points="1138.18,-812.74 1146.1,-812.09 1139.51,-807.66 1138.18,-812.74" />
+<g id="a_connection_7"><a ns1:title="Source: Manipulation C++ Orchestrator&#10;Target: Force Monitor&#10;Kind: service&#10;Interface: /force_monitor/activate&#10;Type: ActivateForceMonitor&#10;Integration status: configured&#10;Evidence: [S]&#10;Merge status: matched&#10;Documentation source: manual+automatic&#10;Static match: yes&#10;Source reference: arlab_manipulation_cpp/src/force_monitor_switch.cpp&#10;Target reference: code/arlab_manipulation/arlab_manipulation/force_monitor.py:81&#10;Source resolution: resolved_static&#10;Target resolution: literal&#10;Notes: Activate force monitoring; Additional static source reference: code/arlab_manipulation_cpp/src/force_monitor_switch.cpp:23; Matching source declarations found; runtime communication not verified">
+<path fill="none" stroke="#00854a" stroke-width="1.5" d="M950.02,-761.17C1006.39,-775.9 1084.52,-796.32 1137.73,-810.23" />
+<polygon fill="#00854a" stroke="#00854a" stroke-width="1.5" points="1136.92,-812.73 1144.84,-812.09 1138.25,-807.65 1136.92,-812.73" />
 </a>
 </g>
-<text xml:space="preserve" text-anchor="middle" x="1063.63" y="-819.64" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[M] /force_monitor/activate</text>
-<text xml:space="preserve" text-anchor="middle" x="1063.63" y="-808.39" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[ActivateForceMonitor]</text>
+<text xml:space="preserve" text-anchor="middle" x="1062.88" y="-819.64" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[S] /force_monitor/activate</text>
+<text xml:space="preserve" text-anchor="middle" x="1062.88" y="-808.39" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[ActivateForceMonitor]</text>
 </g>
 
 <g id="connection_8" class="edge">
@@ -462,8 +462,8 @@
 
 <g id="node8" class="node">
 <title>Force Monitor</title>
-<path fill="#ffffff" stroke="#94a3b8" d="M1238.43,-843.74C1238.43,-843.74 1160.76,-843.74 1160.76,-843.74 1154.76,-843.74 1148.76,-837.74 1148.76,-831.74 1148.76,-831.74 1148.76,-819.74 1148.76,-819.74 1148.76,-813.74 1154.76,-807.74 1160.76,-807.74 1160.76,-807.74 1238.43,-807.74 1238.43,-807.74 1244.43,-807.74 1250.43,-813.74 1250.43,-819.74 1250.43,-819.74 1250.43,-831.74 1250.43,-831.74 1250.43,-837.74 1244.43,-843.74 1238.43,-843.74" />
-<text xml:space="preserve" text-anchor="middle" x="1199.6" y="-822.04" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#1e293b">Force Monitor</text>
+<path fill="#ffffff" stroke="#94a3b8" d="M1236.93,-843.74C1236.93,-843.74 1159.26,-843.74 1159.26,-843.74 1153.26,-843.74 1147.26,-837.74 1147.26,-831.74 1147.26,-831.74 1147.26,-819.74 1147.26,-819.74 1147.26,-813.74 1153.26,-807.74 1159.26,-807.74 1159.26,-807.74 1236.93,-807.74 1236.93,-807.74 1242.93,-807.74 1248.93,-813.74 1248.93,-819.74 1248.93,-819.74 1248.93,-831.74 1248.93,-831.74 1248.93,-837.74 1242.93,-843.74 1236.93,-843.74" />
+<text xml:space="preserve" text-anchor="middle" x="1198.1" y="-822.04" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#1e293b">Force Monitor</text>
 </g>
 
 <g id="node9" class="node">

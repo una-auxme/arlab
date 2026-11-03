@@ -20,7 +20,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-INPUT_FILE = REPO_ROOT / "doc" / "architecture_analysis" / "generated" / "interfaces" / "ros2_interfaces_v3.csv"
+INPUT_FILE = REPO_ROOT / "doc" / "architecture_analysis" / "generated" / "interfaces" / "ros2_interfaces_combined.csv"
 
 CONNECTIONS_FILE = REPO_ROOT / "doc" / "architecture_analysis" / "generated" / "interfaces" / "ros2_connections_auto.csv"
 
@@ -119,6 +119,7 @@ def determine_status(source, target):
         "resolved_parameter_default",
         "resolved_constructor_default",
         "resolved_constructor_argument",
+        "resolved_default",
     }
 
     if source["resolution_status"] in configurable_statuses or target["resolution_status"] in configurable_statuses:
@@ -236,7 +237,7 @@ def main():
             reason = "Unresolved interface name"
 
         else:
-            reason = "No matching counterpart found in the analyzed Python declarations"
+            reason = "No matching counterpart found in the analyzed Python and C++ declarations"
 
         unmatched.append(
             {

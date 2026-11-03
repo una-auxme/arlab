@@ -42,6 +42,7 @@ INTERFACE_METHODS = {
     "create_service": ("service", "server"),
     "ActionClient": ("action", "client"),
     "ActionServer": ("action", "server"),
+    "RosActionBehaviour": ("action", "client"),
 }
 
 CSV_COLUMNS = [
@@ -377,6 +378,63 @@ def resolve_constructor_arguments(
     return result
 
 
+def resolve_local_string_import(import_node, relative_path):
+    """Resolve simple string constants from local relative Python imports."""
+    if not isinstance(import_node, ast.ImportFrom) or import_node.level == 0:
+        return {}
+
+    current_file = REPO_ROOT / relative_path
+    module_dir = current_file.parent
+
+    for _ in range(import_node.level - 1):
+        module_dir = module_dir.parent
+
+    if import_node.module:
+        module_dir = module_dir.joinpath(*import_node.module.split("."))
+
+    module_file = module_dir.parent / f"{module_dir.name}.py"
+
+    if not module_file.is_file():
+        return {}
+
+    try:
+        module_file.resolve().relative_to(SOURCE_ROOT.resolve())
+        tree = ast.parse(module_file.read_text(encoding="utf-8"))
+    except (ValueError, OSError, SyntaxError, UnicodeError):
+        return {}
+
+    constants = {}
+
+    for statement in tree.body:
+        if isinstance(statement, (ast.Assign, ast.AnnAssign)):
+            value = resolve_expression(statement.value, constants, {})
+
+            if value is None:
+                continue
+
+            targets = (
+                statement.targets
+                if isinstance(statement, ast.Assign)
+                else [statement.target]
+            )
+
+            for target in targets:
+                if isinstance(target, ast.Name):
+                    constants[target.id] = ResolvedValue(
+                        value=value.value,
+                        status="resolved_static",
+                        source=f"local_import:{module_file.relative_to(REPO_ROOT)}",
+                    )
+
+    result = {}
+
+    for alias in import_node.names:
+        if alias.name in constants:
+            result[alias.asname or alias.name] = constants[alias.name]
+
+    return result
+
+
 class InterfaceVisitor(ast.NodeVisitor):
     def __init__(
         self,
@@ -397,6 +455,39 @@ class InterfaceVisitor(ast.NodeVisitor):
         self.parameters = {}
 
         self.conditions = []
+        self.ros_action_behaviour_imported = False
+        self.in_ros_action_subclass = False
+
+    def visit_ImportFrom(self, node):
+        self.environment.update(
+            resolve_local_string_import(node, self.relative_path)
+        )
+
+        if self.package != "arlab_decision_making":
+            return
+
+        module = node.module or ""
+
+        is_known_action_module = (
+            (node.level == 0
+             and module == "arlab_decision_making.behaviours.common.action")
+            or
+            (node.level == 1
+             and module == "action"
+             and "behaviours/common/" in str(self.relative_path))
+            or
+            (node.level == 2
+             and module == "common.action"
+             and "behaviours/" in str(self.relative_path))
+        )
+
+        if is_known_action_module:
+            if any(
+                alias.name == "RosActionBehaviour"
+                and alias.asname is None
+                for alias in node.names
+            ):
+                self.ros_action_behaviour_imported = True
 
     def visit_Module(self, node):
         for statement in node.body:
@@ -406,6 +497,16 @@ class InterfaceVisitor(ast.NodeVisitor):
         previous_environment = self.environment
         previous_attributes = self.class_attributes
         previous_parameters = self.parameters
+        previous_action_subclass = self.in_ros_action_subclass
+
+        self.in_ros_action_subclass = (
+            self.ros_action_behaviour_imported
+            and any(
+                isinstance(base, ast.Name)
+                and base.id == "RosActionBehaviour"
+                for base in node.bases
+            )
+        )
 
         self.class_attributes = {}
         self.parameters = {}
@@ -451,6 +552,7 @@ class InterfaceVisitor(ast.NodeVisitor):
         self.environment = previous_environment
         self.class_attributes = previous_attributes
         self.parameters = previous_parameters
+        self.in_ros_action_subclass = previous_action_subclass
 
     def visit_FunctionDef(self, node):
         self._visit_function(node)
@@ -527,16 +629,69 @@ class InterfaceVisitor(ast.NodeVisitor):
     def visit_Call(self, node):
         method = get_call_name(node.func)
 
+        is_super_action_init = (
+            self.in_ros_action_subclass
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "__init__"
+            and isinstance(node.func.value, ast.Call)
+            and isinstance(node.func.value.func, ast.Name)
+            and node.func.value.func.id == "super"
+            and not node.func.value.args
+            and not node.func.value.keywords
+        )
+
+        if is_super_action_init:
+            interface = self._extract_indirect_action(node)
+            if interface is not None:
+                self.interfaces.append(interface)
+
         if method == "declare_parameter":
             self._record_parameter(node)
 
         if method in INTERFACE_METHODS:
+            if (
+                method == "RosActionBehaviour"
+                and not self.ros_action_behaviour_imported
+            ):
+                self.generic_visit(node)
+                return
+
             interface = self._extract_interface(node)
 
             if interface is not None:
                 self.interfaces.append(interface)
 
         self.generic_visit(node)
+
+    def _extract_indirect_action(self, node):
+        type_node = get_argument(node, 1, ["action_type"])
+        name_node = get_argument(node, 2, ["action_name"])
+
+        if type_node is None or name_node is None:
+            return None
+
+        resolved = resolve_expression(
+            name_node,
+            self.environment,
+            self.parameters,
+        )
+
+        if resolved is None:
+            return None
+
+        return {
+            "package": self.package,
+            "source_file": str(self.relative_path),
+            "line": node.lineno,
+            "interface_kind": "action",
+            "interface_name": resolved.value,
+            "interface_type": expression_to_text(type_node),
+            "role": "client",
+            "resolution_status": resolved.status,
+            "resolution_source": resolved.source,
+            "resolution_note": resolved.note,
+            "activation_condition": " AND ".join(self.conditions),
+        }
 
     def _record_parameter(self, node):
         name_node = get_argument(
@@ -581,6 +736,10 @@ class InterfaceVisitor(ast.NodeVisitor):
         elif method in ("create_client", "create_service"):
             type_node = get_argument(node, 0, ["srv_type"])
             name_node = get_argument(node, 1, ["srv_name"])
+
+        elif method == "RosActionBehaviour":
+            type_node = get_argument(node, 1, ["action_type"])
+            name_node = get_argument(node, 2, ["action_name"])
 
         else:
             type_node = get_argument(node, 1, ["action_type"])

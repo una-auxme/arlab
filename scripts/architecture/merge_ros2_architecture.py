@@ -138,11 +138,7 @@ def reference_to_component(reference):
 
     path = reference.rsplit(":", 1)[0].replace("\\", "/")
 
-    matches = [
-        component
-        for suffix, component in COMPONENT_MAP.items()
-        if path.endswith(suffix)
-    ]
+    matches = [component for suffix, component in COMPONENT_MAP.items() if path.endswith(suffix)]
 
     if len(set(matches)) == 1:
         return matches[0]
@@ -188,19 +184,11 @@ def manual_to_output(row):
 def automatic_to_output(row):
     output = {field: "" for field in OUTPUT_FIELDS}
 
-    source = reference_to_component(
-        row.get("source_reference", "")
-    )
-    target = reference_to_component(
-        row.get("target_reference", "")
-    )
+    source = reference_to_component(row.get("source_reference", ""))
+    target = reference_to_component(row.get("target_reference", ""))
 
-    output["source_component"] = (
-        source or row.get("source_component", "")
-    )
-    output["target_component"] = (
-        target or row.get("target_component", "")
-    )
+    output["source_component"] = source or row.get("source_component", "")
+    output["target_component"] = target or row.get("target_component", "")
 
     for field in (
         "interface_kind",
@@ -269,9 +257,7 @@ def main():
     stats = Counter()
 
     for automatic in automatic_rows:
-        candidate, components_resolved = automatic_to_output(
-            automatic
-        )
+        candidate, components_resolved = automatic_to_output(automatic)
 
         key = connection_key(candidate)
 
@@ -282,10 +268,12 @@ def main():
                 "Functional component mapping incomplete",
             )
 
-            review_rows.append({
-                **candidate,
-                "review_reason": "Component mapping unresolved",
-            })
+            review_rows.append(
+                {
+                    **candidate,
+                    "review_reason": "Component mapping unresolved",
+                }
+            )
 
             merged.append(candidate)
             stats["mapping_unresolved"] += 1
@@ -296,12 +284,12 @@ def main():
         if len(matches) > 1:
             candidate["merge_status"] = "ambiguous_match"
 
-            review_rows.append({
-                **candidate,
-                "review_reason": (
-                    "Multiple manual connections match this key"
-                ),
-            })
+            review_rows.append(
+                {
+                    **candidate,
+                    "review_reason": ("Multiple manual connections match this key"),
+                }
+            )
 
             merged.append(candidate)
             stats["ambiguous_match"] += 1
@@ -314,13 +302,12 @@ def main():
             if index in matched_manual_indices:
                 candidate["merge_status"] = "duplicate_static_candidate"
 
-                review_rows.append({
-                    **candidate,
-                    "review_reason": (
-                        "Multiple static candidates match one "
-                        "manual connection"
-                    ),
-                })
+                review_rows.append(
+                    {
+                        **candidate,
+                        "review_reason": ("Multiple static candidates match one manual connection"),
+                    }
+                )
 
                 merged.append(candidate)
                 stats["duplicate_static_candidate"] += 1
@@ -332,26 +319,19 @@ def main():
             existing["merge_status"] = "matched"
             existing["documentation_source"] = "manual+automatic"
 
-            existing["target_reference"] = automatic.get(
-                "target_reference", ""
-            )
+            existing["target_reference"] = automatic.get("target_reference", "")
 
             # Preserve the manual reference, if one exists.
-            manual_source_reference = existing.get(
-                "source_reference", ""
-            )
+            manual_source_reference = existing.get("source_reference", "")
 
-            auto_source_reference = automatic.get(
-                "source_reference", ""
-            )
+            auto_source_reference = automatic.get("source_reference", "")
 
             if not manual_source_reference:
                 existing["source_reference"] = auto_source_reference
             elif manual_source_reference != auto_source_reference:
                 existing["notes"] = append_note(
                     existing["notes"],
-                    "Additional static source reference: "
-                    + auto_source_reference,
+                    "Additional static source reference: " + auto_source_reference,
                 )
 
             for field in (
@@ -364,32 +344,20 @@ def main():
 
             existing["notes"] = append_note(
                 existing["notes"],
-                "Matching source declarations found; "
-                "runtime communication not verified",
+                "Matching source declarations found; runtime communication not verified",
             )
 
-            manual_type = existing.get(
-                "interface_type", ""
-            ).strip()
+            manual_type = existing.get("interface_type", "").strip()
 
-            automatic_type = automatic.get(
-                "interface_type", ""
-            ).strip()
+            automatic_type = automatic.get("interface_type", "").strip()
 
-            if (
-                manual_type
-                and automatic_type
-                and manual_type.split("/")[-1]
-                != automatic_type.split("/")[-1]
-            ):
-                review_rows.append({
-                    **existing,
-                    "review_reason": (
-                        "Interface type mismatch: "
-                        f"manual={manual_type}; "
-                        f"automatic={automatic_type}"
-                    ),
-                })
+            if manual_type and automatic_type and manual_type.split("/")[-1] != automatic_type.split("/")[-1]:
+                review_rows.append(
+                    {
+                        **existing,
+                        "review_reason": (f"Interface type mismatch: manual={manual_type}; automatic={automatic_type}"),
+                    }
+                )
                 stats["type_mismatch"] += 1
 
             elif not manual_type:
@@ -405,8 +373,7 @@ def main():
             candidate["merge_status"] = "excluded"
             candidate["notes"] = append_note(
                 candidate["notes"],
-                "Excluded from operational architecture: "
-                + exclusion_index[exclusion_key],
+                "Excluded from operational architecture: " + exclusion_index[exclusion_key],
             )
             merged.append(candidate)
             stats["excluded"] += 1
@@ -414,13 +381,12 @@ def main():
 
         merged.append(candidate)
 
-        review_rows.append({
-            **candidate,
-            "review_reason": (
-                "New static connection not present "
-                "in manual architecture"
-            ),
-        })
+        review_rows.append(
+            {
+                **candidate,
+                "review_reason": ("New static connection not present in manual architecture"),
+            }
+        )
 
         stats["automatic_only"] += 1
 
@@ -446,11 +412,9 @@ def main():
         f"- Manual-only connections: {stats['manual_only']}",
         f"- Automatic-only connections: {stats['automatic_only']}",
         f"- Excluded connections: {stats['excluded']}",
-        f"- Unresolved component mappings: "
-        f"{stats['mapping_unresolved']}",
+        f"- Unresolved component mappings: {stats['mapping_unresolved']}",
         f"- Ambiguous matches: {stats['ambiguous_match']}",
-        f"- Duplicate static candidates: "
-        f"{stats['duplicate_static_candidate']}",
+        f"- Duplicate static candidates: {stats['duplicate_static_candidate']}",
         f"- Interface type mismatches: {stats['type_mismatch']}",
         "",
         f"- Total merged rows: {len(merged)}",
@@ -458,15 +422,11 @@ def main():
         "",
         "## Interpretation",
         "",
-        "- A static match indicates matching declarations "
-        "in source code, not verified runtime communication.",
+        "- A static match indicates matching declarations in source code, not verified runtime communication.",
         "- Manual integration statuses are preserved.",
-        "- Automatic-only connections have integration_status "
-        "`unverified`.",
-        "- Manual-only connections may depend on C++, "
-        "external packages, dynamic names, or analysis gaps.",
-        "- Component names inferred from source files "
-        "are provisional and do not establish ROS node identity.",
+        "- Automatic-only connections have integration_status `unverified`.",
+        "- Manual-only connections may depend on C++, external packages, dynamic names, or analysis gaps.",
+        "- Component names inferred from source files are provisional and do not establish ROS node identity.",
         "",
         "## Files",
         "",
@@ -492,15 +452,9 @@ def main():
     print(f"Manual only:               {stats['manual_only']}")
     print(f"Automatic only:            {stats['automatic_only']}")
     print(f"Excluded:                 {stats['excluded']}")
-    print(
-        f"Mapping unresolved:        "
-        f"{stats['mapping_unresolved']}"
-    )
+    print(f"Mapping unresolved:        {stats['mapping_unresolved']}")
     print(f"Ambiguous:                 {stats['ambiguous_match']}")
-    print(
-        f"Duplicate candidates:      "
-        f"{stats['duplicate_static_candidate']}"
-    )
+    print(f"Duplicate candidates:      {stats['duplicate_static_candidate']}")
     print(f"Type mismatches:           {stats['type_mismatch']}")
 
     print("-" * 48)

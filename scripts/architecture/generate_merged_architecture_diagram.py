@@ -14,15 +14,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_DIR = Path(__file__).resolve().parent
-INPUT = (
-    ROOT / "doc" / "architecture_analysis"
-    / "generated" / "validation"
-    / "ros2_architecture_merged.csv"
-)
-OUTPUT_DIR = (
-    ROOT / "doc" / "architecture_analysis"
-    / "generated" / "diagrams"
-)
+INPUT = ROOT / "doc" / "architecture_analysis" / "generated" / "validation" / "ros2_architecture_merged.csv"
+OUTPUT_DIR = ROOT / "doc" / "architecture_analysis" / "generated" / "diagrams"
 
 DOT_FILE = OUTPUT_DIR / "ros2_architecture_complete.dot"
 SVG_FILE = OUTPUT_DIR / "ros2_architecture_complete.svg"
@@ -81,10 +74,7 @@ def generate_relationships(rows):
         style = original.get_interface_style(row)
         marker = evidence_marker(row)
 
-        label = (
-            f"{marker} {name}\n"
-            f"[{interface_type}]"
-        )
+        label = f"{marker} {name}\n[{interface_type}]"
 
         if status not in {"implemented", "configured"}:
             label += f"\n({status})"
@@ -109,11 +99,7 @@ def generate_relationships(rows):
             ("Notes", row.get("notes", "")),
         ]
 
-        tooltip = "\n".join(
-            f"{key}: {value}"
-            for key, value in tooltip_fields
-            if value
-        )
+        tooltip = "\n".join(f"{key}: {value}" for key, value in tooltip_fields if value)
 
         lines.append(
             f"  {original.quote(source)} -> "
@@ -186,7 +172,6 @@ def generate_legend():
         )
         for line in lines
     ]
-
 
 
 def compose_svg(graph_path, legend_path, output_path):
@@ -278,11 +263,7 @@ def compose_svg(graph_path, legend_path, output_path):
 def main():
     # Excluded connections remain in the merged CSV for traceability,
     # but are not part of the operational architecture diagram.
-    rows = [
-        row
-        for row in original.load_interfaces(INPUT)
-        if row.get("merge_status", "") != "excluded"
-    ]
+    rows = [row for row in original.load_interfaces(INPUT) if row.get("merge_status", "") != "excluded"]
 
     # Reuse the original graph styling and subsystem rendering.
     dot = original.generate_dot(rows)
@@ -312,9 +293,7 @@ def main():
     new_block = "\n".join(new_edges)
 
     if old_block not in dot:
-        raise RuntimeError(
-            "Could not locate original relationship block."
-        )
+        raise RuntimeError("Could not locate original relationship block.")
 
     dot = dot.replace(old_block, new_block, 1)
 
@@ -322,9 +301,7 @@ def main():
     old_legend = "\n".join(original.generate_legend())
 
     if old_legend not in dot:
-        raise RuntimeError(
-            "Could not locate original legend block."
-        )
+        raise RuntimeError("Could not locate original legend block.")
 
     # Render architecture and legend independently.
     dot = dot.replace(old_legend, "", 1)
@@ -335,9 +312,7 @@ def main():
 
     # Render intermediate files in a temporary directory.
     # Only the final DOT and SVG files remain in OUTPUT_DIR.
-    with tempfile.TemporaryDirectory(
-        prefix="arlab_architecture_"
-    ) as temp_dir:
+    with tempfile.TemporaryDirectory(prefix="arlab_architecture_") as temp_dir:
         temp_path = Path(temp_dir)
 
         graph_svg = temp_path / "ros2_architecture_graph.svg"
@@ -349,13 +324,15 @@ def main():
             check=True,
         )
 
-        legend_content = "\n".join([
-            "digraph Legend {",
-            "  graph [bgcolor=white, pad=0.1];",
-            "  node [shape=plain];",
-            *generate_legend(),
-            "}",
-        ])
+        legend_content = "\n".join(
+            [
+                "digraph Legend {",
+                "  graph [bgcolor=white, pad=0.1];",
+                "  node [shape=plain];",
+                *generate_legend(),
+                "}",
+            ]
+        )
 
         legend_dot.write_text(legend_content, encoding="utf-8")
 

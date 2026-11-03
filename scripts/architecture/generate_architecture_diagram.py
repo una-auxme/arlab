@@ -27,16 +27,9 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-DEFAULT_INPUT_FILE = (
-    REPO_ROOT
-    / "doc"
-    / "architecture_analysis"
-    / "ros2_interfaces.csv"
-)
+DEFAULT_INPUT_FILE = REPO_ROOT / "doc" / "architecture_analysis" / "ros2_interfaces.csv"
 
-DEFAULT_OUTPUT_DIR = (
-    REPO_ROOT / "doc" / "generated" / "architecture"
-)
+DEFAULT_OUTPUT_DIR = REPO_ROOT / "doc" / "generated" / "architecture"
 
 INTERFACE_STYLES = {
     "action": {
@@ -136,6 +129,7 @@ REQUIRED_COLUMNS = {
 # HELPER FUNCTIONS
 # ============================================================================
 
+
 def quote(value):
     """Escape text for a Graphviz DOT string."""
 
@@ -162,44 +156,25 @@ def load_interfaces(input_file):
         encoding="utf-8-sig",
         newline="",
     ) as csv_file:
-
         reader = csv.DictReader(csv_file)
 
-        missing_columns = REQUIRED_COLUMNS - set(
-            reader.fieldnames or []
-        )
+        missing_columns = REQUIRED_COLUMNS - set(reader.fieldnames or [])
 
         if missing_columns:
-            raise ValueError(
-                "Missing required CSV columns: "
-                + ", ".join(sorted(missing_columns))
-            )
+            raise ValueError("Missing required CSV columns: " + ", ".join(sorted(missing_columns)))
 
         interfaces = []
 
         for row_number, row in enumerate(reader, start=2):
-
-            interface = {
-                key: (value or "").strip()
-                for key, value in row.items()
-                if key is not None
-            }
+            interface = {key: (value or "").strip() for key, value in row.items() if key is not None}
 
             for column in REQUIRED_COLUMNS:
-
                 if not interface.get(column):
-                    raise ValueError(
-                        f"Missing value in column '{column}' "
-                        f"at CSV row {row_number}"
-                    )
+                    raise ValueError(f"Missing value in column '{column}' at CSV row {row_number}")
 
-            interface["interface_kind"] = (
-                interface["interface_kind"].lower()
-            )
+            interface["interface_kind"] = interface["interface_kind"].lower()
 
-            interface["integration_status"] = (
-                interface["integration_status"].lower()
-            )
+            interface["integration_status"] = interface["integration_status"].lower()
 
             interfaces.append(interface)
 
@@ -212,14 +187,9 @@ def get_all_components(interfaces):
     components = set()
 
     for interface in interfaces:
+        components.add(interface["source_component"])
 
-        components.add(
-            interface["source_component"]
-        )
-
-        components.add(
-            interface["target_component"]
-        )
+        components.add(interface["target_component"])
 
     return components
 
@@ -269,6 +239,7 @@ def get_interface_style(interface):
 # ARCHITECTURE COMPONENTS
 # ============================================================================
 
+
 def generate_subsystems(components):
     """Generate Graphviz clusters for functional subsystems."""
 
@@ -276,36 +247,28 @@ def generate_subsystems(components):
 
     grouped_components = set()
 
-    for index, (subsystem, members) in enumerate(
-        SUBSYSTEMS.items()
-    ):
-
-        present_members = [
-            member
-            for member in members
-            if member in components
-        ]
+    for index, (subsystem, members) in enumerate(SUBSYSTEMS.items()):
+        present_members = [member for member in members if member in components]
 
         if not present_members:
             continue
 
-        lines.extend([
-            f"  subgraph cluster_{index} {{",
-            f"    label={quote(subsystem)};",
-            '    style="rounded,filled";',
-            '    color="#CBD5E1";',
-            '    fillcolor="#F1F5F9";',
-            '    fontname="Helvetica";',
-            '    fontsize=14;',
-            '    fontcolor="#334155";',
-            '    margin=20;',
-        ])
+        lines.extend(
+            [
+                f"  subgraph cluster_{index} {{",
+                f"    label={quote(subsystem)};",
+                '    style="rounded,filled";',
+                '    color="#CBD5E1";',
+                '    fillcolor="#F1F5F9";',
+                '    fontname="Helvetica";',
+                "    fontsize=14;",
+                '    fontcolor="#334155";',
+                "    margin=20;",
+            ]
+        )
 
         for member in present_members:
-
-            lines.append(
-                f"    {quote(member)};"
-            )
+            lines.append(f"    {quote(member)};")
 
             grouped_components.add(member)
 
@@ -320,40 +283,21 @@ def generate_external_components(components, grouped_components):
 
     lines = []
 
-    remaining_components = sorted(
-        components - grouped_components
-    )
+    remaining_components = sorted(components - grouped_components)
 
     for component in remaining_components:
-
         component_type = get_component_type(component)
 
         if component_type == "external":
-
-            lines.append(
-                f"  {quote(component)} "
-                '[shape=ellipse, '
-                'style="filled", '
-                'fillcolor="#DBEAFE", '
-                'color="#60A5FA"];'
-            )
+            lines.append(f'  {quote(component)} [shape=ellipse, style="filled", fillcolor="#DBEAFE", color="#60A5FA"];')
 
         elif component_type == "unresolved":
-
             lines.append(
-                f"  {quote(component)} "
-                '[shape=box, '
-                'style="rounded,dashed", '
-                'fillcolor="#FFFFFF", '
-                'color="#94A3B8", '
-                'fontcolor="#64748B"];'
+                f'  {quote(component)} [shape=box, style="rounded,dashed", fillcolor="#FFFFFF", color="#94A3B8", fontcolor="#64748B"];'
             )
 
         else:
-
-            lines.append(
-                f"  {quote(component)};"
-            )
+            lines.append(f"  {quote(component)};")
 
     return lines
 
@@ -362,13 +306,13 @@ def generate_external_components(components, grouped_components):
 # COMMUNICATION RELATIONSHIPS
 # ============================================================================
 
+
 def generate_relationships(interfaces):
     """Generate directed communication edges."""
 
     lines = []
 
     for interface in interfaces:
-
         source = interface["source_component"]
         target = interface["target_component"]
 
@@ -388,14 +332,9 @@ def generate_relationships(interfaces):
             "implemented",
             "configured",
         }:
-
             edge_label += f"\n[{status}]"
 
-        tooltip = (
-            f"Interface: {name}\n"
-            f"Type: {interface_type}\n"
-            f"Status: {status}"
-        )
+        tooltip = f"Interface: {name}\nType: {interface_type}\nStatus: {status}"
 
         lines.append(
             f"  {quote(source)} -> {quote(target)} ["
@@ -413,6 +352,7 @@ def generate_relationships(interfaces):
 # ============================================================================
 # DIAGRAM LEGEND
 # ============================================================================
+
 
 def generate_legend():
     """Generate a compact legend using an HTML-like Graphviz table."""
@@ -547,17 +487,13 @@ def generate_legend():
 # GRAPHVIZ DIAGRAM GENERATION
 # ============================================================================
 
+
 def generate_dot(interfaces):
     """Build the complete Graphviz DOT document."""
 
-    timestamp = datetime.now().strftime(
-        "%Y-%m-%d %H:%M:%S"
-    )
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    title = (
-        "ROS 2 Communication Architecture\n"
-        f"Static documentation snapshot: {timestamp}"
-    )
+    title = f"ROS 2 Communication Architecture\nStatic documentation snapshot: {timestamp}"
 
     lines = [
         "digraph ROS2Architecture {",
@@ -566,7 +502,7 @@ def generate_dot(interfaces):
         "    rankdir=LR,",
         '    bgcolor="white",',
         '    fontname="Helvetica",',
-        '    fontsize=20,',
+        "    fontsize=20,",
         '    fontcolor="#0F172A",',
         "    labelloc=t,",
         f"    label={quote(title)},",
@@ -600,9 +536,7 @@ def generate_dot(interfaces):
 
     components = get_all_components(interfaces)
 
-    subsystem_lines, grouped_components = (
-        generate_subsystems(components)
-    )
+    subsystem_lines, grouped_components = generate_subsystems(components)
 
     lines.extend(subsystem_lines)
 
@@ -615,13 +549,9 @@ def generate_dot(interfaces):
 
     lines.append("")
 
-    lines.extend(
-        generate_relationships(interfaces)
-    )
+    lines.extend(generate_relationships(interfaces))
 
-    lines.extend(
-        generate_legend()
-    )
+    lines.extend(generate_legend())
 
     lines.append("")
     lines.append("}")
@@ -633,18 +563,15 @@ def generate_dot(interfaces):
 # OUTPUT GENERATION
 # ============================================================================
 
+
 def generate_diagram(input_file, output_dir):
     """Generate DOT and SVG files."""
 
     if not input_file.exists():
-        raise FileNotFoundError(
-            f"Communication inventory not found: {input_file}"
-        )
+        raise FileNotFoundError(f"Communication inventory not found: {input_file}")
 
     if shutil.which("dot") is None:
-        raise RuntimeError(
-            "Graphviz executable 'dot' was not found."
-        )
+        raise RuntimeError("Graphviz executable 'dot' was not found.")
 
     interfaces = load_interfaces(input_file)
 
@@ -653,13 +580,9 @@ def generate_diagram(input_file, output_dir):
         exist_ok=True,
     )
 
-    output_dot = (
-        output_dir / "ros2_communication_architecture.dot"
-    )
+    output_dot = output_dir / "ros2_communication_architecture.dot"
 
-    output_svg = (
-        output_dir / "ros2_communication_architecture.svg"
-    )
+    output_svg = output_dir / "ros2_communication_architecture.svg"
 
     dot_content = generate_dot(interfaces)
 
@@ -692,15 +615,11 @@ def generate_diagram(input_file, output_dir):
 # MAIN PROGRAM
 # ============================================================================
 
+
 def main():
     """Parse command-line arguments and generate the diagram."""
 
-    parser = argparse.ArgumentParser(
-        description=(
-            "Generate a ROS 2 communication architecture "
-            "diagram from a CSV inventory."
-        )
-    )
+    parser = argparse.ArgumentParser(description=("Generate a ROS 2 communication architecture diagram from a CSV inventory."))
 
     parser.add_argument(
         "--input",

@@ -22,13 +22,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 INPUT_FILE = REPO_ROOT / "doc" / "architecture_analysis" / "generated" / "interfaces" / "ros2_interfaces_v3.csv"
 
-CONNECTIONS_FILE = (
-    REPO_ROOT / "doc" / "architecture_analysis" / "generated" / "interfaces" / "ros2_connections_auto.csv"
-)
+CONNECTIONS_FILE = REPO_ROOT / "doc" / "architecture_analysis" / "generated" / "interfaces" / "ros2_connections_auto.csv"
 
-UNMATCHED_FILE = (
-    REPO_ROOT / "doc" / "architecture_analysis" / "generated" / "interfaces" / "ros2_unmatched_interfaces.csv"
-)
+UNMATCHED_FILE = REPO_ROOT / "doc" / "architecture_analysis" / "generated" / "interfaces" / "ros2_unmatched_interfaces.csv"
 
 
 ROLE_PAIRS = {
@@ -76,9 +72,7 @@ def load_interfaces():
 
 
 def is_resolved(interface):
-    return not interface[
-        "resolution_status"
-    ].startswith("unresolved")
+    return not interface["resolution_status"].startswith("unresolved")
 
 
 def normalize_type(interface_type):
@@ -101,11 +95,7 @@ def matching_interfaces(left, right):
     if left["interface_name"] != right["interface_name"]:
         return False
 
-    if normalize_type(
-        left["interface_type"]
-    ) != normalize_type(
-        right["interface_type"]
-    ):
+    if normalize_type(left["interface_type"]) != normalize_type(right["interface_type"]):
         return False
 
     return True
@@ -122,10 +112,7 @@ def determine_status(source, target):
     from a configurable default.
     """
 
-    if (
-        source.get("activation_condition")
-        or target.get("activation_condition")
-    ):
+    if source.get("activation_condition") or target.get("activation_condition"):
         return "conditional"
 
     configurable_statuses = {
@@ -134,43 +121,29 @@ def determine_status(source, target):
         "resolved_constructor_argument",
     }
 
-    if (
-        source["resolution_status"] in configurable_statuses
-        or target["resolution_status"] in configurable_statuses
-    ):
+    if source["resolution_status"] in configurable_statuses or target["resolution_status"] in configurable_statuses:
         return "configured"
 
     return "implemented"
 
 
 def reference(interface):
-    return (
-        f'{interface["source_file"]}:'
-        f'{interface["line"]}'
-    )
+    return f"{interface['source_file']}:{interface['line']}"
 
 
 def make_connection(source, target):
     status = determine_status(source, target)
 
-    notes = [
-        "Statically inferred candidate; runtime not verified"
-    ]
+    notes = ["Statically inferred candidate; runtime not verified"]
 
-    if (
-        source["package"] == target["package"]
-    ):
+    if source["package"] == target["package"]:
         notes.append("Communication within the same package")
 
     if status == "configured":
-        notes.append(
-            "At least one interface name is configurable"
-        )
+        notes.append("At least one interface name is configurable")
 
     if status == "conditional":
-        notes.append(
-            "At least one interface declaration is conditional"
-        )
+        notes.append("At least one interface declaration is conditional")
 
     return {
         "source_component": source["package"],
@@ -181,18 +154,10 @@ def make_connection(source, target):
         "integration_status": status,
         "source_reference": reference(source),
         "target_reference": reference(target),
-        "source_resolution_status": (
-            source["resolution_status"]
-        ),
-        "target_resolution_status": (
-            target["resolution_status"]
-        ),
-        "source_activation_condition": source.get(
-            "activation_condition", ""
-        ),
-        "target_activation_condition": target.get(
-            "activation_condition", ""
-        ),
+        "source_resolution_status": (source["resolution_status"]),
+        "target_resolution_status": (target["resolution_status"]),
+        "source_activation_condition": source.get("activation_condition", ""),
+        "target_activation_condition": target.get("activation_condition", ""),
         "notes": "; ".join(notes),
     }
 
@@ -227,19 +192,13 @@ def main():
         sources = [
             (index, interface)
             for index, interface in enumerate(interfaces)
-            if (
-                interface["interface_kind"] == kind
-                and interface["role"] == source_role
-            )
+            if (interface["interface_kind"] == kind and interface["role"] == source_role)
         ]
 
         targets = [
             (index, interface)
             for index, interface in enumerate(interfaces)
-            if (
-                interface["interface_kind"] == kind
-                and interface["role"] == target_role
-            )
+            if (interface["interface_kind"] == kind and interface["role"] == target_role)
         ]
 
         for source_index, source in sources:
@@ -251,9 +210,7 @@ def main():
                 if source_index == target_index:
                     continue
 
-                connections.append(
-                    make_connection(source, target)
-                )
+                connections.append(make_connection(source, target))
 
                 matched_indices.add(source_index)
                 matched_indices.add(target_index)
@@ -279,24 +236,21 @@ def main():
             reason = "Unresolved interface name"
 
         else:
-            reason = (
-                "No matching counterpart found in "
-                "the analyzed Python declarations"
-            )
+            reason = "No matching counterpart found in the analyzed Python declarations"
 
-        unmatched.append({
-            "package": interface["package"],
-            "source_file": interface["source_file"],
-            "line": interface["line"],
-            "interface_kind": interface["interface_kind"],
-            "interface_name": interface["interface_name"],
-            "interface_type": interface["interface_type"],
-            "role": interface["role"],
-            "resolution_status": (
-                interface["resolution_status"]
-            ),
-            "reason": reason,
-        })
+        unmatched.append(
+            {
+                "package": interface["package"],
+                "source_file": interface["source_file"],
+                "line": interface["line"],
+                "interface_kind": interface["interface_kind"],
+                "interface_name": interface["interface_name"],
+                "interface_type": interface["interface_type"],
+                "role": interface["role"],
+                "resolution_status": (interface["resolution_status"]),
+                "reason": reason,
+            }
+        )
 
     write_csv(
         CONNECTIONS_FILE,
@@ -310,10 +264,7 @@ def main():
         unmatched,
     )
 
-    counts = Counter(
-        row["interface_kind"]
-        for row in connections
-    )
+    counts = Counter(row["interface_kind"] for row in connections)
 
     print()
     print("ROS 2 Automatic Connection Analysis")

@@ -33,14 +33,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SOURCE_ROOT = REPO_ROOT / "code"
-OUTPUT_FILE = (
-    REPO_ROOT
-    / "doc"
-    / "architecture_analysis"
-    / "generated"
-    / "interfaces"
-    / "ros2_interfaces_v3.csv"
-)
+OUTPUT_FILE = REPO_ROOT / "doc" / "architecture_analysis" / "generated" / "interfaces" / "ros2_interfaces_v3.csv"
 
 INTERFACE_METHODS = {
     "create_publisher": ("topic", "publisher"),
@@ -143,13 +136,9 @@ def combine_values(left, right):
     else:
         status = "resolved_static"
 
-    sources = sorted(set(
-        filter(None, [left.source, right.source])
-    ))
+    sources = sorted(set(filter(None, [left.source, right.source])))
 
-    notes = sorted(set(
-        filter(None, [left.note, right.note])
-    ))
+    notes = sorted(set(filter(None, [left.note, right.note])))
 
     return ResolvedValue(
         value=left.value + right.value,
@@ -176,16 +165,10 @@ def get_parameter_name(node):
         if method == "get_parameter":
             name_node = get_argument(node, 0, ["name"])
 
-            if (
-                isinstance(name_node, ast.Constant)
-                and isinstance(name_node.value, str)
-            ):
+            if isinstance(name_node, ast.Constant) and isinstance(name_node.value, str):
                 return name_node.value
 
-        if (
-            method == "get_parameter_value"
-            and isinstance(node.func, ast.Attribute)
-        ):
+        if method == "get_parameter_value" and isinstance(node.func, ast.Attribute):
             return get_parameter_name(node.func.value)
 
     return None
@@ -215,19 +198,13 @@ def resolve_expression(node, environment, parameters):
 
     if isinstance(node, ast.Attribute):
         if isinstance(node.value, ast.Name):
-            return environment.get(
-                f"{node.value.id}.{node.attr}"
-            )
+            return environment.get(f"{node.value.id}.{node.attr}")
 
         return None
 
     if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
-        left = resolve_expression(
-            node.left, environment, parameters
-        )
-        right = resolve_expression(
-            node.right, environment, parameters
-        )
+        left = resolve_expression(node.left, environment, parameters)
+        right = resolve_expression(node.right, environment, parameters)
 
         return combine_values(left, right)
 
@@ -249,15 +226,10 @@ def resolve_expression(node, environment, parameters):
                 )
 
             elif isinstance(part, ast.FormattedValue):
-                if (
-                    part.format_spec is not None
-                    or part.conversion != -1
-                ):
+                if part.format_spec is not None or part.conversion != -1:
                     return None
 
-                value = resolve_expression(
-                    part.value, environment, parameters
-                )
+                value = resolve_expression(part.value, environment, parameters)
 
             else:
                 return None
@@ -289,30 +261,21 @@ def get_constructor_defaults(function):
 
     defaults = {}
 
-    positional = (
-        function.args.posonlyargs
-        + function.args.args
-    )
+    positional = function.args.posonlyargs + function.args.args
 
     offset = len(positional) - len(function.args.defaults)
 
     for index, default_node in enumerate(function.args.defaults):
         argument = positional[offset + index]
 
-        if (
-            isinstance(default_node, ast.Constant)
-            and isinstance(default_node.value, str)
-        ):
+        if isinstance(default_node, ast.Constant) and isinstance(default_node.value, str):
             defaults[argument.arg] = default_node.value
 
     for argument, default_node in zip(
         function.args.kwonlyargs,
         function.args.kw_defaults,
     ):
-        if (
-            isinstance(default_node, ast.Constant)
-            and isinstance(default_node.value, str)
-        ):
+        if isinstance(default_node, ast.Constant) and isinstance(default_node.value, str):
             defaults[argument.arg] = default_node.value
 
     return defaults
@@ -349,16 +312,9 @@ def resolve_constructor_arguments(
 
     calls = constructor_calls.get(class_name, [])
 
-    positional = (
-        constructor.args.posonlyargs
-        + constructor.args.args
-    )
+    positional = constructor.args.posonlyargs + constructor.args.args
 
-    positional = [
-        argument
-        for argument in positional
-        if argument.arg != "self"
-    ]
+    positional = [argument for argument in positional if argument.arg != "self"]
 
     result = {}
 
@@ -384,10 +340,7 @@ def resolve_constructor_arguments(
             if value_node is None:
                 observed.append(default_value)
 
-            elif (
-                isinstance(value_node, ast.Constant)
-                and isinstance(value_node.value, str)
-            ):
+            elif isinstance(value_node, ast.Constant) and isinstance(value_node.value, str):
                 observed.append(value_node.value)
 
             else:
@@ -410,10 +363,7 @@ def resolve_constructor_arguments(
                 value=value,
                 status=status,
                 source=source,
-                note=(
-                    f"Constructor calls examined: {len(calls)}; "
-                    "not runtime-verified"
-                ),
+                note=(f"Constructor calls examined: {len(calls)}; not runtime-verified"),
             )
 
         elif not calls:
@@ -421,17 +371,13 @@ def resolve_constructor_arguments(
                 value=default_value,
                 status="resolved_constructor_default",
                 source="constructor_default",
-                note=(
-                    "No direct constructor call identified; "
-                    "default may be overridden"
-                ),
+                note=("No direct constructor call identified; default may be overridden"),
             )
 
     return result
 
 
 class InterfaceVisitor(ast.NodeVisitor):
-
     def __init__(
         self,
         package,
@@ -520,11 +466,7 @@ class InterfaceVisitor(ast.NodeVisitor):
             **self.class_attributes,
         }
 
-        arguments = (
-            node.args.posonlyargs
-            + node.args.args
-            + node.args.kwonlyargs
-        )
+        arguments = node.args.posonlyargs + node.args.args + node.args.kwonlyargs
 
         for argument in arguments:
             self.environment.pop(argument.arg, None)
@@ -542,12 +484,7 @@ class InterfaceVisitor(ast.NodeVisitor):
             self.visit(statement)
 
         if node.name == "__init__":
-            self.class_attributes = {
-                key: value
-                for key, value in self.environment.items()
-                if key.startswith("self.")
-                and value is not None
-            }
+            self.class_attributes = {key: value for key, value in self.environment.items() if key.startswith("self.") and value is not None}
 
         self.environment = previous_environment
 
@@ -614,10 +551,7 @@ class InterfaceVisitor(ast.NodeVisitor):
             ["value", "default_value"],
         )
 
-        if not (
-            isinstance(name_node, ast.Constant)
-            and isinstance(name_node.value, str)
-        ):
+        if not (isinstance(name_node, ast.Constant) and isinstance(name_node.value, str)):
             return
 
         resolved = resolve_expression(
@@ -633,10 +567,7 @@ class InterfaceVisitor(ast.NodeVisitor):
             value=resolved.value,
             status="resolved_parameter_default",
             source=f"ros_parameter:{name_node.value}",
-            note=(
-                "ROS 2 parameter default; "
-                "launch/YAML overrides not evaluated"
-            ),
+            note=("ROS 2 parameter default; launch/YAML overrides not evaluated"),
         )
 
     def _extract_interface(self, node):
@@ -644,28 +575,16 @@ class InterfaceVisitor(ast.NodeVisitor):
         interface_kind, role = INTERFACE_METHODS[method]
 
         if method in ("create_publisher", "create_subscription"):
-            type_node = get_argument(
-                node, 0, ["msg_type"]
-            )
-            name_node = get_argument(
-                node, 1, ["topic"]
-            )
+            type_node = get_argument(node, 0, ["msg_type"])
+            name_node = get_argument(node, 1, ["topic"])
 
         elif method in ("create_client", "create_service"):
-            type_node = get_argument(
-                node, 0, ["srv_type"]
-            )
-            name_node = get_argument(
-                node, 1, ["srv_name"]
-            )
+            type_node = get_argument(node, 0, ["srv_type"])
+            name_node = get_argument(node, 1, ["srv_name"])
 
         else:
-            type_node = get_argument(
-                node, 1, ["action_type"]
-            )
-            name_node = get_argument(
-                node, 2, ["action_name"]
-            )
+            type_node = get_argument(node, 1, ["action_type"])
+            name_node = get_argument(node, 2, ["action_name"])
 
         resolved = resolve_expression(
             name_node,
@@ -676,13 +595,10 @@ class InterfaceVisitor(ast.NodeVisitor):
         if resolved is None:
             interface_name = expression_to_text(name_node)
 
-            if (
-                isinstance(name_node, ast.Name)
-                and name_node.id in {
-                    "srv_name",
-                    "action_name",
-                }
-            ):
+            if isinstance(name_node, ast.Name) and name_node.id in {
+                "srv_name",
+                "action_name",
+            }:
                 resolution_status = "unresolved_interprocedural"
                 resolution_source = "function_argument"
 
@@ -690,9 +606,7 @@ class InterfaceVisitor(ast.NodeVisitor):
                 resolution_status = "unresolved"
                 resolution_source = "unknown"
 
-            resolution_note = (
-                "Name could not be determined statically"
-            )
+            resolution_note = "Name could not be determined statically"
 
         else:
             interface_name = resolved.value
@@ -711,9 +625,7 @@ class InterfaceVisitor(ast.NodeVisitor):
             "resolution_status": resolution_status,
             "resolution_source": resolution_source,
             "resolution_note": resolution_note,
-            "activation_condition": " AND ".join(
-                self.conditions
-            ),
+            "activation_condition": " AND ".join(self.conditions),
         }
 
     def visit_If(self, node):
@@ -749,10 +661,7 @@ class InterfaceVisitor(ast.NodeVisitor):
             (node.finalbody, "finally"),
         ]
 
-        branches.extend(
-            (handler.body, "except")
-            for handler in node.handlers
-        )
+        branches.extend((handler.body, "except") for handler in node.handlers)
 
         self._visit_uncertain_branches(*branches)
 
@@ -781,9 +690,7 @@ class InterfaceVisitor(ast.NodeVisitor):
 
 def extract_from_file(source_file):
     try:
-        tree = ast.parse(
-            source_file.read_text(encoding="utf-8")
-        )
+        tree = ast.parse(source_file.read_text(encoding="utf-8"))
 
     except (SyntaxError, UnicodeError) as error:
         print(f"Skipping {source_file}: {error}")
@@ -809,15 +716,10 @@ def main():
     interfaces = []
 
     for source_file in sorted(SOURCE_ROOT.rglob("*.py")):
-        if any(
-            part in {"test", "tests"}
-            for part in source_file.parts
-        ):
+        if any(part in {"test", "tests"} for part in source_file.parts):
             continue
 
-        interfaces.extend(
-            extract_from_file(source_file)
-        )
+        interfaces.extend(extract_from_file(source_file))
 
     interfaces.sort(
         key=lambda row: (
@@ -845,10 +747,7 @@ def main():
         writer.writeheader()
         writer.writerows(interfaces)
 
-    counts = Counter(
-        row["resolution_status"]
-        for row in interfaces
-    )
+    counts = Counter(row["resolution_status"] for row in interfaces)
 
     print()
     print("ROS 2 Interface Extractor v3")
@@ -858,11 +757,7 @@ def main():
     for status, count in sorted(counts.items()):
         print(f"{status}: {count}")
 
-    unresolved = sum(
-        count
-        for status, count in counts.items()
-        if status.startswith("unresolved")
-    )
+    unresolved = sum(count for status, count in counts.items() if status.startswith("unresolved"))
 
     print(f"Resolved: {len(interfaces) - unresolved}")
     print(f"Unresolved: {unresolved}")

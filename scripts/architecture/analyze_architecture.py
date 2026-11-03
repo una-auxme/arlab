@@ -62,9 +62,7 @@ def count_csv_rows(path):
 
 def main():
     started = time.monotonic()
-    timestamp = datetime.now(timezone.utc).isoformat(
-        timespec="seconds"
-    )
+    timestamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
     print()
     print("ROS 2 Architecture Analysis Pipeline")
@@ -79,9 +77,7 @@ def main():
         script_path = SCRIPTS / script
 
         if not script_path.is_file():
-            raise SystemExit(
-                f"ERROR: Missing script: {script_path}"
-            )
+            raise SystemExit(f"ERROR: Missing script: {script_path}")
 
         print(
             f"[{number}/{len(STEPS)}] {description}",
@@ -99,45 +95,25 @@ def main():
         duration = time.monotonic() - step_started
 
         if result.returncode != 0:
-            raise SystemExit(
-                f"ERROR: Step failed: {script} "
-                f"(exit code {result.returncode})"
-            )
+            raise SystemExit(f"ERROR: Step failed: {script} (exit code {result.returncode})")
 
         results.append((description, duration))
         print(f"    Completed in {duration:.2f}s\n")
 
-    missing = [
-        str(path)
-        for path in EXPECTED_OUTPUTS
-        if not path.is_file()
-    ]
+    missing = [str(path) for path in EXPECTED_OUTPUTS if not path.is_file()]
 
     if missing:
-        raise SystemExit(
-            "ERROR: Expected output files missing:\n"
-            + "\n".join(missing)
-        )
+        raise SystemExit("ERROR: Expected output files missing:\n" + "\n".join(missing))
 
-    interface_count = count_csv_rows(
-        INTERFACES / "ros2_interfaces_v3.csv"
-    )
+    interface_count = count_csv_rows(INTERFACES / "ros2_interfaces_v3.csv")
 
-    connection_count = count_csv_rows(
-        INTERFACES / "ros2_connections_auto.csv"
-    )
+    connection_count = count_csv_rows(INTERFACES / "ros2_connections_auto.csv")
 
-    unmatched_count = count_csv_rows(
-        INTERFACES / "ros2_unmatched_interfaces.csv"
-    )
+    unmatched_count = count_csv_rows(INTERFACES / "ros2_unmatched_interfaces.csv")
 
-    merged_count = count_csv_rows(
-        VALIDATION / "ros2_architecture_merged.csv"
-    )
+    merged_count = count_csv_rows(VALIDATION / "ros2_architecture_merged.csv")
 
-    review_count = count_csv_rows(
-        VALIDATION / "ros2_architecture_merge_review.csv"
-    )
+    review_count = count_csv_rows(VALIDATION / "ros2_architecture_merge_review.csv")
 
     total_duration = time.monotonic() - started
 
@@ -164,22 +140,21 @@ def main():
     ]
 
     for description, duration in results:
-        report_lines.append(
-            f"- {description}: {duration:.2f}s"
-        )
+        report_lines.append(f"- {description}: {duration:.2f}s")
 
-    report_lines.extend([
-        "",
-        "## Limitations",
-        "",
-        "- Static source analysis does not verify runtime communication.",
-        "- C++ and external packages may not be fully represented.",
-        "- Configured or conditional interfaces may differ at runtime.",
-        "- Manual architecture entries are preserved, "
-        "but are not automatically verified against current code.",
-        "- Component mappings are partly manually maintained.",
-        "",
-    ])
+    report_lines.extend(
+        [
+            "",
+            "## Limitations",
+            "",
+            "- Static source analysis does not verify runtime communication.",
+            "- C++ and external packages may not be fully represented.",
+            "- Configured or conditional interfaces may differ at runtime.",
+            "- Manual architecture entries are preserved, but are not automatically verified against current code.",
+            "- Component mappings are partly manually maintained.",
+            "",
+        ]
+    )
 
     REPORT.write_text(
         "\n".join(report_lines),

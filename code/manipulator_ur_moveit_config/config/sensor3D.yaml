@@ -3,18 +3,34 @@ octomap_resolution: 0.02
 octomap_frame: world
 
 sensors:
-  - camera_1_depth_image
+  - camera_1_cloud
+
+# Range-limited cloud from depth_clip_relay.py: pixels beyond 2 m are pulled in to 2.05 m,
+# i.e. beyond max_range -> MoveIt only clears along those rays (no voxel at the range limit).
+# This removes stale voxels in front of a background that is farther than 2 m.
+camera_1_cloud:
+    sensor_plugin: occupancy_map_monitor/PointCloudOctomapUpdater
+    point_cloud_topic: /camera_gripper/depth_clipped/points
+    max_range: 2.0
+    point_subsample: 1
+    padding_offset: 0.03
+    padding_scale: 1.0
+    max_update_rate: 15.0
+    filtered_cloud_topic: ""
+    ns: ""
+
+# Not used: the depth image updater cannot clear without inserting (far pixels become phantom voxels).
 
 camera_1_depth_image:
     sensor_plugin: occupancy_map_monitor/DepthImageOctomapUpdater
-    image_topic: /camera/depth/image_rect_raw
+    image_topic: /camera_gripper/depth_clipped/image_rect_raw  # clipped to 2 m + 424x240@15 by depth_clip_relay.py
     queue_size: 5
     near_clipping_plane_distance: 0.3
     far_clipping_plane_distance: 2.0
     shadow_threshold: 0.2
     padding_scale: 1.0
     padding_offset: 0.03
-    max_update_rate: 30.0  # = camera depth fps; faster updates clear stale voxels sooner
+    max_update_rate: 15.0  # = relayed depth fps
     filtered_cloud_topic: ""
     ns: ""
 

@@ -192,7 +192,6 @@ def generate_legend():
 def compose_svg(graph_path, legend_path, output_path):
     """Combine independently rendered SVGs side by side."""
     import copy
-    import re
     import xml.etree.ElementTree as ET
 
     ns = "http://www.w3.org/2000/svg"
@@ -321,7 +320,6 @@ def main():
 
     # Replace the original legend block with the extended version.
     old_legend = "\n".join(original.generate_legend())
-    new_legend = "\n".join(generate_legend())
 
     if old_legend not in dot:
         raise RuntimeError(

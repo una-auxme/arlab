@@ -1,0 +1,535 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:ns1="http://www.w3.org/1999/xlink" width="2158.00pt" height="1530.00pt" viewBox="0 0 2158.00 1530.00"><rect x="0" y="0" width="2158.00" height="1530.00" fill="#FFFFFF" /><g transform="translate(15.00,15.00)"><g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(7.2 759.95)">
+<title>Legend</title>
+<polygon fill="white" stroke="none" points="-7.2,7.2 -7.2,-759.95 757.2,-759.95 757.2,7.2 -7.2,7.2" />
+<g id="clust1" class="cluster">
+<title>cluster_diagram_legend</title>
+</g>
+
+<g id="node1" class="node">
+<title>diagram_legend</title>
+<polygon fill="#ffffff" stroke="none" points="15.75,-16 15.75,-736.75 734.25,-736.75 734.25,-16 15.75,-16" />
+<polygon fill="#e2e8f0" stroke="none" points="16.75,-704.5 16.75,-735.75 733.25,-735.75 733.25,-704.5 16.75,-704.5" />
+<text xml:space="preserve" text-anchor="start" x="254.25" y="-716.45" font-family="Times,serif" font-size="14.00">            </text>
+<text xml:space="preserve" text-anchor="start" x="308.25" y="-716.45" font-family="Times,serif" font-weight="bold" font-size="14.00">DIAGRAM LEGEND</text>
+<text xml:space="preserve" text-anchor="start" x="459.75" y="-716.45" font-family="Times,serif" font-size="14.00">        </text>
+<text xml:space="preserve" text-anchor="start" x="23.75" y="-685.2" font-family="Times,serif" font-size="14.00">            </text>
+<text xml:space="preserve" text-anchor="start" x="77.75" y="-685.2" font-family="Times,serif" font-weight="bold" font-size="14.00">Communication Type</text>
+<text xml:space="preserve" text-anchor="start" x="243.5" y="-685.2" font-family="Times,serif" font-size="14.00">        </text>
+<text xml:space="preserve" text-anchor="start" x="23.75" y="-653.95" font-family="Times,serif" font-size="14.00">            </text>
+<text xml:space="preserve" text-anchor="start" x="77.75" y="-653.95" font-family="Times,serif" font-size="14.00" fill="#0077b6">━━━━━━</text>
+<text xml:space="preserve" text-anchor="start" x="127.25" y="-653.95" font-family="Times,serif" font-size="14.00">        </text>
+<text xml:space="preserve" text-anchor="start" x="177.25" y="-652.95" font-family="Times,serif" font-size="14.00">Action</text>
+<text xml:space="preserve" text-anchor="start" x="23.75" y="-622.7" font-family="Times,serif" font-size="14.00">            </text>
+<text xml:space="preserve" text-anchor="start" x="77.75" y="-622.7" font-family="Times,serif" font-size="14.00" fill="#00854a">━━━━━━</text>
+<text xml:space="preserve" text-anchor="start" x="127.25" y="-622.7" font-family="Times,serif" font-size="14.00">        </text>
+<text xml:space="preserve" text-anchor="start" x="177.25" y="-621.7" font-family="Times,serif" font-size="14.00">Service</text>
+<text xml:space="preserve" text-anchor="start" x="23.75" y="-591.45" font-family="Times,serif" font-size="14.00">            </text>
+<text xml:space="preserve" text-anchor="start" x="77.75" y="-591.45" font-family="Times,serif" font-size="14.00" fill="#cd5038">━━━━━━</text>
+<text xml:space="preserve" text-anchor="start" x="127.25" y="-591.45" font-family="Times,serif" font-size="14.00">        </text>
+<text xml:space="preserve" text-anchor="start" x="177.25" y="-590.45" font-family="Times,serif" font-size="14.00">Topic</text>
+<text xml:space="preserve" text-anchor="start" x="23.75" y="-560.2" font-family="Times,serif" font-size="14.00">            </text>
+<text xml:space="preserve" text-anchor="start" x="77.75" y="-560.2" font-family="Times,serif" font-weight="bold" font-size="14.00">Arrow Direction</text>
+<text xml:space="preserve" text-anchor="start" x="202.25" y="-560.2" font-family="Times,serif" font-size="14.00">        </text>
+<text xml:space="preserve" text-anchor="start" x="23.75" y="-527.95" font-family="Times,serif" font-size="14.00">Topic</text>
+<text xml:space="preserve" text-anchor="start" x="177.25" y="-527.95" font-family="Times,serif" font-size="14.00">Publisher to Subscriber</text>
+<text xml:space="preserve" text-anchor="start" x="23.75" y="-496.7" font-family="Times,serif" font-size="14.00">Service</text>
+<text xml:space="preserve" text-anchor="start" x="177.25" y="-496.7" font-family="Times,serif" font-size="14.00">Client to Server</text>
+<text xml:space="preserve" text-anchor="start" x="23.75" y="-465.45" font-family="Times,serif" font-size="14.00">Action</text>
+<text xml:space="preserve" text-anchor="start" x="177.25" y="-465.45" font-family="Times,serif" font-size="14.00">Client to Server</text>
+<text xml:space="preserve" text-anchor="start" x="23.75" y="-435.2" font-family="Times,serif" font-size="14.00">            </text>
+<text xml:space="preserve" text-anchor="start" x="77.75" y="-435.2" font-family="Times,serif" font-weight="bold" font-size="14.00">Integration Status (not runtime verified)</text>
+<text xml:space="preserve" text-anchor="start" x="401" y="-435.2" font-family="Times,serif" font-size="14.00">        </text>
+<text xml:space="preserve" text-anchor="start" x="68.75" y="-402.95" font-family="Times,serif" font-size="14.00">━━━━━━</text>
+<text xml:space="preserve" text-anchor="start" x="177.25" y="-402.95" font-family="Times,serif" font-size="14.00">Implemented / Configured (documented status)</text>
+<text xml:space="preserve" text-anchor="start" x="70.25" y="-371.7" font-family="Times,serif" font-size="14.00">┄ ┄ ┄ ┄</text>
+<text xml:space="preserve" text-anchor="start" x="177.25" y="-371.7" font-family="Times,serif" font-size="14.00">Conditional / Unconfirmed</text>
+<text xml:space="preserve" text-anchor="start" x="68.75" y="-340.45" font-family="Times,serif" font-size="14.00">· · · · · ·</text>
+<text xml:space="preserve" text-anchor="start" x="177.25" y="-340.45" font-family="Times,serif" font-size="14.00">Unconnected / Template only</text>
+<text xml:space="preserve" text-anchor="start" x="23.75" y="-310.2" font-family="Times,serif" font-size="14.00">            </text>
+<text xml:space="preserve" text-anchor="start" x="77.75" y="-310.2" font-family="Times,serif" font-weight="bold" font-size="14.00">Architecture Elements</text>
+<text xml:space="preserve" text-anchor="start" x="256.25" y="-310.2" font-family="Times,serif" font-size="14.00">        </text>
+<text xml:space="preserve" text-anchor="start" x="86.75" y="-277.95" font-family="Times,serif" font-size="14.00">▭</text>
+<text xml:space="preserve" text-anchor="start" x="177.25" y="-277.95" font-family="Times,serif" font-size="14.00">Subsystem: grouped functional area</text>
+<text xml:space="preserve" text-anchor="start" x="86.75" y="-246.7" font-family="Times,serif" font-size="14.00">□</text>
+<text xml:space="preserve" text-anchor="start" x="177.25" y="-246.7" font-family="Times,serif" font-size="14.00">Component: logical software component (may contain multiple ROS 2 nodes)</text>
+<text xml:space="preserve" text-anchor="start" x="87.5" y="-215.45" font-family="Times,serif" font-size="14.00">○</text>
+<text xml:space="preserve" text-anchor="start" x="177.25" y="-215.45" font-family="Times,serif" font-size="14.00">External system or application</text>
+<text xml:space="preserve" text-anchor="start" x="74" y="-184.2" font-family="Times,serif" font-size="14.00">┄ □ ┄</text>
+<text xml:space="preserve" text-anchor="start" x="177.25" y="-184.2" font-family="Times,serif" font-size="14.00">Unresolved communication endpoint</text>
+<text xml:space="preserve" text-anchor="start" x="23.75" y="-153.95" font-family="Times,serif" font-size="14.00">            </text>
+<text xml:space="preserve" text-anchor="start" x="77.75" y="-153.95" font-family="Times,serif" font-weight="bold" font-size="14.00">Evidence / Verification</text>
+<text xml:space="preserve" text-anchor="start" x="253.25" y="-153.95" font-family="Times,serif" font-size="14.00">        </text>
+<text xml:space="preserve" text-anchor="start" x="83.38" y="-121.7" font-family="Times,serif" font-size="14.00">[S]</text>
+<text xml:space="preserve" text-anchor="start" x="177.25" y="-121.7" font-family="Times,serif" font-size="14.00">            Documented and statically matched        </text>
+<text xml:space="preserve" text-anchor="start" x="81.12" y="-90.45" font-family="Times,serif" font-size="14.00">[M]</text>
+<text xml:space="preserve" text-anchor="start" x="177.25" y="-90.45" font-family="Times,serif" font-size="14.00">            Manual documentation only        </text>
+<text xml:space="preserve" text-anchor="start" x="83.38" y="-59.2" font-family="Times,serif" font-size="14.00">[A]</text>
+<text xml:space="preserve" text-anchor="start" x="177.25" y="-59.2" font-family="Times,serif" font-size="14.00">            Automatic candidate only        </text>
+<text xml:space="preserve" text-anchor="start" x="23.75" y="-27.95" font-family="Times,serif" font-size="14.00">            No runtime communication verification performed.        </text>
+<polygon fill="none" stroke="#cbd5e1" points="15.75,-16 15.75,-736.75 734.25,-736.75 734.25,-16 15.75,-16" />
+</g>
+</g>
+</g><g transform="translate(814.00,15.00)"><g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(25.2 1474.94)">
+<title>ROS2Architecture</title>
+<polygon fill="white" stroke="none" points="-25.2,25.2 -25.2,-1474.94 1303.63,-1474.94 1303.63,25.2 -25.2,25.2" />
+<text xml:space="preserve" text-anchor="middle" x="639.22" y="-1426.74" font-family="Helvetica,sans-Serif" font-size="20.00" fill="#0f172a">ROS 2 Communication Architecture</text>
+<text xml:space="preserve" text-anchor="middle" x="639.22" y="-1402.74" font-family="Helvetica,sans-Serif" font-size="20.00" fill="#0f172a">Static documentation snapshot: 2026-11-03 17:01:35</text>
+<g id="clust1" class="cluster">
+<title>cluster_0</title>
+<path fill="#f1f5f9" stroke="#cbd5e1" d="M412.8,-938.74C412.8,-938.74 535.72,-938.74 535.72,-938.74 541.72,-938.74 547.72,-944.74 547.72,-950.74 547.72,-950.74 547.72,-1143.74 547.72,-1143.74 547.72,-1149.74 541.72,-1155.74 535.72,-1155.74 535.72,-1155.74 412.8,-1155.74 412.8,-1155.74 406.8,-1155.74 400.8,-1149.74 400.8,-1143.74 400.8,-1143.74 400.8,-950.74 400.8,-950.74 400.8,-944.74 406.8,-938.74 412.8,-938.74" />
+<text xml:space="preserve" text-anchor="middle" x="474.26" y="-1138.44" font-family="Helvetica,sans-Serif" font-size="14.00" fill="#334155">HRI</text>
+</g>
+<g id="clust2" class="cluster">
+<title>cluster_1</title>
+<path fill="#f1f5f9" stroke="#cbd5e1" d="M41.75,-465.74C41.75,-465.74 172.92,-465.74 172.92,-465.74 178.92,-465.74 184.92,-471.74 184.92,-477.74 184.92,-477.74 184.92,-554.74 184.92,-554.74 184.92,-560.74 178.92,-566.74 172.92,-566.74 172.92,-566.74 41.75,-566.74 41.75,-566.74 35.75,-566.74 29.75,-560.74 29.75,-554.74 29.75,-554.74 29.75,-477.74 29.75,-477.74 29.75,-471.74 35.75,-465.74 41.75,-465.74" />
+<text xml:space="preserve" text-anchor="middle" x="107.34" y="-549.44" font-family="Helvetica,sans-Serif" font-size="14.00" fill="#334155">Decision Making</text>
+</g>
+<g id="clust3" class="cluster">
+<title>cluster_2</title>
+<path fill="#f1f5f9" stroke="#cbd5e1" d="M380.92,-704.74C380.92,-704.74 1258.43,-704.74 1258.43,-704.74 1264.43,-704.74 1270.43,-710.74 1270.43,-716.74 1270.43,-716.74 1270.43,-918.74 1270.43,-918.74 1270.43,-924.74 1264.43,-930.74 1258.43,-930.74 1258.43,-930.74 380.92,-930.74 380.92,-930.74 374.92,-930.74 368.92,-924.74 368.92,-918.74 368.92,-918.74 368.92,-716.74 368.92,-716.74 368.92,-710.74 374.92,-704.74 380.92,-704.74" />
+<text xml:space="preserve" text-anchor="middle" x="819.68" y="-913.44" font-family="Helvetica,sans-Serif" font-size="14.00" fill="#334155">Manipulation</text>
+</g>
+<g id="clust4" class="cluster">
+<title>cluster_3</title>
+<path fill="#f1f5f9" stroke="#cbd5e1" d="M20,-18.74C20,-18.74 194.67,-18.74 194.67,-18.74 200.67,-18.74 206.67,-24.74 206.67,-30.74 206.67,-30.74 206.67,-165.74 206.67,-165.74 206.67,-171.74 200.67,-177.74 194.67,-177.74 194.67,-177.74 20,-177.74 20,-177.74 14,-177.74 8,-171.74 8,-165.74 8,-165.74 8,-30.74 8,-30.74 8,-24.74 14,-18.74 20,-18.74" />
+<text xml:space="preserve" text-anchor="middle" x="107.34" y="-160.44" font-family="Helvetica,sans-Serif" font-size="14.00" fill="#334155">Movement</text>
+</g>
+<g id="clust5" class="cluster">
+<title>cluster_4</title>
+<path fill="#f1f5f9" stroke="#cbd5e1" d="M407.92,-184.74C407.92,-184.74 540.59,-184.74 540.59,-184.74 546.59,-184.74 552.59,-190.74 552.59,-196.74 552.59,-196.74 552.59,-273.74 552.59,-273.74 552.59,-279.74 546.59,-285.74 540.59,-285.74 540.59,-285.74 407.92,-285.74 407.92,-285.74 401.92,-285.74 395.92,-279.74 395.92,-273.74 395.92,-273.74 395.92,-196.74 395.92,-196.74 395.92,-190.74 401.92,-184.74 407.92,-184.74" />
+<text xml:space="preserve" text-anchor="middle" x="474.26" y="-268.44" font-family="Helvetica,sans-Serif" font-size="14.00" fill="#334155">Computer Vision</text>
+</g>
+<g id="clust6" class="cluster">
+<title>cluster_5</title>
+<path fill="#f1f5f9" stroke="#cbd5e1" d="M386.55,-369.74C386.55,-369.74 957.63,-369.74 957.63,-369.74 963.63,-369.74 969.63,-375.74 969.63,-381.74 969.63,-381.74 969.63,-567.74 969.63,-567.74 969.63,-573.74 963.63,-579.74 957.63,-579.74 957.63,-579.74 386.55,-579.74 386.55,-579.74 380.55,-579.74 374.55,-573.74 374.55,-567.74 374.55,-567.74 374.55,-381.74 374.55,-381.74 374.55,-375.74 380.55,-369.74 386.55,-369.74" />
+<text xml:space="preserve" text-anchor="middle" x="672.09" y="-562.44" font-family="Helvetica,sans-Serif" font-size="14.00" fill="#334155">Knowledgebase</text>
+</g>
+<g id="clust7" class="cluster">
+<title>cluster_6</title>
+<path fill="#f1f5f9" stroke="#cbd5e1" d="M22.25,-1155.74C22.25,-1155.74 192.42,-1155.74 192.42,-1155.74 198.42,-1155.74 204.42,-1161.74 204.42,-1167.74 204.42,-1167.74 204.42,-1244.74 204.42,-1244.74 204.42,-1250.74 198.42,-1256.74 192.42,-1256.74 192.42,-1256.74 22.25,-1256.74 22.25,-1256.74 16.25,-1256.74 10.25,-1250.74 10.25,-1244.74 10.25,-1244.74 10.25,-1167.74 10.25,-1167.74 10.25,-1161.74 16.25,-1155.74 22.25,-1155.74" />
+<text xml:space="preserve" text-anchor="middle" x="107.34" y="-1239.44" font-family="Helvetica,sans-Serif" font-size="14.00" fill="#334155">Perception</text>
+</g>
+<g id="clust8" class="cluster">
+<title>cluster_7</title>
+<path fill="#f1f5f9" stroke="#cbd5e1" d="M26,-1264.74C26,-1264.74 550.72,-1264.74 550.72,-1264.74 556.72,-1264.74 562.72,-1270.74 562.72,-1276.74 562.72,-1276.74 562.72,-1373.74 562.72,-1373.74 562.72,-1379.74 556.72,-1385.74 550.72,-1385.74 550.72,-1385.74 26,-1385.74 26,-1385.74 20,-1385.74 14,-1379.74 14,-1373.74 14,-1373.74 14,-1276.74 14,-1276.74 14,-1270.74 20,-1264.74 26,-1264.74" />
+<text xml:space="preserve" text-anchor="middle" x="288.36" y="-1368.44" font-family="Helvetica,sans-Serif" font-size="14.00" fill="#334155">Safety</text>
+</g>
+
+<g id="connection_22" class="edge">
+<title>PyQt6 UI-&gt;Unconnected</title>
+<g id="a_connection_22"><a ns1:title="Source: PyQt6 UI&#10;Target: Unconnected&#10;Kind: topic&#10;Interface: /ui_action&#10;Type: std_msgs/msg/String&#10;Integration status: unconnected&#10;Evidence: [M]&#10;Merge status: manual_only&#10;Documentation source: manual&#10;Static match: no&#10;Source reference: arlab_ui/zirbi_display.py&#10;Notes: Prototype UI action feedback">
+<path fill="none" stroke="#cd5038" stroke-width="1.5" stroke-dasharray="1,5" d="M512.02,-1090C582.18,-1084.77 735.62,-1073.33 819.67,-1067.06" />
+<polygon fill="#cd5038" stroke="#cd5038" stroke-width="1.5" points="819.77,-1069.69 827.05,-1066.51 819.38,-1064.45 819.77,-1069.69" />
+</a>
+</g>
+<text xml:space="preserve" text-anchor="middle" x="669.09" y="-1109.08" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#cd5038">[M] /ui_action</text>
+<text xml:space="preserve" text-anchor="middle" x="669.09" y="-1097.83" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#cd5038">[std_msgs/msg/String]</text>
+<text xml:space="preserve" text-anchor="middle" x="669.09" y="-1086.58" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#cd5038">(unconnected)</text>
+</g>
+
+<g id="connection_23" class="edge">
+<title>Whisper-&gt;Unconnected</title>
+<g id="a_connection_23"><a ns1:title="Source: Whisper&#10;Target: Unconnected&#10;Kind: topic&#10;Interface: /whisper/transcript&#10;Type: WhisperTranscript&#10;Integration status: unconnected&#10;Evidence: [M]&#10;Merge status: manual_only&#10;Documentation source: manual&#10;Static match: no&#10;Source reference: arlab_whisper/whisper_node.py&#10;Notes: No consumer identified">
+<path fill="none" stroke="#cd5038" stroke-width="1.5" stroke-dasharray="1,5" d="M509.89,-1034.04C531.16,-1033.65 558.95,-1033.19 583.59,-1032.99 659.59,-1032.38 679.12,-1024 754.59,-1032.99 776.24,-1035.58 799.6,-1040.63 820.08,-1045.85" />
+<polygon fill="#cd5038" stroke="#cd5038" stroke-width="1.5" points="819.15,-1048.32 827.07,-1047.68 820.48,-1043.24 819.15,-1048.32" />
+</a>
+</g>
+<text xml:space="preserve" text-anchor="middle" x="669.09" y="-1058.19" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#cd5038">[M] /whisper/transcript</text>
+<text xml:space="preserve" text-anchor="middle" x="669.09" y="-1046.94" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#cd5038">[WhisperTranscript]</text>
+<text xml:space="preserve" text-anchor="middle" x="669.09" y="-1035.69" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#cd5038">(unconnected)</text>
+</g>
+
+<g id="connection_21" class="edge">
+<title>Decision Making-&gt;PyQt6 UI</title>
+<g id="a_connection_21"><a ns1:title="Source: Decision Making&#10;Target: PyQt6 UI&#10;Kind: topic&#10;Interface: /tts_output&#10;Type: std_msgs/msg/String&#10;Integration status: implemented&#10;Evidence: [S]&#10;Merge status: matched&#10;Documentation source: manual+automatic&#10;Static match: yes&#10;Source reference: arlab_ui/zirbi_display.py&#10;Target reference: code/arlab_ui/arlab_ui/zirbi_display.py:229&#10;Source resolution: literal&#10;Target resolution: resolved_constructor_default&#10;Target activation: try&#10;Notes: UI displays speech output; Additional static source reference: code/arlab_decision_making/arlab_decision_making/behaviours/common/speech.py:104; Matching source declarations found; runtime communication not verified">
+<path fill="none" stroke="#cd5038" stroke-width="1.5" d="M108.29,-522.17C109,-586.89 118.68,-807.73 214.67,-951.74 261.66,-1022.24 292.62,-1026.93 368.92,-1063.74 387.23,-1072.58 408.69,-1079.13 427.37,-1083.74" />
+<polygon fill="#cd5038" stroke="#cd5038" stroke-width="1.5" points="426.75,-1086.29 434.65,-1085.46 427.95,-1081.18 426.75,-1086.29" />
+</a>
+</g>
+<text xml:space="preserve" text-anchor="middle" x="287.8" y="-1073.42" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#cd5038">[S] /tts_output</text>
+<text xml:space="preserve" text-anchor="middle" x="287.8" y="-1062.17" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#cd5038">[std_msgs/msg/String]</text>
+</g>
+
+<g id="connection_20" class="edge">
+<title>Decision Making-&gt;Text To Speech</title>
+<g id="a_connection_20"><a ns1:title="Source: Decision Making&#10;Target: Text To Speech&#10;Kind: topic&#10;Interface: /tts_output&#10;Type: std_msgs/msg/String&#10;Integration status: implemented&#10;Evidence: [M]&#10;Merge status: manual_only&#10;Documentation source: manual&#10;Static match: no&#10;Source reference: arlab_decision_making/behaviours/common/speech.py&#10;Notes: Moshi TTS subscribes to relative tts_output">
+<path fill="none" stroke="#cd5038" stroke-width="1.5" d="M117.86,-522.19C135.96,-556.96 176.87,-634.43 214.67,-697.74 230.82,-724.8 344.52,-915.81 368.92,-935.74 381.39,-945.94 396.7,-953.82 411.72,-959.83" />
+<polygon fill="#cd5038" stroke="#cd5038" stroke-width="1.5" points="410.43,-962.15 418.37,-962.35 412.29,-957.24 410.43,-962.15" />
+</a>
+</g>
+<text xml:space="preserve" text-anchor="middle" x="287.8" y="-938.92" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#cd5038">[M] /tts_output</text>
+<text xml:space="preserve" text-anchor="middle" x="287.8" y="-927.67" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#cd5038">[std_msgs/msg/String]</text>
+</g>
+
+<g id="connection_1" class="edge">
+<title>Decision Making-&gt;Manipulation Orchestrator</title>
+<g id="a_connection_1"><a ns1:title="Source: Decision Making&#10;Target: Manipulation Orchestrator&#10;Kind: action&#10;Interface: /manipulation/action&#10;Type: ManipulationAction&#10;Integration status: implemented&#10;Evidence: [M]&#10;Merge status: manual_only&#10;Documentation source: manual&#10;Static match: no&#10;Source reference: arlab_decision_making/behaviours/manipulation/generic_manipulation.py&#10;Notes: Action client through RosActionBehaviour">
+<path fill="none" stroke="#0077b6" stroke-width="1.5" d="M136.06,-522.06C201.33,-565.16 364.6,-672.98 437.32,-721.02" />
+<polygon fill="#0077b6" stroke="#0077b6" stroke-width="1.5" points="435.72,-723.1 443.43,-725.04 438.61,-718.72 435.72,-723.1" />
+</a>
+</g>
+<text xml:space="preserve" text-anchor="middle" x="287.8" y="-684.13" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#0077b6">[M] /manipulation/action</text>
+<text xml:space="preserve" text-anchor="middle" x="287.8" y="-672.88" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#0077b6">[ManipulationAction]</text>
+</g>
+
+<g id="connection_19" class="edge">
+<title>Decision Making-&gt;Computer Vision</title>
+<g id="a_connection_19"><a ns1:title="Source: Decision Making&#10;Target: Computer Vision&#10;Kind: action&#10;Interface: /vision/snapshot&#10;Type: VisionSnapshotAction&#10;Integration status: implemented&#10;Evidence: [M]&#10;Merge status: manual_only&#10;Documentation source: manual&#10;Static match: no&#10;Source reference: arlab_decision_making/behaviours/common/vision_snapshot.py&#10;Notes: Vision snapshot behaviour">
+<path fill="none" stroke="#0077b6" stroke-width="1.5" d="M113.03,-485.31C123.97,-446.09 154.89,-353.9 214.67,-304.24 269.35,-258.82 349.5,-238.63 406.04,-229.71" />
+<polygon fill="#0077b6" stroke="#0077b6" stroke-width="1.5" points="406.34,-232.32 413.37,-228.6 405.56,-227.12 406.34,-232.32" />
+</a>
+</g>
+<text xml:space="preserve" text-anchor="middle" x="287.8" y="-318.19" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#0077b6">[M] /vision/snapshot</text>
+<text xml:space="preserve" text-anchor="middle" x="287.8" y="-306.94" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#0077b6">[VisionSnapshotAction]</text>
+</g>
+
+<g id="connection_17" class="edge">
+<title>Decision Making-&gt;Knowledge Database</title>
+<g id="a_connection_17"><a ns1:title="Source: Decision Making&#10;Target: Knowledge Database&#10;Kind: service&#10;Interface: /arlab/knowledge/get_entities&#10;Type: GetEntities&#10;Integration status: implemented&#10;Evidence: [S]&#10;Merge status: matched&#10;Documentation source: manual+automatic&#10;Static match: yes&#10;Source reference: arlab_decision_making/behaviours/tdi_demo/main_controller.py&#10;Target reference: code/arlab_knowledge/arlab_knowledge/database_node.py:140&#10;Source resolution: literal&#10;Target resolution: resolved_static&#10;Notes: TDI demo; Additional static source reference: code/arlab_decision_making/arlab_decision_making/behaviours/tdi_demo/main_controller.py:73; Matching source declarations found; runtime communication not verified">
+<path fill="none" stroke="#00854a" stroke-width="1.5" d="M165.22,-489.87C217.97,-477.06 298.69,-457.6 368.92,-441.24 464.18,-419.06 486.38,-403.59 583.59,-392.74 659.12,-384.32 678.73,-388.13 754.59,-392.74 768.59,-393.6 783.44,-394.99 797.79,-396.59" />
+<polygon fill="#00854a" stroke="#00854a" stroke-width="1.5" points="797.13,-399.15 804.88,-397.4 797.73,-393.94 797.13,-399.15" />
+</a>
+</g>
+<text xml:space="preserve" text-anchor="middle" x="474.26" y="-455.19" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[S] /arlab/knowledge/get_entities</text>
+<text xml:space="preserve" text-anchor="middle" x="474.26" y="-443.94" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[GetEntities]</text>
+</g>
+
+<g id="connection_18" class="edge">
+<title>Decision Making-&gt;Knowledge Database</title>
+<g id="a_connection_18"><a ns1:title="Source: Decision Making&#10;Target: Knowledge Database&#10;Kind: service&#10;Interface: /arlab/knowledge/get_entity&#10;Type: GetEntity&#10;Integration status: implemented&#10;Evidence: [S]&#10;Merge status: matched&#10;Documentation source: manual+automatic&#10;Static match: yes&#10;Source reference: arlab_decision_making/behaviours/tdi_demo/main_controller.py&#10;Target reference: code/arlab_knowledge/arlab_knowledge/database_node.py:147&#10;Source resolution: literal&#10;Target resolution: resolved_static&#10;Notes: TDI demo; Additional static source reference: code/arlab_decision_making/arlab_decision_making/behaviours/tdi_demo/main_controller.py:74; Matching source declarations found; runtime communication not verified">
+<path fill="none" stroke="#00854a" stroke-width="1.5" d="M132.49,-485.48C176.57,-453.51 274.25,-388.85 368.92,-368.24 517.94,-335.8 696.61,-364.88 797.62,-387.39" />
+<polygon fill="#00854a" stroke="#00854a" stroke-width="1.5" points="797.05,-389.95 804.94,-389.04 798.2,-384.83 797.05,-389.95" />
+</a>
+</g>
+<text xml:space="preserve" text-anchor="middle" x="474.26" y="-382.19" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[S] /arlab/knowledge/get_entity</text>
+<text xml:space="preserve" text-anchor="middle" x="474.26" y="-370.94" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[GetEntity]</text>
+</g>
+
+<g id="connection_2" class="edge">
+<title>Manipulation Orchestrator-&gt;Manipulation C++ Orchestrator</title>
+<g id="a_connection_2"><a ns1:title="Source: Manipulation Orchestrator&#10;Target: Manipulation C++ Orchestrator&#10;Kind: action&#10;Interface: /orchestrator/action&#10;Type: OrchestratorAction&#10;Integration status: configured&#10;Evidence: [M]&#10;Merge status: manual_only&#10;Documentation source: manual&#10;Static match: no&#10;Source reference: arlab_manipulation/orchestrator.py&#10;Notes: Python to C++ manipulation orchestration">
+<path fill="none" stroke="#0077b6" stroke-width="1.5" d="M560.08,-744.32C620.83,-744.02 703.15,-743.61 768.74,-743.29" />
+<polygon fill="#0077b6" stroke="#0077b6" stroke-width="1.5" points="768.54,-745.91 776.03,-743.25 768.51,-740.66 768.54,-745.91" />
+</a>
+</g>
+<text xml:space="preserve" text-anchor="middle" x="669.09" y="-758.1" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#0077b6">[M] /orchestrator/action</text>
+<text xml:space="preserve" text-anchor="middle" x="669.09" y="-746.85" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#0077b6">[OrchestratorAction]</text>
+</g>
+
+<g id="connection_5" class="edge">
+<title>Manipulation Orchestrator-&gt;Gripping Parameter Service</title>
+<g id="a_connection_5"><a ns1:title="Source: Manipulation Orchestrator&#10;Target: Gripping Parameter Service&#10;Kind: service&#10;Interface: GetGrippingParameter&#10;Type: GrippingParameter&#10;Integration status: configured&#10;Evidence: [S]&#10;Merge status: matched&#10;Documentation source: manual+automatic&#10;Static match: yes&#10;Source reference: arlab_manipulation/orchestrator.py&#10;Target reference: code/arlab_manipulation/arlab_manipulation/services/gripping_parameter.py:57&#10;Source resolution: literal&#10;Target resolution: literal&#10;Notes: Relative service name; Additional static source reference: code/arlab_manipulation/arlab_manipulation/orchestrator.py:109; Matching source declarations found; runtime communication not verified">
+<path fill="none" stroke="#00854a" stroke-width="1.5" d="M542.84,-763.2C556.26,-766.41 570.32,-769.45 583.59,-771.74 648.81,-783.03 722.98,-790.3 780.51,-794.75" />
+<polygon fill="#00854a" stroke="#00854a" stroke-width="1.5" points="780.02,-797.34 787.69,-795.29 780.41,-792.11 780.02,-797.34" />
+</a>
+</g>
+<text xml:space="preserve" text-anchor="middle" x="669.09" y="-806.23" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[S] GetGrippingParameter</text>
+<text xml:space="preserve" text-anchor="middle" x="669.09" y="-794.98" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[GrippingParameter]</text>
+</g>
+
+<g id="connection_6" class="edge">
+<title>Manipulation Orchestrator-&gt;Force Monitor</title>
+<g id="a_connection_6"><a ns1:title="Source: Manipulation Orchestrator&#10;Target: Force Monitor&#10;Kind: service&#10;Interface: /object_dropped&#10;Type: GetObjectDropped&#10;Integration status: configured&#10;Evidence: [S]&#10;Merge status: matched&#10;Documentation source: manual+automatic&#10;Static match: yes&#10;Source reference: arlab_manipulation/orchestrator.py&#10;Target reference: code/arlab_manipulation/arlab_manipulation/force_monitor.py:82&#10;Source resolution: literal&#10;Target resolution: literal&#10;Notes: Query dropped object status; Additional static source reference: code/arlab_manipulation/arlab_manipulation/orchestrator.py:122; Matching source declarations found; runtime communication not verified">
+<path fill="none" stroke="#00854a" stroke-width="1.5" d="M494.54,-763.16C514.87,-781.26 548.73,-807.87 583.59,-819.74 777.8,-885.92 1026.95,-856.13 1139.15,-837.16" />
+<polygon fill="#00854a" stroke="#00854a" stroke-width="1.5" points="1139.42,-839.78 1146.37,-835.92 1138.53,-834.6 1139.42,-839.78" />
+</a>
+</g>
+<text xml:space="preserve" text-anchor="middle" x="878.55" y="-874.49" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[S] /object_dropped</text>
+<text xml:space="preserve" text-anchor="middle" x="878.55" y="-863.24" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[GetObjectDropped]</text>
+</g>
+
+<g id="connection_3" class="edge">
+<title>Manipulation Orchestrator-&gt;Knowledge Database</title>
+<g id="a_connection_3"><a ns1:title="Source: Manipulation Orchestrator&#10;Target: Knowledge Database&#10;Kind: service&#10;Interface: /arlab/knowledge/get_entity&#10;Type: GetEntity&#10;Integration status: implemented&#10;Evidence: [S]&#10;Merge status: matched&#10;Documentation source: manual+automatic&#10;Static match: yes&#10;Source reference: arlab_manipulation/orchestrator.py&#10;Target reference: code/arlab_knowledge/arlab_knowledge/database_node.py:147&#10;Source resolution: resolved_static&#10;Target resolution: resolved_static&#10;Notes: Retrieve entity metadata; Additional static source reference: code/arlab_manipulation/arlab_manipulation/orchestrator.py:105; Matching source declarations found; runtime communication not verified">
+<path fill="none" stroke="#00854a" stroke-width="1.5" d="M484.94,-726.54C508.52,-682.48 568.14,-572.94 583.59,-562.24 647.05,-518.29 686.22,-567.6 754.59,-531.74 799.5,-508.19 838.22,-462.48 859.66,-433.62" />
+<polygon fill="#00854a" stroke="#00854a" stroke-width="1.5" points="861.61,-435.4 863.91,-427.79 857.37,-432.31 861.61,-435.4" />
+</a>
+</g>
+<text xml:space="preserve" text-anchor="middle" x="669.09" y="-576.19" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[S] /arlab/knowledge/get_entity</text>
+<text xml:space="preserve" text-anchor="middle" x="669.09" y="-564.94" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[GetEntity]</text>
+</g>
+
+<g id="connection_4" class="edge">
+<title>Manipulation Orchestrator-&gt;Knowledge Database</title>
+<g id="a_connection_4"><a ns1:title="Source: Manipulation Orchestrator&#10;Target: Knowledge Database&#10;Kind: service&#10;Interface: /arlab/knowledge/get_shape&#10;Type: GetShape&#10;Integration status: implemented&#10;Evidence: [S]&#10;Merge status: matched&#10;Documentation source: manual+automatic&#10;Static match: yes&#10;Source reference: arlab_manipulation/orchestrator.py&#10;Target reference: code/arlab_knowledge/arlab_knowledge/database_node.py:154&#10;Source resolution: resolved_static&#10;Target resolution: resolved_static&#10;Notes: Retrieve entity geometry; Additional static source reference: code/arlab_manipulation/arlab_manipulation/orchestrator.py:106; Matching source declarations found; runtime communication not verified">
+<path fill="none" stroke="#00854a" stroke-width="1.5" d="M483.89,-726.42C499.25,-696.11 534.36,-636.13 583.59,-608.24 650.29,-570.46 689.18,-625.72 754.59,-585.74 812.74,-550.21 850.23,-475.62 867.14,-435.19" />
+<polygon fill="#00854a" stroke="#00854a" stroke-width="1.5" points="869.56,-436.21 869.95,-428.27 864.69,-434.23 869.56,-436.21" />
+</a>
+</g>
+<text xml:space="preserve" text-anchor="middle" x="669.09" y="-622.19" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[S] /arlab/knowledge/get_shape</text>
+<text xml:space="preserve" text-anchor="middle" x="669.09" y="-610.94" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[GetShape]</text>
+</g>
+
+<g id="connection_7" class="edge">
+<title>Manipulation C++ Orchestrator-&gt;Force Monitor</title>
+<g id="a_connection_7"><a ns1:title="Source: Manipulation C++ Orchestrator&#10;Target: Force Monitor&#10;Kind: service&#10;Interface: /force_monitor/activate&#10;Type: ActivateForceMonitor&#10;Integration status: configured&#10;Evidence: [M]&#10;Merge status: manual_only&#10;Documentation source: manual&#10;Static match: no&#10;Source reference: arlab_manipulation_cpp/src/force_monitor_switch.cpp&#10;Notes: Activate force monitoring">
+<path fill="none" stroke="#00854a" stroke-width="1.5" d="M950.36,-761.17C1006.99,-775.9 1085.49,-796.32 1138.95,-810.23" />
+<polygon fill="#00854a" stroke="#00854a" stroke-width="1.5" points="1138.18,-812.74 1146.1,-812.09 1139.51,-807.66 1138.18,-812.74" />
+</a>
+</g>
+<text xml:space="preserve" text-anchor="middle" x="1063.63" y="-819.64" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[M] /force_monitor/activate</text>
+<text xml:space="preserve" text-anchor="middle" x="1063.63" y="-808.39" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[ActivateForceMonitor]</text>
+</g>
+
+<g id="connection_8" class="edge">
+<title>Movement Orchestrator-&gt;Computer Vision</title>
+<g id="a_connection_8"><a ns1:title="Source: Movement Orchestrator&#10;Target: Computer Vision&#10;Kind: action&#10;Interface: /vision/snapshot&#10;Type: VisionSnapshotAction&#10;Integration status: implemented&#10;Evidence: [S]&#10;Merge status: matched&#10;Documentation source: manual+automatic&#10;Static match: yes&#10;Source reference: arlab_movement/movement_orchestrator.py&#10;Target reference: code/arlab_computer_vision/arlab_computer_vision/object_detection.py:447&#10;Source resolution: resolved_parameter_default&#10;Target resolution: literal&#10;Target activation: self._snapshot_mode&#10;Notes: Used for automatic map annotation; Additional static source reference: code/arlab_movement/arlab_movement/movement_orchestrator.py:135; Matching source declarations found; runtime communication not verified">
+<path fill="none" stroke="#0077b6" stroke-width="1.5" d="M170.65,-133.19C236.27,-152.61 339.2,-183.07 406.46,-202.98" />
+<polygon fill="#0077b6" stroke="#0077b6" stroke-width="1.5" points="405.59,-205.46 413.53,-205.07 407.08,-200.42 405.59,-205.46" />
+</a>
+</g>
+<text xml:space="preserve" text-anchor="middle" x="287.8" y="-203.28" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#0077b6">[S] /vision/snapshot</text>
+<text xml:space="preserve" text-anchor="middle" x="287.8" y="-192.03" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#0077b6">[VisionSnapshotAction]</text>
+</g>
+
+<g id="connection_9" class="edge">
+<title>Movement Orchestrator-&gt;Knowledge Database</title>
+<g id="a_connection_9"><a ns1:title="Source: Movement Orchestrator&#10;Target: Knowledge Database&#10;Kind: service&#10;Interface: /arlab/knowledge/add_map&#10;Type: AddMap&#10;Integration status: conditional&#10;Evidence: [S]&#10;Merge status: matched&#10;Documentation source: manual+automatic&#10;Static match: yes&#10;Source reference: arlab_movement/movement_orchestrator.py&#10;Target reference: code/arlab_knowledge/arlab_knowledge/database_node.py:210&#10;Source resolution: resolved_parameter_default&#10;Target resolution: resolved_static&#10;Source activation: self.save_to_database&#10;Notes: Only when database saving is enabled; Additional static source reference: code/arlab_movement/arlab_movement/movement_orchestrator.py:119; Matching source declarations found; runtime communication not verified">
+<path fill="none" stroke="#00854a" stroke-width="1.5" stroke-dasharray="5,2" d="M186.88,-106.55C338.35,-92.35 663.89,-70.16 754.59,-130.74 840.85,-188.36 867.18,-321.53 874.72,-379.7" />
+<polygon fill="#00854a" stroke="#00854a" stroke-width="1.5" points="872.11,-379.95 875.61,-387.09 877.32,-379.32 872.11,-379.95" />
+</a>
+</g>
+<text xml:space="preserve" text-anchor="middle" x="474.26" y="-118.44" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[S] /arlab/knowledge/add_map</text>
+<text xml:space="preserve" text-anchor="middle" x="474.26" y="-107.19" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[AddMap]</text>
+<text xml:space="preserve" text-anchor="middle" x="474.26" y="-95.94" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">(conditional)</text>
+</g>
+
+<g id="connection_27" class="edge">
+<title>Entity Placer-&gt;Knowledge Database</title>
+<g id="a_connection_27"><a ns1:title="Source: Entity Placer&#10;Target: Knowledge Database&#10;Kind: service&#10;Interface: /arlab/knowledge/add_entity&#10;Type: AddEntity&#10;Integration status: implemented&#10;Evidence: [S]&#10;Merge status: matched&#10;Documentation source: manual+automatic&#10;Static match: yes&#10;Source reference: code/arlab_movement/arlab_movement/entity_placer.py:125&#10;Target reference: code/arlab_knowledge/arlab_knowledge/database_node.py:175&#10;Source resolution: resolved_parameter_default&#10;Target resolution: resolved_static&#10;Notes: Statically verified AddEntity client/server connection; default service names match; runtime communication not verified; Matching source declarations found; runtime communication not verified">
+<path fill="none" stroke="#00854a" stroke-width="1.5" d="M155.65,-42.49C271.84,-10.64 574.83,52.94 754.59,-88.74 848.2,-162.53 870.61,-316.86 875.92,-379.96" />
+<polygon fill="#00854a" stroke="#00854a" stroke-width="1.5" points="873.3,-380.07 876.49,-387.35 878.53,-379.67 873.3,-380.07" />
+</a>
+</g>
+<text xml:space="preserve" text-anchor="middle" x="474.26" y="-21.86" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[S] /arlab/knowledge/add_entity</text>
+<text xml:space="preserve" text-anchor="middle" x="474.26" y="-10.61" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[AddEntity]</text>
+</g>
+
+<g id="connection_10" class="edge">
+<title>Computer Vision-&gt;Knowledge Database</title>
+<g id="a_connection_10"><a ns1:title="Source: Computer Vision&#10;Target: Knowledge Database&#10;Kind: service&#10;Interface: /arlab/knowledge/get_entities&#10;Type: GetEntities&#10;Integration status: configured&#10;Evidence: [S]&#10;Merge status: matched&#10;Documentation source: manual+automatic&#10;Static match: yes&#10;Source reference: arlab_computer_vision/object_detection.py&#10;Target reference: code/arlab_knowledge/arlab_knowledge/database_node.py:140&#10;Source resolution: resolved_static&#10;Target resolution: resolved_static&#10;Notes: Retrieve known entities; Additional static source reference: code/arlab_computer_vision/arlab_computer_vision/object_detection.py:507; Matching source declarations found; runtime communication not verified">
+<path fill="none" stroke="#00854a" stroke-width="1.5" d="M532.92,-226.89C609.03,-232.72 735.65,-243.8 754.59,-254.24 807.38,-283.35 845.83,-345.31 864.62,-380.97" />
+<polygon fill="#00854a" stroke="#00854a" stroke-width="1.5" points="862.17,-381.94 867.93,-387.42 866.84,-379.54 862.17,-381.94" />
+</a>
+</g>
+<text xml:space="preserve" text-anchor="middle" x="669.09" y="-268.19" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[S] /arlab/knowledge/get_entities</text>
+<text xml:space="preserve" text-anchor="middle" x="669.09" y="-256.94" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[GetEntities]</text>
+</g>
+
+<g id="connection_11" class="edge">
+<title>Computer Vision-&gt;Knowledge Database</title>
+<g id="a_connection_11"><a ns1:title="Source: Computer Vision&#10;Target: Knowledge Database&#10;Kind: service&#10;Interface: /arlab/knowledge/add_entity&#10;Type: AddEntity&#10;Integration status: configured&#10;Evidence: [S]&#10;Merge status: matched&#10;Documentation source: manual+automatic&#10;Static match: yes&#10;Source reference: arlab_computer_vision/object_detection.py&#10;Target reference: code/arlab_knowledge/arlab_knowledge/database_node.py:175&#10;Source resolution: resolved_static&#10;Target resolution: resolved_static&#10;Notes: Store detected entities; Additional static source reference: code/arlab_computer_vision/arlab_computer_vision/object_detection.py:517; Matching source declarations found; runtime communication not verified">
+<path fill="none" stroke="#00854a" stroke-width="1.5" d="M523.77,-204.31C582.47,-185.25 682.42,-163.53 754.59,-204.24 822.05,-242.3 856.68,-333.91 870.36,-380.11" />
+<polygon fill="#00854a" stroke="#00854a" stroke-width="1.5" points="867.76,-380.57 872.35,-387.06 872.81,-379.13 867.76,-380.57" />
+</a>
+</g>
+<text xml:space="preserve" text-anchor="middle" x="669.09" y="-218.19" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[S] /arlab/knowledge/add_entity</text>
+<text xml:space="preserve" text-anchor="middle" x="669.09" y="-206.94" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[AddEntity]</text>
+</g>
+
+<g id="connection_12" class="edge">
+<title>Computer Vision-&gt;Knowledge Database</title>
+<g id="a_connection_12"><a ns1:title="Source: Computer Vision&#10;Target: Knowledge Database&#10;Kind: service&#10;Interface: /arlab/knowledge/upd_shape&#10;Type: UpdShape&#10;Integration status: configured&#10;Evidence: [S]&#10;Merge status: matched&#10;Documentation source: manual+automatic&#10;Static match: yes&#10;Source reference: arlab_computer_vision/object_detection.py&#10;Target reference: code/arlab_knowledge/arlab_knowledge/database_node.py:238&#10;Source resolution: resolved_static&#10;Target resolution: resolved_static&#10;Notes: Store detected geometry; Additional static source reference: code/arlab_computer_vision/arlab_computer_vision/object_detection.py:522; Matching source declarations found; runtime communication not verified">
+<path fill="none" stroke="#00854a" stroke-width="1.5" d="M495.83,-204.35C516.38,-187.32 549.71,-163.18 583.59,-153.24 656.52,-131.86 690.21,-112.85 754.59,-153.24 835.59,-204.07 864.52,-324.99 873.72,-379.84" />
+<polygon fill="#00854a" stroke="#00854a" stroke-width="1.5" points="871.09,-380.04 874.86,-387.03 876.28,-379.22 871.09,-380.04" />
+</a>
+</g>
+<text xml:space="preserve" text-anchor="middle" x="669.09" y="-167.19" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[S] /arlab/knowledge/upd_shape</text>
+<text xml:space="preserve" text-anchor="middle" x="669.09" y="-155.94" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[UpdShape]</text>
+</g>
+
+<g id="connection_13" class="edge">
+<title>Computer Vision-&gt;Knowledge Database</title>
+<g id="a_connection_13"><a ns1:title="Source: Computer Vision&#10;Target: Knowledge Database&#10;Kind: service&#10;Interface: /arlab/knowledge/del_entities&#10;Type: DelEntities&#10;Integration status: configured&#10;Evidence: [S]&#10;Merge status: matched&#10;Documentation source: manual+automatic&#10;Static match: yes&#10;Source reference: arlab_computer_vision/object_detection.py&#10;Target reference: code/arlab_knowledge/arlab_knowledge/database_node.py:245&#10;Source resolution: resolved_static&#10;Target resolution: resolved_static&#10;Notes: Remove previous pickable entities; Additional static source reference: code/arlab_computer_vision/arlab_computer_vision/object_detection.py:512; Matching source declarations found; runtime communication not verified">
+<path fill="none" stroke="#00854a" stroke-width="1.5" d="M504.97,-241.07C526.14,-253.31 555.68,-268.75 583.59,-277.74 656.79,-301.33 684.58,-272.41 754.59,-304.24 794.87,-322.56 832.44,-357.9 855.19,-382.15" />
+<polygon fill="#00854a" stroke="#00854a" stroke-width="1.5" points="853.21,-383.88 860.22,-387.62 857.07,-380.32 853.21,-383.88" />
+</a>
+</g>
+<text xml:space="preserve" text-anchor="middle" x="669.09" y="-318.19" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[S] /arlab/knowledge/del_entities</text>
+<text xml:space="preserve" text-anchor="middle" x="669.09" y="-306.94" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[DelEntities]</text>
+</g>
+
+<g id="connection_14" class="edge">
+<title>Knowledge Visualization-&gt;Knowledge Database</title>
+<g id="a_connection_14"><a ns1:title="Source: Knowledge Visualization&#10;Target: Knowledge Database&#10;Kind: service&#10;Interface: /arlab/knowledge/get_entities&#10;Type: GetEntities&#10;Integration status: configured&#10;Evidence: [S]&#10;Merge status: matched&#10;Documentation source: manual+automatic&#10;Static match: yes&#10;Source reference: arlab_knowledge/knowledge_visualization.py&#10;Target reference: code/arlab_knowledge/arlab_knowledge/database_node.py:140&#10;Source resolution: resolved_static&#10;Target resolution: resolved_static&#10;Notes: Retrieve entities for RViz; Additional static source reference: code/arlab_knowledge/arlab_knowledge/knowledge_visualization.py:62; Matching source declarations found; runtime communication not verified">
+<path fill="none" stroke="#00854a" stroke-width="1.5" d="M511.26,-474.32C527.86,-464.9 547.27,-452.52 562.72,-438.74 573.9,-428.76 570.15,-418.89 583.59,-412.24 619.84,-394.31 723.85,-396.86 797.85,-401.4" />
+<polygon fill="#00854a" stroke="#00854a" stroke-width="1.5" points="797.25,-403.99 804.9,-401.85 797.58,-398.75 797.25,-403.99" />
+</a>
+</g>
+<text xml:space="preserve" text-anchor="middle" x="669.09" y="-426.19" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[S] /arlab/knowledge/get_entities</text>
+<text xml:space="preserve" text-anchor="middle" x="669.09" y="-414.94" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[GetEntities]</text>
+</g>
+
+<g id="connection_15" class="edge">
+<title>Knowledge Visualization-&gt;Knowledge Database</title>
+<g id="a_connection_15"><a ns1:title="Source: Knowledge Visualization&#10;Target: Knowledge Database&#10;Kind: service&#10;Interface: /arlab/knowledge/get_entity&#10;Type: GetEntity&#10;Integration status: configured&#10;Evidence: [S]&#10;Merge status: matched&#10;Documentation source: manual+automatic&#10;Static match: yes&#10;Source reference: arlab_knowledge/knowledge_visualization.py&#10;Target reference: code/arlab_knowledge/arlab_knowledge/database_node.py:147&#10;Source resolution: resolved_static&#10;Target resolution: resolved_static&#10;Notes: Retrieve individual entity; Additional static source reference: code/arlab_knowledge/arlab_knowledge/knowledge_visualization.py:67; Matching source declarations found; runtime communication not verified">
+<path fill="none" stroke="#00854a" stroke-width="1.5" d="M535.95,-474.27C551.4,-469.95 568.03,-465.63 583.59,-462.24 658.74,-445.91 679.05,-450.18 754.59,-435.74 768.61,-433.06 783.47,-429.93 797.83,-426.75" />
+<polygon fill="#00854a" stroke="#00854a" stroke-width="1.5" points="798.22,-429.36 804.96,-425.16 797.07,-424.23 798.22,-429.36" />
+</a>
+</g>
+<text xml:space="preserve" text-anchor="middle" x="669.09" y="-476.19" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[S] /arlab/knowledge/get_entity</text>
+<text xml:space="preserve" text-anchor="middle" x="669.09" y="-464.94" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[GetEntity]</text>
+</g>
+
+<g id="connection_16" class="edge">
+<title>Knowledge Visualization-&gt;Knowledge Database</title>
+<g id="a_connection_16"><a ns1:title="Source: Knowledge Visualization&#10;Target: Knowledge Database&#10;Kind: service&#10;Interface: /arlab/knowledge/get_shape&#10;Type: GetShape&#10;Integration status: configured&#10;Evidence: [S]&#10;Merge status: matched&#10;Documentation source: manual+automatic&#10;Static match: yes&#10;Source reference: arlab_knowledge/knowledge_visualization.py&#10;Target reference: code/arlab_knowledge/arlab_knowledge/database_node.py:154&#10;Source resolution: resolved_static&#10;Target resolution: resolved_static&#10;Notes: Retrieve geometry; Additional static source reference: code/arlab_knowledge/arlab_knowledge/knowledge_visualization.py:72; Matching source declarations found; runtime communication not verified">
+<path fill="none" stroke="#00854a" stroke-width="1.5" d="M554.4,-501.84C611.33,-505.75 689.26,-505.61 754.59,-485.74 790.23,-474.91 825.58,-450.71 849.16,-432.12" />
+<polygon fill="#00854a" stroke="#00854a" stroke-width="1.5" points="850.73,-434.22 854.92,-427.48 847.43,-430.13 850.73,-434.22" />
+</a>
+</g>
+<text xml:space="preserve" text-anchor="middle" x="669.09" y="-517.79" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[S] /arlab/knowledge/get_shape</text>
+<text xml:space="preserve" text-anchor="middle" x="669.09" y="-506.54" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#00854a">[GetShape]</text>
+</g>
+
+<g id="connection_26" class="edge">
+<title>Knowledge Visualization-&gt;RViz</title>
+<g id="a_connection_26"><a ns1:title="Source: Knowledge Visualization&#10;Target: RViz&#10;Kind: topic&#10;Interface: /arlab/knowledge/visualization&#10;Type: visualization_msgs/msg/MarkerArray&#10;Integration status: implemented&#10;Evidence: [M]&#10;Merge status: manual_only&#10;Documentation source: manual&#10;Static match: no&#10;Source reference: arlab_knowledge/knowledge_visualization.py&#10;Notes: Marker visualization">
+<path fill="none" stroke="#cd5038" stroke-width="1.5" d="M483.05,-511.15C497.58,-542.88 532.08,-607.25 583.59,-635.74 663.64,-680.03 775.03,-675.19 835.1,-668.2" />
+<polygon fill="#cd5038" stroke="#cd5038" stroke-width="1.5" points="835.27,-670.83 842.39,-667.3 834.62,-665.62 835.27,-670.83" />
+</a>
+</g>
+<text xml:space="preserve" text-anchor="middle" x="669.09" y="-686.65" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#cd5038">[M] /arlab/knowledge/visualization</text>
+<text xml:space="preserve" text-anchor="middle" x="669.09" y="-675.4" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#cd5038">[visualization_msgs/msg/MarkerArray]</text>
+</g>
+
+<g id="connection_25" class="edge">
+<title>Perception LiDAR Relay-&gt;Unconfirmed</title>
+<g id="a_connection_25"><a ns1:title="Source: Perception LiDAR Relay&#10;Target: Unconfirmed&#10;Kind: topic&#10;Interface: /relay_scan&#10;Type: sensor_msgs/msg/LaserScan&#10;Integration status: unconfirmed&#10;Evidence: [M]&#10;Merge status: manual_only&#10;Documentation source: manual&#10;Static match: no&#10;Source reference: arlab_perception/lidar_data.py&#10;Notes: No subscriber identified">
+<path fill="none" stroke="#cd5038" stroke-width="1.5" stroke-dasharray="5,2" d="M184.83,-1193.74C253.97,-1193.74 354.17,-1193.74 416.43,-1193.74" />
+<polygon fill="#cd5038" stroke="#cd5038" stroke-width="1.5" points="416.32,-1196.37 423.82,-1193.74 416.32,-1191.12 416.32,-1196.37" />
+</a>
+</g>
+<text xml:space="preserve" text-anchor="middle" x="287.8" y="-1218.94" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#cd5038">[M] /relay_scan</text>
+<text xml:space="preserve" text-anchor="middle" x="287.8" y="-1207.69" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#cd5038">[sensor_msgs/msg/LaserScan]</text>
+<text xml:space="preserve" text-anchor="middle" x="287.8" y="-1196.44" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#cd5038">(unconfirmed)</text>
+</g>
+
+<g id="connection_24" class="edge">
+<title>Local Safety Template-&gt;Central Safety Node</title>
+<g id="a_connection_24"><a ns1:title="Source: Local Safety Template&#10;Target: Central Safety Node&#10;Kind: topic&#10;Interface: /global_heartbeat&#10;Type: std_msgs/msg/Int32MultiArray&#10;Integration status: template_only&#10;Evidence: [S]&#10;Merge status: matched&#10;Documentation source: manual+automatic&#10;Static match: yes&#10;Source reference: arlab_templates/template_local_safety.py&#10;Target reference: code/arlab_safety/arlab_safety/central_safety_node.py:42&#10;Source resolution: literal&#10;Target resolution: literal&#10;Notes: No productive heartbeat publisher identified; Additional static source reference: code/arlab_templates/arlab_templates/template_local_safety.py:45; Matching source declarations found; runtime communication not verified">
+<path fill="none" stroke="#cd5038" stroke-width="1.5" stroke-dasharray="1,5" d="M180.87,-1306.74C243.05,-1306.74 332.38,-1306.74 395.91,-1306.74" />
+<polygon fill="#cd5038" stroke="#cd5038" stroke-width="1.5" points="395.71,-1309.37 403.21,-1306.74 395.71,-1304.12 395.71,-1309.37" />
+</a>
+</g>
+<text xml:space="preserve" text-anchor="middle" x="287.8" y="-1331.94" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#cd5038">[S] /global_heartbeat</text>
+<text xml:space="preserve" text-anchor="middle" x="287.8" y="-1320.69" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#cd5038">[std_msgs/msg/Int32MultiArray]</text>
+<text xml:space="preserve" text-anchor="middle" x="287.8" y="-1309.44" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#cd5038">(template_only)</text>
+</g>
+
+<g id="node1" class="node">
+<title>PyQt6 UI</title>
+<path fill="#ffffff" stroke="#94a3b8" d="M499.59,-1110.74C499.59,-1110.74 448.92,-1110.74 448.92,-1110.74 442.92,-1110.74 436.92,-1104.74 436.92,-1098.74 436.92,-1098.74 436.92,-1086.74 436.92,-1086.74 436.92,-1080.74 442.92,-1074.74 448.92,-1074.74 448.92,-1074.74 499.59,-1074.74 499.59,-1074.74 505.59,-1074.74 511.59,-1080.74 511.59,-1086.74 511.59,-1086.74 511.59,-1098.74 511.59,-1098.74 511.59,-1104.74 505.59,-1110.74 499.59,-1110.74" />
+<text xml:space="preserve" text-anchor="middle" x="474.26" y="-1089.04" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#1e293b">PyQt6 UI</text>
+</g>
+
+<g id="node2" class="node">
+<title>Whisper</title>
+<path fill="#ffffff" stroke="#94a3b8" d="M497.72,-1052.74C497.72,-1052.74 450.8,-1052.74 450.8,-1052.74 444.8,-1052.74 438.8,-1046.74 438.8,-1040.74 438.8,-1040.74 438.8,-1028.74 438.8,-1028.74 438.8,-1022.74 444.8,-1016.74 450.8,-1016.74 450.8,-1016.74 497.72,-1016.74 497.72,-1016.74 503.72,-1016.74 509.72,-1022.74 509.72,-1028.74 509.72,-1028.74 509.72,-1040.74 509.72,-1040.74 509.72,-1046.74 503.72,-1052.74 497.72,-1052.74" />
+<text xml:space="preserve" text-anchor="middle" x="474.26" y="-1031.04" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#1e293b">Whisper</text>
+</g>
+
+<g id="node3" class="node">
+<title>Text To Speech</title>
+<path fill="#ffffff" stroke="#94a3b8" d="M515.72,-994.74C515.72,-994.74 432.8,-994.74 432.8,-994.74 426.8,-994.74 420.8,-988.74 420.8,-982.74 420.8,-982.74 420.8,-970.74 420.8,-970.74 420.8,-964.74 426.8,-958.74 432.8,-958.74 432.8,-958.74 515.72,-958.74 515.72,-958.74 521.72,-958.74 527.72,-964.74 527.72,-970.74 527.72,-970.74 527.72,-982.74 527.72,-982.74 527.72,-988.74 521.72,-994.74 515.72,-994.74" />
+<text xml:space="preserve" text-anchor="middle" x="474.26" y="-973.04" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#1e293b">Text To Speech</text>
+</g>
+
+<g id="node4" class="node">
+<title>Decision Making</title>
+<path fill="#ffffff" stroke="#94a3b8" d="M152.92,-521.74C152.92,-521.74 61.75,-521.74 61.75,-521.74 55.75,-521.74 49.75,-515.74 49.75,-509.74 49.75,-509.74 49.75,-497.74 49.75,-497.74 49.75,-491.74 55.75,-485.74 61.75,-485.74 61.75,-485.74 152.92,-485.74 152.92,-485.74 158.92,-485.74 164.92,-491.74 164.92,-497.74 164.92,-497.74 164.92,-509.74 164.92,-509.74 164.92,-515.74 158.92,-521.74 152.92,-521.74" />
+<text xml:space="preserve" text-anchor="middle" x="107.34" y="-500.04" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#1e293b">Decision Making</text>
+</g>
+
+<g id="node5" class="node">
+<title>Manipulation Orchestrator</title>
+<path fill="#ffffff" stroke="#94a3b8" d="M547.59,-762.74C547.59,-762.74 400.92,-762.74 400.92,-762.74 394.92,-762.74 388.92,-756.74 388.92,-750.74 388.92,-750.74 388.92,-738.74 388.92,-738.74 388.92,-732.74 394.92,-726.74 400.92,-726.74 400.92,-726.74 547.59,-726.74 547.59,-726.74 553.59,-726.74 559.59,-732.74 559.59,-738.74 559.59,-738.74 559.59,-750.74 559.59,-750.74 559.59,-756.74 553.59,-762.74 547.59,-762.74" />
+<text xml:space="preserve" text-anchor="middle" x="474.26" y="-741.04" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#1e293b">Manipulation Orchestrator</text>
+</g>
+
+<g id="node6" class="node">
+<title>Manipulation C++ Orchestrator</title>
+<path fill="#ffffff" stroke="#94a3b8" d="M966.51,-760.74C966.51,-760.74 790.59,-760.74 790.59,-760.74 784.59,-760.74 778.59,-754.74 778.59,-748.74 778.59,-748.74 778.59,-736.74 778.59,-736.74 778.59,-730.74 784.59,-724.74 790.59,-724.74 790.59,-724.74 966.51,-724.74 966.51,-724.74 972.51,-724.74 978.51,-730.74 978.51,-736.74 978.51,-736.74 978.51,-748.74 978.51,-748.74 978.51,-754.74 972.51,-760.74 966.51,-760.74" />
+<text xml:space="preserve" text-anchor="middle" x="878.55" y="-739.04" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#1e293b">Manipulation C++ Orchestrator</text>
+</g>
+
+<g id="node7" class="node">
+<title>Gripping Parameter Service</title>
+<path fill="#ffffff" stroke="#94a3b8" d="M954.89,-818.74C954.89,-818.74 802.22,-818.74 802.22,-818.74 796.22,-818.74 790.22,-812.74 790.22,-806.74 790.22,-806.74 790.22,-794.74 790.22,-794.74 790.22,-788.74 796.22,-782.74 802.22,-782.74 802.22,-782.74 954.89,-782.74 954.89,-782.74 960.89,-782.74 966.89,-788.74 966.89,-794.74 966.89,-794.74 966.89,-806.74 966.89,-806.74 966.89,-812.74 960.89,-818.74 954.89,-818.74" />
+<text xml:space="preserve" text-anchor="middle" x="878.55" y="-797.04" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#1e293b">Gripping Parameter Service</text>
+</g>
+
+<g id="node8" class="node">
+<title>Force Monitor</title>
+<path fill="#ffffff" stroke="#94a3b8" d="M1238.43,-843.74C1238.43,-843.74 1160.76,-843.74 1160.76,-843.74 1154.76,-843.74 1148.76,-837.74 1148.76,-831.74 1148.76,-831.74 1148.76,-819.74 1148.76,-819.74 1148.76,-813.74 1154.76,-807.74 1160.76,-807.74 1160.76,-807.74 1238.43,-807.74 1238.43,-807.74 1244.43,-807.74 1250.43,-813.74 1250.43,-819.74 1250.43,-819.74 1250.43,-831.74 1250.43,-831.74 1250.43,-837.74 1244.43,-843.74 1238.43,-843.74" />
+<text xml:space="preserve" text-anchor="middle" x="1199.6" y="-822.04" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#1e293b">Force Monitor</text>
+</g>
+
+<g id="node9" class="node">
+<title>Movement Orchestrator</title>
+<path fill="#ffffff" stroke="#94a3b8" d="M174.67,-132.74C174.67,-132.74 40,-132.74 40,-132.74 34,-132.74 28,-126.74 28,-120.74 28,-120.74 28,-108.74 28,-108.74 28,-102.74 34,-96.74 40,-96.74 40,-96.74 174.67,-96.74 174.67,-96.74 180.67,-96.74 186.67,-102.74 186.67,-108.74 186.67,-108.74 186.67,-120.74 186.67,-120.74 186.67,-126.74 180.67,-132.74 174.67,-132.74" />
+<text xml:space="preserve" text-anchor="middle" x="107.34" y="-111.04" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#1e293b">Movement Orchestrator</text>
+</g>
+
+<g id="node10" class="node">
+<title>Entity Placer</title>
+<path fill="#ffffff" stroke="#94a3b8" d="M143.17,-74.74C143.17,-74.74 71.5,-74.74 71.5,-74.74 65.5,-74.74 59.5,-68.74 59.5,-62.74 59.5,-62.74 59.5,-50.74 59.5,-50.74 59.5,-44.74 65.5,-38.74 71.5,-38.74 71.5,-38.74 143.17,-38.74 143.17,-38.74 149.17,-38.74 155.17,-44.74 155.17,-50.74 155.17,-50.74 155.17,-62.74 155.17,-62.74 155.17,-68.74 149.17,-74.74 143.17,-74.74" />
+<text xml:space="preserve" text-anchor="middle" x="107.34" y="-53.04" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#1e293b">Entity Placer</text>
+</g>
+
+<g id="node11" class="node">
+<title>Computer Vision</title>
+<path fill="#ffffff" stroke="#94a3b8" d="M520.59,-240.74C520.59,-240.74 427.92,-240.74 427.92,-240.74 421.92,-240.74 415.92,-234.74 415.92,-228.74 415.92,-228.74 415.92,-216.74 415.92,-216.74 415.92,-210.74 421.92,-204.74 427.92,-204.74 427.92,-204.74 520.59,-204.74 520.59,-204.74 526.59,-204.74 532.59,-210.74 532.59,-216.74 532.59,-216.74 532.59,-228.74 532.59,-228.74 532.59,-234.74 526.59,-240.74 520.59,-240.74" />
+<text xml:space="preserve" text-anchor="middle" x="474.26" y="-219.04" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#1e293b">Computer Vision</text>
+</g>
+
+<g id="node12" class="node">
+<title>Knowledge Database</title>
+<path fill="#ffffff" stroke="#94a3b8" d="M937.64,-425.74C937.64,-425.74 819.47,-425.74 819.47,-425.74 813.47,-425.74 807.47,-419.74 807.47,-413.74 807.47,-413.74 807.47,-401.74 807.47,-401.74 807.47,-395.74 813.47,-389.74 819.47,-389.74 819.47,-389.74 937.64,-389.74 937.64,-389.74 943.64,-389.74 949.64,-395.74 949.64,-401.74 949.64,-401.74 949.64,-413.74 949.64,-413.74 949.64,-419.74 943.64,-425.74 937.64,-425.74" />
+<text xml:space="preserve" text-anchor="middle" x="878.55" y="-404.04" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#1e293b">Knowledge Database</text>
+</g>
+
+<g id="node13" class="node">
+<title>Knowledge Visualization</title>
+<path fill="#ffffff" stroke="#94a3b8" d="M541.97,-510.74C541.97,-510.74 406.55,-510.74 406.55,-510.74 400.55,-510.74 394.55,-504.74 394.55,-498.74 394.55,-498.74 394.55,-486.74 394.55,-486.74 394.55,-480.74 400.55,-474.74 406.55,-474.74 406.55,-474.74 541.97,-474.74 541.97,-474.74 547.97,-474.74 553.97,-480.74 553.97,-486.74 553.97,-486.74 553.97,-498.74 553.97,-498.74 553.97,-504.74 547.97,-510.74 541.97,-510.74" />
+<text xml:space="preserve" text-anchor="middle" x="474.26" y="-489.04" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#1e293b">Knowledge Visualization</text>
+</g>
+
+<g id="node14" class="node">
+<title>Perception LiDAR Relay</title>
+<path fill="#ffffff" stroke="#94a3b8" d="M172.42,-1211.74C172.42,-1211.74 42.25,-1211.74 42.25,-1211.74 36.25,-1211.74 30.25,-1205.74 30.25,-1199.74 30.25,-1199.74 30.25,-1187.74 30.25,-1187.74 30.25,-1181.74 36.25,-1175.74 42.25,-1175.74 42.25,-1175.74 172.42,-1175.74 172.42,-1175.74 178.42,-1175.74 184.42,-1181.74 184.42,-1187.74 184.42,-1187.74 184.42,-1199.74 184.42,-1199.74 184.42,-1205.74 178.42,-1211.74 172.42,-1211.74" />
+<text xml:space="preserve" text-anchor="middle" x="107.34" y="-1190.04" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#1e293b">Perception LiDAR Relay</text>
+</g>
+
+<g id="node15" class="node">
+<title>Central Safety Node</title>
+<path fill="#ffffff" stroke="#94a3b8" d="M530.72,-1324.74C530.72,-1324.74 417.8,-1324.74 417.8,-1324.74 411.8,-1324.74 405.8,-1318.74 405.8,-1312.74 405.8,-1312.74 405.8,-1300.74 405.8,-1300.74 405.8,-1294.74 411.8,-1288.74 417.8,-1288.74 417.8,-1288.74 530.72,-1288.74 530.72,-1288.74 536.72,-1288.74 542.72,-1294.74 542.72,-1300.74 542.72,-1300.74 542.72,-1312.74 542.72,-1312.74 542.72,-1318.74 536.72,-1324.74 530.72,-1324.74" />
+<text xml:space="preserve" text-anchor="middle" x="474.26" y="-1303.04" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#1e293b">Central Safety Node</text>
+</g>
+
+<g id="node16" class="node">
+<title>Local Safety Template</title>
+<path fill="#ffffff" stroke="#94a3b8" d="M168.67,-1324.74C168.67,-1324.74 46,-1324.74 46,-1324.74 40,-1324.74 34,-1318.74 34,-1312.74 34,-1312.74 34,-1300.74 34,-1300.74 34,-1294.74 40,-1288.74 46,-1288.74 46,-1288.74 168.67,-1288.74 168.67,-1288.74 174.67,-1288.74 180.67,-1294.74 180.67,-1300.74 180.67,-1300.74 180.67,-1312.74 180.67,-1312.74 180.67,-1318.74 174.67,-1324.74 168.67,-1324.74" />
+<text xml:space="preserve" text-anchor="middle" x="107.34" y="-1303.04" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#1e293b">Local Safety Template</text>
+</g>
+
+<g id="node17" class="node">
+<title>RViz</title>
+<ellipse fill="#dbeafe" stroke="#60a5fa" cx="878.55" cy="-661.74" rx="34.77" ry="21.76" />
+<text xml:space="preserve" text-anchor="middle" x="878.55" y="-658.04" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#1e293b">RViz</text>
+</g>
+
+<g id="node18" class="node">
+<title>Unconfirmed</title>
+<path fill="none" stroke="#94a3b8" stroke-dasharray="5,2" d="M510.09,-1211.74C510.09,-1211.74 438.42,-1211.74 438.42,-1211.74 432.42,-1211.74 426.42,-1205.74 426.42,-1199.74 426.42,-1199.74 426.42,-1187.74 426.42,-1187.74 426.42,-1181.74 432.42,-1175.74 438.42,-1175.74 438.42,-1175.74 510.09,-1175.74 510.09,-1175.74 516.09,-1175.74 522.09,-1181.74 522.09,-1187.74 522.09,-1187.74 522.09,-1199.74 522.09,-1199.74 522.09,-1205.74 516.09,-1211.74 510.09,-1211.74" />
+<text xml:space="preserve" text-anchor="middle" x="474.26" y="-1190.04" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#64748b">Unconfirmed</text>
+</g>
+
+<g id="node19" class="node">
+<title>Unconnected</title>
+<path fill="none" stroke="#94a3b8" stroke-dasharray="5,2" d="M915.51,-1080.74C915.51,-1080.74 841.59,-1080.74 841.59,-1080.74 835.59,-1080.74 829.59,-1074.74 829.59,-1068.74 829.59,-1068.74 829.59,-1056.74 829.59,-1056.74 829.59,-1050.74 835.59,-1044.74 841.59,-1044.74 841.59,-1044.74 915.51,-1044.74 915.51,-1044.74 921.51,-1044.74 927.51,-1050.74 927.51,-1056.74 927.51,-1056.74 927.51,-1068.74 927.51,-1068.74 927.51,-1074.74 921.51,-1080.74 915.51,-1080.74" />
+<text xml:space="preserve" text-anchor="middle" x="878.55" y="-1059.04" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#64748b">Unconnected</text>
+</g>
+</g>
+</g></svg>

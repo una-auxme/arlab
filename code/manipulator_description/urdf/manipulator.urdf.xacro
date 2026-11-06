@@ -1,0 +1,154 @@
+<?xml version="1.0"?>
+<!--
+  Real-robot model for the NUC: UR5e (fixed to "world", as in ur_robot_driver's ur.urdf.xacro)
+  + RealSense mount + Mia hand (right) + collision body of the gripper camera.
+
+  Default description of manipulator_robot_driver/launch/ur_rsp.launch.py, i.e. used by
+    ros2 launch manipulator_robot_driver ur_control.launch.py ur_type:=ur5e robot_ip:=...
+
+  Deliberately NOT included (compared to manipulator_mobile.urdf.xacro / the old version of this file):
+  - Mia hand ros2_control block: it would be loaded into the UR driver's controller manager
+    (mock = Gazebo plugin, real = serial port) and break the UR hardware startup.
+    Hand joint states come from a separate publisher (static for now).
+  - Mobile base, chassis, shelf, Gazebo plugins.
+  - RealSense frames (camera_gripper_link, *_depth_optical_frame, ...): they are published by the
+    calibration launch (tool0 -> camera_gripper_link) and the camera driver. This model only adds
+    a collision/visual body "camera_gripper_body" at the same pose, so no TF is published twice.
+-->
+<robot xmlns:xacro="http://wiki.ros.org/xacro" name="$(arg name)">
+  <xacro:arg name="name" default="ur"/>
+
+  <xacro:include filename="$(find ur_description)/urdf/ur_macro.xacro"/>
+  <xacro:include filename="$(find ur_robot_driver)/urdf/ur.ros2_control.xacro"/>
+  <xacro:include filename="$(find ur_description)/urdf/inc/ur_transmissions.xacro"/>
+  <xacro:include filename="$(find manipulator_description)/urdf/ur_realsense_mount.xacro"/>
+  <xacro:include filename="$(find manipulator_description)/urdf/mia_hand.urdf.xacro"/>
+
+  <!-- UR parameters (same as ur_robot_driver/urdf/ur.urdf.xacro, so ur_rsp.launch.py mappings resolve) -->
+  <xacro:arg name="ur_type" default="ur5e"/>
+  <xacro:arg name="tf_prefix" default=""/>
+  <xacro:arg name="joint_limit_params" default="$(find ur_description)/config/$(arg ur_type)/joint_limits.yaml"/>
+  <xacro:arg name="kinematics_params" default="$(find ur_description)/config/$(arg ur_type)/default_kinematics.yaml"/>
+  <xacro:arg name="physical_params" default="$(find ur_description)/config/$(arg ur_type)/physical_parameters.yaml"/>
+  <xacro:arg name="visual_params" default="$(find ur_description)/config/$(arg ur_type)/visual_parameters.yaml"/>
+  <xacro:arg name="transmission_hw_interface" default=""/>
+  <xacro:arg name="safety_limits" default="false"/>
+  <xacro:arg name="safety_pos_margin" default="0.15"/>
+  <xacro:arg name="safety_k_position" default="20"/>
+  <xacro:arg name="headless_mode" default="false"/>
+  <xacro:arg name="robot_ip" default="0.0.0.0"/>
+  <xacro:arg name="script_filename" default=""/>
+  <xacro:arg name="output_recipe_filename" default=""/>
+  <xacro:arg name="input_recipe_filename" default=""/>
+  <xacro:arg name="reverse_ip" default="0.0.0.0"/>
+  <xacro:arg name="script_command_port" default="50004"/>
+  <xacro:arg name="reverse_port" default="50001"/>
+  <xacro:arg name="script_sender_port" default="50002"/>
+  <xacro:arg name="trajectory_port" default="50003"/>
+  <xacro:arg name="use_tool_communication" default="false"/>
+  <xacro:arg name="tool_voltage" default="0"/>
+  <xacro:arg name="tool_parity" default="0"/>
+  <xacro:arg name="tool_baud_rate" default="115200"/>
+  <xacro:arg name="tool_stop_bits" default="1"/>
+  <xacro:arg name="tool_rx_idle_chars" default="1.5"/>
+  <xacro:arg name="tool_tx_idle_chars" default="3.5"/>
+  <xacro:arg name="tool_device_name" default="/tmp/ttyUR"/>
+  <xacro:arg name="tool_tcp_port" default="54321"/>
+  <xacro:arg name="use_mock_hardware" default="false"/>
+  <xacro:arg name="mock_sensor_commands" default="false"/>
+  <xacro:arg name="simulation_controllers" default=""/>
+  <xacro:arg name="initial_positions_file" default="$(find ur_description)/config/initial_positions.yaml"/>
+  <xacro:property name="initial_positions_file" default="$(arg initial_positions_file)"/>
+
+  <!-- Mia hand parameters -->
+  <xacro:arg name="laterality" default="right"/>
+  <xacro:arg name="joint_limits_config_file" default="joint_limits_default.yaml"/>
+  <xacro:arg name="prefix" default=""/>
+
+  <link name="world"/>
+
+  <xacro:ur_robot
+    name="$(arg name)"
+    tf_prefix="$(arg tf_prefix)"
+    parent="world"
+    joint_limits_parameters_file="$(arg joint_limit_params)"
+    kinematics_parameters_file="$(arg kinematics_params)"
+    physical_parameters_file="$(arg physical_params)"
+    visual_parameters_file="$(arg visual_params)"
+    safety_limits="$(arg safety_limits)"
+    safety_pos_margin="$(arg safety_pos_margin)"
+    safety_k_position="$(arg safety_k_position)">
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </xacro:ur_robot>
+
+  <!-- Camera / hand mount on the flange -->
+  <xacro:ur_realsense_mount parent_link="tool0" xyz="0 0 0" rpy="0 0 0"/>
+
+  <!-- Mia hand (pose as in manipulator_mobile.urdf.xacro) -->
+  <xacro:mia_hand
+    laterality="$(arg laterality)"
+    joint_limits_config_file="$(arg joint_limits_config_file)"
+    parent="ur_realsense_mount_link"
+    prefix="$(arg prefix)">
+    <xacro:if value="${'right' == '$(arg laterality)'}">
+      <origin xyz="0 0 0" rpy="1.59 0 1.59"/>
+    </xacro:if>
+    <xacro:if value="${'left' == '$(arg laterality)'}">
+      <origin xyz="0 0 0" rpy="1.57 3.14 0.1"/>
+    </xacro:if>
+  </xacro:mia_hand>
+
+  <!-- Gripper camera body (collision + visual only). Pose = calibration of
+       arlab_calibration/gripper_camera_pose.launch.py (tool0 -> camera_gripper_link,
+       quaternion -0.433977 -0.433066 -0.562931 0.55428). The body frame coincides with the
+       RealSense camera_link (depth module); housing geometry from _d435.urdf.xacro, shifted back
+       so that the box ends at the front glass. Keep in sync with the calibration launch. -->
+  <joint name="camera_gripper_body_joint" type="fixed">
+    <parent link="tool0"/>
+    <child link="camera_gripper_body"/>
+    <origin xyz="0.0205783 0.118494 0.0265386" rpy="0.026110 -1.319851 -1.606545"/>
+  </joint>
+  <link name="camera_gripper_body">
+    <visual>
+      <origin xyz="0.0043 -0.0175 0" rpy="${pi/2} 0 ${pi/2}"/>
+      <geometry>
+        <mesh filename="file://$(find manipulator_description)/meshes/d435.obj" scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="-0.0082 -0.0175 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.02505 0.090 0.025"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- UR ros2_control only (no hand hardware in the UR controller manager) -->
+  <xacro:ur_ros2_control
+    name="$(arg name)"
+    tf_prefix="$(arg tf_prefix)"
+    kinematics_parameters_file="$(arg kinematics_params)"
+    transmission_hw_interface="$(arg transmission_hw_interface)"
+    use_mock_hardware="$(arg use_mock_hardware)"
+    mock_sensor_commands="$(arg mock_sensor_commands)"
+    headless_mode="$(arg headless_mode)"
+    initial_positions="${xacro.load_yaml(initial_positions_file)}"
+    use_tool_communication="$(arg use_tool_communication)"
+    tool_voltage="$(arg tool_voltage)"
+    tool_parity="$(arg tool_parity)"
+    tool_baud_rate="$(arg tool_baud_rate)"
+    tool_stop_bits="$(arg tool_stop_bits)"
+    tool_rx_idle_chars="$(arg tool_rx_idle_chars)"
+    tool_tx_idle_chars="$(arg tool_tx_idle_chars)"
+    tool_device_name="$(arg tool_device_name)"
+    tool_tcp_port="$(arg tool_tcp_port)"
+    robot_ip="$(arg robot_ip)"
+    script_filename="$(arg script_filename)"
+    output_recipe_filename="$(arg output_recipe_filename)"
+    input_recipe_filename="$(arg input_recipe_filename)"
+    reverse_ip="$(arg reverse_ip)"
+    script_command_port="$(arg script_command_port)"
+    reverse_port="$(arg reverse_port)"
+    script_sender_port="$(arg script_sender_port)"
+    trajectory_port="$(arg trajectory_port)"/>
+</robot>

@@ -111,7 +111,7 @@
     <disable_collisions link1="ur_realsense_mount_link" link2="wrist_3_link" reason="Adjacent"/>
     <disable_collisions link1="ur_realsense_mount_link" link2="palm" reason="Adjacent"/>
     <disable_collisions link1="ur_realsense_mount_link" link2="hand_ee_link" reason="Adjacent"/>
-    <disable_collisions link1="ur_realsense_mount_link" link2="camera_gripper_link" reason="Adjacent"/>
+    <disable_collisions link1="ur_realsense_mount_link" link2="camera_gripper_body" reason="Adjacent"/>
 
     <!-- disable sockel collisions -->
     <disable_collisions link1="ur_sockel_link" link2="base_link" reason="Adjacent" />

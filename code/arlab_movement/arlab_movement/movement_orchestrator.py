@@ -887,7 +887,7 @@ def main(args=None):
     """
     Start the navigation orchestrator node with a multi-threaded executor.
 
-    Two threads, so a running action goal does not block the snapshot and service callbacks.
+    Three threads, so a running action goal does not block the snapshot and service callbacks.
     """
     rclpy.init(args=args)
     executor = rclpy.executors.MultiThreadedExecutor(num_threads=3)

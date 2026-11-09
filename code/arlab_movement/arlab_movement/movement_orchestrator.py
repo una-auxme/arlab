@@ -349,7 +349,8 @@ class NavigationOrchestrator(Node):
         matching SafetyState error code to movement_local_safety.
 
         Ignored if the handle no longer is `proc`, i.e. the stack was stopped or
-        restarted since the check, so a fresh stack is not stopped by a stale result.
+        restarted since the check, so a fresh stack is not stopped by a stale result
+        and its pending flag is left untouched.
 
         Args:
             stack (str): "nav2" or "slam".
@@ -358,15 +359,15 @@ class NavigationOrchestrator(Node):
         """
         with self._process_lock:
             if stack == "nav2":
-                self._nav2_check_pending = False
                 if self.nav_process is not proc:
                     return
+                self._nav2_check_pending = False
                 name, code = "Nav2", SafetyState.MOVEMENT_NAV2_FAILED
                 self.nav_process, _, _ = self._stop_process(self.nav_process, name)
             else:
-                self._slam_check_pending = False
                 if self.slam_process is not proc:
                     return
+                self._slam_check_pending = False
                 name, code = "SLAM Toolbox", SafetyState.MOVEMENT_SLAM_FAILED
                 self.slam_process, _, _ = self._stop_process(self.slam_process, name)
 
@@ -374,14 +375,26 @@ class NavigationOrchestrator(Node):
         self.safety_error_pub.publish(Int32(data=code))
 
     def _on_nav2_active(self, future, proc: subprocess.Popen):
-        """Handle the response of the Nav2 is_active service for the checked process `proc`."""
+        """
+        Handle the response of the Nav2 is_active service for the checked process `proc`.
+
+        Ignored if Nav2 was stopped or restarted since the request.
+        """
+        if self.nav_process is not proc:
+            return
         self._nav2_check_pending = False
         response = future.result()
         if not response.success:
             self._report_stack_failure("nav2", proc, f"lifecycle manager reports not active: {response.message}")
 
     def _on_slam_state(self, future, proc: subprocess.Popen):
-        """Handle the response of the SLAM Toolbox get_state service for the checked process `proc`."""
+        """
+        Handle the response of the SLAM Toolbox get_state service for the checked process `proc`.
+
+        Ignored if SLAM Toolbox was stopped or restarted since the request.
+        """
+        if self.slam_process is not proc:
+            return
         self._slam_check_pending = False
         response = future.result()
         if response.current_state.id != State.PRIMARY_STATE_ACTIVE:
@@ -481,9 +494,11 @@ class NavigationOrchestrator(Node):
                 - str: Status or error message
         """
         with self._process_lock:
+            # on every handle change: a request to the previous process may never be answered
             if enable:
                 if self.slam_process is None or self.slam_process.poll() is not None:
                     publish_status("Starting mapping (SLAM Toolbox)")
+                    self._slam_check_pending = False
                     self._slam_started_at = time.monotonic()
                     self.slam_process, err, msg = self._start_process(
                         ["ros2", "launch", "arlab_movement", "slam_async.launch.py"],
@@ -493,6 +508,7 @@ class NavigationOrchestrator(Node):
                     return err, msg
                 return NavErr.OK, "SLAM already running"
             publish_status("Stopping mapping (SLAM Toolbox)")
+            self._slam_check_pending = False
             self.slam_process, err, msg = self._stop_process(self.slam_process, "SLAM Toolbox")
             return err, msg
 
@@ -512,9 +528,11 @@ class NavigationOrchestrator(Node):
                 - str: Status or error message
         """
         with self._process_lock:
+            # on every handle change: a request to the previous process may never be answered
             if enable:
                 if self.nav_process is None or self.nav_process.poll() is not None:
                     publish_status("Starting navigation (Nav2)")
+                    self._nav2_check_pending = False
                     self._nav_started_at = time.monotonic()
                     self.nav_process, err, msg = self._start_process(
                         ["ros2", "launch", "arlab_movement", "nav2.launch.py"],
@@ -524,6 +542,7 @@ class NavigationOrchestrator(Node):
                     return err, msg
                 return NavErr.OK, "Nav2 already running"
             publish_status("Stopping navigation (Nav2)")
+            self._nav2_check_pending = False
             self.nav_process, err, msg = self._stop_process(self.nav_process, "Nav2")
             return err, msg
 
@@ -753,6 +772,8 @@ class NavigationOrchestrator(Node):
         """
         self._teardown_annotation()
         with self._process_lock:
+            self._slam_check_pending = False
+            self._nav2_check_pending = False
             self.slam_process, _, _ = self._stop_process(self.slam_process, "SLAM Toolbox")
             self.nav_process, _, _ = self._stop_process(self.nav_process, "Nav2")
 

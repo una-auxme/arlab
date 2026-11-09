@@ -38,7 +38,7 @@ from rclpy.node import Node
 from std_msgs.msg import Bool, Int32
 from std_srvs.srv import Trigger
 from arlab_knowledge_interfaces.msg import Result
-from arlab_movement.movement_safety_ids import MovementSafetyIDs
+from arlab_common_interfaces.msg import SafetyNode, SafetyState
 
 
 class NavErr:
@@ -80,7 +80,8 @@ class NavigationOrchestrator(Node):
         self.declare_parameter("database_timeout", 10.0)
 
         # heartbeat to the local movement_local_safety node
-        self.declare_parameter("heartbeat_period", 0.05) # seconds between heartbeat messages
+        self.declare_parameter("heartbeat_period", 0.05)  # seconds between heartbeat messages
+        self.declare_parameter("local_heartbeat_topic", "/arlab/movement/heartbeat")  # must match movement_local_safety
 
         # auto-annotation: thresholds deciding when a CV snapshot is taken
         self.declare_parameter("snapshot_action_name", "/vision/snapshot")
@@ -143,9 +144,10 @@ class NavigationOrchestrator(Node):
 
         # heartbeat
         self.heartbeat_period = float(self.get_parameter("heartbeat_period").value)
+        self.local_heartbeat_topic = str(self.get_parameter("local_heartbeat_topic").value)
 
         self.heartbeat_group = MutuallyExclusiveCallbackGroup()
-        self.heartbeat_pub = self.create_publisher(Int32, "/arlab/movement/heartbeat", 10)
+        self.heartbeat_pub = self.create_publisher(Int32, self.local_heartbeat_topic, 10)
         self.heartbeat_timer = self.create_timer(self.heartbeat_period, self.heartbeat_callback, callback_group=self.heartbeat_group)
 
         # monitor subprocesses (nav2, slam)
@@ -278,14 +280,14 @@ class NavigationOrchestrator(Node):
         Publish a heartbeat message to the local movement_local_safety node.
 
         The message contains the node ID of this orchestrator, which is
-        defined in movement_safety_ids.py.
+        defined in arlab_common_interfaces/msg/SafetyNode.
         """
-        self.heartbeat_pub.publish(Int32(data=MovementSafetyIDs.MOVEMENT_ORCHESTRATOR))
+        self.heartbeat_pub.publish(Int32(data=SafetyNode.MOVEMENT_ORCHESTRATOR))
 
     # monitor subprocesses
     def _monitor_stack(self):
-        """" Check if SLAM and NAV2 are running and healthy when excpected to."""
-        if self.nav_process is not None :
+        """ " Check if SLAM and NAV2 are running and healthy when excpected to."""
+        if self.nav_process is not None:
             if self.nav_process.poll() is not None:
                 self._report_stack_failure("NAV2", "launch process exited")
             elif self._nav2_check_pending:
@@ -309,11 +311,10 @@ class NavigationOrchestrator(Node):
                 self._slam_check_pending = True
                 self.slam_state_client.call_async(GetState.Request()).add_done_callback(self._on_slam_state)
 
-
     def _report_stack_failure(self, stack_name: str, reason: str):
         self._slam_check_pending = False
         self._nav2_check_pending = False
-        
+
         self.get_logger().error(f"{stack_name} failure: {reason}")
 
     def _on_nav2_active(self, future):

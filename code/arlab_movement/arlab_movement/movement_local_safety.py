@@ -24,6 +24,8 @@ class MovementLocalSafety(Node):
         module_id (int): ID of the module from SafetyModule.msg.
         health_state (int): SafetyState.REGISTERING, SafetyState.OK or error code > 0.
         local_heartbeat_topic (str): Topic the module nodes send their heartbeats on.
+        local_safety_error_topic (str): Topic the module nodes report SafetyState error codes on.
+        reported_error (int): Last reported error code, SafetyState.OK if none is pending.
         pub_global_heartbeat: Publisher for the `/global_heartbeat` topic.
     """
 
@@ -41,6 +43,11 @@ class MovementLocalSafety(Node):
         self.declare_parameter("local_heartbeat_topic", "/arlab/movement/heartbeat")
         self.local_heartbeat_topic = str(self.get_parameter("local_heartbeat_topic").value)
 
+        # Error codes reported by movement nodes, forwarded in local_safety_checks
+        self.declare_parameter("local_safety_error_topic", "/arlab/movement/safety_error")
+        self.local_safety_error_topic = str(self.get_parameter("local_safety_error_topic").value)
+        self.reported_error = SafetyState.OK
+
         # Timer to reset the node table periodically
         self.timer = self.create_timer(0.1, self.reset_module_node_table)
 
@@ -54,6 +61,12 @@ class MovementLocalSafety(Node):
             Int32,
             self.local_heartbeat_topic,
             self.callback,
+            10,
+        )
+        self.create_subscription(
+            Int32,
+            self.local_safety_error_topic,
+            self.safety_error_callback,
             10,
         )
 
@@ -87,30 +100,47 @@ class MovementLocalSafety(Node):
         node_id = msg.data
         self.module_node_table[node_id] = True
 
+    def safety_error_callback(self, msg: Int32) -> None:
+        """Store an error code reported by a movement node.
+
+        Args:
+            msg: Error code from the movement range in SafetyState.msg as `std_msgs/Int32`.
+
+        Notes:
+            - Only the last code per heartbeat window is kept. Fine while only
+              the orchestrator reports, revisit when more nodes report here.
+        """
+        self.get_logger().warn(f"Received safety error: {msg.data}")
+        self.reported_error = msg.data
+
     def reset_module_node_table(self) -> None:
         """Reset the is_alive state of tracked nodes.
 
         Notes:
             - Marks non-responsive nodes with their ID in health_state.
               The node ID is the error code for a node timeout, see SafetyNode.msg.
+            - Runs local_safety_checks before sending.
             - Sends updated heartbeat to CentralSafetyNode.
         """
-
         for node_id, is_alive in self.module_node_table.items():
             if not is_alive:
                 self.health_state = node_id
             else:
                 self.module_node_table[node_id] = False
 
+        self.local_safety_checks()
         self.pub_module_heartbeat()
 
     def local_safety_checks(self) -> None:
-        """Design and implement local safety checks here.
+        """Forward error codes reported on the local safety error topic.
 
         Notes:
-            - This method can set health_state to error codes from the movement
-              range in SafetyState.msg (MOVEMENT_*) to indicate local subsystem errors.
+            - Sets health_state to the reported error code from the movement
+              range in SafetyState.msg (MOVEMENT_*), sent once with the next heartbeat.
         """
+        if self.reported_error != SafetyState.OK:
+            self.health_state = self.reported_error
+            self.reported_error = SafetyState.OK
 
 
 def main(args=None) -> None:

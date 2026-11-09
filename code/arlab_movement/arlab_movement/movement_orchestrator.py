@@ -29,6 +29,7 @@ import rclpy.executors
 from arlab_common_interfaces.action import MovementAction, VisionSnapshotAction
 from arlab_common_interfaces.msg import VisionSnapshotResponse
 from arlab_knowledge_interfaces.srv import AddMap
+from lifecycle_msgs.msg import State
 from lifecycle_msgs.srv import GetState
 from nav_msgs.msg import OccupancyGrid, Odometry
 from rclpy.action import ActionClient
@@ -83,6 +84,10 @@ class NavigationOrchestrator(Node):
         self.declare_parameter("heartbeat_period", 0.05)  # seconds between heartbeat messages
         self.declare_parameter("local_heartbeat_topic", "/arlab/movement/heartbeat")  # must match movement_local_safety
 
+        # stack monitor, failures are reported to movement_local_safety
+        self.declare_parameter("local_safety_error_topic", "/arlab/movement/safety_error")  # must match movement_local_safety
+        self.declare_parameter("stack_grace_period", 15.0)  # seconds after a start before lifecycle states are checked
+
         # auto-annotation: thresholds deciding when a CV snapshot is taken
         self.declare_parameter("snapshot_action_name", "/vision/snapshot")
         self.declare_parameter("odom_topic", "/odom")
@@ -106,6 +111,11 @@ class NavigationOrchestrator(Node):
         # Popen handles of the launched subprocesses, None when not running
         self.slam_process: Optional[subprocess.Popen] = None
         self.nav_process: Optional[subprocess.Popen] = None
+        # guards the handles, the monitor callbacks run in parallel to execute_callback
+        self._process_lock = threading.Lock()
+        # monotonic start times for the stack grace period
+        self._slam_started_at = 0.0
+        self._nav_started_at = 0.0
 
         # auto-annotation state, reset on every start
         self.annotate_active = False
@@ -151,6 +161,10 @@ class NavigationOrchestrator(Node):
         self.heartbeat_timer = self.create_timer(self.heartbeat_period, self.heartbeat_callback, callback_group=self.heartbeat_group)
 
         # monitor subprocesses (nav2, slam)
+        self.stack_grace_period = float(self.get_parameter("stack_grace_period").value)
+        self.local_safety_error_topic = str(self.get_parameter("local_safety_error_topic").value)
+        self.safety_error_pub = self.create_publisher(Int32, self.local_safety_error_topic, 10)
+
         self.monitor_group = MutuallyExclusiveCallbackGroup()
         self.nav2_active_client = self.create_client(Trigger, "/lifecycle_manager_navigation/is_active", callback_group=self.monitor_group)
         self.slam_state_client = self.create_client(GetState, "/slam_toolbox/get_state", callback_group=self.monitor_group)
@@ -286,50 +300,92 @@ class NavigationOrchestrator(Node):
 
     # monitor subprocesses
     def _monitor_stack(self):
-        """ " Check if SLAM and NAV2 are running and healthy when excpected to."""
-        if self.nav_process is not None:
-            if self.nav_process.poll() is not None:
-                self._report_stack_failure("NAV2", "launch process exited")
+        """
+        Check if SLAM Toolbox and Nav2 are running and active while expected to.
+
+        The process exit is always checked. The lifecycle state is only checked
+        after `stack_grace_period`, since both stacks need a while to activate.
+        An unanswered request from the previous tick counts as a failure.
+        """
+        now = time.monotonic()
+
+        # local copies, the handles can be replaced by execute_callback meanwhile
+        nav_proc = self.nav_process
+        if nav_proc is not None:
+            if nav_proc.poll() is not None:
+                self._report_stack_failure("nav2", nav_proc, "launch process exited")
+            elif now - self._nav_started_at < self.stack_grace_period:
+                pass
             elif self._nav2_check_pending:
-                # previous request still pending, likely failure?
-                self._report_stack_failure("NAV2", "lifecycle manager not responding")
+                self._report_stack_failure("nav2", nav_proc, "lifecycle manager not responding")
             elif not self.nav2_active_client.service_is_ready():
-                self._report_stack_failure("NAV2", "is_active service not available")
+                self._report_stack_failure("nav2", nav_proc, "is_active service not available")
             else:
                 self._nav2_check_pending = True
-                self.nav2_active_client.call_async(Trigger.Request()).add_done_callback(self._on_nav2_active)
+                future = self.nav2_active_client.call_async(Trigger.Request())
+                future.add_done_callback(lambda f: self._on_nav2_active(f, nav_proc))
 
-        if self.slam_process is not None:
-            if self.slam_process.poll() is not None:
-                self._report_stack_failure("SLAM", "launch process exited")
+        slam_proc = self.slam_process
+        if slam_proc is not None:
+            if slam_proc.poll() is not None:
+                self._report_stack_failure("slam", slam_proc, "launch process exited")
+            elif now - self._slam_started_at < self.stack_grace_period:
+                pass
             elif self._slam_check_pending:
-                # previous request unanswered for a whole tick
-                self._report_stack_failure("SLAM Toolbox", "slam_toolbox not responding")
+                self._report_stack_failure("slam", slam_proc, "slam_toolbox not responding")
             elif not self.slam_state_client.service_is_ready():
-                self._report_stack_failure("SLAM Toolbox", "get_state service unavailable")
+                self._report_stack_failure("slam", slam_proc, "get_state service not available")
             else:
                 self._slam_check_pending = True
-                self.slam_state_client.call_async(GetState.Request()).add_done_callback(self._on_slam_state)
+                future = self.slam_state_client.call_async(GetState.Request())
+                future.add_done_callback(lambda f: self._on_slam_state(f, slam_proc))
 
-    def _report_stack_failure(self, stack_name: str, reason: str):
-        self._slam_check_pending = False
-        self._nav2_check_pending = False
+    def _report_stack_failure(self, stack: str, proc: subprocess.Popen, reason: str):
+        """
+        Handle a failed Nav2 or SLAM Toolbox stack.
 
-        self.get_logger().error(f"{stack_name} failure: {reason}")
+        Stops what is left of the stack and clears its handle, so the failure is
+        reported once and the next enable starts the stack fresh. Publishes the
+        matching SafetyState error code to movement_local_safety.
 
-    def _on_nav2_active(self, future):
-        """Handle the response from the Nav2 active check service."""
+        Ignored if the handle no longer is `proc`, i.e. the stack was stopped or
+        restarted since the check, so a fresh stack is not stopped by a stale result.
+
+        Args:
+            stack (str): "nav2" or "slam".
+            proc (subprocess.Popen): The process handle that was checked.
+            reason (str): Human-readable failure reason for the log.
+        """
+        with self._process_lock:
+            if stack == "nav2":
+                self._nav2_check_pending = False
+                if self.nav_process is not proc:
+                    return
+                name, code = "Nav2", SafetyState.MOVEMENT_NAV2_FAILED
+                self.nav_process, _, _ = self._stop_process(self.nav_process, name)
+            else:
+                self._slam_check_pending = False
+                if self.slam_process is not proc:
+                    return
+                name, code = "SLAM Toolbox", SafetyState.MOVEMENT_SLAM_FAILED
+                self.slam_process, _, _ = self._stop_process(self.slam_process, name)
+
+        self.get_logger().error(f"{name} failure: {reason}")
+        self.safety_error_pub.publish(Int32(data=code))
+
+    def _on_nav2_active(self, future, proc: subprocess.Popen):
+        """Handle the response of the Nav2 is_active service for the checked process `proc`."""
         self._nav2_check_pending = False
         response = future.result()
         if not response.success:
-            self._report_stack_failure("NAV2", f"lifecycle manager reports not active: {response.message}")
+            self._report_stack_failure("nav2", proc, f"lifecycle manager reports not active: {response.message}")
 
-    def _on_slam_state(self, future):
-        """Handle the response from the SLAM Toolbox state service."""
+    def _on_slam_state(self, future, proc: subprocess.Popen):
+        """Handle the response of the SLAM Toolbox get_state service for the checked process `proc`."""
         self._slam_check_pending = False
         response = future.result()
-        if response.current_state.id != 3:  # 3 is ACTIVE
-            self._report_stack_failure("SLAM", f"state is not active: {response.current_state.label}")
+        if response.current_state.id != State.PRIMARY_STATE_ACTIVE:
+            self._report_stack_failure("slam", proc, f"state is not active: {response.current_state.label}")
 
     # process helpers
     def _start_process(self, cmd_list, name: str) -> Tuple[Optional[subprocess.Popen], int, str]:
@@ -385,7 +441,9 @@ class NavigationOrchestrator(Node):
         Stop a subprocess started by `_start_process`.
 
         Sends SIGINT to its process group, same as Ctrl+C on the launch.
-        Does not wait for the process to exit.
+        Does not wait for the process to exit. The group id equals the pid
+        (started with setsid), so this also works after `poll()` reaped the
+        leader while other nodes of the group are still running.
 
         Args:
             proc (subprocess.Popen or None): The process to stop.
@@ -401,8 +459,10 @@ class NavigationOrchestrator(Node):
             return None, NavErr.OK, f"{name} not running"
         self.get_logger().info(f"Stopping {name}...")
         try:
-            os.killpg(os.getpgid(proc.pid), signal.SIGINT)
+            os.killpg(proc.pid, signal.SIGINT)
             return None, NavErr.OK, f"{name} stopped"
+        except ProcessLookupError:
+            return None, NavErr.OK, f"{name} already stopped"
         except Exception as e:
             return proc, NavErr.PROCESS_STOP_FAILED, f"Failed to stop {name}: {e}"
 
@@ -420,19 +480,21 @@ class NavigationOrchestrator(Node):
                 - int: Error code (NavErr.OK on success)
                 - str: Status or error message
         """
-        if enable:
-            if self.slam_process is None or self.slam_process.poll() is not None:
-                publish_status("Starting mapping (SLAM Toolbox)")
-                self.slam_process, err, msg = self._start_process(
-                    ["ros2", "launch", "arlab_movement", "slam_async.launch.py"],
-                    # ["ros2", "launch", "slam_toolbox", "online_async_launch.py"],
-                    "SLAM Toolbox",
-                )
-                return err, msg
-            return NavErr.OK, "SLAM already running"
-        publish_status("Stopping mapping (SLAM Toolbox)")
-        self.slam_process, err, msg = self._stop_process(self.slam_process, "SLAM Toolbox")
-        return err, msg
+        with self._process_lock:
+            if enable:
+                if self.slam_process is None or self.slam_process.poll() is not None:
+                    publish_status("Starting mapping (SLAM Toolbox)")
+                    self._slam_started_at = time.monotonic()
+                    self.slam_process, err, msg = self._start_process(
+                        ["ros2", "launch", "arlab_movement", "slam_async.launch.py"],
+                        # ["ros2", "launch", "slam_toolbox", "online_async_launch.py"],
+                        "SLAM Toolbox",
+                    )
+                    return err, msg
+                return NavErr.OK, "SLAM already running"
+            publish_status("Stopping mapping (SLAM Toolbox)")
+            self.slam_process, err, msg = self._stop_process(self.slam_process, "SLAM Toolbox")
+            return err, msg
 
     def set_nav(self, enable: bool, publish_status) -> Tuple[int, str]:
         """
@@ -449,19 +511,21 @@ class NavigationOrchestrator(Node):
                 - int: Error code (NavErr.OK on success)
                 - str: Status or error message
         """
-        if enable:
-            if self.nav_process is None or self.nav_process.poll() is not None:
-                publish_status("Starting navigation (Nav2)")
-                self.nav_process, err, msg = self._start_process(
-                    ["ros2", "launch", "arlab_movement", "nav2.launch.py"],
-                    # ["ros2", "launch", "nav2_bringup", "navigation_launch.py"],
-                    "Nav2",
-                )
-                return err, msg
-            return NavErr.OK, "Nav2 already running"
-        publish_status("Stopping navigation (Nav2)")
-        self.nav_process, err, msg = self._stop_process(self.nav_process, "Nav2")
-        return err, msg
+        with self._process_lock:
+            if enable:
+                if self.nav_process is None or self.nav_process.poll() is not None:
+                    publish_status("Starting navigation (Nav2)")
+                    self._nav_started_at = time.monotonic()
+                    self.nav_process, err, msg = self._start_process(
+                        ["ros2", "launch", "arlab_movement", "nav2.launch.py"],
+                        # ["ros2", "launch", "nav2_bringup", "navigation_launch.py"],
+                        "Nav2",
+                    )
+                    return err, msg
+                return NavErr.OK, "Nav2 already running"
+            publish_status("Stopping navigation (Nav2)")
+            self.nav_process, err, msg = self._stop_process(self.nav_process, "Nav2")
+            return err, msg
 
     # auto-annotation
     def set_auto_annotate(self, enable: bool, publish_status) -> Tuple[int, str]:
@@ -688,8 +752,9 @@ class NavigationOrchestrator(Node):
         commands and action cancellation.
         """
         self._teardown_annotation()
-        self.slam_process, _, _ = self._stop_process(self.slam_process, "SLAM Toolbox")
-        self.nav_process, _, _ = self._stop_process(self.nav_process, "Nav2")
+        with self._process_lock:
+            self.slam_process, _, _ = self._stop_process(self.slam_process, "SLAM Toolbox")
+            self.nav_process, _, _ = self._stop_process(self.nav_process, "Nav2")
 
     # map saving
     def save_map(self, publish_status) -> Tuple[int, str]:

@@ -163,7 +163,8 @@ def launch_setup(context, *args, **kwargs):
             "/cmd_vel@geometry_msgs/msg/Twist]gz.msgs.Twist",
             "/odom@nav_msgs/msg/Odometry[gz.msgs.Odometry",
             "/tf@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V",
-            "/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan",
+            "/scan_lidar_front@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan",
+            "/scan_lidar_back@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan",
             "--ros-args",
             "--log-level",
             "error",
@@ -174,7 +175,7 @@ def launch_setup(context, *args, **kwargs):
     # Static TF: scoped lidar frame for the mobile base
     # Transforms: front_lidar_link -> ur5e/ranger_base_link/front_lidar
     # -------------------------------------------------------------------------
-    static_tf = Node(
+    static_tf_lidar_front = Node(
         package="tf2_ros",
         executable="static_transform_publisher",
         name="front_lidar_scoped_frame_tf",
@@ -188,6 +189,24 @@ def launch_setup(context, *args, **kwargs):
             "0",
             "front_lidar_link",
             "ur5e/ranger_base_link/front_lidar",
+        ],
+    )
+
+
+    static_tf_lidar_back = Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        name="back_lidar_scoped_frame_tf",
+        output="screen",
+        arguments=[
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "back_lidar_link",
+            "ur5e/ranger_base_link/back_lidar",
         ],
     )
 
@@ -208,7 +227,8 @@ def launch_setup(context, *args, **kwargs):
         nav2_launch,
         nav2_rviz_node,
         mobile_bridge,
-        static_tf,
+        static_tf_lidar_front,
+        static_tf_lidar_back,
     ]
 
 

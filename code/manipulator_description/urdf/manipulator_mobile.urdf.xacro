@@ -153,7 +153,7 @@
     safety_pos_margin="$(arg safety_pos_margin)"
     safety_k_position="$(arg safety_k_position)"
     force_abs_paths="true">
-    <origin xyz="0 0 1.142" rpy="0 0 0" />
+    <origin xyz="0.18635 -0.0015 0.2876" rpy="0 0 0" />
   </xacro:ur_robot>
 
   <xacro:ur_realsense_mount
@@ -216,20 +216,52 @@
       </plugin>
     </gazebo>
 
-    <!-- Simple 2D lidar for SLAM/Nav2. It is mounted to the existing front_lidar_link. -->
+  
+  <!-- Simple 2D lidar for SLAM/Nav2. It is mounted to the existing front_lidar_link. -->
     <gazebo reference="front_lidar_link">
       <sensor name="front_lidar" type="gpu_lidar">
         <always_on>true</always_on>
         <visualize>true</visualize>
         <update_rate>10</update_rate>
-        <topic>/scan</topic>
+        <topic>/scan_lidar_front</topic>
         <lidar>
           <scan>
             <horizontal>
               <samples>720</samples>
               <resolution>1</resolution>
-              <min_angle>-3</min_angle>
-              <max_angle>3</max_angle>
+              <min_angle>-1.96349540849</min_angle><!--=5/16*2*PI-->
+              <max_angle>1.96349540849</max_angle>
+            </horizontal>
+          </scan>
+          <range>
+            <min>0.10</min>
+            <max>12.0</max>
+            <resolution>0.01</resolution>
+          </range>
+          <noise>
+            <type>gaussian</type>
+            <mean>0.0</mean>
+            <stddev>0.01</stddev>
+          </noise>
+        </lidar>
+      </sensor>
+    </gazebo>
+    
+
+    <!-- Simple 2D lidar for SLAM/Nav2. It is mounted to the existing back_lidar_link. -->
+    <gazebo reference="back_lidar_link">
+      <sensor name="back_lidar" type="gpu_lidar">
+        <always_on>true</always_on>
+        <visualize>true</visualize>
+        <update_rate>10</update_rate>
+        <topic>/scan_lidar_back</topic>
+        <lidar>
+          <scan>
+            <horizontal>
+              <samples>720</samples>
+              <resolution>1</resolution>
+              <min_angle>-1.96349540849</min_angle><!--=5/16*2*PI-->
+              <max_angle>1.96349540849</max_angle>
             </horizontal>
           </scan>
           <range>
@@ -246,6 +278,9 @@
       </sensor>
     </gazebo>
   </xacro:if>
+
+
+
 
   <!-- ros2_control instance for the UR arm -->
   <xacro:if value="${use_mock_hardware}">

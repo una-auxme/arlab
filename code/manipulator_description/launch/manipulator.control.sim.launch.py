@@ -171,6 +171,8 @@ def launch_setup(context, *args, **kwargs):
         output="both",
     )
 
+ 
+
     rviz_node = Node(
         package="rviz2",
         executable="rviz2",
@@ -558,7 +560,7 @@ def generate_launch_description():
                 [
                     FindPackageShare("manipulator_description"),
                     "urdf",
-                    "manipulator.urdf.xacro",
+                    "manipulator_mobile.urdf.xacro",
                 ]
             ),
             description="URDF/XACRO description file with the robot.",

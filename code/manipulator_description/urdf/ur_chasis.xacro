@@ -15,17 +15,17 @@
     <link name="${name}_link">
       <!-- Mesh shown in RViz and Gazebo; origin aligns the CAD mesh with the link frame. -->
       <visual>
-        <origin xyz="-0.2648 -0.2659 0.2685" rpy="1.57079 0 -3.14159"/>
+        <origin xyz="0 0 0.0001" rpy="1.57079632679  0 3.14159265359"/>
         <geometry>
-          <mesh filename="file://$(find manipulator_description)/meshes/chasis.obj" scale="0.017 0.017 0.017"/>
+          <mesh filename="file://$(find manipulator_description)/meshes/chasis.obj" scale="0.1 0.1 0.1"/>
         </geometry>
       </visual>
 
       <!-- Collision geometry used by Gazebo and collision checking. -->
       <collision>
-        <origin xyz="-0.2648 -0.2659 0.291" rpy="1.57079 0 -3.14159"/>
+        <origin xyz="0 0 0.0001" rpy="1.57079632679  0 3.14159265359"/>
         <geometry>
-          <mesh filename="file://$(find manipulator_description)/meshes/chasis.obj" scale="0.017 0.017 0.017"/>
+          <mesh filename="file://$(find manipulator_description)/meshes/chasis.obj" scale="0.1 0.1 0.1"/>
         </geometry>
       </collision>
 
@@ -35,7 +35,7 @@
            geometry is unchanged; only the hidden inertial model is moved down
            and made numerically stiff against roll/pitch. -->
       <inertial>
-        <origin xyz="0 0 0.12" rpy="0 0 0"/>
+        <origin xyz="0 0 0.5" rpy="0 0 0"/>
         <mass value="60"/>
         <inertia ixx="300"  ixy="0"  ixz="0" iyy="300" iyz="0" izz="300" />
       </inertial>

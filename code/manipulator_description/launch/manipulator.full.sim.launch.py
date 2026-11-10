@@ -133,6 +133,12 @@ def launch_setup(context, *args, **kwargs):
         }.items(),
     )
 
+
+    camera_gripper_bridge_launch = IncludeLaunchDescription(
+         PythonLaunchDescriptionSource(PathJoinSubstitution([manipulator_pkg_share, "launch", "camera_gripper_bridge.launch.py"])),
+    )
+
+
     # -------------------------------------------------------------------------
     # RViz configured for Nav2 default view (map, paths, robot pose)
     # -------------------------------------------------------------------------
@@ -192,6 +198,7 @@ def launch_setup(context, *args, **kwargs):
         ],
     )
 
+
     static_tf_lidar_back = Node(
         package="tf2_ros",
         executable="static_transform_publisher",
@@ -209,6 +216,20 @@ def launch_setup(context, *args, **kwargs):
         ],
     )
 
+
+    lidar_sensor_merger = Node(
+        package="lidar_sensor_merger",
+        executable="lidar_sensor_merger",
+        name="lidar_sensor_merger",
+        output="screen",
+        arguments=[
+        ],
+    )
+
+
+ 
+
+
     # Assemble the full list of actions to execute
     return [
         # Gazebo resource paths (so small_house models are found)
@@ -225,9 +246,11 @@ def launch_setup(context, *args, **kwargs):
         slam_launch,
         nav2_launch,
         nav2_rviz_node,
+        camera_gripper_bridge_launch,
         mobile_bridge,
         static_tf_lidar_front,
         static_tf_lidar_back,
+        lidar_sensor_merger,
     ]
 
 

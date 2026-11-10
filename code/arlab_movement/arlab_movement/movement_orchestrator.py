@@ -414,7 +414,7 @@ class NavigationOrchestrator(Node):
     @staticmethod
     def _resolve_params_file(path: str) -> str:
         """
-        Resolve a params file relative path to arlab_movment/params.
+        Resolve a params file relative path to arlab_movement/params.
 
         Args:
             path (str): Relative or absolute path to the params file.
@@ -524,7 +524,7 @@ class NavigationOrchestrator(Node):
     # commands
     def set_mapping(self, enable: bool, publish_status) -> Tuple[int, str]:
         """
-        Start or stop SLAM Toolbox (async) via arlab_movement/slam_async.launch.py.
+        Start or stop SLAM Toolbox (async) via `slam_launch_file` with `slam_params_file`.
 
         Args:
             enable (bool): True to start SLAM Toolbox, False to stop it.
@@ -544,7 +544,6 @@ class NavigationOrchestrator(Node):
                     self._slam_started_at = time.monotonic()
                     self.slam_process, err, msg = self._start_process(
                         self._stack_launch_cmd(self.slam_launch_file, "slam_params_file", self.slam_params_file),
-                        # ["ros2", "launch", "slam_toolbox", "online_async_launch.py"],
                         "SLAM Toolbox",
                     )
                     return err, msg
@@ -556,7 +555,7 @@ class NavigationOrchestrator(Node):
 
     def set_nav(self, enable: bool, publish_status) -> Tuple[int, str]:
         """
-        Start or stop Nav2 via arlab_movement/nav2.launch.py.
+        Start or stop Nav2 via `nav_launch_file` with `nav_params_file`.
 
         This node only manages the stack, navigation goals are sent to Nav2 directly.
 
@@ -578,7 +577,6 @@ class NavigationOrchestrator(Node):
                     self._nav_started_at = time.monotonic()
                     self.nav_process, err, msg = self._start_process(
                         self._stack_launch_cmd(self.nav_launch_file, "params_file", self.nav_params_file),
-                        # ["ros2", "launch", "nav2_bringup", "navigation_launch.py"],
                         "Nav2",
                     )
                     return err, msg

@@ -577,7 +577,7 @@ class NavigationOrchestrator(Node):
                     self._nav2_check_pending = False
                     self._nav_started_at = time.monotonic()
                     self.nav_process, err, msg = self._start_process(
-                        self._stack_launch_cmd(self.nav_launch_file, "nav2_params_file", self.nav_params_file),
+                        self._stack_launch_cmd(self.nav_launch_file, "params_file", self.nav_params_file),
                         # ["ros2", "launch", "nav2_bringup", "navigation_launch.py"],
                         "Nav2",
                     )

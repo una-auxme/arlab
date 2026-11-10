@@ -171,8 +171,6 @@ def launch_setup(context, *args, **kwargs):
         output="both",
     )
 
- 
-
     rviz_node = Node(
         package="rviz2",
         executable="rviz2",

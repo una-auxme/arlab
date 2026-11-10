@@ -192,7 +192,6 @@ def launch_setup(context, *args, **kwargs):
         ],
     )
 
-
     static_tf_lidar_back = Node(
         package="tf2_ros",
         executable="static_transform_publisher",

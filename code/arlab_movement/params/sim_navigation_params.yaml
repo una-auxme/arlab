@@ -1,0 +1,12 @@
+# Overrides for Ranger simulation (manipulator_description/manipulator.full.sim.launch.py)
+navigation_orchestrator:
+  ros__parameters:
+    use_sim_time: true
+
+    slam_launch_file: "slam_async.launch.py"
+    slam_params_file: "ranger_slam_params.yaml"
+    nav_launch_file: "ranger_nav2.launch.py"
+    nav_params_file: "ranger_nav2_params.yaml"
+
+    save_to_database: false
+    stack_grace_period: 30.0

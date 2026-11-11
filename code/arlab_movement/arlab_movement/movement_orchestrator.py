@@ -40,6 +40,7 @@ from std_msgs.msg import Bool, Int32
 from std_srvs.srv import Trigger
 from arlab_knowledge_interfaces.msg import Result
 from arlab_common_interfaces.msg import SafetyNode, SafetyState
+from ament_index_python.packages import get_package_share_directory
 
 
 class NavErr:
@@ -79,6 +80,10 @@ class NavigationOrchestrator(Node):
         self.declare_parameter("map_topic", "/map")
         self.declare_parameter("database_service", "/arlab/knowledge/add_map")
         self.declare_parameter("database_timeout", 10.0)
+        self.declare_parameter("slam_launch_file", "slam_async.launch.py")
+        self.declare_parameter("slam_params_file", "slam_params.yaml")
+        self.declare_parameter("nav_launch_file", "nav2.launch.py")
+        self.declare_parameter("nav_params_file", "nav2_params.yaml")
 
         # heartbeat to the local movement_local_safety node
         self.declare_parameter("heartbeat_period", 0.05)  # seconds between heartbeat messages
@@ -105,6 +110,11 @@ class NavigationOrchestrator(Node):
         self.map_topic = str(self.get_parameter("map_topic").value)
         self.database_service = str(self.get_parameter("database_service").value)
         self.database_timeout = float(self.get_parameter("database_timeout").value)
+        self.slam_launch_file = str(self.get_parameter("slam_launch_file").value)
+        self.slam_params_file = self._resolve_params_file(str(self.get_parameter("slam_params_file").value))
+        self.nav_launch_file = str(self.get_parameter("nav_launch_file").value)
+        self.nav_params_file = self._resolve_params_file(str(self.get_parameter("nav_params_file").value))
+        self.use_sim_time = bool(self.get_parameter("use_sim_time").value)
 
         self.current_map: Optional[OccupancyGrid] = None
 
@@ -401,6 +411,38 @@ class NavigationOrchestrator(Node):
             self._report_stack_failure("slam", proc, f"state is not active: {response.current_state.label}")
 
     # process helpers
+    @staticmethod
+    def _resolve_params_file(path: str) -> str:
+        """
+        Resolve a params file relative path to arlab_movement/params.
+
+        Args:
+            path (str): Relative or absolute path to the params file.
+
+        Returns:
+            str: Absolute path or empty if 'path' is empty.
+        """
+        if not path or os.path.isabs(path):
+            return path
+        return os.path.join(get_package_share_directory("arlab_movement"), "params", path)
+
+    def _stack_launch_cmd(self, launch_file: str, params_arg: str, params_file: str) -> list:
+        """
+        Build the ros2 launch command for a navigation stack.
+
+        Args:
+            launch_file (str): launch file in arlab_movement.
+            params_arg (str): launch argument name for the params file.
+            params_file (str): absolute path to params file, empty to keep default.
+
+        Returns:
+            list: command and arguments for '_start_process'.
+        """
+        cmd = ["ros2", "launch", "arlab_movement", launch_file, f"use_sim_time:={str(self.use_sim_time).lower()}"]
+        if params_file:
+            cmd.append(f"{params_arg}:={params_file}")
+        return cmd
+
     def _start_process(self, cmd_list, name: str) -> Tuple[Optional[subprocess.Popen], int, str]:
         """
         Launch a command as a subprocess in its own process group.
@@ -482,7 +524,7 @@ class NavigationOrchestrator(Node):
     # commands
     def set_mapping(self, enable: bool, publish_status) -> Tuple[int, str]:
         """
-        Start or stop SLAM Toolbox (async) via arlab_movement/slam_async.launch.py.
+        Start or stop SLAM Toolbox (async) via `slam_launch_file` with `slam_params_file`.
 
         Args:
             enable (bool): True to start SLAM Toolbox, False to stop it.
@@ -501,8 +543,7 @@ class NavigationOrchestrator(Node):
                     self._slam_check_pending = False
                     self._slam_started_at = time.monotonic()
                     self.slam_process, err, msg = self._start_process(
-                        ["ros2", "launch", "arlab_movement", "slam_async.launch.py"],
-                        # ["ros2", "launch", "slam_toolbox", "online_async_launch.py"],
+                        self._stack_launch_cmd(self.slam_launch_file, "slam_params_file", self.slam_params_file),
                         "SLAM Toolbox",
                     )
                     return err, msg
@@ -514,7 +555,7 @@ class NavigationOrchestrator(Node):
 
     def set_nav(self, enable: bool, publish_status) -> Tuple[int, str]:
         """
-        Start or stop Nav2 via arlab_movement/nav2.launch.py.
+        Start or stop Nav2 via `nav_launch_file` with `nav_params_file`.
 
         This node only manages the stack, navigation goals are sent to Nav2 directly.
 
@@ -535,8 +576,7 @@ class NavigationOrchestrator(Node):
                     self._nav2_check_pending = False
                     self._nav_started_at = time.monotonic()
                     self.nav_process, err, msg = self._start_process(
-                        ["ros2", "launch", "arlab_movement", "nav2.launch.py"],
-                        # ["ros2", "launch", "nav2_bringup", "navigation_launch.py"],
+                        self._stack_launch_cmd(self.nav_launch_file, "params_file", self.nav_params_file),
                         "Nav2",
                     )
                     return err, msg

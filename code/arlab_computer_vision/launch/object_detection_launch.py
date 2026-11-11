@@ -57,8 +57,17 @@ def generate_launch_description():
         ],
     )
 
+    local_safety_node = Node(
+        package="arlab_computer_vision",
+        executable="computer_vision_local_safety",
+        parameters=[
+            {"local_heartbeat_topic": "/arlab/computer_vision/heartbeat"}, 
+        ],
+    )
+
     # Add declared arguments and node to the launch description
     ld.add_action(declare_target_frame)
     ld.add_action(object_detection_node)
+    ld.add_action(local_safety_node)
 
     return ld

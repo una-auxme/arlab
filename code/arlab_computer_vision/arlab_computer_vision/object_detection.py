@@ -39,7 +39,7 @@ import torch
 import yaml
 from ament_index_python.packages import get_package_share_directory
 from arlab_common_interfaces.action import VisionSnapshotAction
-from arlab_common_interfaces.msg import VisionSnapshotCommand, VisionSnapshotResponse
+from arlab_common_interfaces.msg import SafetyNode, VisionSnapshotCommand, VisionSnapshotResponse
 from arlab_knowledge_interfaces.msg import (
     Entity,
     EntityPickable,
@@ -47,6 +47,7 @@ from arlab_knowledge_interfaces.msg import (
     Result,
     Shape,
 )
+from std_msgs.msg import Header, Int32
 from arlab_knowledge_interfaces.srv import AddEntity, DelEntities, GetEntities, UpdShape
 from cv_bridge import CvBridge
 from message_filters import ApproximateTimeSynchronizer, Subscriber
@@ -63,7 +64,6 @@ from ros2_numpy.point_cloud2 import (
 )
 from sensor_msgs.msg import CameraInfo, Image, PointCloud2
 from sklearn.cluster import DBSCAN
-from std_msgs.msg import Header
 from tf2_ros import Buffer, TransformListener
 from torchvision.transforms.functional import resize
 from ultralytics import YOLO
@@ -412,7 +412,7 @@ class ObjectDetection(Node):
         self.declare_parameter("local_heartbeat_topic", "/arlab/computer_vision/heartbeat")
         self.heartbeat_group = MutuallyExclusiveCallbackGroup()
         self.heartbeat_pub = self.create_publisher(Int32, self.get_parameter("local_heartbeat_topic").value, 10)
-        self.create_timer(self.get_parameter("heartebeat_period").value, lambda: self.heartbeat_pub.publish(Int32(data=SafetyNode.COMPUTER_VISION_OBJECT_DETECTION)),
+        self.create_timer(self.get_parameter("heartbeat_period").value, lambda: self.heartbeat_pub.publish(Int32(data=SafetyNode.COMPUTER_VISION_OBJECT_DETECTION)),
                   callback_group=self.heartbeat_group)
 
         self.visualize = self.get_parameter("visualize").get_parameter_value().bool_value

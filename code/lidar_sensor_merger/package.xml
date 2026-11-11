@@ -3,9 +3,9 @@
 <package format="3">
   <name>lidar_sensor_merger</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="arlab@todo.todo">arlab</maintainer>
-  <license>TODO: License declaration</license>
+  <description>simple package for merging the output of 2 lidar sensors into one simulated sensor</description>
+  <maintainer email="julian-schropp@web.de">Julian Schropp</maintainer>
+  <license>Apache 2.0</license>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

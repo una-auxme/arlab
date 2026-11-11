@@ -47,6 +47,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 
   "msg/WhisperTranscript.msg"
 
+  "msg/SystemFreeze.msg"
   "msg/SafetyModule.msg"
   "msg/SafetyNode.msg"
   "msg/SafetyState.msg"

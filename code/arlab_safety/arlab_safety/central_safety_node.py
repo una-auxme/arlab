@@ -15,7 +15,7 @@ Maintainers:
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Int32MultiArray
-from arlab_common_interfaces.msg import SafetyState
+from arlab_common_interfaces.msg import SafetyState, SystemFreeze
 
 
 class CentralSafetyNode(Node):
@@ -45,6 +45,7 @@ class CentralSafetyNode(Node):
             self.callback,
             10,
         )
+        self.publisher = self.create_publisher(SystemFreeze, 'system_freeze', 10)
 
     def now(self) -> float:
         """Return current time in seconds.
@@ -159,6 +160,7 @@ class CentralSafetyNode(Node):
         Notes:
             Intended to be the final safety action (e.g., emergency stop).
         """
+        self.publisher.publish(True)
         self.get_logger().fatal("System freeze triggered due to critical error!")
 
 

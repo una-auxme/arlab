@@ -1,121 +1,182 @@
-# ARLAB decision making
+# Arlab – Decision Making (neuer Prototyp)
 
-This package contains the global decision maker using py_trees-based behavior trees.
+**Architektur:** Hierarchische Zustandsmaschine (HFSM) mit drei logischen
+orthogonalen Regionen im Zustand `Operational` und einem externen
+`Recovery`-Zustand. Die eigentliche Aufgabe wird mit `py_trees` ausgeführt.
 
-## Package structure
+![Zustandsarchitektur](architecture.png)
 
-```txt
+## Dateistruktur
+
+```text
 arlab_decision_making/
 ├── arlab_decision_making/
-│   ├── decision_maker.py    # Main decision maker entry point
-│   ├── behaviours/          # Behavior tree nodes
-│   │   ├── common/          # Common behaviors (action, speech, vision)
-│   │   ├── manipulation/    # Manipulation behaviors
-│   │   ├── movement/        # Movement behaviors
-│   │   ├── task1/           # Task 1: Help me carry
-│   │   ├── task2/           # Task 2: Storing groceries
-│   │   ├── tdi_demo/        # TDI demo behaviors
-│   │   ├── test_trees/      # Test behavior trees
-│   │   └── check_safety.py  # Safety checking behavior
-│   └── utils/               # Utility functions
-└── launch/                  # Launch files
+│   ├── main.py                 # ROS-2-Einstieg, Parameter, Topics, Services
+│   ├── state_machine.py        # HFSM / drei orthogonale Regionen / History
+│   ├── heartbeat_monitor.py   # Heartbeat-Status und Timeout
+│   ├── estop_monitor.py       # Notstopp-Status (prototypischer Adapter)
+│   ├── bt_controller.py       # BT starten, canceln, wiederaufnehmen
+│   ├── recovery.py            # Recovery-Freigabebedingungen und TODO-Hooks
+│   ├── prototype_actions.py   # gemeinsame PyTrees-Action-Basis
+│   ├── laundry.py             # fünf übergeordnete Laundry-Prozesse
+│   ├── pick_and_place.py      # zehn Pick-and-Place-Prozesse
+│   └── demo.py                # Simulation ohne ROS
+├── test/
+├── architecture.svg / .png
+├── setup.py / setup.cfg / package.xml
+└── README.md
 ```
 
-## Key features
+## Semantik der State Machine
 
-- Safety-first behavior tree architecture
-- Error handling with ErrorSelector wrapper
-- Task-based execution (carry, storage tasks)
-- Modular behavior node organization
+- **INIT:** Warten auf gültige Heartbeats aller konfigurierten Module und
+  ein frisches, nicht aktives E-Stop-Statussignal. Kein BT-Start ohne Freigabe.
+- **OPERATIONAL:** `Heartbeat Monitoring`, `Notstopp Monitoring` und
+  `Behavior Tree Running` bilden drei orthogonale Regionen.
+- **Heartbeat-Störung:** Die Heartbeat-Region wechselt nach
+  `Pause by Heartbeat`. **Nur** der BT-Bereich wechselt nach `BT Paused`
+  und löst den Übergang in das externe `RECOVERY` aus.
+- **Notstopp:** Analoger Ablauf über `Pause by E-Stop` -> `BT Paused` ->
+  `RECOVERY` (keine direkten Übergänge von den Monitor-Regionen).
+- **RECOVERY:** Beide Beobachter erhalten über ihre ROS-Subscriptions weiterhin
+  Signale. Die **orthogonalen Zustände** sind jedoch verlassen. Der BT wird
+  hier nicht getickt. Vor Rückkehr müssen frische Heartbeats und ein freier
+  E-Stop vorliegen, die Umgebung geprüft und der Wiederanlauf genehmigt sein.
+- **WIEDEREINTRITT:** Die beiden Monitor-Regionen gehen wieder in den jeweiligen
+  `Monitoring`-Initialzustand. Allein der BT-Bereich verwendet `History`:
+  Eintritt in `BT Paused` -> `BT Running` durch explizite Wiederaufnahme.
+- **BT SUCCESS:** `FINISHED`. **BT FAILURE:** Recovery-Versuch; nach
+  `max_recoveries` erfolglosen Versuchen `FAILED`.
 
-## Main behavior tree
+**Die orthogonalen Regionen sind in `state_machine.py` ausdrücklich durch
+separate Zustandsvariablen und ereignisgesteuerte Übergänge modelliert.** Dies
+ist ein schlanker HFSM-Prototyp und **keine vollständig implementierte
+UML-Statechart-Engine**. Die ROS-Callbacks/Timers laufen unabhängig vom
+BT-Timer; ein einzelner Zustandslock verhindert parallele Zustandsmutationen.
 
-```mermaid
-flowchart TD
-    R[Behavior tree root] --> S0(Sequence memory=false)
-    S0 --> CS[CheckSafety]
-    S0 --> S1(Selector)
-    S1 --> T1[Task1: Help me carry]
-    S1 --> T2[Task2: Storing groceries]
+### Was History beim Behavior Tree bedeutet
+
+Die HFSM merkt sich nach einer Unterbrechung `BTRegion.PAUSED` (History).
+Das ist **nicht dasselbe wie** der interne Fortschritt eines PyTrees.
+Zusätzlich speichert `TaskContext.completed` die bereits abgeschlossenen
+Prozess-IDs. Beim Resume wird der Baum neu aufgebaut. Diese Prozesse liefern
+sofort `SUCCESS`, während die **unterbrochene Aktion von vorn** beginnt.
+Nach Prozessneustart sind diese Checkpoints derzeit verloren.
+
+**TODO:** Persistente Checkpoints; tatsächliche Action-Goal-Cancellation,
+Ergebnisabgleich, Idempotenz-/Wiederanlaufprüfung für Greifen und Ablegen.
+
+## ROS-2-Schnittstellen
+
+| Schnittstelle | Typ | Zweck / Stand |
+|---|---|---|
+| `/global_heartbeat` | `std_msgs/msg/Int32MultiArray` | Bestehende Arlab-Konvention `[module_id, status]` (-1 register, 0 OK, >0 Fehler) |
+| `/arlab/estop_active` | `std_msgs/msg/Bool` | **Nur prototypischer Status-Adapter**, noch **keine** echte Teach-Pendant-Anbindung |
+| `/decision_maker/confirm_recovery_checked` | `std_srvs/srv/Trigger` | Manuelle Testfreigabe statt zukünftiger Umwelt-/Roboterprüfung |
+| `/decision_maker/authorize_restart` | `std_srvs/srv/Trigger` | Wiederanlauf-Freigabe für Prototyp |
+| `/decision_maker/state` | `std_msgs/msg/String` | JSON-Diagnose der HFSM-Zustände |
+
+**TODO: Noch nicht angebunden:**
+
+1. E-Stop-Status direkt aus Robotersteuerung/Teach-Pendant.
+2. Physikalisch sicherer Stop durch einen unabhängigen Safety-Mechanismus,
+   z. B. sicherheitsgerichtete Robotersteuerung. Ein ROS Bool ist das nicht.
+3. ROS-Action-Clients für Navigation, Perzeption, Greifen, Kommunikation.
+4. Zuverlässiges Abbrechen und Quittieren laufender ROS-Action-Ziele.
+5. Knowledge-Base-Invalidierung, Robot-/Szene-Verifikation und Operatoren-HMI.
+6. Persistente Checkpoints und Behandlung nicht idempotenter Manipulationen.
+7. Überwachung des **Supervisors selbst** durch externe Infrastruktur.
+
+**Sicherheitsgrenze:** Das Paket ist ein Architekturprototyp und darf nicht
+als Sicherheitsfunktion an echter Hardware eingesetzt werden. Insbesondere
+unterbricht das Aussetzen des BT-Tickings keine laufende Bewegung automatisch.
+
+## Start im vorhandenen ROS-2-Workspace
+
+Aus dem Ordner mit `code/` als ROS-2-Paketquelle:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+colcon build --packages-select arlab_decision_making --symlink-install
+source install/setup.bash
+
+# Nur Mock-Actions: die Hardware wird durch diese Aktionen NICHT gefahren.
+ros2 run arlab_decision_making decision_maker --ros-args \
+  -p task:=laundry \
+  -p simulate_actions:=true \
+  -p heartbeat_module_ids:="[1, 2]"
+
+# Alternative Task-Auswahl:
+ros2 run arlab_decision_making decision_maker --ros-args \
+  -p task:=pick_and_place -p simulate_actions:=true
 ```
 
-## Subtree Task1
+Der Ros-Node startet im Zustand **INIT** und wartet auf aktuelle Eingänge.
+Bei einem echten Arlab-Setup müssen die bestehenden lokalen Safety-Nodes
+Heartbeat-Nachrichten liefern. Für isolierte Tests ohne diese Nodes können
+zwei separate Terminals die Nachrichten senden:
 
-### Task1: Help me carry
-
-```mermaid
-flowchart TD
-    S0(Sequence memory=false) --> WFTS[WaitForTaskStart]
-    S0 --> S1(Selector)
-    S1 --> D[Done]
-    S1 --> BBB[BringBackBag]
-    S1 --> GB[GetBag]
-    S1 --> S2(Sequence memory=false)
-    S1 --> SFO[SearchForOperator]
-    S2 --> OF[OperatorFound]
-    S2 --> FO[FollowOperator]
+```bash
+ros2 topic pub --rate 5 /global_heartbeat std_msgs/msg/Int32MultiArray \
+  "{data: [1, 0]}"
+# Zweites Terminal:
+ros2 topic pub --rate 5 /global_heartbeat std_msgs/msg/Int32MultiArray \
+  "{data: [2, 0]}"
 ```
 
-### BringBackBag
+Drittes Terminal: **nur Simulation** des E-Stop-Eingangs:
 
-```mermaid
-flowchart TD
-    S0(Sequence memory=false) --> CFBIG[CheckForBagInGripper]
-    S0 --> ES0(Error selector)
-    ES0 --> MTSP[MoveToStartingPosition]
-    ES0 --> EH_MTSP[Error handler: MoveToStartingPosition]
+```bash
+ros2 topic pub --rate 5 /arlab/estop_active std_msgs/msg/Bool \
+  "{data: false}"
 ```
 
-## Subtree Task2
+Ereignis auslösen (Publisher für `false` vorher anhalten oder durch `true`
+ersetzen):
 
-### Task2: Storing groceries
-
-```mermaid
-flowchart TD
-    S0(Sequence memory=false)
-    S0 --> CS[WaitForTaskStart]
-    S0 --> S1(Selector)
-    S1 --> T1[Done]
-    S1 --> S2(Sequence
-    memory = false)
-    S1 --> SFF[SearchForFurniture]
-    S2 --> CF[CupboardFound]
-    S2 --> TF[TableFound]
-    S2 --> SG[StoreGrocery]
+```bash
+ros2 topic pub --once /arlab/estop_active std_msgs/msg/Bool \
+  "{data: true}"
 ```
 
-### StoreGrocery
+Die State Machine wechselt jetzt über `BT Paused` nach `RECOVERY`. Zur
+Wiederaufnahme braucht sie **wiederholt frische, gesunde** Eingangssignale,
+sowie beide folgenden Testquittierungen:
 
-```mermaid
-flowchart TD
-    StoreGrocery(Sequence 
-    memory = true) --> MT[MoveToTable]
-    StoreGrocery --> CFI[CheckForItems]
-    StoreGrocery --> PI[PickItem]
-    StoreGrocery --> MTC[MoveToCupboard]
-    StoreGrocery --> CFTP[CheckForTargetPlacement]
-    StoreGrocery --> PlI[PlaceItem]
+```bash
+ros2 service call /decision_maker/confirm_recovery_checked std_srvs/srv/Trigger '{}'
+ros2 service call /decision_maker/authorize_restart std_srvs/srv/Trigger '{}'
+ros2 topic echo /decision_maker/state
 ```
 
-## Error handling
+Für normale Nutzung `simulate_actions:=false` belassen. Dann liefert jede
+nicht implementierte Prozess-Action absichtlich `RUNNING` und niemals einen
+falschen Erfolg.
 
-Any behavior that might require special error handling can be wrapped with an **ErrorSelector**
+## Pure-Python-Demo (ohne ROS, mit py_trees)
 
-THe *Action* in the graph below is the behavior being wrapped.
-
-```mermaid
-flowchart TD
-    ES0(Error selector) --> A[Action]
-    ES0 --> EH1_A[Error handler 1]
-    ES0 --> EH2_A[Error handler 2]
-    ES0 --> EH3_A[Error handler ...]
+```bash
+python3 -m arlab_decision_making.demo --task laundry --fault heartbeat
+python3 -m arlab_decision_making.demo --task pick_and_place --fault estop
+python3 -m arlab_decision_making.demo --task laundry --fault bt
 ```
 
-The **ErrorSelector** is a subclass of Selector with the following modifications:
+## Tests
 
-- It only returns SUCCESS if the first child (Action) returns SUCCESS
-- It always has memory -> Persistently stays in a running error handler
-- The memory is reset if one of the error handlers returns SUCCESS -> Runs the *Action* again in the next tick
-- If all children return FAILURE, it returns FAILURE as usual
+```bash
+python3 -m pytest -q test
+```
 
-The implementation can be found in the separate package *py_trees_error_selector*.
+Die zustandsbasierten Tests in `test_state_machine.py` benötigen keine
+ROS-Installation. Die eigentlichen Tree-Tests in `test_tasks.py` benötigen
+`py_trees` und werden andernfalls übersprungen.
+
+## Konventionen im Projekt
+
+- Python PEP 8, Typannotationen, Docstrings.
+- Komponenten getrennt; keine riesige State-Liste mit 65 einzelnen Actions.
+- PDF-Prozessabschnitte werden als **5 Laundry**- und **10 Pick-and-Place**-
+  High-Level-Actions angelegt; Details und Fehlerbehandlung gehören später
+  in deren jeweiligen ROS-Nodes.
+- Keine Battery-Low-Logik.
+- Bestehender ROS-Startname `decision_maker` bleibt erhalten.

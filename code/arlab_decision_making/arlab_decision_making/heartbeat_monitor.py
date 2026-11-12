@@ -30,12 +30,10 @@ class HeartbeatMonitor():
         self.subscription
         self.freeze = False
 
-    def listener_callback(self, msg: SystemFreeze) -> None:
-        self.node.get_logger().info('System will be freezed')
-        self.freeze = True
+    def listener_callback(self, msg: bool) -> None:
+        self.node.get_logger().info(f'Freeze massage: {msg.freeze}')
+        self.freeze = msg.freeze
 
-    def reset(self) -> None:
-        self.freeze = False
 
     @property
     def healthy(self) -> bool:

@@ -47,12 +47,13 @@ class BehaviorTreeController:
             self.is_paused = True
             self.context.log("BT paused, current process INVALIDATED")
 
-    def restart(self) -> None:
-        """Restart incomplete process; completed process checkpoints persist."""
-        self.start()
+#    def restart(self) -> None:
+#        """Restart incomplete process; completed process checkpoints persist."""
+#        self.is_paused = False
 
     def resume(self) -> None:
-
+        """Restart incomplete process; completed process checkpoints persist."""
+        self.start()
 
     def shutdown(self) -> None:
         if self.tree is not None:

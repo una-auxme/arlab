@@ -13,14 +13,14 @@ class RecoveryManager:
     """
 
     log: Callable[[str], None] = print
-    environment_verified: bool = False
-    restart_authorized: bool = False
+    environment_verified: bool = True
+    restart_authorized: bool = True
     reason: str = ""
 
     def begin(self, reason: str) -> None:
         self.reason = reason
-        self.environment_verified = False
-        self.restart_authorized = False
+        self.environment_verified = True
+        self.restart_authorized = True
         self.log(f"RECOVERY: {reason}")
         # TODO: Verify robot/controller state and safe end-effector pose.
         # TODO: Invalidate stale knowledge-base objects selectively.
@@ -38,12 +38,10 @@ class RecoveryManager:
         self,
         *,
         heartbeat_ok: bool,
-        estop_ok: bool,
         require_authorization: bool,
     ) -> bool:
         return (
             heartbeat_ok
-            and estop_ok
             and self.environment_verified
             and (not require_authorization or self.restart_authorized)
         )

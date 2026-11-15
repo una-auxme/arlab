@@ -1,10 +1,31 @@
+#!/usr/bin/env python3
+
 """
-This package allows speech recognition using Faster-Whisper with wakeword detection.
-It continuously monitors microphone input, detects configurable wakewords,
-transcribes them and publishes the result
+ARLAB Whisper
+
+Maintainer: tobias.neher@uni-a.de
+
+This module implements a ROS 2 speech-to-text (STT) pipeline based on the Faster-Whisper library
+with integrated wakeword detection.
+
+The node continuously processes microphone input and uses two separate Whisper
+models for wakeword detection and speech transcription.
+
+The processing pipeline consists of the following steps:
+- Audio input is continuously received and stored in a rolling buffer.
+- An threshold is used to detect audio activity.
+- A lightweight Whisper model processes the audio to detect configured wakewords.
+- Once a wakeword is detected, the current audio buffer is saved and additional
+  audio is recorded for a configurable duration.
+- A second Whisper model transcribes the recorded audio into text.
+- The resulting transcript is published via a ROS 2 topic.
+
+Wakewords, Whisper models, audio settings and transcription
+parameters can be configured via ROS 2 parameters.
+
+The node publishes recognized speech commands as WhisperTranscript messages.
 """
 
-#!/usr/bin/env python3
 
 import os
 import tempfile
@@ -28,7 +49,7 @@ from arlab_common_interfaces.msg import WhisperTranscript
 
 class PipelineState(Enum):
     """
-    Pipeline execution states for the speech processing pipeline
+    Pipeline execution states for the speech processing pipeline.
     """
 
     IDLE = 1
@@ -40,27 +61,27 @@ class PipelineState(Enum):
 
 class WhisperNode(Node):
     """
-    ros2 node for wakeword detection and speech transcription
+    ROS 2 node for wakeword detection and speech transcription.
     """
 
     def __init__(self):
         """
-        loads parameters, initializes the wakeword and whisper models,
-        configures the audio stream creates ros publishers and subscription
-        and starts the pipeline
+        Loads parameters, initializes the wakeword and whisper models,
+        configures the audio stream, creates ROS publishers and subscription
+        and starts the pipeline.
 
         """
         super().__init__("whisper")
 
-        # load all parameters from a yaml file
+        # Load all parameters from a YAML file.
         self.load_parameters()
 
-        # check if the zirbi wakewords should be added to the wakeword detection
-        self.checkedWakewords = self.wakewords
+        # Check whether the Zirbi wake words should be added to the wake word detection.
+        self.checkedWakewords = self.wakewords.copy()
         if self.use_zirbi_wakewords:
             self.checkedWakewords += self.zirbi_wakewords
 
-        # set the pipeline start
+        # Set the initial pipeline state.
         self.state = PipelineState.CHECK_SPEECH
         self.listening_enabled = True
         self.last_detection_time = 0.0
@@ -68,7 +89,7 @@ class WhisperNode(Node):
         self.recording_command = False
         self.record_buffer = []
 
-        # load the whisper models
+        # Load the Whisper models.
         self.get_logger().info("Loading wakeword model")
         self.wakeword_model = WhisperModel(
             self.wakeword_model_name,
@@ -76,17 +97,17 @@ class WhisperNode(Node):
             compute_type=self.compute_type,
         )
 
-        self.get_logger().info("loading command model")
+        self.get_logger().info("Loading command model")
         self.command_model = WhisperModel(
             self.command_model_name,
             device=self.device,
             compute_type=self.compute_type,
         )
 
-        # init the audio input buffer
+        # Initialize the audio input buffer.
         self.audio_buffer = deque(maxlen=int(self.sample_rate * self.rolling_buffer_seconds))
 
-        # ros subscriptions/publisher
+        # Initialize ROS subscriptions and publishers.
         self.create_subscription(
             Bool,
             "/whisper/enabled",
@@ -99,28 +120,28 @@ class WhisperNode(Node):
             10,
         )
 
-        # init the audio input stream
+        # Initialize the audio input stream.
         self.stream = sd.InputStream(
             samplerate=self.sample_rate,
             channels=self.channels,
             dtype=np.int16,
             callback=self.audio_callback,
         )
-        # start listening
+        # Start listening.
         self.stream.start()
 
-        # init the timer to start the pipline process
+        # Initialize the timer to start the pipeline process.
         self.timer = self.create_timer(self.check_interval, self.process_pipeline)
 
         self.get_logger().info("Whisper node ready")
 
     def load_parameters(self):
         """
-        declares all configurable parameters with default values and loads the
-        parameter values provided by the launch file via a yaml file
+        Declares all configurable parameters with default values and loads the
+        parameter values provided by the launch file via a YAML file.
         """
 
-        # declare all default parameters
+        # Declare all parameters with their default values.
 
         self.declare_parameter("wakewords", ["robot"])
         self.declare_parameter("use_zirbi_wakewords", True)
@@ -138,7 +159,7 @@ class WhisperNode(Node):
         self.declare_parameter("language", "en")
         self.declare_parameter("beam_size", 5)
 
-        # load the yaml parameters loaded in the launch file
+        # Load the parameter values provided by the launch file.
 
         self.wakewords = [word.lower() for word in self.get_parameter("wakewords").value]
 
@@ -161,10 +182,9 @@ class WhisperNode(Node):
 
     def enabled_callback(self, msg: Bool):
         """
-        en- or disables wakeword detection and the pipeline through a recieved ros2 message
+        Enables or disables wakeword detection and the pipeline through a received ROS 2 message.
 
-        args: msg (Bool): ros bool msg
-
+        args: msg (Bool): ROS 2 Bool message
         """
 
         self.listening_enabled = msg.data
@@ -172,26 +192,26 @@ class WhisperNode(Node):
 
     def audio_callback(self, indata, frames, time_info, status):
         """
-        receives audio chunks from the audio input stream, stores them in the
-        rolling audio buffer
+        Receives audio chunks from the audio input stream, stores them in the
+        rolling audio buffer.
 
-        Args:
-            indata (numpy.ndarray): incoming audio data
-            frames (int): number of audio frames
-            time_info (CData): timing information
-            status: status information
+        args:
+            indata (numpy.ndarray): Incoming audio data
+            frames (int): Number of audio frames
+            time_info (CData): Timing information
+            status: Status information
         """
 
-        # retrun issues
+        # Handle audio stream status warnings.
         if status:
             self.get_logger().warning(str(status))
 
         samples = indata[:, 0]
 
-        # fill the buffer
+        # Fill the rolling buffer.
         self.audio_buffer.extend(samples)
 
-        # if record is enabled
+        # Append samples to the recording buffer if recording is enabled.
         if self.recording_command:
             self.record_buffer.extend(samples)
 
@@ -199,22 +219,21 @@ class WhisperNode(Node):
         """
         Main pipeline structure
 
-        checks the current pipeline state and executes the corresponding processingstep
-        includs speech detection, wakeword detection command recording and
-        command transcription
+        Checks the current pipeline state and executes the corresponding processing step.
+        Includes speech detection, wakeword detection, command recording and command transcription.
         """
 
-        # returns if the pipeline is disables
+        # Returns if the pipeline is disabled.
         if not self.listening_enabled:
             self.state = PipelineState.IDLE
             return
 
-        # starts the pipeline if it was disabled
+        # Starts the pipeline if it was disabled.
         if self.state == PipelineState.IDLE:
             self.state = PipelineState.CHECK_SPEECH
 
-        # waits till the audio buffer is full, checks if speech is detected
-        # if this is the case switches the state to check for a wakeword
+        # Waits until the audio buffer is full, checks if speech is detected.
+        # If this is the case, switches the state to check for a wakeword.
         if self.state == PipelineState.CHECK_SPEECH:
             if len(self.audio_buffer) < self.sample_rate:
                 return
@@ -222,8 +241,8 @@ class WhisperNode(Node):
                 self.state = PipelineState.CHECK_WAKEWORD
             return
 
-        # tries to detect a wakeword, if this was the case and no other wakeword was detected for some time
-        # switch the state and save the input buffer
+        # Tries to detect a wakeword, if this was the case and no other wakeword was detected for some time.
+        # Switch the state and save the input buffer.
         if self.state == PipelineState.CHECK_WAKEWORD:
             audio = np.array(self.audio_buffer, dtype=np.int16)
             if self.detect_wakeword(audio):
@@ -231,20 +250,20 @@ class WhisperNode(Node):
                 if now - self.last_detection_time > self.rolling_buffer_seconds:
                     self.last_detection_time = now
                     self.get_logger().info("Wakeword detected")
-                    # save old buffer
+                    # Save the current audio buffer.
                     self.command_audio = list(self.audio_buffer)
                     self.state = PipelineState.RECORD_COMMAND
             else:
                 self.state = PipelineState.CHECK_SPEECH
             return
 
-        # records a command if triggerd and switch to transcribe
+        # Records a command if triggered and switches to transcribe.
         if self.state == PipelineState.RECORD_COMMAND:
             self.command_audio = self.record_command()
             self.state = PipelineState.TRANSCRIBE_COMMAND
             return
 
-        # transcibes and sends the command resets the pipeline
+        # Transcribes and sends the command. Then resets the pipeline.
         if self.state == PipelineState.TRANSCRIBE_COMMAND:
             transcript = self.transcribe_command(self.command_audio)
             if transcript:
@@ -254,11 +273,11 @@ class WhisperNode(Node):
             return
 
     def detect_speech(self):
-        """ "
-        calculates the "energy" of the rolling audio buffer
-        and compares it vs the configured speech threshold
+        """
+        Calculates the "energy" of the rolling audio buffer
+        and compares it against the configured speech threshold.
 
-        return: bool: true if the detected audio exeeds the threshold, oetherwise False.
+        return: bool: True if the detected audio exceeds the threshold, otherwise False.
         """
 
         audio = np.array(self.audio_buffer, dtype=np.float32)
@@ -268,39 +287,33 @@ class WhisperNode(Node):
         return True
 
     def detect_wakeword(self, audio):
-        """detects whether a configured wakeword is part of the audio using a whisper model
-        Args:
-            audio (numpy.ndarray): audio sample
+        """
+        Detects whether a configured wakeword is part of the audio using a Whisper model
+        args:
+            audio (numpy.ndarray): Audio sample
 
-        Returns:
-            bool: true if a configured wakeword was detected, otherweise false
+        returns:
+            bool: True if a configured wakeword was detected, otherwise False.
         """
 
-        # save the audio temporarly and run the whisper model
+        # Save the audio temporarily and run the whisper model.
         wav_path = self.save_temp_wav(audio)
         try:
             segments, info = self.wakeword_model.transcribe(
                 wav_path,
                 language=self.language,
                 beam_size=self.beam_size,
-                # initial_prompt="zirbi"
+
+                # An initial_prompt="zirbi" is possible at this point.
             )
-            """
-            #debug output of the transcript
-            for segment in segments:
-                self.get_logger().info(
-                    f"debug: {segment.text}"
-                )
-            """
-            # refactor the text to all lowercase
+
+            # Convert the transcript to lowercase.
             text = " ".join(segment.text for segment in segments).lower()
 
-            # self.get_logger().debug(f"Wakeword model: {text}")
-
-            # extract all used words from the text
+            # Extract all words from the transcript.
             words = re.findall(r"[a-zäöüß]+", text.lower())
 
-            # check if the refactored words fit a wakeword word beginning
+            # Check if the refactored words fit the beginning of a wakeword.
             for wakeword_i in self.checkedWakewords:
                 wakeword = wakeword_i.lower()
                 for word in words:
@@ -322,12 +335,12 @@ class WhisperNode(Node):
 
     def record_command(self):
         """
-        initializes the command recording buffer with the audio captured before the
-        wakeword
-        continues recording incoming audio for some time
+        Initializes the command recording buffer with the audio captured before the
+        wakeword.
+        Continues recording incoming audio for some time.
 
         return:
-            numpy.ndarray: recorded command audio samples
+            numpy.ndarray: Recorded command audio samples.
         """
 
         self.record_buffer = list(self.command_audio)
@@ -340,10 +353,10 @@ class WhisperNode(Node):
 
     def save_temp_wav(self, audio):
         """
-        creates a temporary WAV file from the provided audio data
-        Args: audio (numpy.ndarray): audio sample
+        Creates a temporary WAV file from the provided audio data.
+        args: audio (numpy.ndarray): Audio samples
 
-        Return: str: path to the created tfile
+        return: str: Path to the created temporary file.
         """
         temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
         filename = temp_file.name
@@ -357,26 +370,26 @@ class WhisperNode(Node):
 
     def transcribe_command(self, audio):
         """
-        converts the provided audio data into a temporary -wav fileand runs the
-        whisper model to generate a transcription
+        Converts the provided audio data into a temporary WAV file and runs the
+        Whisper model to generate a transcription.
 
-        args: audio (numpy.ndarray): recorded audio
-        return: str: transcribed text, empty if the transcript fails
+        args: audio (numpy.ndarray): Recorded audio
+        return: str: Transcribed text, empty if the transcript fails.
         """
 
-        # run model
+        # Run the transcription model.
         wav_path = self.save_temp_wav(audio)
         try:
             segments, info = self.command_model.transcribe(
                 wav_path, language=self.language, beam_size=self.beam_size, initial_prompt="Your name is Zirbi."
             )
-            # combines the output into one clean string
+            # Combine the transcription segments into a single string.
             text = " ".join(segment.text for segment in segments)
             text = text.strip()
             return text
 
         except Exception as e:
-            self.get_logger().error(f"command transcriptio error: {e}")
+            self.get_logger().error(f"Command transcription error: {e}")
             return ""
 
         finally:
@@ -387,10 +400,9 @@ class WhisperNode(Node):
 
     def send_transcript(self, transcript):
         """
-        creates a WhisperTranscript message from the provided text and publishes it
+        Creates a WhisperTranscript message from the provided text and publishes it.
 
-        args: transcript (str): transcribed text to publish
-
+        args: transcript (str): Transcribed text to publish.
         """
         if not transcript:
             return
@@ -401,7 +413,7 @@ class WhisperNode(Node):
 
     def destroy_node(self):
         """
-        cleans up resources before shutting down node.
+        Cleans up resources before shutting down the node.
         """
         try:
             self.stream.stop()

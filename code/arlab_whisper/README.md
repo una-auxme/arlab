@@ -19,3 +19,20 @@ arlab_whisper/
 - Generates a transcript of audio input via a faster-whisper model
 - Only activated via a small faster-whisper model, which is used as a wakeword detection
 - Config files are provided
+
+## Usage
+
+The node can be started in two different ways:
+
+
+The node can be started directly using `ros2 run`. In this case, the default parameter values defined in the script are used.
+
+```bash
+ros2 run arlab_whisper whisper_node
+```
+
+Alternatively, the node can be started using a ROS 2 launch file using `ros2 launch`. The launch file loads the parameters from a YAML configuration file and passes them to the node.
+
+```bash
+ros2 launch arlab_whisper whisper.launch.py
+```

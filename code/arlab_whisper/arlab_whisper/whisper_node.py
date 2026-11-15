@@ -26,7 +26,6 @@ parameters can be configured via ROS 2 parameters.
 The node publishes recognized speech commands as WhisperTranscript messages.
 """
 
-
 import os
 import tempfile
 import time
@@ -49,7 +48,7 @@ from arlab_common_interfaces.msg import WhisperTranscript
 
 class PipelineState(Enum):
     """
-    Pipeline execution states for the speech processing pipeline.
+    Pipeline execution  states for the speech processing pipeline.
     """
 
     IDLE = 1
@@ -105,7 +104,9 @@ class WhisperNode(Node):
         )
 
         # Initialize the audio input buffer.
-        self.audio_buffer = deque(maxlen=int(self.sample_rate * self.rolling_buffer_seconds))
+        self.audio_buffer = deque(
+            maxlen=int(self.sample_rate * self.rolling_buffer_seconds)
+        )
 
         # Initialize ROS subscriptions and publishers.
         self.create_subscription(
@@ -161,11 +162,15 @@ class WhisperNode(Node):
 
         # Load the parameter values provided by the launch file.
 
-        self.wakewords = [word.lower() for word in self.get_parameter("wakewords").value]
+        self.wakewords = [
+            word.lower() for word in self.get_parameter("wakewords").value
+        ]
 
         self.use_zirbi_wakewords = self.get_parameter("use_zirbi_wakewords").value
 
-        self.zirbi_wakewords = [word.lower() for word in self.get_parameter("zirbi_wakewords").value]
+        self.zirbi_wakewords = [
+            word.lower() for word in self.get_parameter("zirbi_wakewords").value
+        ]
 
         self.wakeword_model_name = self.get_parameter("wakeword_model").value
         self.command_model_name = self.get_parameter("command_model").value
@@ -303,7 +308,6 @@ class WhisperNode(Node):
                 wav_path,
                 language=self.language,
                 beam_size=self.beam_size,
-
                 # An initial_prompt="zirbi" is possible at this point.
             )
 
@@ -381,7 +385,10 @@ class WhisperNode(Node):
         wav_path = self.save_temp_wav(audio)
         try:
             segments, info = self.command_model.transcribe(
-                wav_path, language=self.language, beam_size=self.beam_size, initial_prompt="Your name is Zirbi."
+                wav_path,
+                language=self.language,
+                beam_size=self.beam_size,
+                initial_prompt="Your name is Zirbi.",
             )
             # Combine the transcription segments into a single string.
             text = " ".join(segment.text for segment in segments)

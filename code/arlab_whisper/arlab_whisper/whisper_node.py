@@ -105,9 +105,7 @@ class WhisperNode(Node):
 
         # Initialize the audio input buffer.
 
-        self.audio_buffer = deque(
-            maxlen=int(self.sample_rate * self.rolling_buffer_seconds)
-        )
+        self.audio_buffer = deque(maxlen = int(self.sample_rate * self.rolling_buffer_seconds))
 
         # Initialize ROS subscriptions and publishers.
         self.create_subscription(

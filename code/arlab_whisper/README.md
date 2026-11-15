@@ -24,7 +24,6 @@ arlab_whisper/
 
 The node can be started in two different ways:
 
-
 The node can be started directly using `ros2 run`. In this case, the default parameter values defined in the script are used.
 
 ```bash

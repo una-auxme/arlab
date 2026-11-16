@@ -8,7 +8,7 @@ with automatically extracted interface declarations.
 
 ## Maintainer
 
-Jessica Herrmann (jessica.herrmann@uni-a.de)
+Jessica Herrmann ([jessica.herrmann@uni-a.de](mailto:jessica.herrmann@uni-a.de))
 
 The architecture analysis is maintained as a repository-level tooling
 workflow. It is not a separate ROS 2 package.

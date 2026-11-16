@@ -104,9 +104,7 @@ class WhisperNode(Node):
         )
 
         # Initialize the audio input buffer.
-        self.audio_buffer = deque(
-            maxlen=int(self.sample_rate * self.rolling_buffer_seconds)
-        )
+        self.audio_buffer = deque(maxlen=int(self.sample_rate * self.rolling_buffer_seconds))
 
         # Initialize ROS subscriptions and publishers.
         self.create_subscription(
@@ -162,15 +160,11 @@ class WhisperNode(Node):
 
         # Load the parameter values provided by the launch file.
 
-        self.wakewords = [
-            word.lower() for word in self.get_parameter("wakewords").value
-        ]
+        self.wakewords = [word.lower() for word in self.get_parameter("wakewords").value]
 
         self.use_zirbi_wakewords = self.get_parameter("use_zirbi_wakewords").value
 
-        self.zirbi_wakewords = [
-            word.lower() for word in self.get_parameter("zirbi_wakewords").value
-        ]
+        self.zirbi_wakewords = [word.lower() for word in self.get_parameter("zirbi_wakewords").value]
 
         self.wakeword_model_name = self.get_parameter("wakeword_model").value
         self.command_model_name = self.get_parameter("command_model").value

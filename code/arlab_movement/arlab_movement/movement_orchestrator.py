@@ -23,6 +23,7 @@ import threading
 from datetime import datetime
 import time
 from typing import Optional, Tuple
+import shlex
 
 import rclpy
 import rclpy.executors
@@ -469,7 +470,7 @@ class NavigationOrchestrator(Node):
             sourced_cmd = [
                 "bash",
                 "-c",
-                f"source {workspace_setup} && {' '.join(cmd_list)}",
+                f"source {workspace_setup} && {shlex.join(cmd_list)}",
             ]
 
             proc = subprocess.Popen(

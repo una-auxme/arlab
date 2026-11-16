@@ -7,24 +7,16 @@ from pathlib import Path
 ARCHITECTURE_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ARCHITECTURE_DIR))
 
-from extract_ros2_interfaces_cpp import REPO_ROOT, extract_from_file
+from extract_ros2_interfaces_cpp import REPO_ROOT, extract_from_file  # noqa: E402
 
 
 class TestCppExtractor(unittest.TestCase):
-
     def test_orchestrator_action_server(self):
-        path = (
-            REPO_ROOT
-            / "code/arlab_manipulation_cpp/src/orchestrator_listener.cpp"
-        )
+        path = REPO_ROOT / "code/arlab_manipulation_cpp/src/orchestrator_listener.cpp"
 
         interfaces = extract_from_file(path)
 
-        matches = [
-            interface
-            for interface in interfaces
-            if interface["interface_name"] == "/orchestrator/action"
-        ]
+        matches = [interface for interface in interfaces if interface["interface_name"] == "/orchestrator/action"]
 
         self.assertEqual(len(matches), 1)
 
@@ -46,20 +38,18 @@ class TestCppExtractor(unittest.TestCase):
 
         for path in (REPO_ROOT / "code").rglob("*.cpp"):
             for interface in extract_from_file(path):
-                if (
-                    interface["interface_kind"] == "action"
-                    and interface["role"] == "server"
-                ):
-                    found.add((
-                        interface["interface_name"],
-                        interface["interface_type"],
-                    ))
+                if interface["interface_kind"] == "action" and interface["role"] == "server":
+                    found.add(
+                        (
+                            interface["interface_name"],
+                            interface["interface_type"],
+                        )
+                    )
 
         self.assertTrue(
             expected.issubset(found),
             f"Missing action servers: {expected - found}",
         )
-
 
     def test_constructor_resolved_service_clients(self):
         expected = {
@@ -68,20 +58,11 @@ class TestCppExtractor(unittest.TestCase):
         }
 
         for filename in ("force_monitor_switch.cpp", "hand_force_switch.cpp"):
-            path = (
-                REPO_ROOT
-                / "code/arlab_manipulation_cpp/src"
-                / filename
-            )
+            path = REPO_ROOT / "code/arlab_manipulation_cpp/src" / filename
 
             interfaces = extract_from_file(path)
 
-            matches = [
-                interface
-                for interface in interfaces
-                if interface["interface_kind"] == "service"
-                and interface["role"] == "client"
-            ]
+            matches = [interface for interface in interfaces if interface["interface_kind"] == "service" and interface["role"] == "client"]
 
             self.assertEqual(len(matches), 1)
 
@@ -105,18 +86,12 @@ class TestCppExtractor(unittest.TestCase):
                 interface["resolution_note"],
             )
 
-
     def test_method_parameter_resolves_multiple_actions(self):
         from extract_ros2_interfaces_cpp import resolve_method_parameter
 
-        path = (
-            REPO_ROOT
-            / "code/arlab_manipulation_cpp/src/hand_motion.cpp"
-        )
+        path = REPO_ROOT / "code/arlab_manipulation_cpp/src/hand_motion.cpp"
 
-        values, unresolved = resolve_method_parameter(
-            path, "HandMotion", "GetCreateClient", "action_name"
-        )
+        values, unresolved = resolve_method_parameter(path, "HandMotion", "GetCreateClient", "action_name")
 
         expected = {
             "/mia_hand/grasps/cylindrical/action",
@@ -140,10 +115,7 @@ class TestCppExtractor(unittest.TestCase):
         from pathlib import Path
         from extract_ros2_interfaces_cpp import resolve_method_parameter
 
-        original = (
-            REPO_ROOT
-            / "code/arlab_manipulation_cpp/src/hand_motion.cpp"
-        )
+        original = REPO_ROOT / "code/arlab_manipulation_cpp/src/hand_motion.cpp"
 
         with tempfile.TemporaryDirectory(dir=original.parent) as directory:
             path = Path(directory) / "hand_motion_test.cpp"
@@ -159,28 +131,18 @@ void HandMotion::ArchitectureTestUnknown(
                 encoding="utf-8",
             )
 
-            values, unresolved = resolve_method_parameter(
-                path, "HandMotion", "GetCreateClient", "action_name"
-            )
+            values, unresolved = resolve_method_parameter(path, "HandMotion", "GetCreateClient", "action_name")
 
             self.assertEqual(len(values), 7)
             self.assertTrue(unresolved)
-            self.assertTrue(
-                any(
-                    "ArchitectureTestUnknown" in entry
-                    for entry in unresolved
-                )
-            )
+            self.assertTrue(any("ArchitectureTestUnknown" in entry for entry in unresolved))
 
     def test_method_parameter_rejects_ambiguous_definition(self):
         import tempfile
         from pathlib import Path
         from extract_ros2_interfaces_cpp import resolve_method_parameter
 
-        original = (
-            REPO_ROOT
-            / "code/arlab_manipulation_cpp/src/hand_motion.cpp"
-        )
+        original = REPO_ROOT / "code/arlab_manipulation_cpp/src/hand_motion.cpp"
 
         with tempfile.TemporaryDirectory(dir=original.parent) as directory:
             path = Path(directory) / "hand_motion_test.cpp"
@@ -197,24 +159,13 @@ HandMotion::GetCreateClient(
                 encoding="utf-8",
             )
 
-            values, unresolved = resolve_method_parameter(
-                path, "HandMotion", "GetCreateClient", "action_name"
-            )
+            values, unresolved = resolve_method_parameter(path, "HandMotion", "GetCreateClient", "action_name")
 
             self.assertFalse(values)
-            self.assertTrue(
-                any(
-                    "Missing or ambiguous method" in entry
-                    for entry in unresolved
-                )
-            )
-
+            self.assertTrue(any("Missing or ambiguous method" in entry for entry in unresolved))
 
     def test_ros_parameter_default_action_client(self):
-        path = (
-            REPO_ROOT
-            / "code/manipulator_robot_driver/src/trajectory_until_node.cpp"
-        )
+        path = REPO_ROOT / "code/manipulator_robot_driver/src/trajectory_until_node.cpp"
 
         interfaces = extract_from_file(path)
 
@@ -250,25 +201,17 @@ HandMotion::GetCreateClient(
     def test_ros_parameter_default_rejects_ambiguous_declaration(self):
         import tempfile
 
-        original = (
-            REPO_ROOT
-            / "code/manipulator_robot_driver/src/trajectory_until_node.cpp"
-        )
+        original = REPO_ROOT / "code/manipulator_robot_driver/src/trajectory_until_node.cpp"
 
         source = original.read_text(encoding="utf-8")
 
-        declaration = (
-            'this->declare_parameter("motion_controller", '
-            '"scaled_joint_trajectory_controller");'
-        )
+        declaration = 'this->declare_parameter("motion_controller", "scaled_joint_trajectory_controller");'
 
         self.assertEqual(source.count(declaration), 1)
 
         modified = source.replace(
             declaration,
-            declaration
-            + '\\n  this->declare_parameter('
-            '"motion_controller", "other_controller");',
+            declaration + '\\n  this->declare_parameter("motion_controller", "other_controller");',
             1,
         )
 
@@ -295,17 +238,11 @@ HandMotion::GetCreateClient(
     def test_ros_parameter_default_rejects_modified_variable(self):
         import tempfile
 
-        original = (
-            REPO_ROOT
-            / "code/manipulator_robot_driver/src/trajectory_until_node.cpp"
-        )
+        original = REPO_ROOT / "code/manipulator_robot_driver/src/trajectory_until_node.cpp"
 
         source = original.read_text(encoding="utf-8")
 
-        assignment = (
-            'std::string motion_controller = '
-            'this->get_parameter("motion_controller").as_string();'
-        )
+        assignment = 'std::string motion_controller = this->get_parameter("motion_controller").as_string();'
 
         self.assertEqual(source.count(assignment), 1)
 
@@ -338,18 +275,14 @@ HandMotion::GetCreateClient(
     def test_extract_mia_hand_actions(self):
         from extract_ros2_interfaces_cpp import extract_from_file
 
-        path = (
-            REPO_ROOT
-            / "code/arlab_manipulation_cpp/src/hand_motion.cpp"
-        )
+        path = REPO_ROOT / "code/arlab_manipulation_cpp/src/hand_motion.cpp"
 
         interfaces = extract_from_file(path)
 
         actions = [
-            row for row in interfaces
-            if row["interface_kind"] == "action"
-            and row["role"] == "client"
-            and row["interface_name"].startswith("/mia_hand/grasps/")
+            row
+            for row in interfaces
+            if row["interface_kind"] == "action" and row["role"] == "client" and row["interface_name"].startswith("/mia_hand/grasps/")
         ]
 
         expected = {
@@ -382,11 +315,7 @@ HandMotion::GetCreateClient(
                 row["resolution_note"],
             )
 
-        cylindrical = next(
-            row for row in actions
-            if row["interface_name"]
-            == "/mia_hand/grasps/cylindrical/action"
-        )
+        cylindrical = next(row for row in actions if row["interface_name"] == "/mia_hand/grasps/cylindrical/action")
 
         self.assertIn(
             "hand_motion.cpp:59",
@@ -399,9 +328,7 @@ HandMotion::GetCreateClient(
 
         self.assertFalse(
             any(
-                row["interface_kind"] == "action"
-                and row["role"] == "client"
-                and row["interface_name"] == "action_name"
+                row["interface_kind"] == "action" and row["role"] == "client" and row["interface_name"] == "action_name"
                 for row in interfaces
             ),
             "Resolved parameter must not remain unresolved",

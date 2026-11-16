@@ -101,6 +101,64 @@ def matching_interfaces(left, right):
     return True
 
 
+def matching_namespace_candidates(left, right):
+    """Identify possible topic matches requiring namespace resolution."""
+    if not is_resolved(left) or not is_resolved(right):
+        return False
+
+    if left["interface_kind"] != "topic" or right["interface_kind"] != "topic":
+        return False
+
+    left_name = left["interface_name"]
+    right_name = right["interface_name"]
+
+    if not left_name or not right_name or left_name == right_name:
+        return False
+
+    # Only consider one absolute and one relative name.
+    if left_name.startswith("/") == right_name.startswith("/"):
+        return False
+
+    # A relative name containing '/' may refer to a nested namespace.
+    # Keep this first candidate detector intentionally conservative.
+    relative_name = left_name if not left_name.startswith("/") else right_name
+    absolute_name = left_name if left_name.startswith("/") else right_name
+
+    if "/" in relative_name or absolute_name != "/" + relative_name:
+        return False
+
+    return normalize_type(left["interface_type"]) == normalize_type(right["interface_type"])
+
+
+def matching_launch_candidates(client, server):
+    """Match services supported by the verified dashboard launch configuration."""
+    if not is_resolved(client) or not is_resolved(server):
+        return False
+
+    if client["interface_kind"] != "service" or server["interface_kind"] != "service":
+        return False
+
+    if client["role"] != "client" or server["role"] != "server":
+        return False
+
+    if client["interface_name"] not in {
+        "dashboard_client/play",
+        "dashboard_client/restart_safety",
+    }:
+        return False
+
+    if server["interface_name"] != "~/" + client["interface_name"].split("/")[-1]:
+        return False
+
+    if not server["source_file"].endswith("/dashboard_client_ros.cpp"):
+        return False
+
+    if not client["source_file"].endswith("/robot_state_helper.cpp"):
+        return False
+
+    return normalize_type(client["interface_type"]) == normalize_type(server["interface_type"])
+
+
 def determine_status(source, target):
     """
     Classify static evidence conservatively.
@@ -177,6 +235,7 @@ def write_csv(path, columns, rows):
         writer = csv.DictWriter(
             file,
             fieldnames=columns,
+            lineterminator="\n",
         )
 
         writer.writeheader()
@@ -226,6 +285,76 @@ def main():
             row["target_reference"],
         )
     )
+
+    namespace_candidates = []
+
+    for kind, (source_role, target_role) in ROLE_PAIRS.items():
+        if kind != "topic":
+            continue
+
+        sources = [interface for interface in interfaces if interface["interface_kind"] == kind and interface["role"] == source_role]
+        targets = [interface for interface in interfaces if interface["interface_kind"] == kind and interface["role"] == target_role]
+
+        for source in sources:
+            for target in targets:
+                if not matching_namespace_candidates(source, target):
+                    continue
+
+                candidate = make_connection(source, target)
+                candidate["integration_status"] = "namespace_dependent"
+                candidate["notes"] = (
+                    "Potential connection only; relative ROS 2 name requires namespace and remapping verification; runtime not verified"
+                )
+                namespace_candidates.append(candidate)
+
+    namespace_candidates.sort(
+        key=lambda row: (
+            row["source_component"],
+            row["target_component"],
+            row["interface_name"],
+        )
+    )
+
+    namespace_file = CONNECTIONS_FILE.with_name("ros2_connections_namespace_candidates.csv")
+    write_csv(
+        namespace_file,
+        CONNECTION_COLUMNS,
+        namespace_candidates,
+    )
+
+    launch_candidates = []
+
+    clients = [interface for interface in interfaces if interface["interface_kind"] == "service" and interface["role"] == "client"]
+    servers = [interface for interface in interfaces if interface["interface_kind"] == "service" and interface["role"] == "server"]
+
+    for client in clients:
+        for server in servers:
+            if not matching_launch_candidates(client, server):
+                continue
+
+            candidate = make_connection(client, server)
+            candidate["integration_status"] = "launch_configured_candidate"
+            candidate["notes"] = (
+                "Dashboard server node name 'dashboard_client' defined in "
+                "code/manipulator_robot_driver/launch/ur_dashboard_client.launch.py:57-67; "
+                "included conditionally by ur_control.launch.py; "
+                "robot_state_helper launched unless mock hardware is enabled; "
+                "private server name resolves to the client name if both nodes "
+                "share the expected namespace and no relevant remapping applies; "
+                "runtime communication not verified"
+            )
+            launch_candidates.append(candidate)
+
+    launch_candidates.sort(
+        key=lambda row: (
+            row["interface_name"],
+            row["source_reference"],
+            row["target_reference"],
+        )
+    )
+
+    launch_file = CONNECTIONS_FILE.with_name("ros2_connections_launch_candidates.csv")
+    write_csv(launch_file, CONNECTION_COLUMNS, launch_candidates)
 
     unmatched = []
 

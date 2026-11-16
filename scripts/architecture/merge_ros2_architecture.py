@@ -31,6 +31,8 @@ VALIDATION = DOC / "generated" / "validation"
 
 MANUAL = DOC / "ros2_interfaces.csv"
 AUTOMATIC = INTERFACES / "ros2_connections_auto.csv"
+NAMESPACE_CANDIDATES = INTERFACES / "ros2_connections_namespace_candidates.csv"
+LAUNCH_CANDIDATES = INTERFACES / "ros2_connections_launch_candidates.csv"
 EXCLUSIONS = DOC / "ros2_connection_exclusions.csv"
 
 MERGED = VALIDATION / "ros2_architecture_merged.csv"
@@ -42,6 +44,8 @@ REPORT = VALIDATION / "ros2_architecture_merge_report.md"
 # These are provisional source-file identities, not verified ROS node IDs.
 COMPONENT_MAP = {
     "arlab_computer_vision/object_detection.py": "Computer Vision",
+    "manipulator_robot_driver/src/robot_state_helper.cpp": "UR Robot State Helper",
+    "manipulator_robot_driver/src/dashboard_client_ros.cpp": "UR Dashboard Client",
     "arlab_knowledge/database_node.py": "Knowledge Database",
     "arlab_knowledge/knowledge_visualization.py": "Knowledge Visualization",
     "arlab_decision_making/behaviours/tdi_demo/main_controller.py": "Decision Making",
@@ -49,6 +53,7 @@ COMPONENT_MAP = {
     "arlab_decision_making/behaviours/common/vision_snapshot.py": "Decision Making",
     "arlab_decision_making/behaviours/manipulation/generic_manipulation.py": "Decision Making",
     "arlab_ui/zirbi_display.py": "PyQt6 UI",
+    "arlab_speech_controller/moshi_tts_node.py": "Moshi TTS",
     "arlab_manipulation/orchestrator.py": "Manipulation Orchestrator",
     "arlab_manipulation_cpp/src/orchestrator_listener.cpp": "Manipulation C++ Orchestrator",
     "arlab_manipulation_cpp/src/force_monitor_switch.cpp": "Manipulation C++ Orchestrator",
@@ -69,6 +74,7 @@ COMPONENT_ALIASES = {
     "Knowledge Visualization": "Knowledge Visualization",
     "Decision Making": "Decision Making",
     "PyQt6 UI": "PyQt6 UI",
+    "Text To Speech": "Moshi TTS",
     "Manipulation Orchestrator": "Manipulation Orchestrator",
     "Force Monitor": "Force Monitor",
     "Gripping Parameter Service": "Gripping Parameter Service",
@@ -77,6 +83,14 @@ COMPONENT_ALIASES = {
     "Central Safety Node": "Central Safety Node",
 }
 
+
+# Explicitly reviewed publishers without an identified subscriber.
+# These are interfaces, not component-to-component relationships.
+OPEN_ENDPOINT_KEYS = {
+    ("PyQt6 UI", "Unconnected", "/ui_action"),
+    ("Whisper", "Unconnected", "/whisper/transcript"),
+    ("Perception LiDAR Relay", "Unconfirmed", "/relay_scan"),
+}
 
 OUTPUT_FIELDS = [
     "source_component",
@@ -122,6 +136,7 @@ def write_csv(path, rows, fields):
             f,
             fieldnames=fields,
             extrasaction="ignore",
+            lineterminator="\n",
         )
         writer.writeheader()
         writer.writerows(rows)
@@ -236,6 +251,8 @@ def append_note(existing, addition):
 def main():
     manual_rows = read_csv(MANUAL)
     automatic_rows = read_csv(AUTOMATIC)
+    namespace_rows = read_csv(NAMESPACE_CANDIDATES)
+    launch_rows = read_csv(LAUNCH_CANDIDATES)
     exclusion_rows = read_csv(EXCLUSIONS)
 
     exclusion_index = {}
@@ -394,6 +411,151 @@ def main():
 
         stats["automatic_only"] += 1
 
+    # Namespace-dependent candidates may correspond to manually documented
+    # connections. Merge only unambiguous matches; never promote them to
+    # exact static matches or runtime-verified relationships.
+    for automatic in namespace_rows:
+        candidate, components_resolved = automatic_to_output(automatic)
+
+        candidate["integration_status"] = "namespace_dependent"
+        candidate["static_match"] = "potential"
+        candidate["merge_status"] = "namespace_candidate"
+        candidate["documentation_source"] = "automatic_namespace_candidate"
+
+        if not components_resolved:
+            candidate["merge_status"] = "mapping_unresolved"
+            candidate["notes"] = append_note(
+                candidate["notes"],
+                "Functional component mapping incomplete",
+            )
+            stats["mapping_unresolved"] += 1
+
+        matches = (
+            [
+                index
+                for index in manual_index.get(connection_key(candidate), [])
+                if merged[index]["merge_status"] == "manual_only"
+                and (
+                    not merged[index].get("interface_type", "").strip()
+                    or merged[index]["interface_type"].strip().split("/")[-1] == candidate["interface_type"].strip().split("/")[-1]
+                )
+            ]
+            if components_resolved
+            else []
+        )
+
+        if len(matches) == 1:
+            existing = merged[matches[0]]
+            manual_status = existing["integration_status"]
+            manual_reference = existing.get("source_reference", "")
+
+            existing["target_component"] = candidate["target_component"]
+            existing["integration_status"] = "namespace_dependent"
+            existing["static_match"] = "potential"
+            existing["merge_status"] = "namespace_candidate"
+            existing["documentation_source"] = "manual+automatic_namespace_candidate"
+
+            existing["source_reference"] = candidate["source_reference"]
+            existing["target_reference"] = candidate["target_reference"]
+
+            for field in (
+                "source_resolution_status",
+                "target_resolution_status",
+                "source_activation_condition",
+                "target_activation_condition",
+            ):
+                existing[field] = candidate.get(field, "")
+
+            existing["notes"] = append_note(
+                existing["notes"],
+                "Manual integration status: " + manual_status,
+            )
+            if manual_reference and manual_reference != candidate["source_reference"]:
+                existing["notes"] = append_note(
+                    existing["notes"],
+                    "Original manual source reference: " + manual_reference,
+                )
+            existing["notes"] = append_note(
+                existing["notes"],
+                candidate["notes"],
+            )
+
+            review_candidate = existing.copy()
+
+        else:
+            if len(matches) > 1:
+                candidate["notes"] = append_note(
+                    candidate["notes"],
+                    "Ambiguous manual namespace match; not merged",
+                )
+
+            merged.append(candidate)
+            review_candidate = candidate
+
+        stats["namespace_candidate"] += 1
+
+        review_rows.append(
+            {
+                **review_candidate,
+                "review_reason": ("Namespace-dependent connection; launch configuration and remapping require verification"),
+            }
+        )
+
+    # Launch-configured candidates are supported by source and launch
+    # evidence, but are neither exact static matches nor runtime verified.
+    existing_keys = {connection_key(row) + (row["interface_type"].strip(),) for row in merged}
+
+    for automatic in launch_rows:
+        candidate, components_resolved = automatic_to_output(automatic)
+
+        candidate["integration_status"] = "launch_configured_candidate"
+        candidate["static_match"] = "no"
+        candidate["merge_status"] = "launch_candidate"
+        candidate["documentation_source"] = "launch_analysis"
+
+        if not components_resolved:
+            candidate["merge_status"] = "mapping_unresolved"
+            candidate["notes"] = append_note(
+                candidate["notes"],
+                "Functional component mapping incomplete",
+            )
+            stats["mapping_unresolved"] += 1
+
+        key = connection_key(candidate) + (candidate["interface_type"].strip(),)
+
+        if key in existing_keys:
+            raise ValueError(f"Launch candidate duplicates existing relationship: {key}")
+
+        existing_keys.add(key)
+        merged.append(candidate)
+        stats["launch_candidate"] += 1
+
+        review_rows.append(
+            {
+                **candidate,
+                "review_reason": ("Launch-configured candidate; namespace, remapping and runtime communication not verified"),
+            }
+        )
+
+    # Classify explicitly reviewed open publishers.
+    for row in merged:
+        key = (
+            row["source_component"],
+            row["target_component"],
+            row["interface_name"],
+        )
+
+        if key in OPEN_ENDPOINT_KEYS:
+            if row["merge_status"] != "manual_only":
+                raise ValueError(f"Open endpoint unexpectedly matched a connection: {key}")
+
+            row["merge_status"] = "open_endpoint"
+            row["notes"] = append_note(
+                row["notes"],
+                "Publisher identified; no subscriber established by static analysis",
+            )
+            stats["open_endpoint"] += 1
+
     # Preserve all manual-only relationships.
     for row in merged:
         if row["merge_status"] == "manual_only":
@@ -409,12 +571,17 @@ def main():
         "",
         f"- Manual connections: {len(manual_rows)}",
         f"- Automatic connection candidates: {len(automatic_rows)}",
+        f"- Namespace-dependent candidates: {len(namespace_rows)}",
+        f"- Launch-configured candidates: {len(launch_rows)}",
         "",
         "## Merge Results",
         "",
         f"- Matched connections: {stats['matched']}",
         f"- Manual-only connections: {stats['manual_only']}",
+        f"- Open endpoints: {stats['open_endpoint']}",
         f"- Automatic-only connections: {stats['automatic_only']}",
+        f"- Namespace-dependent candidates: {stats['namespace_candidate']}",
+        f"- Launch-configured candidates: {stats['launch_candidate']}",
         f"- Excluded connections: {stats['excluded']}",
         f"- Unresolved component mappings: {stats['mapping_unresolved']}",
         f"- Ambiguous matches: {stats['ambiguous_match']}",
@@ -429,6 +596,8 @@ def main():
         "- A static match indicates matching declarations in source code, not verified runtime communication.",
         "- Manual integration statuses are preserved.",
         "- Automatic-only connections have integration_status `unverified`.",
+        "- Namespace candidates are potential connections, not exact matches.",
+        "- Launch candidates are supported by launch configuration but are not runtime verified.",
         "- Manual-only connections may depend on C++, external packages, dynamic names, or analysis gaps.",
         "- Component names inferred from source files are provisional and do not establish ROS node identity.",
         "",
@@ -450,11 +619,16 @@ def main():
 
     print(f"Manual connections:        {len(manual_rows)}")
     print(f"Automatic candidates:      {len(automatic_rows)}")
+    print(f"Namespace candidates:      {len(namespace_rows)}")
+    print(f"Launch candidates:         {len(launch_rows)}")
     print("-" * 48)
 
     print(f"Matched:                   {stats['matched']}")
     print(f"Manual only:               {stats['manual_only']}")
+    print(f"Open endpoints:            {stats['open_endpoint']}")
     print(f"Automatic only:            {stats['automatic_only']}")
+    print(f"Namespace candidates:      {stats['namespace_candidate']}")
+    print(f"Launch candidates:         {stats['launch_candidate']}")
     print(f"Excluded:                 {stats['excluded']}")
     print(f"Mapping unresolved:        {stats['mapping_unresolved']}")
     print(f"Ambiguous:                 {stats['ambiguous_match']}")

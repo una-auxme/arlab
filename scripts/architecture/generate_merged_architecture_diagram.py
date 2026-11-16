@@ -40,12 +40,26 @@ original = load_original_generator()
 # Preserve the original subsystem structure and extend it.
 original.SUBSYSTEMS["Movement"].append("Entity Placer")
 original.SUBSYSTEMS["Templates"] = ["Template PubSub"]
+original.SUBSYSTEMS["Manipulation"].extend(
+    [
+        "UR Robot State Helper",
+        "UR Dashboard Client",
+    ]
+)
 
 # Preserve the original communication colors.
 # Extend status handling for automatically discovered candidates.
 original.STATUS_STYLES["unverified"] = {
     "style": "dashed",
     "label": "Unverified",
+}
+original.STATUS_STYLES["launch_configured_candidate"] = {
+    "style": "dashed",
+    "label": "Launch-configured candidate",
+}
+original.STATUS_STYLES["namespace_dependent"] = {
+    "style": "dashed",
+    "label": "Namespace-dependent candidate",
 }
 
 
@@ -56,6 +70,8 @@ def evidence_marker(row):
         "matched": "[S]",
         "manual_only": "[M]",
         "automatic_only": "[A]",
+        "namespace_candidate": "[N]",
+        "launch_candidate": "[L]",
     }.get(status, "[?]")
 
 
@@ -72,12 +88,27 @@ def generate_relationships(rows):
         status = row["integration_status"]
 
         style = original.get_interface_style(row)
+        if row.get("merge_status") == "launch_candidate":
+            style = {**style, "color": "#3B82F6", "line_style": "dashed"}
         marker = evidence_marker(row)
 
         label = f"{marker} {name}\n[{interface_type}]"
 
         if status not in {"implemented", "configured"}:
             label += f"\n({status})"
+
+        # The publisher is implemented, but the intended RViz consumer
+        # has not been established by static or configuration analysis.
+        rviz_unverified = (
+            source == "Knowledge Visualization"
+            and target == "RViz"
+            and name == "/arlab/knowledge/visualization"
+            and row.get("merge_status") == "manual_only"
+        )
+
+        if rviz_unverified:
+            label += "\n(RViz subscriber not verified)"
+            style = {**style, "line_style": "dashed"}
 
         tooltip_fields = [
             ("Source", source),
@@ -98,6 +129,14 @@ def generate_relationships(rows):
             ("Target activation", row.get("target_activation_condition", "")),
             ("Notes", row.get("notes", "")),
         ]
+
+        if rviz_unverified:
+            tooltip_fields.append(
+                (
+                    "Verification limitation",
+                    "Publisher implemented; RViz subscriber not identified in inspected configuration; runtime communication not verified",
+                )
+            )
 
         tooltip = "\n".join(f"{key}: {value}" for key, value in tooltip_fields if value)
 
@@ -159,6 +198,27 @@ def generate_legend():
     </TR>
 
     <TR>
+        <TD>[N]</TD>
+        <TD ALIGN="LEFT">
+            Namespace-dependent candidate
+        </TD>
+    </TR>
+
+    <TR>
+        <TD>[L]</TD>
+        <TD ALIGN="LEFT">
+            Launch-configured candidate; runtime not verified
+        </TD>
+    </TR>
+
+    <TR>
+        <TD>[O]</TD>
+        <TD ALIGN="LEFT">
+            Selected endpoint without detected static counterpart
+        </TD>
+    </TR>
+
+    <TR>
         <TD COLSPAN="2" ALIGN="LEFT">
             No runtime communication verification performed.
         </TD>
@@ -172,6 +232,78 @@ def generate_legend():
         )
         for line in lines
     ]
+
+
+# Selected unmatched publishers for architecture review.
+# Annotations do not represent verified communication relationships.
+OPEN_ENDPOINTS = [
+    ("Knowledge Visualization", "/arlab/knowledge/visualization"),
+    ("Perception LiDAR Relay", "/relay_scan"),
+    ("PyQt6 UI", "/ui_action"),
+    ("Whisper", "/whisper/transcript"),
+]
+
+
+def generate_open_endpoint_annotations():
+    """Generate source-linked annotations for selected open publishers."""
+    import csv
+
+    endpoint_file = ROOT / "doc/architecture_analysis/generated/interfaces/ros2_endpoint_analysis.csv"
+
+    with endpoint_file.open(encoding="utf-8-sig", newline="") as f:
+        endpoints = list(csv.DictReader(f))
+
+    lines = []
+
+    for index, (component, topic) in enumerate(OPEN_ENDPOINTS, start=1):
+        matches = [
+            row
+            for row in endpoints
+            if row["interface_name"] == topic
+            and row["interface_kind"] == "topic"
+            and row["role"] == "publisher"
+            and row["endpoint_status"] == "no_counterpart_detected"
+        ]
+
+        if len(matches) != 1:
+            raise RuntimeError(f"Expected exactly one open publisher for {topic}, found {len(matches)}")
+
+        row = matches[0]
+        node_id = f"open_endpoint_{index}"
+
+        tooltip = " | ".join(
+            [
+                "No static counterpart detected",
+                f"Package: {row['package']}",
+                f"Source: {row['source_file']}:{row['line']}",
+                f"Type: {row['interface_type']}",
+            ]
+        )
+
+        lines.append(
+            f"  {original.quote(node_id)} ["
+            f"label={original.quote('[O] ' + topic)}, "
+            "shape=note, "
+            'style="filled,dashed", '
+            'fillcolor="#F3F4F6", '
+            'color="#808080", '
+            'fontcolor="#555555", '
+            f"tooltip={original.quote(tooltip)}"
+            "];"
+        )
+
+        lines.append(
+            f"  {original.quote(component)} -> "
+            f"{original.quote(node_id)} ["
+            "style=dashed, "
+            'color="#909090", '
+            "arrowhead=none, "
+            "constraint=true, "
+            f"tooltip={original.quote(tooltip)}"
+            "];"
+        )
+
+    return lines, len(OPEN_ENDPOINTS)
 
 
 def compose_svg(graph_path, legend_path, output_path):
@@ -261,9 +393,12 @@ def compose_svg(graph_path, legend_path, output_path):
 
 
 def main():
-    # Excluded connections remain in the merged CSV for traceability,
-    # but are not part of the operational architecture diagram.
-    rows = [row for row in original.load_interfaces(INPUT) if row.get("merge_status", "") != "excluded"]
+    # Excluded connections and open endpoints remain in the merged CSV
+    # for traceability, but do not represent component-to-component
+    # communication relationships.
+    non_relationship_statuses = {"excluded", "open_endpoint"}
+
+    rows = [row for row in original.load_interfaces(INPUT) if row.get("merge_status", "") not in non_relationship_statuses]
 
     # Reuse the original graph styling and subsystem rendering.
     dot = original.generate_dot(rows)
@@ -296,6 +431,16 @@ def main():
         raise RuntimeError("Could not locate original relationship block.")
 
     dot = dot.replace(old_block, new_block, 1)
+
+    # Add selected open publishers without changing relationship counts.
+    open_annotations, open_count = generate_open_endpoint_annotations()
+
+    closing_brace = dot.rfind("}")
+
+    if closing_brace < 0:
+        raise RuntimeError("Could not locate DOT closing brace.")
+
+    dot = dot[:closing_brace] + chr(10).join(open_annotations) + chr(10) + dot[closing_brace:]
 
     # Replace the original legend block with the extended version.
     old_legend = "\n".join(original.generate_legend())
@@ -372,6 +517,9 @@ def main():
     print(f"Static matches:     {evidence['matched']}")
     print(f"Manual only:        {evidence['manual_only']}")
     print(f"Automatic only:     {evidence['automatic_only']}")
+    print(f"Namespace candidates: {evidence['namespace_candidate']}")
+    print(f"Launch candidates:    {evidence['launch_candidate']}")
+    print(f"Open endpoint annotations: {open_count}")
     print()
     print(f"DOT: {DOT_FILE}")
     print(f"SVG: {SVG_FILE}")

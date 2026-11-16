@@ -412,11 +412,7 @@ def resolve_local_string_import(import_node, relative_path):
             if value is None:
                 continue
 
-            targets = (
-                statement.targets
-                if isinstance(statement, ast.Assign)
-                else [statement.target]
-            )
+            targets = statement.targets if isinstance(statement, ast.Assign) else [statement.target]
 
             for target in targets:
                 if isinstance(target, ast.Name):
@@ -459,9 +455,7 @@ class InterfaceVisitor(ast.NodeVisitor):
         self.in_ros_action_subclass = False
 
     def visit_ImportFrom(self, node):
-        self.environment.update(
-            resolve_local_string_import(node, self.relative_path)
-        )
+        self.environment.update(resolve_local_string_import(node, self.relative_path))
 
         if self.package != "arlab_decision_making":
             return
@@ -469,24 +463,13 @@ class InterfaceVisitor(ast.NodeVisitor):
         module = node.module or ""
 
         is_known_action_module = (
-            (node.level == 0
-             and module == "arlab_decision_making.behaviours.common.action")
-            or
-            (node.level == 1
-             and module == "action"
-             and "behaviours/common/" in str(self.relative_path))
-            or
-            (node.level == 2
-             and module == "common.action"
-             and "behaviours/" in str(self.relative_path))
+            (node.level == 0 and module == "arlab_decision_making.behaviours.common.action")
+            or (node.level == 1 and module == "action" and "behaviours/common/" in str(self.relative_path))
+            or (node.level == 2 and module == "common.action" and "behaviours/" in str(self.relative_path))
         )
 
         if is_known_action_module:
-            if any(
-                alias.name == "RosActionBehaviour"
-                and alias.asname is None
-                for alias in node.names
-            ):
+            if any(alias.name == "RosActionBehaviour" and alias.asname is None for alias in node.names):
                 self.ros_action_behaviour_imported = True
 
     def visit_Module(self, node):
@@ -499,13 +482,8 @@ class InterfaceVisitor(ast.NodeVisitor):
         previous_parameters = self.parameters
         previous_action_subclass = self.in_ros_action_subclass
 
-        self.in_ros_action_subclass = (
-            self.ros_action_behaviour_imported
-            and any(
-                isinstance(base, ast.Name)
-                and base.id == "RosActionBehaviour"
-                for base in node.bases
-            )
+        self.in_ros_action_subclass = self.ros_action_behaviour_imported and any(
+            isinstance(base, ast.Name) and base.id == "RosActionBehaviour" for base in node.bases
         )
 
         self.class_attributes = {}
@@ -649,10 +627,7 @@ class InterfaceVisitor(ast.NodeVisitor):
             self._record_parameter(node)
 
         if method in INTERFACE_METHODS:
-            if (
-                method == "RosActionBehaviour"
-                and not self.ros_action_behaviour_imported
-            ):
+            if method == "RosActionBehaviour" and not self.ros_action_behaviour_imported:
                 self.generic_visit(node)
                 return
 
@@ -901,6 +876,7 @@ def main():
         writer = csv.DictWriter(
             csv_file,
             fieldnames=CSV_COLUMNS,
+            lineterminator="\n",
         )
 
         writer.writeheader()

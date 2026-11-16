@@ -8,7 +8,7 @@ from pathlib import Path
 SCRIPTS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS))
 
-from combine_ros2_interfaces import combine_interfaces
+from combine_ros2_interfaces import combine_interfaces  # noqa: E402
 
 
 COLUMNS = [
@@ -50,7 +50,6 @@ def write_csv(path, columns, rows):
 
 
 class CombinedInterfacesTests(unittest.TestCase):
-
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -60,20 +59,13 @@ class CombinedInterfacesTests(unittest.TestCase):
         self.cpp_path = base / "cpp.csv"
 
     def test_preserves_all_rows_and_metadata(self):
-        python_row = make_row(
-            "python_package", "node.py", 10, "/example"
-        )
-        cpp_row = make_row(
-            "cpp_package", "node.cpp", 20, "/example",
-            "resolved_default"
-        )
+        python_row = make_row("python_package", "node.py", 10, "/example")
+        cpp_row = make_row("cpp_package", "node.cpp", 20, "/example", "resolved_default")
 
         write_csv(self.python_path, COLUMNS, [python_row])
         write_csv(self.cpp_path, COLUMNS, [cpp_row])
 
-        columns, rows = combine_interfaces(
-            self.python_path, self.cpp_path
-        )
+        columns, rows = combine_interfaces(self.python_path, self.cpp_path)
 
         self.assertEqual(columns, COLUMNS)
         self.assertEqual(len(rows), 2)
@@ -87,9 +79,7 @@ class CombinedInterfacesTests(unittest.TestCase):
         write_csv(self.python_path, COLUMNS, [first])
         write_csv(self.cpp_path, COLUMNS, [second])
 
-        _, rows = combine_interfaces(
-            self.python_path, self.cpp_path
-        )
+        _, rows = combine_interfaces(self.python_path, self.cpp_path)
 
         self.assertEqual(
             [row["package"] for row in rows],
@@ -107,9 +97,7 @@ class CombinedInterfacesTests(unittest.TestCase):
         )
 
         with self.assertRaises(ValueError):
-            combine_interfaces(
-                self.python_path, self.cpp_path
-            )
+            combine_interfaces(self.python_path, self.cpp_path)
 
     def test_preserves_duplicate_declarations(self):
         row = make_row("package", "node.py", 10, "/same")
@@ -117,9 +105,7 @@ class CombinedInterfacesTests(unittest.TestCase):
         write_csv(self.python_path, COLUMNS, [row])
         write_csv(self.cpp_path, COLUMNS, [row])
 
-        _, rows = combine_interfaces(
-            self.python_path, self.cpp_path
-        )
+        _, rows = combine_interfaces(self.python_path, self.cpp_path)
 
         self.assertEqual(len(rows), 2)
         self.assertEqual(rows[0], rows[1])

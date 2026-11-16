@@ -36,11 +36,7 @@ def combine_interfaces(python_path, cpp_path):
     cpp_columns, cpp_rows = read_interfaces(cpp_path)
 
     if python_columns != cpp_columns:
-        raise ValueError(
-            "Python and C++ interface schemas differ:\n"
-            f"Python: {python_columns}\n"
-            f"C++: {cpp_columns}"
-        )
+        raise ValueError(f"Python and C++ interface schemas differ:\nPython: {python_columns}\nC++: {cpp_columns}")
 
     combined = python_rows + cpp_rows
 
@@ -64,7 +60,7 @@ def main():
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
 
     with OUTPUT.open("w", encoding="utf-8", newline="") as file:
-        writer = csv.DictWriter(file, fieldnames=columns)
+        writer = csv.DictWriter(file, fieldnames=columns, lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
 

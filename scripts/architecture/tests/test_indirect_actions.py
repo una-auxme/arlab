@@ -12,11 +12,7 @@ from extract_ros2_interfaces_v3 import REPO_ROOT, extract_from_file  # noqa: E40
 
 class TestIndirectActions(unittest.TestCase):
     def test_vision_snapshot_behaviour(self):
-        source_file = (
-            REPO_ROOT
-            / "code/arlab_decision_making/arlab_decision_making/"
-            "behaviours/common/vision_snapshot.py"
-        )
+        source_file = REPO_ROOT / "code/arlab_decision_making/arlab_decision_making/behaviours/common/vision_snapshot.py"
 
         interfaces = extract_from_file(source_file)
 
@@ -35,13 +31,8 @@ class TestIndirectActions(unittest.TestCase):
             "RosActionBehaviour should produce exactly one action client.",
         )
 
-
     def test_generic_manipulation_behaviour(self):
-        source_file = (
-            REPO_ROOT
-            / "code/arlab_decision_making/arlab_decision_making/"
-            "behaviours/manipulation/generic_manipulation.py"
-        )
+        source_file = REPO_ROOT / "code/arlab_decision_making/arlab_decision_making/behaviours/manipulation/generic_manipulation.py"
 
         interfaces = extract_from_file(source_file)
 

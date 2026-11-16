@@ -13,7 +13,7 @@ from extract_ros2_interfaces_v3 import SOURCE_ROOT, extract_from_file  # noqa: E
 
 class TestExtractorRegression(unittest.TestCase):
     def test_existing_interfaces_are_preserved(self):
-        baseline_path = Path("/tmp/ros2_interfaces_baseline.csv")
+        baseline_path = Path(__file__).resolve().parent / "fixtures" / "ros2_interfaces_baseline.csv"
 
         with baseline_path.open(newline="", encoding="utf-8") as file:
             baseline = list(csv.DictReader(file))
@@ -24,11 +24,33 @@ class TestExtractorRegression(unittest.TestCase):
                 continue
             current.extend(extract_from_file(source_file))
 
-        def normalize(row):
-            return tuple(sorted((key, str(value)) for key, value in row.items()))
+        # Stable interface identity: source line numbers and extraction
+        # metadata may change without changing the ROS 2 interface.
+        identity_fields = (
+            "package",
+            "source_file",
+            "interface_kind",
+            "interface_name",
+            "interface_type",
+            "role",
+        )
 
-        current_set = {normalize(row) for row in current}
-        missing = [row for row in baseline if normalize(row) not in current_set]
+        def identity(row):
+            return tuple(row[field] for field in identity_fields)
+
+        # Historical interfaces removed from the current ROS 2 source.
+        # Keep these exceptions explicit rather than silently updating
+        # the baseline to match the latest extractor output.
+        removed_interfaces = {
+            ("arlab_movement", "code/arlab_movement/arlab_movement/map_save_publisher.py", "topic", "/map_save", "Bool", "publisher"),
+            *(
+                ("arlab_movement", "code/arlab_movement/arlab_movement/movement_orchestrator.py", "topic", name, "Bool", "subscriber")
+                for name in ("localization_bool", "mapping_bool", "nav_bool", "map_save")
+            ),
+        }
+
+        current_set = {identity(row) for row in current}
+        missing = [row for row in baseline if identity(row) not in current_set and identity(row) not in removed_interfaces]
 
         self.assertEqual(missing, [], f"Previously detected interfaces missing: {missing}")
 

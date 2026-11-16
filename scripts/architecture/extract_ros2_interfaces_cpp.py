@@ -36,6 +36,21 @@ def text(node):
     return node.text.decode("utf-8", errors="replace") if node else ""
 
 
+_CPP_LANGUAGE = Language(tree_sitter_cpp.language())
+_PARSE_CACHE = {}
+
+
+def parse_cpp_file(path):
+    """Parse each C++ source file once per extractor process."""
+    path = Path(path).resolve()
+
+    if path not in _PARSE_CACHE:
+        parser = Parser(_CPP_LANGUAGE)
+        tree = parser.parse(path.read_bytes())
+        _PARSE_CACHE[path] = (parser, tree)
+
+    return _PARSE_CACHE[path][1]
+
 
 def resolve_string_expression(node, constants=None):
     """Resolve only simple, statically known C++ string expressions."""
@@ -45,10 +60,7 @@ def resolve_string_expression(node, constants=None):
         return text(node).strip('"')
 
     if node.type == "concatenated_string":
-        parts = [
-            resolve_string_expression(child, constants)
-            for child in node.named_children
-        ]
+        parts = [resolve_string_expression(child, constants) for child in node.named_children]
         if parts and all(part is not None for part in parts):
             return "".join(parts)
 
@@ -56,8 +68,6 @@ def resolve_string_expression(node, constants=None):
         return constants.get(text(node))
 
     return None
-
-
 
 
 def resolve_ros_parameter_default(interface_node, name_node):
@@ -110,30 +120,18 @@ def resolve_ros_parameter_default(interface_node, name_node):
             field = callee.child_by_field_name("field")
             receiver = callee.child_by_field_name("argument")
 
-            if (
-                field is not None
-                and text(field) == "declare_parameter"
-                and receiver is not None
-                and text(receiver) == "this"
-            ):
+            if field is not None and text(field) == "declare_parameter" and receiver is not None and text(receiver) == "this":
                 values = args.named_children
-                if (
-                    len(values) == 2
-                    and all(v.type == "string_literal" for v in values)
-                ):
+                if len(values) == 2 and all(v.type == "string_literal" for v in values):
                     key = resolve_string_expression(values[0])
                     default = resolve_string_expression(values[1])
-                    parameter_defaults.setdefault(key, []).append(
-                        (default, node.start_point.row + 1)
-                    )
+                    parameter_defaults.setdefault(key, []).append((default, node.start_point.row + 1))
 
         if node.type == "init_declarator":
             declarator = node.child_by_field_name("declarator")
             value = node.child_by_field_name("value")
             if declarator is not None and text(declarator) == variable:
-                declarations.setdefault(variable, []).append(
-                    (value, node.start_point.row + 1)
-                )
+                declarations.setdefault(variable, []).append((value, node.start_point.row + 1))
 
         if node.type == "assignment_expression":
             target = node.child_by_field_name("left")
@@ -160,33 +158,19 @@ def resolve_ros_parameter_default(interface_node, name_node):
     outer_field = callee.child_by_field_name("field")
     inner = callee.child_by_field_name("argument")
 
-    if (
-        outer_field is None
-        or text(outer_field) != "as_string"
-        or inner is None
-        or inner.type != "call_expression"
-    ):
+    if outer_field is None or text(outer_field) != "as_string" or inner is None or inner.type != "call_expression":
         return None
 
     inner_callee = inner.child_by_field_name("function")
     inner_args = inner.child_by_field_name("arguments")
 
-    if (
-        inner_callee is None
-        or inner_callee.type != "field_expression"
-        or inner_args is None
-    ):
+    if inner_callee is None or inner_callee.type != "field_expression" or inner_args is None:
         return None
 
     inner_field = inner_callee.child_by_field_name("field")
     receiver = inner_callee.child_by_field_name("argument")
 
-    if (
-        inner_field is None
-        or text(inner_field) != "get_parameter"
-        or receiver is None
-        or text(receiver) != "this"
-    ):
+    if inner_field is None or text(inner_field) != "get_parameter" or receiver is None or text(receiver) != "this":
         return None
 
     arguments = inner_args.named_children
@@ -201,10 +185,7 @@ def resolve_ros_parameter_default(interface_node, name_node):
 
     default, declaration_line = defaults[0]
 
-    if not (
-        declaration_line < assignment_line
-        <= interface_node.start_point.row + 1
-    ):
+    if not (declaration_line < assignment_line <= interface_node.start_point.row + 1):
         return None
 
     note = (
@@ -227,18 +208,10 @@ def method_parameter_index(function_node, parameter_name):
     if declarator is None:
         return None
 
-    parameters = [
-        child
-        for child in walk(declarator)
-        if child.type == "parameter_declaration"
-    ]
+    parameters = [child for child in walk(declarator) if child.type == "parameter_declaration"]
 
     for index, parameter in enumerate(parameters):
-        identifiers = [
-            text(child)
-            for child in walk(parameter)
-            if child.type == "identifier"
-        ]
+        identifiers = [text(child) for child in walk(parameter) if child.type == "identifier"]
 
         if len(identifiers) == 1 and identifiers[0] == parameter_name:
             return index
@@ -246,18 +219,14 @@ def method_parameter_index(function_node, parameter_name):
     return None
 
 
-
-def resolve_method_parameter(
-    path, class_name, method_name, parameter_name, max_depth=10
-):
+def resolve_method_parameter(path, class_name, method_name, parameter_name, max_depth=10):
     """Resolve method arguments through statically traceable same-class calls.
 
     Returns (values, unresolved), where values maps each string to its
     evidence paths. This is a conservative, file-local analysis.
     """
     path = Path(path).resolve()
-    parser = Parser(Language(tree_sitter_cpp.language()))
-    tree = parser.parse(path.read_bytes())
+    tree = parse_cpp_file(path)
 
     definitions = {}
     ambiguous = set()
@@ -276,7 +245,7 @@ def resolve_method_parameter(
         if not signature.startswith(prefix):
             continue
 
-        name = signature[len(prefix):]
+        name = signature[len(prefix) :]
 
         if name in definitions:
             ambiguous.add(name)
@@ -291,25 +260,19 @@ def resolve_method_parameter(
 
     def trace(method, parameter, chain, visited, depth):
         if depth > max_depth or method in visited:
-            unresolved.append(
-                "Recursion limit or cycle: " + " -> ".join(chain)
-            )
+            unresolved.append("Recursion limit or cycle: " + " -> ".join(chain))
             return
 
         definition = definitions.get(method)
 
         if definition is None:
-            unresolved.append(
-                "Missing or ambiguous method: " + method
-            )
+            unresolved.append("Missing or ambiguous method: " + method)
             return
 
         index = method_parameter_index(definition, parameter)
 
         if index is None:
-            unresolved.append(
-                f"Parameter {parameter} not found in {method}"
-            )
+            unresolved.append(f"Parameter {parameter} not found in {method}")
             return
 
         next_visited = visited | {method}
@@ -330,32 +293,22 @@ def resolve_method_parameter(
 
             calls_found = True
             args = arguments.named_children
-            location = (
-                f"{path.relative_to(REPO_ROOT)}:"
-                f"{call.start_point.row + 1}"
-            )
+            location = f"{path.relative_to(REPO_ROOT)}:{call.start_point.row + 1}"
             next_chain = chain + [location]
 
             if len(args) <= index:
-                unresolved.append(
-                    "Missing argument: " + " -> ".join(next_chain)
-                )
+                unresolved.append("Missing argument: " + " -> ".join(next_chain))
                 continue
 
             argument = args[index]
             value = resolve_string_expression(argument)
 
             if value is not None:
-                values.setdefault(value, set()).add(
-                    " -> ".join(next_chain)
-                )
+                values.setdefault(value, set()).add(" -> ".join(next_chain))
                 continue
 
             if argument.type != "identifier":
-                unresolved.append(
-                    "Unsupported expression: "
-                    + " -> ".join(next_chain)
-                )
+                unresolved.append("Unsupported expression: " + " -> ".join(next_chain))
                 continue
 
             parent = call.parent
@@ -363,29 +316,22 @@ def resolve_method_parameter(
                 parent = parent.parent
 
             if parent is None:
-                unresolved.append(
-                    "Unknown caller: " + " -> ".join(next_chain)
-                )
+                unresolved.append("Unknown caller: " + " -> ".join(next_chain))
                 continue
 
             declarator = parent.child_by_field_name("declarator")
             if declarator is None:
-                unresolved.append(
-                    "Unknown caller signature: "
-                    + " -> ".join(next_chain)
-                )
+                unresolved.append("Unknown caller signature: " + " -> ".join(next_chain))
                 continue
 
             caller_signature = text(declarator).split("(", 1)[0]
             prefix = f"{class_name}::"
 
             if not caller_signature.startswith(prefix):
-                unresolved.append(
-                    "Caller outside class: " + " -> ".join(next_chain)
-                )
+                unresolved.append("Caller outside class: " + " -> ".join(next_chain))
                 continue
 
-            caller_method = caller_signature[len(prefix):]
+            caller_method = caller_signature[len(prefix) :]
 
             trace(
                 caller_method,
@@ -396,9 +342,7 @@ def resolve_method_parameter(
             )
 
         if not calls_found:
-            unresolved.append(
-                "No call sites found: " + method
-            )
+            unresolved.append("No call sites found: " + method)
 
     trace(
         method_name,
@@ -408,22 +352,17 @@ def resolve_method_parameter(
         0,
     )
 
-    return {
-        value: sorted(evidence)
-        for value, evidence in sorted(values.items())
-    }, sorted(set(unresolved))
+    return {value: sorted(evidence) for value, evidence in sorted(values.items())}, sorted(set(unresolved))
 
 
 def resolve_constructor_parameter(package, class_name, parameter_name):
     """Resolve a constructor parameter from unambiguous make_unique calls."""
     package_root = SOURCE_ROOT / package
-    parser = Parser(Language(tree_sitter_cpp.language()))
-
     parameter_index = None
     constructor_found = False
 
     for path in sorted(package_root.rglob("*.cpp")):
-        tree = parser.parse(path.read_bytes())
+        tree = parse_cpp_file(path)
 
         for node in walk(tree.root_node):
             if node.type != "function_definition" or node.has_error:
@@ -441,24 +380,14 @@ def resolve_constructor_parameter(package, class_name, parameter_name):
 
             constructor_found = True
 
-            parameters = [
-                child
-                for child in walk(declarator)
-                if child.type == "parameter_declaration"
-            ]
+            parameters = [child for child in walk(declarator) if child.type == "parameter_declaration"]
 
             names = []
 
             for parameter in parameters:
-                identifiers = [
-                    text(child)
-                    for child in walk(parameter)
-                    if child.type == "identifier"
-                ]
+                identifiers = [text(child) for child in walk(parameter) if child.type == "identifier"]
 
-                names.append(
-                    identifiers[0] if len(identifiers) == 1 else None
-                )
+                names.append(identifiers[0] if len(identifiers) == 1 else None)
 
             if parameter_name not in names:
                 return None
@@ -477,7 +406,7 @@ def resolve_constructor_parameter(package, class_name, parameter_name):
     evidence = []
 
     for path in sorted(package_root.rglob("*.cpp")):
-        tree = parser.parse(path.read_bytes())
+        tree = parse_cpp_file(path)
 
         for node in walk(tree.root_node):
             if node.type != "call_expression" or node.has_error:
@@ -503,9 +432,7 @@ def resolve_constructor_parameter(package, class_name, parameter_name):
                 return None
 
             values.append(value)
-            evidence.append(
-                f"{path.relative_to(REPO_ROOT)}:{node.start_point.row + 1}"
-            )
+            evidence.append(f"{path.relative_to(REPO_ROOT)}:{node.start_point.row + 1}")
 
     if not values or len(set(values)) != 1:
         return None
@@ -537,18 +464,83 @@ def enclosing_constructor(node):
     return None
 
 
+def extract_dashboard_trigger_services(tree, package, relative_path):
+    """Extract concrete ROS 2 Trigger services created through the dashboard helper."""
+    if str(relative_path) != ("code/manipulator_robot_driver/src/dashboard_client_ros.cpp"):
+        return []
+
+    interfaces = []
+    seen = set()
+
+    for node in walk(tree.root_node):
+        if node.type != "call_expression" or node.has_error:
+            continue
+
+        function = node.child_by_field_name("function")
+        arguments = node.child_by_field_name("arguments")
+
+        if function is None or arguments is None:
+            continue
+
+        if function.type != "identifier":
+            continue
+
+        if text(function) != "createDashboardTriggerSrv":
+            continue
+
+        args = arguments.named_children
+
+        if not args:
+            continue
+
+        name = resolve_string_expression(args[0])
+
+        if name is None:
+            continue
+
+        line = node.start_point.row + 1
+        key = (str(relative_path), line, name, "server")
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+
+        activation_condition = ""
+
+        if name == "~/resume":
+            activation_condition = "dashboard_policy == urcl::DashboardClient::ClientPolicy::POLYSCOPE_X"
+
+        interfaces.append(
+            {
+                "package": package,
+                "source_file": str(relative_path),
+                "line": line,
+                "interface_kind": "service",
+                "interface_name": name,
+                "interface_type": "std_srvs::srv::Trigger",
+                "role": "server",
+                "resolution_status": "resolved_static",
+                "resolution_source": "cpp_helper_method",
+                "resolution_note": (
+                    "Created through createDashboardTriggerSrv(); "
+                    "implementation: "
+                    "code/manipulator_robot_driver/include/"
+                    "ur_robot_driver/dashboard_client_ros.hpp:92"
+                ),
+                "activation_condition": activation_condition,
+            }
+        )
+
+    return interfaces
+
+
 def extract_from_file(path):
     path = Path(path).resolve()
-    source = path.read_bytes()
-
-    parser = Parser(Language(tree_sitter_cpp.language()))
-    tree = parser.parse(source)
+    tree = parse_cpp_file(path)
 
     if tree.root_node.has_error:
-        print(
-            f"Warning: partial syntax errors in {path}; "
-            "extracting only from error-free subtrees"
-        )
+        print(f"Warning: partial syntax errors in {path}; extracting only from error-free subtrees")
 
     relative_path = path.relative_to(REPO_ROOT)
     package = relative_path.parts[1]
@@ -578,11 +570,7 @@ def extract_from_file(path):
             if value.type != "string_literal":
                 continue
 
-            identifiers = [
-                text(part)
-                for part in walk(declarator)
-                if part.type == "identifier"
-            ]
+            identifiers = [text(part) for part in walk(declarator) if part.type == "identifier"]
 
             if len(identifiers) == 1:
                 constants[identifiers[0]] = text(value).strip('"')
@@ -609,11 +597,7 @@ def extract_from_file(path):
         namespace = function.named_children[0]
         template = function.named_children[-1]
 
-        if (
-            function.type == "qualified_identifier"
-            and text(namespace) == "rclcpp_action"
-            and template.type == "template_function"
-        ):
+        if function.type == "qualified_identifier" and text(namespace) == "rclcpp_action" and template.type == "template_function":
             function_name = template.named_children[0]
 
             if text(function_name) == "create_server":
@@ -627,23 +611,26 @@ def extract_from_file(path):
             else:
                 continue
 
-        elif (
-            function.type == "field_expression"
-            and template.type == "template_method"
-            and text(template.named_children[0]) == "create_client"
-        ):
-            interface_kind = "service"
-            role = "client"
+        elif function.type == "field_expression" and template.type == "template_method":
+            method_name = text(template.named_children[0])
+
+            method_interfaces = {
+                "create_publisher": ("topic", "publisher"),
+                "create_subscription": ("topic", "subscriber"),
+                "create_service": ("service", "server"),
+                "create_client": ("service", "client"),
+            }
+
+            if method_name not in method_interfaces:
+                continue
+
+            interface_kind, role = method_interfaces[method_name]
             name_index = 0
 
         else:
             continue
 
-        template_arguments = [
-            child
-            for child in template.named_children
-            if child.type == "template_argument_list"
-        ]
+        template_arguments = [child for child in template.named_children if child.type == "template_argument_list"]
 
         if len(template_arguments) != 1:
             continue
@@ -665,17 +652,8 @@ def extract_from_file(path):
             status = "literal"
             resolution_source = "string_literal"
 
-        elif (
-            name_node.type == "concatenated_string"
-            and all(
-                child.type == "string_literal"
-                for child in name_node.named_children
-            )
-        ):
-            name = "".join(
-                text(child).strip('"')
-                for child in name_node.named_children
-            )
+        elif name_node.type == "concatenated_string" and all(child.type == "string_literal" for child in name_node.named_children):
+            name = "".join(text(child).strip('"') for child in name_node.named_children)
             status = "resolved_static"
             resolution_source = "cpp_concatenated_string"
 
@@ -713,16 +691,9 @@ def extract_from_file(path):
                     name, evidence = resolved
                     status = "resolved_static"
                     resolution_source = "cpp_constructor_parameter"
-                    resolution_note = (
-                        "Constructor parameter resolved from: " + evidence
-                    )
+                    resolution_note = "Constructor parameter resolved from: " + evidence
 
-        if (
-            status == "unresolved_static"
-            and name_node.type == "identifier"
-            and interface_kind == "action"
-            and role == "client"
-        ):
+        if status == "unresolved_static" and name_node.type == "identifier" and interface_kind == "action" and role == "client":
             parent = node.parent
 
             while parent is not None and parent.type != "function_definition":
@@ -747,45 +718,51 @@ def extract_from_file(path):
                         )
 
                         for resolved_name, evidence in values.items():
-                            interfaces.append({
-                                "package": package,
-                                "source_file": str(relative_path),
-                                "line": node.start_point.row + 1,
-                                "interface_kind": interface_kind,
-                                "interface_name": resolved_name,
-                                "interface_type": text(type_arguments[0]),
-                                "role": role,
-                                "resolution_status": "resolved_static",
-                                "resolution_source": "cpp_method_parameter",
-                                "resolution_note": (
-                                    "Method parameter resolved from: "
-                                    + "; ".join(evidence)
-                                ),
-                                "activation_condition": "",
-                            })
+                            interfaces.append(
+                                {
+                                    "package": package,
+                                    "source_file": str(relative_path),
+                                    "line": node.start_point.row + 1,
+                                    "interface_kind": interface_kind,
+                                    "interface_name": resolved_name,
+                                    "interface_type": text(type_arguments[0]),
+                                    "role": role,
+                                    "resolution_status": "resolved_static",
+                                    "resolution_source": "cpp_method_parameter",
+                                    "resolution_note": ("Method parameter resolved from: " + "; ".join(evidence)),
+                                    "activation_condition": "",
+                                }
+                            )
 
                         if values and not unresolved:
                             continue
 
                         if values and unresolved:
-                            resolution_note = (
-                                "Additional unresolved method paths: "
-                                + "; ".join(unresolved)
-                            )
+                            resolution_note = "Additional unresolved method paths: " + "; ".join(unresolved)
 
-        interfaces.append({
-            "package": package,
-            "source_file": str(relative_path),
-            "line": node.start_point.row + 1,
-            "interface_kind": interface_kind,
-            "interface_name": name,
-            "interface_type": text(type_arguments[0]),
-            "role": role,
-            "resolution_status": status,
-            "resolution_source": resolution_source,
-            "resolution_note": resolution_note,
-            "activation_condition": "",
-        })
+        interfaces.append(
+            {
+                "package": package,
+                "source_file": str(relative_path),
+                "line": node.start_point.row + 1,
+                "interface_kind": interface_kind,
+                "interface_name": name,
+                "interface_type": text(type_arguments[0]),
+                "role": role,
+                "resolution_status": status,
+                "resolution_source": resolution_source,
+                "resolution_note": resolution_note,
+                "activation_condition": "",
+            }
+        )
+
+    interfaces.extend(
+        extract_dashboard_trigger_services(
+            tree,
+            package,
+            relative_path,
+        )
+    )
 
     return interfaces
 
@@ -796,16 +773,12 @@ def main():
     for path in sorted(SOURCE_ROOT.rglob("*.cpp")):
         interfaces.extend(extract_from_file(path))
 
-    output = (
-        REPO_ROOT
-        / "doc/architecture_analysis/generated/interfaces/"
-        / "ros2_interfaces_cpp.csv"
-    )
+    output = REPO_ROOT / "doc/architecture_analysis/generated/interfaces/" / "ros2_interfaces_cpp.csv"
 
     output.parent.mkdir(parents=True, exist_ok=True)
 
     with output.open("w", encoding="utf-8", newline="") as file:
-        writer = csv.DictWriter(file, fieldnames=CSV_COLUMNS)
+        writer = csv.DictWriter(file, fieldnames=CSV_COLUMNS, lineterminator="\n")
         writer.writeheader()
         writer.writerows(interfaces)
 

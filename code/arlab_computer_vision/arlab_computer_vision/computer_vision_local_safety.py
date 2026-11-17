@@ -3,8 +3,7 @@
 Tracks heartbeat messages from local module nodes and sends global heartbeat
 messages to the CentralSafetyNode.
 
-TODO:
-    - [ ] Implement actual safety checks in `local_safety_checks()`.
+TODO: Implement actual safety checks in `local_safety_checks()`.
 
 Maintainers:
    Simeon Wagner <simeon.wagner@uni-a.de>

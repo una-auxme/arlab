@@ -59,10 +59,16 @@ class BehaviorTreeController:
             # Wichtig: INVALID stoppt den py_trees-Knoten, aber kein reales
             # laufendes ROS-Action-Goal automatisch.
 
+#    def restart(self) -> None:
+#        """Restart incomplete process; completed process checkpoints persist."""
+#        self.is_paused = False
+
+    def resume(self) -> None:
+        """Restart incomplete process; completed process checkpoints persist."""
     def resume(self):
         self.start()
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         if self.tree is not None:
             self.pause()
             self.tree.shutdown()

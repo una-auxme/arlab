@@ -15,9 +15,10 @@ from std_srvs.srv import Trigger
 
 from .bt_controller import BehaviorTreeController
 from .heartbeat_monitor import HeartbeatMonitor
-from .prototype_actions import TaskContext
+from .blackboard import BTBlackboard
 from .recovery import RecoveryManager
 from .state_machine import DecisionStateMachine
+from .visualization import generate_graphs as export_graphs
 
 
 class DecisionMaker(Node):
@@ -26,10 +27,8 @@ class DecisionMaker(Node):
     def __init__(self) -> None:
         super().__init__("decision_maker")
 
-        # Task selection and prototype execution mode.
+        # Task selection. Die Actions sind derzeit Tick-Simulationen.
         task = self.declare_parameter("task", "laundry").value
-        simulate_actions = self.declare_parameter("simulate_actions", False).value
-        fail_step_once = self.declare_parameter("fail_step_once", "").value
 
         # TODO: Replace this *prototype status adapter* with the robot's
         # documented safety-state source (e.g. teach pendant / driver).
@@ -37,6 +36,11 @@ class DecisionMaker(Node):
 
         monitor_rate_hz = self.declare_parameter("monitor_rate_hz", 20.0).value
         bt_tick_rate_hz = self.declare_parameter("bt_tick_rate_hz", 5.0).value
+        # Automatischer Diagrammexport bei Start (standardmaessig deaktiviert).
+        generate_graphs = self.declare_parameter("generate_graphs", False).value
+        graph_output_dir = self.declare_parameter(
+            "graph_output_dir", "~/arlab_decision_making_graphs"
+        ).value
         max_recoveries = self.declare_parameter("max_recoveries", 3).value
         require_restart_authorization = self.declare_parameter(
             "require_restart_authorization", True
@@ -46,12 +50,17 @@ class DecisionMaker(Node):
             raise ValueError("Timer frequencies must be positive")
 
         logger = lambda message: self.get_logger().info(message)
-        self.task_context = TaskContext(
-            simulate_actions=simulate_actions,
-            fail_step_once=fail_step_once,
-            log=logger,
-        )
-        self.controller = BehaviorTreeController(task=task, context=self.task_context)
+        self.blackboard = BTBlackboard()
+        self.controller = BehaviorTreeController(task=task, blackboard=self.blackboard)
+        if generate_graphs:
+            try:
+                for path in export_graphs(task, graph_output_dir):
+                    self.get_logger().info(f"Graph generated: {path}")
+            except Exception as exc:
+                # Ein fehlendes Grafikpaket darf die Roboterablaufsteuerung
+                # nicht unbeabsichtigt verhindern.
+                self.get_logger().error(f"Graph generation failed: {exc}")
+
         self.machine = DecisionStateMachine(
             heartbeat=HeartbeatMonitor(node = self),
             bt_controller=self.controller,
@@ -90,9 +99,7 @@ class DecisionMaker(Node):
         )
         self.status_publisher = self.create_publisher(String, "~/state", 10)
         self.create_timer(1.0, self._publish_status, callback_group=monitor_group)
-        self.get_logger().info(
-            f"Ready: task={task}, simulation={simulate_actions}, "
-        )
+        self.get_logger().info(f"Ready: task={task} (Tick-Demo)")
         self.get_logger().warn(
             "Prototype only. E-stop Bool and recovery acknowledgement are "
             "NOT robot safety functions. Real action cancellation is TODO."
@@ -139,7 +146,8 @@ def main(args=None) -> None:
             executor.remove_node(node)
             node.destroy_node()
         executor.shutdown()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == "__main__":

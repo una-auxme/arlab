@@ -14,11 +14,15 @@ Heartbeat and E-stop observations continue outside Operational, but their
 region states are inactive until re-entry and then start at Monitoring.
 """
 
+from __future__ import annotations
+
 from enum import Enum
+from typing import TYPE_CHECKING
 from threading import RLock
 from typing import Callable
 
-from .heartbeat_monitor import HeartbeatMonitor
+if TYPE_CHECKING:
+    from .heartbeat_monitor import HeartbeatMonitor
 from .recovery import RecoveryManager
 from .bt_controller import BehaviorTreeController
 
@@ -43,6 +47,7 @@ class BTRegion(str, Enum):
     INACTIVE = "INACTIVE"
     STARTING = "STARTING"
     RUNNING = "RUNNING"
+    RETRY = "RETRY"
     PAUSED = "PAUSED"
     SUCCEEDED = "SUCCEEDED"
     FAILED = "FAILED"
@@ -93,12 +98,6 @@ class DecisionStateMachine:
                 ):
                     self._enter_operational(first_time=False)
 
-    def heartbeat_event(self, module_id: int, module_state: int) -> None:
-        """Triggered by ROS subscriber; interrupt without waiting for BT tick."""
-        with self._lock:
-            if self.phase == Phase.OPERATIONAL:
-                self._react_to_monitor_faults()
-
     def tick_bt(self) -> None:
         """Called from BT timer, only while Operational and monitors OK."""
         with self._lock:
@@ -112,10 +111,19 @@ class DecisionStateMachine:
                 self.log("BT: Starting -> Running")
                 return
             if self.bt_region == BTRegion.PAUSED:
+                if self.heartbeat.healthy:
+                    self.bt.start()
+                    self.bt_region = BTRegion.RUNNING
+                    return
                 # UML history returns to Paused; this transition resumes it.
                 self.bt.pause()
+                self._enter_recovery()
+                self.log("BT: Paused -> Recovery (checkpoint restart)")
+                return
+            if self.bt_region == BTRegion.RETRY:
+                self.bt.resume()
                 self.bt_region = BTRegion.RUNNING
-                self.log("BT: Paused -> Running (checkpoint resume)")
+                self.log("BT: Retry -> Running (checkpoint resume)")
                 return
             if self.bt_region != BTRegion.RUNNING:
                 return
@@ -131,10 +139,10 @@ class DecisionStateMachine:
             elif outcome == "FAILURE":
                 self.bt_region = BTRegion.FAILED
                 self.log("BT Failed: requesting recovery")
-                self._enter_retry("BT failure")
+                self._enter_retry()
             elif outcome != "RUNNING":
                 self.bt_region = BTRegion.FAILED
-                self._enter_retry(f"Unexpected BT status: {outcome}")
+                self._enter_retry()
 
     def _react_to_monitor_faults(self) -> None:
         if self.phase != Phase.OPERATIONAL:
@@ -143,26 +151,26 @@ class DecisionStateMachine:
             self.hb_region = HBRegion.PAUSE_BY_HEARTBEAT
             self.log("Heartbeat: Monitoring -> Pause by Heartbeat")
             self.bt_region = BTRegion.PAUSED
-            self.
+            # Preserve the active action checkpoint even if the heartbeat
+            # recovers before the next BT timer callback. This INVALIDATES
+            # the BT; physical goal cancellation still needs ROS integration.
+            self.bt.pause()
 
-    def _pause_bt_and_exit(self, reason: str) -> None:
-        self.bt_region = BTRegion.PAUSED
-        self.bt_history = BTRegion.PAUSED
-        self.log("BT: Running/Starting -> Paused")
-        # In a real action, `terminate(INVALID)` MUST request cancellation.
-        self.bt.pause()
-        self._enter_retry(reason)
-
-    def _enter_retry(self, reason: str) -> None:
+    def _enter_retry(self) -> None:
         # A failed BT action must also be canceled before recovery.
         self.bt.pause()
+        self.bt_region = BTRegion.RETRY
+        self.log("BT region -> retry")
+
+    def _enter_recovery(self) -> None:
+        # A failed BT action must also be canceled before recovery.
         self.bt_history = BTRegion.PAUSED
         self.phase = Phase.RECOVERY
         # The three orthogonal REGION states are exited, but the ROS input
         # observers keep receiving current health signals outside Operational.
         self.hb_region = HBRegion.INACTIVE
         self.bt_region = BTRegion.INACTIVE
-        self.log("BT region -> retry")
+        self.log("BT region -> recovery")
 
     def _enter_operational(self, *, first_time: bool) -> None:
         self.phase = Phase.OPERATIONAL
@@ -197,4 +205,7 @@ class DecisionStateMachine:
                 "heartbeat_ok": self.heartbeat.healthy,
                 "recoveries": self.recovery_count,
                 "last_fault": self.last_fault,
+                "current_process": self.bt.blackboard.process,
+                "current_action": self.bt.blackboard.action,
+                "retry_pending": self.bt.blackboard.retry_pending,
             }

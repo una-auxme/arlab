@@ -1,182 +1,196 @@
-# Arlab – Decision Making (neuer Prototyp)
+# Arlab Decision Making – manuelle Prozess-/Aktionsstruktur
 
-**Architektur:** Hierarchische Zustandsmaschine (HFSM) mit drei logischen
-orthogonalen Regionen im Zustand `Operational` und einem externen
-`Recovery`-Zustand. Die eigentliche Aufgabe wird mit `py_trees` ausgeführt.
+**Basis:** Das hochgeladene Decision-Making-Projekt und die Blackboard-/CheckMemory-Idee
+von `fm_eberle_1.zip`. Die beiden Prozessvorlagen orientieren sich an der zuletzt
+geänderten `PROZESS_VORLAGE.md`.
 
-![Zustandsarchitektur](architecture.png)
-
-## Dateistruktur
+## Aufbau
 
 ```text
 arlab_decision_making/
-├── arlab_decision_making/
-│   ├── main.py                 # ROS-2-Einstieg, Parameter, Topics, Services
-│   ├── state_machine.py        # HFSM / drei orthogonale Regionen / History
-│   ├── heartbeat_monitor.py   # Heartbeat-Status und Timeout
-│   ├── estop_monitor.py       # Notstopp-Status (prototypischer Adapter)
-│   ├── bt_controller.py       # BT starten, canceln, wiederaufnehmen
-│   ├── recovery.py            # Recovery-Freigabebedingungen und TODO-Hooks
-│   ├── prototype_actions.py   # gemeinsame PyTrees-Action-Basis
-│   ├── laundry.py             # fünf übergeordnete Laundry-Prozesse
-│   ├── pick_and_place.py      # zehn Pick-and-Place-Prozesse
-│   └── demo.py                # Simulation ohne ROS
-├── test/
-├── architecture.svg / .png
-├── setup.py / setup.cfg / package.xml
-└── README.md
+├── main.py                     # ROS2-Einstieg und HFSM
+├── state_machine.py            # Operational / Recovery / BT-Region
+├── bt_controller.py            # BT-Aufbau, Ticken, Pause, Wiederaufnahme
+├── blackboard.py               # Checkpoint und Retry-Flag
+├── resume_conditions.py        # CheckResumeProcess und CheckResumeAction
+└── tasks/
+    ├── laundry/
+    │   ├── tree.py              # Prozessreihenfolge
+    │   ├── PROZESS_VORLAGE.md   # Kopiervorlage
+    │   └── *.py                 # 5 Prozesse, 17 eigene Action-Klassen
+    └── pick_and_place/
+        ├── tree.py
+        ├── PROZESS_VORLAGE.md
+        └── *.py                 # 10 Prozesse, 33 eigene Action-Klassen
 ```
 
-## Semantik der State Machine
+Keine `prototype_actions.py`, keine gemeinsame `ProcessAction`-Klasse und
+kein `context` in den Aktionen.
 
-- **INIT:** Warten auf gültige Heartbeats aller konfigurierten Module und
-  ein frisches, nicht aktives E-Stop-Statussignal. Kein BT-Start ohne Freigabe.
-- **OPERATIONAL:** `Heartbeat Monitoring`, `Notstopp Monitoring` und
-  `Behavior Tree Running` bilden drei orthogonale Regionen.
-- **Heartbeat-Störung:** Die Heartbeat-Region wechselt nach
-  `Pause by Heartbeat`. **Nur** der BT-Bereich wechselt nach `BT Paused`
-  und löst den Übergang in das externe `RECOVERY` aus.
-- **Notstopp:** Analoger Ablauf über `Pause by E-Stop` -> `BT Paused` ->
-  `RECOVERY` (keine direkten Übergänge von den Monitor-Regionen).
-- **RECOVERY:** Beide Beobachter erhalten über ihre ROS-Subscriptions weiterhin
-  Signale. Die **orthogonalen Zustände** sind jedoch verlassen. Der BT wird
-  hier nicht getickt. Vor Rückkehr müssen frische Heartbeats und ein freier
-  E-Stop vorliegen, die Umgebung geprüft und der Wiederanlauf genehmigt sein.
-- **WIEDEREINTRITT:** Die beiden Monitor-Regionen gehen wieder in den jeweiligen
-  `Monitoring`-Initialzustand. Allein der BT-Bereich verwendet `History`:
-  Eintritt in `BT Paused` -> `BT Running` durch explizite Wiederaufnahme.
-- **BT SUCCESS:** `FINISHED`. **BT FAILURE:** Recovery-Versuch; nach
-  `max_recoveries` erfolglosen Versuchen `FAILED`.
+## Jede Action selbst anpassen
 
-**Die orthogonalen Regionen sind in `state_machine.py` ausdrücklich durch
-separate Zustandsvariablen und ereignisgesteuerte Übergänge modelliert.** Dies
-ist ein schlanker HFSM-Prototyp und **keine vollständig implementierte
-UML-Statechart-Engine**. Die ROS-Callbacks/Timers laufen unabhängig vom
-BT-Timer; ein einzelner Zustandslock verhindert parallele Zustandsmutationen.
+Jede Action ist eine eigene `py_trees.behaviour.Behaviour`-Klasse in ihrer
+Prozessdatei und hat eigene Methoden `__init__()`, `initialise()`, `update()`
+und `terminate()`.
 
-### Was History beim Behavior Tree bedeutet
+```python
+def update(self):
+    self.bb.memory_process_name = self.PROCESS_ID
+    self.bb.memory_action_name = self.ACTION_ID
 
-Die HFSM merkt sich nach einer Unterbrechung `BTRegion.PAUSED` (History).
-Das ist **nicht dasselbe wie** der interne Fortschritt eines PyTrees.
-Zusätzlich speichert `TaskContext.completed` die bereits abgeschlossenen
-Prozess-IDs. Beim Resume wird der Baum neu aufgebaut. Diese Prozesse liefern
-sofort `SUCCESS`, während die **unterbrochene Aktion von vorn** beginnt.
-Nach Prozessneustart sind diese Checkpoints derzeit verloren.
+    # Prototyp: nur Tick-Simulation, keine echte Robotik-Aktion
+    self._ticks += 1
+    if self._ticks < 2:
+        return Status.RUNNING
+    return Status.SUCCESS
+```
 
-**TODO:** Persistente Checkpoints; tatsächliche Action-Goal-Cancellation,
-Ergebnisabgleich, Idempotenz-/Wiederanlaufprüfung für Greifen und Ablegen.
+`initialise()` setzt `_ticks` auf 0. Damit benötigt man **keinen**
+`simulate_actions`-Schalter. Alle Action-Klassen führen momentan beim
+zweiten eigenen Tick `SUCCESS` aus. **Dieser Erfolg ist kein Nachweis, dass
+eine reale Bewegung oder Wahrnehmung funktioniert hat.** Bei der späteren
+ROS-Integration muss die Tick-Simulation in der entsprechenden
+`update()`-Methode durch echte Feedback-/Resultatprüfung ersetzt werden.
 
-## ROS-2-Schnittstellen
+`terminate(new_status)` ist momentan nur `pass`; individuelle Abbruchlogik
+für später eingesetzte ROS-Action-Goals muss an dieser Stelle ergänzt werden.
+Der Log-Eintrag beim Verlassen von Operational stoppt **keine** reale
+Roboterbewegung. Vor Wiederaufnahme sind tatsächlicher Stopp,
+Umgebungszustand und eventuell schon ausgeführte Greif-/Ablagevorgänge zu
+prüfen.
 
-| Schnittstelle | Typ | Zweck / Stand |
-|---|---|---|
-| `/global_heartbeat` | `std_msgs/msg/Int32MultiArray` | Bestehende Arlab-Konvention `[module_id, status]` (-1 register, 0 OK, >0 Fehler) |
-| `/arlab/estop_active` | `std_msgs/msg/Bool` | **Nur prototypischer Status-Adapter**, noch **keine** echte Teach-Pendant-Anbindung |
-| `/decision_maker/confirm_recovery_checked` | `std_srvs/srv/Trigger` | Manuelle Testfreigabe statt zukünftiger Umwelt-/Roboterprüfung |
-| `/decision_maker/authorize_restart` | `std_srvs/srv/Trigger` | Wiederanlauf-Freigabe für Prototyp |
-| `/decision_maker/state` | `std_msgs/msg/String` | JSON-Diagnose der HFSM-Zustände |
+## Blackboard und Wiedereinstieg
 
-**TODO: Noch nicht angebunden:**
+| Blackboard-Key | Zweck |
+|---|---|
+| `memory_process_name` | Letztmalig gestarteter Prozess |
+| `memory_action_name` | Letztmalig gestartete Action |
+| `retry_flag` | Bei `True` an gespeicherter Stelle wieder anfangen |
 
-1. E-Stop-Status direkt aus Robotersteuerung/Teach-Pendant.
-2. Physikalisch sicherer Stop durch einen unabhängigen Safety-Mechanismus,
-   z. B. sicherheitsgerichtete Robotersteuerung. Ein ROS Bool ist das nicht.
-3. ROS-Action-Clients für Navigation, Perzeption, Greifen, Kommunikation.
-4. Zuverlässiges Abbrechen und Quittieren laufender ROS-Action-Ziele.
-5. Knowledge-Base-Invalidierung, Robot-/Szene-Verifikation und Operatoren-HMI.
-6. Persistente Checkpoints und Behandlung nicht idempotenter Manipulationen.
-7. Überwachung des **Supervisors selbst** durch externe Infrastruktur.
+- Jede einzelne Action setzt die zwei Namen selbst in ihrer `update()`.
+- `CheckResumeProcess` prüft den Prozess, `CheckResumeAction` die Action.
+- Bei Wiederaufnahme überspringen Selector-Knoten alle Schritte *vor* der
+  gespeicherten Action. Der Treffer wird **neu gestartet**, nicht mitten
+  in einem laufenden ROS-Goal fortgeführt. Danach geht der Tree normal weiter.
+- `retry_flag` wird erst bei der **passenden** Action auf `False` gesetzt.
+- Unbekannte Prozess-/Aktions-IDs werden beim Wiederaufbau abgelehnt.
+- Der Checkpoint bleibt beim **BT-Neuaufbau innerhalb desselben ROS-Nodes**
+  erhalten; ein kompletter Node-Neustart löscht ihn.
+- Für wiederholte Objekte oder Schleifen ist später zusätzlich die
+  jeweilige Iteration / Objekt-ID nötig.
 
-**Sicherheitsgrenze:** Das Paket ist ein Architekturprototyp und darf nicht
-als Sicherheitsfunktion an echter Hardware eingesetzt werden. Insbesondere
-unterbricht das Aussetzen des BT-Tickings keine laufende Bewegung automatisch.
+## Automatische Graphen beim Start generieren
 
-## Start im vorhandenen ROS-2-Workspace
+Wie im BA-Projekt wird der echte Task-Baum mit
+`py_trees.display.dot_tree(root)` aus der bereits vorhandenen
+`tasks/<task>/tree.py`-Struktur erzeugt. Die State Machine wird ueber die
+`HierarchicalGraphMachine`-Diagrammfunktion von **transitions** dargestellt
+(verschachteltes `OPERATIONAL` mit den zwei vorhandenen Regionen HEARTBEAT/BT).
+Es werden **keine Bilder manuell gezeichnet**.
 
-Aus dem Ordner mit `code/` als ROS-2-Paketquelle:
+**Achtung:** Die State Machine in `state_machine.py` ist weiterhin in Python
+implementiert und nicht selbst eine `transitions`-State-Machine. Ihre
+Diagrammbeschreibung befindet sich deshalb in
+`visualization.py` (`_statechart_definition`). Nach Aenderungen an den
+Laufzeituebergaengen muss sie ebenfalls angepasst werden. Die Graphik ist
+kein Nachweis, dass ein Zustandsuebergang ausgefuehrt oder getestet wurde.
+
+### Einmalig installieren (Ubuntu 24.04 / ROS 2 Jazzy)
+
+```bash
+sudo apt update
+sudo apt install graphviz python3-pydot python3-graphviz python3-transitions
+```
+
+Die Python-Bibliothek `py_trees` ist bereits Abhaengigkeit des ROS-Pakets.
+Bei Python-Virtual-Environments muessen die angegebenen Bibliotheken in
+derselben Python-Umgebung wie ROS installiert sein.
+
+### Mit ROS 2 starten und automatisch Bilder schreiben
+
+```bash
+cd /workspace
+source /opt/ros/jazzy/setup.bash
+colcon build --packages-select arlab_decision_making --symlink-install
+source install/setup.bash
+
+# Laundry mit Graphenerzeugung
+ros2 run arlab_decision_making decision_maker --ros-args \
+  -p task:=laundry \
+  -p generate_graphs:=true \
+  -p graph_output_dir:=/workspace/graphs
+
+# Alternativ: Pick and Place
+ros2 run arlab_decision_making decision_maker --ros-args \
+  -p task:=pick_and_place \
+  -p generate_graphs:=true \
+  -p graph_output_dir:=/workspace/graphs
+```
+
+Ohne `graph_output_dir` werden die Dateien in
+`~/arlab_decision_making_graphs` gespeichert. Bei jedem Start mit
+`generate_graphs:=true` werden die Graphen neu erzeugt bzw. ueberschrieben.
+Standardmaessig ist `generate_graphs` **false**.
+
+Ausgabe:
+
+```text
+/workspace/graphs/
+  bt_laundry.dot
+  bt_laundry.png
+  bt_laundry.svg
+  bt_laundry.pdf
+  bt_laundry_overview.dot
+  bt_laundry_overview.png
+  bt_laundry_overview.svg
+  bt_laundry_overview.pdf
+  state_machine.dot
+  state_machine.png
+  state_machine.svg
+  state_machine.pdf
+```
+
+Bei `task:=pick_and_place` heisst die erste Dateigruppe
+`bt_pick_and_place.*`. Beide Formate sind **automatisch aus py_trees bzw.
+transitions** erzeugt. Bei fehlenden Abhaengigkeiten wird ein ROS-Fehler
+protokolliert, der Node laeuft unabhaengig davon weiter.
+
+Bilder im Terminal pruefen:
+
+```bash
+ls -lh /workspace/graphs
+```
+
+## Start
 
 ```bash
 source /opt/ros/jazzy/setup.bash
 colcon build --packages-select arlab_decision_making --symlink-install
 source install/setup.bash
-
-# Nur Mock-Actions: die Hardware wird durch diese Aktionen NICHT gefahren.
-ros2 run arlab_decision_making decision_maker --ros-args \
-  -p task:=laundry \
-  -p simulate_actions:=true \
-  -p heartbeat_module_ids:="[1, 2]"
-
-# Alternative Task-Auswahl:
-ros2 run arlab_decision_making decision_maker --ros-args \
-  -p task:=pick_and_place -p simulate_actions:=true
+ros2 run arlab_decision_making decision_maker --ros-args -p task:=laundry
 ```
 
-Der Ros-Node startet im Zustand **INIT** und wartet auf aktuelle Eingänge.
-Bei einem echten Arlab-Setup müssen die bestehenden lokalen Safety-Nodes
-Heartbeat-Nachrichten liefern. Für isolierte Tests ohne diese Nodes können
-zwei separate Terminals die Nachrichten senden:
+Die ROS-Timerfrequenz `bt_tick_rate_hz` steuert, wie schnell die
+simulierten Aktionen abgearbeitet werden. In `~/state` (am
+`decision_maker`-Node) stehen `current_process`, `current_action` und
+`retry_pending` im Status-JSON.
+
+Ohne ROS-Node mit installiertem `py_trees`:
 
 ```bash
-ros2 topic pub --rate 5 /global_heartbeat std_msgs/msg/Int32MultiArray \
-  "{data: [1, 0]}"
-# Zweites Terminal:
-ros2 topic pub --rate 5 /global_heartbeat std_msgs/msg/Int32MultiArray \
-  "{data: [2, 0]}"
+python -m arlab_decision_making.demo --task laundry
+python -m arlab_decision_making.demo --task pick_and_place --heartbeat-pause
 ```
 
-Drittes Terminal: **nur Simulation** des E-Stop-Eingangs:
+## Tests und Grenzen
 
 ```bash
-ros2 topic pub --rate 5 /arlab/estop_active std_msgs/msg/Bool \
-  "{data: false}"
+python -m pytest -q test/test_tasks.py
 ```
 
-Ereignis auslösen (Publisher für `false` vorher anhalten oder durch `true`
-ersetzen):
-
-```bash
-ros2 topic pub --once /arlab/estop_active std_msgs/msg/Bool \
-  "{data: true}"
-```
-
-Die State Machine wechselt jetzt über `BT Paused` nach `RECOVERY`. Zur
-Wiederaufnahme braucht sie **wiederholt frische, gesunde** Eingangssignale,
-sowie beide folgenden Testquittierungen:
-
-```bash
-ros2 service call /decision_maker/confirm_recovery_checked std_srvs/srv/Trigger '{}'
-ros2 service call /decision_maker/authorize_restart std_srvs/srv/Trigger '{}'
-ros2 topic echo /decision_maker/state
-```
-
-Für normale Nutzung `simulate_actions:=false` belassen. Dann liefert jede
-nicht implementierte Prozess-Action absichtlich `RUNNING` und niemals einen
-falschen Erfolg.
-
-## Pure-Python-Demo (ohne ROS, mit py_trees)
-
-```bash
-python3 -m arlab_decision_making.demo --task laundry --fault heartbeat
-python3 -m arlab_decision_making.demo --task pick_and_place --fault estop
-python3 -m arlab_decision_making.demo --task laundry --fault bt
-```
-
-## Tests
-
-```bash
-python3 -m pytest -q test
-```
-
-Die zustandsbasierten Tests in `test_state_machine.py` benötigen keine
-ROS-Installation. Die eigentlichen Tree-Tests in `test_tasks.py` benötigen
-`py_trees` und werden andernfalls übersprungen.
-
-## Konventionen im Projekt
-
-- Python PEP 8, Typannotationen, Docstrings.
-- Komponenten getrennt; keine riesige State-Liste mit 65 einzelnen Actions.
-- PDF-Prozessabschnitte werden als **5 Laundry**- und **10 Pick-and-Place**-
-  High-Level-Actions angelegt; Details und Fehlerbehandlung gehören später
-  in deren jeweiligen ROS-Nodes.
-- Keine Battery-Low-Logik.
-- Bestehender ROS-Startname `decision_maker` bleibt erhalten.
+Die Prototypen enthalten ausgewählte PDF-Aktionen, aber noch nicht alle
+Zustände und keine vollständige Schleifenlogik. Heartbeat-/Bool-Themen und
+Recovery-Bestätigungen sind **nicht** mit sicherheitsgerichteten
+Hardwarefunktionen gleichzusetzen. Die State Machine bleibt eine
+übergeordnete Ablaufsteuerung; eine physische Freigabe für den Wiederstart
+bedarf gesonderter Validierung.

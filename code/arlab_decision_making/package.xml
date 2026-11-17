@@ -8,6 +8,10 @@
   <buildtool_depend>ament_python</buildtool_depend>
   <exec_depend>rclpy</exec_depend>
   <exec_depend>py_trees</exec_depend>
+  <exec_depend>graphviz</exec_depend>
+  <exec_depend>python3-pydot</exec_depend>
+  <exec_depend>python3-graphviz</exec_depend>
+  <exec_depend>python3-transitions</exec_depend>
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>std_srvs</exec_depend>
   <test_depend>python3-pytest</test_depend>

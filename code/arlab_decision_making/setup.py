@@ -13,7 +13,7 @@ setup(
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
         ("share/" + package_name, ["package.xml", "README.md", "architecture.svg"]),
     ],
-    install_requires=["setuptools"],
+    install_requires=["setuptools", "py_trees", "pydot", "graphviz", "transitions"],
     zip_safe=True,
     maintainer="Arlab Team",
     maintainer_email="maintainers@invalid.example",

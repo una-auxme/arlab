@@ -1,35 +1,44 @@
-"""Start, stop, tick and rebuild the selected py_trees task."""
+"""BT-Steuerung: Tick, Pause und Wiederaufbau am Blackboard-Checkpoint."""
 
 import py_trees
 
-from . import laundry, pick_and_place
-from .prototype_actions import TaskContext
+from .blackboard import BTBlackboard
+from .resume_conditions import CheckResumeAction
+from .tasks.laundry import tree as laundry
+from .tasks.pick_and_place import tree as pick_and_place
 
 
 class BehaviorTreeController:
-    """In-memory checkpoint-based resume, NOT continuous motion resume."""
-
     BUILDERS = {
         "laundry": laundry.create_tree,
         "pick_and_place": pick_and_place.create_tree,
     }
 
-    def __init__(self, task: str, context: TaskContext) -> None:
+    def __init__(self, task: str, blackboard: BTBlackboard):
         if task not in self.BUILDERS:
             raise ValueError(f"Unknown task '{task}'; use laundry/pick_and_place")
         self.task = task
-        self.context = context
+        self.blackboard = blackboard
         self.tree = None
-        self.tick_count = 0
         self.is_paused = False
 
-    def start(self) -> None:
-        """Build/rebuild the BT; already completed steps are skipped."""
-        self.tree = py_trees.trees.BehaviourTree(
-            self.BUILDERS[self.task](self.context)
-        )
+    def start(self):
+        """Neuen BT aufbauen, ohne das vorhandene Blackboard zu löschen."""
+        root = self.BUILDERS[self.task]()
+        if self.blackboard.retry_pending:
+            target = (self.blackboard.process, self.blackboard.action)
+            known_actions = {
+                (node.process_id, node.action_id)
+                for node in root.iterate()
+                if isinstance(node, CheckResumeAction)
+            }
+            if target not in known_actions:
+                raise ValueError(
+                    f"Cannot resume unknown process/action {target}; "
+                    "checkpoint retained instead of skipping the entire task"
+                )
+        self.tree = py_trees.trees.BehaviourTree(root)
         self.is_paused = False
-        self.context.log(f"BT built: {self.task} (done={sorted(self.context.completed)})")
 
     def tick(self) -> str:
         if self.tree is None:
@@ -37,24 +46,23 @@ class BehaviorTreeController:
         if self.is_paused:
             raise RuntimeError("Cannot tick paused tree")
         self.tree.tick()
-        self.tick_count += 1
         return self.tree.root.status.name
 
-    def pause(self) -> None:
-        """Request cancellation; actual ROS action cancellation is TODO."""
+    def pause(self):
+        """BT stoppen und gespeicherte Aktion für Neustart markieren."""
         if self.tree is not None and not self.is_paused:
+            if self.tree.root.status == py_trees.common.Status.SUCCESS:
+                return
+            self.blackboard.arm_resume()
             self.tree.root.stop(py_trees.common.Status.INVALID)
             self.is_paused = True
-            self.context.log("BT paused, current process INVALIDATED")
+            # Wichtig: INVALID stoppt den py_trees-Knoten, aber kein reales
+            # laufendes ROS-Action-Goal automatisch.
 
-    def restart(self) -> None:
-        """Restart incomplete process; completed process checkpoints persist."""
+    def resume(self):
         self.start()
 
-    def resume(self) -> None:
-
-
-    def shutdown(self) -> None:
+    def shutdown(self):
         if self.tree is not None:
             self.pause()
             self.tree.shutdown()

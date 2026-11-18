@@ -23,7 +23,9 @@ setup(
     license="MIT",
     tests_require=["pytest"],
     entry_points={
-        "console_scripts": ["object_detection = arlab_computer_vision.object_detection:main",
-                            "computer_vision_local_safety = arlab_computer_vision.computer_vision_local_safety:main",],
+        "console_scripts": [
+            "object_detection = arlab_computer_vision.object_detection:main",
+            "computer_vision_local_safety = arlab_computer_vision.computer_vision_local_safety:main",
+        ],
     },
 )

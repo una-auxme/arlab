@@ -7,7 +7,7 @@ TODO: Implement actual safety checks in `local_safety_checks()`.
 
 Maintainers:
    Simeon Wagner <simeon.wagner@uni-a.de>
-   """
+"""
 
 import rclpy
 from rclpy.node import Node

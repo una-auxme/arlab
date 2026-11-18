@@ -405,15 +405,18 @@ class ObjectDetection(Node):
         self.declare_parameter("clear_db_on_no_detection", True)
         self.declare_parameter("max_image_width", 640)
         self.declare_parameter("target_frame", "camera_tool_link")
-        self.declare_parameter("snapshot_mode", True)#
+        self.declare_parameter("snapshot_mode", True)  #
 
         # Safety relevant declaration
         self.declare_parameter("heartbeat_period", 0.05)
         self.declare_parameter("local_heartbeat_topic", "/arlab/computer_vision/heartbeat")
         self.heartbeat_group = MutuallyExclusiveCallbackGroup()
         self.heartbeat_pub = self.create_publisher(Int32, self.get_parameter("local_heartbeat_topic").value, 10)
-        self.create_timer(self.get_parameter("heartbeat_period").value, lambda: self.heartbeat_pub.publish(Int32(data=SafetyNode.COMPUTER_VISION_OBJECT_DETECTION)),
-                  callback_group=self.heartbeat_group)
+        self.create_timer(
+            self.get_parameter("heartbeat_period").value,
+            lambda: self.heartbeat_pub.publish(Int32(data=SafetyNode.COMPUTER_VISION_OBJECT_DETECTION)),
+            callback_group=self.heartbeat_group,
+        )
 
         self.visualize = self.get_parameter("visualize").get_parameter_value().bool_value
 

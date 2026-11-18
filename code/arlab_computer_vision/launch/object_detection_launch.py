@@ -61,7 +61,7 @@ def generate_launch_description():
         package="arlab_computer_vision",
         executable="computer_vision_local_safety",
         parameters=[
-            {"local_heartbeat_topic": "/arlab/computer_vision/heartbeat"}, 
+            {"local_heartbeat_topic": "/arlab/computer_vision/heartbeat"},
         ],
     )
 

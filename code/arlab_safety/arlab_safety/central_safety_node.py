@@ -6,8 +6,6 @@ trigger a system freeze when critical errors or timeouts occur.
 TODO:
     - [ ] Implement error encoding for CentralSafetyNode in
           `reset_module_node_table()`.
-    - [ ] Replace magic numbers (-1, 0) with enums
-          for readability and precise error tracking.
 
 Maintainers:
     Aleksander Michalak <aleksander.michalak@web.de>
@@ -17,6 +15,7 @@ Maintainers:
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Int32MultiArray
+from arlab_common_interfaces.msg import SafetyState
 
 
 class CentralSafetyNode(Node):
@@ -24,7 +23,8 @@ class CentralSafetyNode(Node):
 
     Attributes:
         module_safety_table (dict[int, dict]): Safety status per module ID:
-            - error_state (int): -1=registering, 0=OK, >0=critical error code.
+            - error_state (int): SafetyState.REGISTERING, SafetyState.OK or
+              critical error code > 0, see SafetyState.msg in arlab_common_interfaces.
             - last_seen (float): Last heartbeat time in seconds.
             - heartbeat (float): Max allowed gap (s) between heartbeats.
         timer: ROS timer for periodic timeout checks.
@@ -63,10 +63,11 @@ class CentralSafetyNode(Node):
             msg: `std_msgs/Int32MultiArray` containing heartbeat info.
 
         Notes:
-            - module_id is the id of the module that propagates its module_state
-            - module_state == -1 → registering state.
-            - module_state == 0  → working/OK.
-            - module_state > 0  → critical error code.
+            - module_id is the id of the module that propagates its module_state,
+              defined in SafetyModule.msg (arlab_common_interfaces).
+            - module_state == SafetyState.REGISTERING → registering state.
+            - module_state == SafetyState.OK → working/OK.
+            - module_state > 0 → critical error code from SafetyState or SafetyNode.
         """
         self.get_logger().debug(f"Heartbeat: {list(msg.data)}")
 
@@ -77,9 +78,9 @@ class CentralSafetyNode(Node):
         module_id = msg.data[0]
         module_state = msg.data[1]
 
-        if module_state == -1:
+        if module_state == SafetyState.REGISTERING:
             self.register_module(module_id)
-        elif module_state == 0:
+        elif module_state == SafetyState.OK:
             self.module_working(module_id)
         elif module_state > 0:
             self.critical_error(module_id, module_state)
@@ -91,19 +92,19 @@ class CentralSafetyNode(Node):
             module_id: Unique ID of the module to register.
 
         Notes:
-            Initializes with error_state=-1 (registering). If already present in
-            registering state, escalates to critical error.
+            Initializes with error_state=SafetyState.REGISTERING. If the module is
+            already registered, escalates to critical error SafetyState.MODULE_REREGISTERED.
         """
         if module_id not in self.module_safety_table:
             self.get_logger().info(f"Registering module {module_id}.")
             self.module_safety_table[module_id] = {
-                "error_state": -1,
+                "error_state": SafetyState.REGISTERING,
                 "last_seen": self.now(),
                 "heartbeat": 0.5,
             }
         else:
             self.get_logger().warn(f"Module {module_id} stuck in registering state.")
-            self.critical_error(module_id, -1)
+            self.critical_error(module_id, SafetyState.MODULE_REREGISTERED)
 
     def module_working(self, module_id: int) -> None:
         """Mark a module as working and update last seen time.
@@ -112,7 +113,7 @@ class CentralSafetyNode(Node):
             module_id: Unique ID of the module.
         """
         if module_id in self.module_safety_table:
-            self.module_safety_table[module_id]["error_state"] = 0
+            self.module_safety_table[module_id]["error_state"] = SafetyState.OK
             self.module_safety_table[module_id]["last_seen"] = self.now()
         else:
             self.get_logger().warn(f"Received 'working' from unknown module {module_id}. Registering now.")
@@ -123,11 +124,11 @@ class CentralSafetyNode(Node):
 
         Args:
             module_id: Unique ID of the module.
-            module_state: Error code (>0 indicates critical error).
+            module_state: Error code from SafetyState or SafetyNode (>0 indicates critical error).
 
         Notes:
             Updates the module's error_state in the table. Triggers a system
-            freeze if the error state is not 0.
+            freeze if the error state is not SafetyState.OK.
         """
         self.get_logger().error(f"Module {module_id} reports critical error: {module_state}")
 
@@ -136,7 +137,7 @@ class CentralSafetyNode(Node):
 
         self.module_safety_table[module_id]["error_state"] = module_state
 
-        if module_state != 0:
+        if module_state != SafetyState.OK:
             self.system_freeze()
 
     def reset_module_safety_table(self) -> None:
@@ -144,13 +145,13 @@ class CentralSafetyNode(Node):
 
         Notes:
             Called periodically by the internal ROS timer. Marks modules as
-            critical error (-1) if last seen exceeds heartbeat interval.
+            critical error SafetyState.MODULE_TIMEOUT if last seen exceeds heartbeat interval.
         """
         now = self.now()
         for module_id, info in self.module_safety_table.items():
             if now - info["last_seen"] > info["heartbeat"]:
                 self.get_logger().warn(f"Module {module_id} heartbeat timeout.")
-                self.critical_error(module_id, -1)
+                self.critical_error(module_id, SafetyState.MODULE_TIMEOUT)
 
     def system_freeze(self) -> None:
         """Trigger a system freeze due to unrecoverable critical errors.

@@ -4,7 +4,7 @@
 License: Apache 2.0. See LICENSE file in root directory.
 Copyright(c) 2017 Intel Corporation. All Rights Reserved
 
-This is the URDF model for the Intel RealSense 430 camera, in its
+This is the URDF model for the Intel RealSense 435 camera, in its
 aluminum peripherial evaluation case.
 -->
 
@@ -56,6 +56,10 @@ aluminum peripherial evaluation case.
       <child link="${name}_link" />
     </joint>
 
+
+  
+
+
     <link name="${name}_link">
       <visual>
         <xacro:if value="${use_mesh}">
@@ -87,6 +91,46 @@ aluminum peripherial evaluation case.
       </inertial>
     </link>
 
+ <!-- Gazebo simulated RGB-D camera. uses same frame for depth and color camera which is technically not correct but practically irrelevant-->
+      <gazebo reference="${name}_simulated_color_frame">
+        <sensor name="${name}_rgbd_sensor" type="rgbd_camera">
+          <always_on>true</always_on>
+          <update_rate>30</update_rate>
+          <visualize>true</visualize>
+          <!-- Base topic for the simulated RGB-D sensor -->
+          <topic>${name}/rgbd</topic>
+          <gz_frame_id>${name}_simulated_color_frame</gz_frame_id>
+          <camera>
+            <!-- Approximate D435 RGB horizontal field of view -->
+            <horizontal_fov>1.211</horizontal_fov>
+            <image>
+              <width>640</width>
+              <height>480</height>
+              <format>R8G8B8</format>
+            </image>
+            <clip>
+              <near>0.1</near>
+              <far>10.0</far>
+            </clip>
+          </camera>
+          <!-- Approximate D435 stereo baseline -->
+          <baseline>0.05</baseline>
+        </sensor>
+      </gazebo>
+
+  
+      <!-- simulated camera color joints and links. exists because real one does not exist if "use_nominal_extrinsics" is set to false. (the real one is wrong anyway for for a gazebo simulated camera)-->
+      <joint name="${name}_simulated_color_joint" type="fixed">
+        <origin xyz="0 ${d435_cam_depth_to_color_offset} 0" rpy="${M_PI} ${M_PI} 0" />
+        <parent link="${name}_link" />
+        <child link="${name}_simulated_color_frame" />
+      </joint>
+      <link name="${name}_simulated_color_frame"/>
+
+    
+
+
+
     <!-- Use the nominal extrinsics between camera frames if the calibrated extrinsics aren't being published. e.g. running the device in simulation  -->
     <xacro:if value="${use_nominal_extrinsics}">
       <!-- camera depth joints and links -->
@@ -103,6 +147,11 @@ aluminum peripherial evaluation case.
         <child link="${name}_depth_optical_frame" />
       </joint>
       <link name="${name}_depth_optical_frame"/>
+
+
+
+
+
 
       <!-- camera left IR joints and links -->
       <joint name="${name}_infra1_joint" type="fixed">
@@ -149,6 +198,12 @@ aluminum peripherial evaluation case.
       </joint>
       <link name="${name}_color_optical_frame"/>
     </xacro:if>
+
+
+
+
+
+
 
     <xacro:if value="${add_plug}">
       <xacro:usb_plug parent="${name}_link" name="${name}_usb_plug">

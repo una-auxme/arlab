@@ -117,6 +117,9 @@ def generate_launch_description():
             "name:=",
             ur_type,
             " ",
+            "ur_type:=",
+            ur_type,
+            " ",
             "script_filename:=",
             script_filename,
             " ",
@@ -293,7 +296,7 @@ def generate_launch_description():
                 [
                     FindPackageShare("manipulator_description"),
                     "urdf",
-                    "manipulator.urdf.xacro",
+                    "manipulator_mobile.urdf.xacro",
                 ]
             ),
             description="URDF/XACRO description file with the robot.",

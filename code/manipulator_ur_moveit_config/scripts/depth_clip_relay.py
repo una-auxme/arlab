@@ -3,16 +3,20 @@
 
 Why: the camera container runs without a depth clip, and MoveIt's DepthImageOctomapUpdater
 can't "clear without inserting" (far pixels either cast no ray or become phantom voxels).
-MoveIt's PointCloudOctomapUpdater can: points beyond its `max_range` are ray-cast as free
-space only. So pixels farther than max_range are pulled in along their ray to
-max_range + far_margin -> the space in front of an empty (>2 m) background gets cleared,
-without voxels at the range limit and with bounded ray length. Invalid pixels (0) are dropped.
+MoveIt's PointCloudOctomapUpdater can: it clips every point beyond its `max_range` to
+max_range itself and ray-casts it as free space only (no voxel, ray length capped). So the
+essential part is to KEEP pixels farther than max_range instead of zeroing them -> the space in
+front of an empty (>2 m) background gets cleared. They are additionally pulled in along their
+ray to max_range + far_margin; MoveIt treats them the same as the raw far points, but they
+then lie on one shell, which lets the de-duplication merge them. Invalid pixels (0) are dropped.
 
-De-duplication: many pixels hit the same octomap voxel, but MoveIt casts one ray per point.
-The cloud is therefore reduced to one real point per voxel of the octomap grid in `map_frame`
-(dedup_resolution must equal octomap_resolution in sensor3D.yaml; 0 disables it). Hits and
-clearing-only points are de-duplicated separately. The cloud stays in the camera frame, since
-MoveIt uses the cloud frame as the ray origin.
+De-duplication: many pixels hit the same octomap voxel. MoveIt (2.12.4) already merges points
+into a set of cell keys and casts one ray per unique cell, so this does not make ray casting
+cheaper. It reduces what comes before that merge: DDS transfer, the self-filter check and the
+per-point transform (gain not benchmarked). The cloud is reduced to one real point per voxel
+of the octomap grid in `map_frame` (dedup_resolution must equal octomap_resolution in
+sensor3D.yaml; 0 disables it). Hits and clearing-only points are de-duplicated separately.
+The cloud stays in the camera frame, since MoveIt uses the cloud frame as the ray origin.
 
 In : /camera_gripper/depth/image_rect_raw + camera_info       (848x480 @ 30 Hz, 16UC1 mm)
 Out: /camera_gripper/depth_clipped/points       PointCloud2 xyz, depth optical frame (424x240 @ 15 Hz)
@@ -99,7 +103,7 @@ class DepthClipRelay(Node):
         pts = self.rays * z[..., None]                       # xyz in the optical frame
         rng = np.linalg.norm(pts, axis=2)
         far = rng > max_r
-        if self.p("far_mode") == "free":                     # pull far points in -> free-space ray only
+        if self.p("far_mode") == "free":                     # keep far points (MoveIt: free-space ray only), pulled in for de-dup
             pts[far] *= ((max_r + float(self.p("far_margin"))) / rng[far])[:, None]
             keep = z > 0
         else:

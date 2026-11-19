@@ -14,7 +14,7 @@ The cloud is therefore reduced to one real point per voxel of the octomap grid i
 clearing-only points are de-duplicated separately. The cloud stays in the camera frame, since
 MoveIt uses the cloud frame as the ray origin.
 
-In : /camera_gripper/depth/image_rect_raw + camera_info       (848x480 @ 30 Hz, 16UC1 mm)
+In : /camera_gripper/depth/image_rect_raw + camera_info       (848x480 @ 30 Hz, 16UC1 mm; sim: 32FC1 m)
 Out: /camera_gripper/depth_clipped/points       PointCloud2 xyz, depth optical frame (424x240 @ 15 Hz)
      /camera_gripper/depth_clipped/image_rect_raw + camera_info  (far pixels -> 0; for viewing/debug)
 frame_skip=n publishes every n-th camera frame (camera: 30 Hz).
@@ -26,6 +26,9 @@ from rclpy.qos import qos_profile_sensor_data, QoSProfile, ReliabilityPolicy
 from rclpy.time import Time
 from sensor_msgs.msg import Image, CameraInfo, PointCloud2, PointField
 from tf2_ros import Buffer, TransformListener
+
+# Supported depth encodings: numpy dtype + scale to metres (RealSense: 16UC1 mm, Gazebo: 32FC1 m)
+DEPTH_ENCODINGS = {"16UC1": (np.uint16, 0.001), "32FC1": (np.float32, 1.0)}
 
 
 class DepthClipRelay(Node):
@@ -89,13 +92,15 @@ class DepthClipRelay(Node):
 
     def on_image(self, msg):
         self.n += 1
-        if self.info is None or self.n % int(self.p("frame_skip")) or msg.encoding != "16UC1":
+        if self.info is None or self.n % int(self.p("frame_skip")) or msg.encoding not in DEPTH_ENCODINGS:
             return
+        dtype, scale = DEPTH_ENCODINGS[msg.encoding]
         s, max_r = int(self.p("stride")), float(self.p("max_range"))
-        d = np.frombuffer(msg.data, dtype=np.uint16).reshape(msg.height, msg.step // 2)[:, : msg.width][::s, ::s]
+        raw = np.frombuffer(msg.data, dtype=dtype)
+        d = raw.reshape(msg.height, msg.step // raw.itemsize)[:, : msg.width][::s, ::s]
         if d.shape != self.rays.shape[:2]:
             return
-        z = d.astype(np.float32) * 0.001
+        z = np.nan_to_num(d.astype(np.float32) * scale, nan=0.0, posinf=0.0, neginf=0.0)  # invalid -> 0
         pts = self.rays * z[..., None]                       # xyz in the optical frame
         rng = np.linalg.norm(pts, axis=2)
         far = rng > max_r
@@ -121,8 +126,9 @@ class DepthClipRelay(Node):
         img = d.copy(); img[(z > 0) & far] = 0                # clipped depth image, for viewing
         self.info.header = msg.header
         self.pub_info.publish(self.info)
-        self.pub_img.publish(Image(header=msg.header, height=img.shape[0], width=img.shape[1], encoding="16UC1",
-                                   is_bigendian=msg.is_bigendian, step=img.shape[1] * 2, data=img.tobytes()))
+        self.pub_img.publish(Image(header=msg.header, height=img.shape[0], width=img.shape[1], encoding=msg.encoding,
+                                   is_bigendian=msg.is_bigendian, step=img.shape[1] * img.itemsize,
+                                   data=img.tobytes()))
 
 
 def main():

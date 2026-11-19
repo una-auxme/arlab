@@ -133,6 +133,10 @@ def launch_setup(context, *args, **kwargs):
         }.items(),
     )
 
+    camera_gripper_bridge_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(PathJoinSubstitution([manipulator_pkg_share, "launch", "camera_gripper_bridge.launch.py"])),
+    )
+
     # -------------------------------------------------------------------------
     # RViz configured for Nav2 default view (map, paths, robot pose)
     # -------------------------------------------------------------------------
@@ -163,7 +167,8 @@ def launch_setup(context, *args, **kwargs):
             "/cmd_vel@geometry_msgs/msg/Twist]gz.msgs.Twist",
             "/odom@nav_msgs/msg/Odometry[gz.msgs.Odometry",
             "/tf@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V",
-            "/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan",
+            "/scan_lidar_front@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan",
+            "/scan_lidar_back@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan",
             "--ros-args",
             "--log-level",
             "error",
@@ -174,7 +179,7 @@ def launch_setup(context, *args, **kwargs):
     # Static TF: scoped lidar frame for the mobile base
     # Transforms: front_lidar_link -> ur5e/ranger_base_link/front_lidar
     # -------------------------------------------------------------------------
-    static_tf = Node(
+    static_tf_lidar_front = Node(
         package="tf2_ros",
         executable="static_transform_publisher",
         name="front_lidar_scoped_frame_tf",
@@ -189,6 +194,31 @@ def launch_setup(context, *args, **kwargs):
             "front_lidar_link",
             "ur5e/ranger_base_link/front_lidar",
         ],
+    )
+
+    static_tf_lidar_back = Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        name="back_lidar_scoped_frame_tf",
+        output="screen",
+        arguments=[
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            "back_lidar_link",
+            "ur5e/ranger_base_link/back_lidar",
+        ],
+    )
+
+    lidar_sensor_merger = Node(
+        package="lidar_sensor_merger",
+        executable="lidar_sensor_merger",
+        name="lidar_sensor_merger",
+        output="screen",
+        arguments=[],
     )
 
     # Assemble the full list of actions to execute
@@ -207,8 +237,11 @@ def launch_setup(context, *args, **kwargs):
         slam_launch,
         nav2_launch,
         nav2_rviz_node,
+        camera_gripper_bridge_launch,
         mobile_bridge,
-        static_tf,
+        static_tf_lidar_front,
+        static_tf_lidar_back,
+        lidar_sensor_merger,
     ]
 
 

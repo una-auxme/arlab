@@ -63,6 +63,30 @@
         </geometry>
       </collision>
     </link>
+
+
+  <!-- fake sensor link for merged sensor -->
+    <link name="ranger_merged_sensor_link">
+        <origin
+          xyz="0 0 0"
+          rpy="0 0 0" />
+    </link>
+
+
+    <joint
+      name="ranger_merged_sensor_joint"
+      type="fixed">
+      <origin
+        xyz="0 0 0.268"
+        rpy="0 0 0" />
+      <parent
+        link="ranger_base_link" />
+      <child
+        link="ranger_merged_sensor_link" />
+      <axis
+        xyz="0 0 0" />
+    </joint>
+
     <!-- IMU housing. The following fixed joint places its frame on the chassis. -->
     <link
       name="imu_link">

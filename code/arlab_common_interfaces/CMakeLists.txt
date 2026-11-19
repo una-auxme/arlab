@@ -47,6 +47,10 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 
   "msg/WhisperTranscript.msg"
 
+  "msg/SafetyModule.msg"
+  "msg/SafetyNode.msg"
+  "msg/SafetyState.msg"
+
   "action/MovementAction.action"
   "action/ManipulationAction.action"
   "action/OrchestratorAction.action"

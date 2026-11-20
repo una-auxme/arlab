@@ -278,6 +278,8 @@ class NavigationOrchestrator(Node):
                 err, msg = self.set_auto_annotate(enable, publish_status)
             elif cmd == "map_save":
                 err, msg = self.save_map(publish_status)
+            elif cmd == "move_to_entity":
+                err, msg = self.move_to_entity(goal_handle.request.entityid, publish_status)
             elif cmd == "stop_all":
                 publish_status("Stopping all navigation processes")
                 self.stop_all()
@@ -788,6 +790,12 @@ class NavigationOrchestrator(Node):
         speed = math.hypot(v.x, v.y)
         yaw_rate = abs(msg.twist.twist.angular.z)
         return p.x, p.y, yaw, speed, yaw_rate
+
+    def move_to_entity(self, entityid: int64, publish_status) -> Tuple[int, str]:
+        """
+        TBD
+        """
+    
 
     @staticmethod
     def _angle_diff(a: float, b: float) -> float:

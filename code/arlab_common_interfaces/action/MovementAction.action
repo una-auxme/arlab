@@ -1,7 +1,7 @@
 # Goal
-string cmd        # "mapping"|"nav"|"map_save"|"stop_all"|"auto_annotate"
-bool enable       # used for start/stop commands; ignored for "map_save"/"stop_all"
-
+string cmd        # "mapping"|"nav"|"map_save"|"stop_all"|"auto_annotate"|"move_to_entity"
+bool enable       # used for start/stop commands; ignored for "map_save"/"stop_all"/"move_to_entity"
+int64 entityid    # used for move to entity commands; ignore for the rest
 ---
 # Result
 int32 error_code

@@ -29,7 +29,7 @@ import rclpy
 import rclpy.executors
 from arlab_common_interfaces.action import MovementAction, VisionSnapshotAction
 from arlab_common_interfaces.msg import VisionSnapshotResponse
-from arlab_knowledge_interfaces.srv import AddMap
+from arlab_knowledge_interfaces.srv import AddMap, GetPose
 from lifecycle_msgs.msg import State
 from lifecycle_msgs.srv import GetState
 from nav_msgs.msg import OccupancyGrid, Odometry
@@ -42,6 +42,8 @@ from std_srvs.srv import Trigger
 from arlab_knowledge_interfaces.msg import Result
 from arlab_common_interfaces.msg import SafetyNode, SafetyState
 from ament_index_python.packages import get_package_share_directory
+from geometry_msgs.msg import PoseStamped
+from nav2_msgs.action import NavigateToPose
 
 
 class NavErr:
@@ -59,7 +61,10 @@ class NavErr:
     MAP_SAVE_FAILED = -30
     DB_SERVICE_UNAVAILABLE = -31
     DB_SAVE_FAILED = -32
+    DB_SERVICE_FAILED = -33
     ANNOTATE_SERVER_UNAVAILABLE = -40
+    NAV2_SERVER_UNAVAILABLE = -50
+    NAV2_GOAL_REJECTED = -51
 
 
 class NavigationOrchestrator(Node):
@@ -105,6 +110,11 @@ class NavigationOrchestrator(Node):
         self.declare_parameter("annotate_max_yaw_rate", 0.20)  # only fire when turning slower than this
         self.declare_parameter("annotate_server_timeout", 10.0)
 
+        # move to entity params
+        self.declare_parameter("nav_server_timeout", 10.0)
+        self.declare_parameter("get_pose_service", "/arlab/knowledge/get_pose")
+        self.declare_parameter("navigate_action", "/navigate_to_pose")
+
         self.map_path = str(self.get_parameter("map_path").value)
         self.use_timestamp = bool(self.get_parameter("use_timestamp").value)
         self.save_to_database = bool(self.get_parameter("save_to_database").value)
@@ -137,6 +147,13 @@ class NavigationOrchestrator(Node):
         self._annotate_timer = None
         self._odom_sub = None
         self._snap_lock = threading.Lock()
+
+        # move to entity clients, etc
+        self.get_pose_service = str(self.get_parameter("get_pose_service").value)
+        self.navigate_action = str(self.get_parameter("navigate_action").value)
+        self.nav_server_timeout = float(self.get_parameter("nav_server_timeout").value)
+        self.get_pose_client = self.create_client(GetPose, self.get_pose_service, callback_group=self.service_group)
+        self.nav_client = ActionClient(self, NavigateToPose, self.navigate_action, callback_group=self.action_group)
 
         # cache latest /map so map_save can send it to the knowledge base
         self.map_subscription = self.create_subscription(OccupancyGrid, self.map_topic, self.map_callback, 10)
@@ -791,11 +808,55 @@ class NavigationOrchestrator(Node):
         yaw_rate = abs(msg.twist.twist.angular.z)
         return p.x, p.y, yaw, speed, yaw_rate
 
-    def move_to_entity(self, entityid: int64, publish_status) -> Tuple[int, str]:
+    def move_to_entity(self, entityid: int, publish_status) -> Tuple[int, str]:
         """
         TBD
         """
-    
+        if not self.nav_client.wait_for_server(timeout_sec=self.nav_server_timeout):
+            return NavErr.NAV2_SERVER_UNAVAILABLE, "Nav2 action server not available"
+
+        if not self.get_pose_client.wait_for_service(timeout_sec=self.database_timeout):
+            return NavErr.DB_SERVICE_UNAVAILABLE, "GetPose service not available"
+
+        publish_status(f"Getting pose of entity {entityid}")
+        future = self.get_pose_client.call_async(GetPose.Request(entityid=entityid))
+        if not self._wait_for_future(future, self.nav_server_timeout):
+            return NavErr.DB_SERVICE_UNAVAILABLE, "Timeout waiting for GetPose service"
+
+        resp = future.result()
+        if resp.result.result_type != Result.SUCCESS:
+            return NavErr.DB_SERVICE_FAILED, (
+                f"GetPose failed for entity {entityid} (result_type={resp.result.result_type}): {resp.result.error}"
+            )
+
+        if not resp.pose_frame_id:
+            #return NavErr.DB_SERVICE_FAILED, f"GetPose returned no pose_frame_id for entity {entityid}"
+            publish_status(f"GetPose returned no pose_frame_id for entity {entityid}, using 'map' as default")
+            resp.pose_frame_id = "map"
+
+        goal = NavigateToPose.Goal()
+        goal.pose = PoseStamped()
+        goal.pose.header.frame_id = resp.pose_frame_id
+        goal.pose.pose = resp.pose
+
+        publish_status(f"Sending Nav2 goal.")
+        send_future = self.nav_client.send_goal_async(goal)
+        if not self._wait_for_future(send_future, self.nav_server_timeout):
+            return NavErr.NAV2_GOAL_REJECTED, "Timeout sending goal to Nav2"
+
+        if not send_future.result().accepted:
+            return NavErr.NAV2_GOAL_REJECTED, "Nav2 goal rejected"
+
+        return NavErr.OK, f"Nav2 goal sent to entity {entityid}"
+
+    def _wait_for_future(self, future, timeout: float) -> bool:
+        """
+        TBD
+        """
+        done = threading.Event()
+        future.add_done_callback(lambda _: done.set())
+        return done.wait(timeout=timeout)
+
 
     @staticmethod
     def _angle_diff(a: float, b: float) -> float:

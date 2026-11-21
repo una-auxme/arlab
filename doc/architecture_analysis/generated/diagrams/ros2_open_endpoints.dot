@@ -1,0 +1,754 @@
+digraph ROS2Endpoints {
+  graph [
+    rankdir=LR,
+    bgcolor=white,
+    fontname=Helvetica,
+    nodesep=0.25,
+    ranksep=0.65,
+    compound=true,
+    newrank=true
+  ];
+  node [fontname=Helvetica, fontsize=10];
+  edge [fontname=Helvetica, fontsize=9];
+  subgraph cluster_0 {
+    label="arlab_computer_vision";
+    color="#B8C4D2";
+    style="rounded";
+    bgcolor="#F8FAFC";
+    "endpoint_0_0" [label="publisher\\n/vision/debug_pc\\n[topic]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_computer_vision
+Role: publisher
+Interface: /vision/debug_pc
+Type: PointCloud2
+Status: no_counterpart_detected
+Source: code/arlab_computer_vision/arlab_computer_vision/object_detection.py:573
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_0_1" [label="publisher\\n/vision/segmented_image\\n[topic]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_computer_vision
+Role: publisher
+Interface: /vision/segmented_image
+Type: Image
+Status: no_counterpart_detected
+Source: code/arlab_computer_vision/arlab_computer_vision/object_detection.py:572
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_0_2" [label="subscriber\\ncamera_color_image\\n[topic]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_computer_vision
+Role: subscriber
+Interface: camera_color_image
+Type: Image
+Status: no_counterpart_detected
+Source: code/arlab_computer_vision/arlab_computer_vision/object_detection.py:562
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_0_3" [label="subscriber\\ncamera_info\\n[topic]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_computer_vision
+Role: subscriber
+Interface: camera_info
+Type: CameraInfo
+Status: no_counterpart_detected
+Source: code/arlab_computer_vision/arlab_computer_vision/object_detection.py:539
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+  }
+  subgraph cluster_1 {
+    label="arlab_decision_making";
+    color="#B8C4D2";
+    style="rounded";
+    bgcolor="#F8FAFC";
+    "endpoint_1_0" [label="client\\n/mia_hand/grasps/cylindrical/action\\n[action]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_decision_making
+Role: client
+Interface: /mia_hand/grasps/cylindrical/action
+Type: Grasp
+Status: no_counterpart_detected
+Source: code/arlab_decision_making/arlab_decision_making/behaviours/manipulation/direct_hand_grasp.py:47
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+  }
+  subgraph cluster_2 {
+    label="arlab_knowledge";
+    color="#B8C4D2";
+    style="rounded";
+    bgcolor="#F8FAFC";
+    "endpoint_2_0" [label="server\\n/arlab/knowledge/add_status_event\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_knowledge
+Role: server
+Interface: /arlab/knowledge/add_status_event
+Type: AddStatusEvent
+Status: no_counterpart_detected
+Source: code/arlab_knowledge/arlab_knowledge/database_node.py:259
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_2_1" [label="server\\n/arlab/knowledge/cupboard_get_shelf\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_knowledge
+Role: server
+Interface: /arlab/knowledge/cupboard_get_shelf
+Type: GetReference
+Status: no_counterpart_detected
+Source: code/arlab_knowledge/arlab_knowledge/database_node.py:196
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_2_2" [label="server\\n/arlab/knowledge/furniture_get_pickable\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_knowledge
+Role: server
+Interface: /arlab/knowledge/furniture_get_pickable
+Type: GetReference
+Status: no_counterpart_detected
+Source: code/arlab_knowledge/arlab_knowledge/database_node.py:182
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_2_3" [label="server\\n/arlab/knowledge/furniture_update_pickable\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_knowledge
+Role: server
+Interface: /arlab/knowledge/furniture_update_pickable
+Type: UpdReference
+Status: no_counterpart_detected
+Source: code/arlab_knowledge/arlab_knowledge/database_node.py:252
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_2_4" [label="server\\n/arlab/knowledge/get_description\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_knowledge
+Role: server
+Interface: /arlab/knowledge/get_description
+Type: GetDescription
+Status: no_counterpart_detected
+Source: code/arlab_knowledge/arlab_knowledge/database_node.py:168
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_2_5" [label="server\\n/arlab/knowledge/get_map\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_knowledge
+Role: server
+Interface: /arlab/knowledge/get_map
+Type: GetMap
+Status: no_counterpart_detected
+Source: code/arlab_knowledge/arlab_knowledge/database_node.py:217
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_2_6" [label="server\\n/arlab/knowledge/get_pose\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_knowledge
+Role: server
+Interface: /arlab/knowledge/get_pose
+Type: GetPose
+Status: no_counterpart_detected
+Source: code/arlab_knowledge/arlab_knowledge/database_node.py:161
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_2_7" [label="server\\n/arlab/knowledge/get_status_events\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_knowledge
+Role: server
+Interface: /arlab/knowledge/get_status_events
+Type: GetStatusEvents
+Status: no_counterpart_detected
+Source: code/arlab_knowledge/arlab_knowledge/database_node.py:266
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_2_8" [label="server\\n/arlab/knowledge/pickable_get_furniture\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_knowledge
+Role: server
+Interface: /arlab/knowledge/pickable_get_furniture
+Type: GetReference
+Status: no_counterpart_detected
+Source: code/arlab_knowledge/arlab_knowledge/database_node.py:189
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_2_9" [label="server\\n/arlab/knowledge/shelf_get_cupboard\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_knowledge
+Role: server
+Interface: /arlab/knowledge/shelf_get_cupboard
+Type: GetReference
+Status: no_counterpart_detected
+Source: code/arlab_knowledge/arlab_knowledge/database_node.py:203
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_2_10" [label="server\\n/arlab/knowledge/upd_entity\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_knowledge
+Role: server
+Interface: /arlab/knowledge/upd_entity
+Type: UpdEntity
+Status: no_counterpart_detected
+Source: code/arlab_knowledge/arlab_knowledge/database_node.py:224
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_2_11" [label="server\\n/arlab/knowledge/upd_pose\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_knowledge
+Role: server
+Interface: /arlab/knowledge/upd_pose
+Type: UpdPose
+Status: no_counterpart_detected
+Source: code/arlab_knowledge/arlab_knowledge/database_node.py:231
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_2_12" [label="publisher\\n/arlab/knowledge/visualization\\n[topic]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_knowledge
+Role: publisher
+Interface: /arlab/knowledge/visualization
+Type: MarkerArray
+Status: no_counterpart_detected
+Source: code/arlab_knowledge/arlab_knowledge/knowledge_visualization.py:58
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+  }
+  subgraph cluster_3 {
+    label="arlab_manipulation";
+    color="#B8C4D2";
+    style="rounded";
+    bgcolor="#F8FAFC";
+    "endpoint_3_0" [label="subscriber\\n/mia_hand/data_streams/fingers/forces/data\\n[topic]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_manipulation
+Role: subscriber
+Interface: /mia_hand/data_streams/fingers/forces/data
+Type: ForceData
+Status: no_counterpart_detected
+Source: code/arlab_manipulation/arlab_manipulation/force_monitor.py:80
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_3_1" [label="subscriber\\n/monitored_planning_scene\\n[topic]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_manipulation
+Role: subscriber
+Interface: /monitored_planning_scene
+Type: PlanningScene
+Status: no_counterpart_detected
+Source: code/arlab_manipulation/arlab_manipulation/orchestrator.py:112
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_3_2" [label="publisher\\n/object_placed\\n[topic]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_manipulation
+Role: publisher
+Interface: /object_placed
+Type: Bool
+Status: no_counterpart_detected
+Source: code/arlab_manipulation/arlab_manipulation/orchestrator.py:119
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+  }
+  subgraph cluster_4 {
+    label="arlab_manipulation_cpp";
+    color="#B8C4D2";
+    style="rounded";
+    bgcolor="#F8FAFC";
+    "endpoint_4_0" [label="client\\n/mia_hand/grasps/cylindrical/action\\n[action]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_manipulation_cpp
+Role: client
+Interface: /mia_hand/grasps/cylindrical/action
+Type: GraspAction
+Status: no_counterpart_detected
+Source: code/arlab_manipulation_cpp/src/hand_motion.cpp:51
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_4_1" [label="client\\n/mia_hand/grasps/lateral/action\\n[action]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_manipulation_cpp
+Role: client
+Interface: /mia_hand/grasps/lateral/action
+Type: GraspAction
+Status: no_counterpart_detected
+Source: code/arlab_manipulation_cpp/src/hand_motion.cpp:51
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_4_2" [label="client\\n/mia_hand/grasps/pinch/action\\n[action]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_manipulation_cpp
+Role: client
+Interface: /mia_hand/grasps/pinch/action
+Type: GraspAction
+Status: no_counterpart_detected
+Source: code/arlab_manipulation_cpp/src/hand_motion.cpp:51
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_4_3" [label="client\\n/mia_hand/grasps/point_down/action\\n[action]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_manipulation_cpp
+Role: client
+Interface: /mia_hand/grasps/point_down/action
+Type: GraspAction
+Status: no_counterpart_detected
+Source: code/arlab_manipulation_cpp/src/hand_motion.cpp:51
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_4_4" [label="client\\n/mia_hand/grasps/point_up/action\\n[action]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_manipulation_cpp
+Role: client
+Interface: /mia_hand/grasps/point_up/action
+Type: GraspAction
+Status: no_counterpart_detected
+Source: code/arlab_manipulation_cpp/src/hand_motion.cpp:51
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_4_5" [label="client\\n/mia_hand/grasps/spherical/action\\n[action]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_manipulation_cpp
+Role: client
+Interface: /mia_hand/grasps/spherical/action
+Type: GraspAction
+Status: no_counterpart_detected
+Source: code/arlab_manipulation_cpp/src/hand_motion.cpp:51
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_4_6" [label="client\\n/mia_hand/grasps/tridigital/action\\n[action]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_manipulation_cpp
+Role: client
+Interface: /mia_hand/grasps/tridigital/action
+Type: GraspAction
+Status: no_counterpart_detected
+Source: code/arlab_manipulation_cpp/src/hand_motion.cpp:51
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_4_7" [label="client\\nmove_action\\n[action]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_manipulation_cpp
+Role: client
+Interface: move_action
+Type: moveit_msgs::action::MoveGroup
+Status: no_counterpart_detected
+Source: code/arlab_manipulation_cpp/src/arm_motion.cpp:79
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_4_8" [label="client\\n/mia_hand/data_streams/fingers/forces/switch\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_manipulation_cpp
+Role: client
+Interface: /mia_hand/data_streams/fingers/forces/switch
+Type: SetBool
+Status: no_counterpart_detected
+Source: code/arlab_manipulation_cpp/src/hand_force_switch.cpp:23
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+  }
+  subgraph cluster_5 {
+    label="arlab_movement";
+    color="#B8C4D2";
+    style="rounded";
+    bgcolor="#F8FAFC";
+    "endpoint_5_0" [label="server\\n/movement/action\\n[action]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_movement
+Role: server
+Interface: /movement/action
+Type: MovementAction
+Status: no_counterpart_detected
+Source: code/arlab_movement/arlab_movement/movement_orchestrator.py:123
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_5_1" [label="server\\n/arlab/entity_placer/place\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_movement
+Role: server
+Interface: /arlab/entity_placer/place
+Type: AddEntity
+Status: no_counterpart_detected
+Source: code/arlab_movement/arlab_movement/entity_placer.py:71
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_5_2" [label="subscriber\\n/arlab/entity_pose\\n[topic]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_movement
+Role: subscriber
+Interface: /arlab/entity_pose
+Type: PoseStamped
+Status: no_counterpart_detected
+Source: code/arlab_movement/arlab_movement/entity_placer.py:63
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_5_3" [label="publisher\\n/arlab/movement/annotating\\n[topic]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_movement
+Role: publisher
+Interface: /arlab/movement/annotating
+Type: Bool
+Status: no_counterpart_detected
+Source: code/arlab_movement/arlab_movement/movement_orchestrator.py:136
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_5_4" [label="subscriber\\n/map\\n[topic]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_movement
+Role: subscriber
+Interface: /map
+Type: OccupancyGrid
+Status: no_counterpart_detected
+Source: code/arlab_movement/arlab_movement/movement_orchestrator.py:114
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_5_5" [label="subscriber\\n/odom\\n[topic]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_movement
+Role: subscriber
+Interface: /odom
+Type: Odometry
+Status: no_counterpart_detected
+Source: code/arlab_movement/arlab_movement/movement_orchestrator.py:419
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+  }
+  subgraph cluster_6 {
+    label="arlab_perception";
+    color="#B8C4D2";
+    style="rounded";
+    bgcolor="#F8FAFC";
+    "endpoint_6_0" [label="publisher\\n/relay_scan\\n[topic]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_perception
+Role: publisher
+Interface: /relay_scan
+Type: LaserScan
+Status: no_counterpart_detected
+Source: code/arlab_perception/arlab_perception/lidar_data.py:60
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_6_1" [label="subscriber\\n/scan\\n[topic]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_perception
+Role: subscriber
+Interface: /scan
+Type: LaserScan
+Status: no_counterpart_detected
+Source: code/arlab_perception/arlab_perception/lidar_data.py:53
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+  }
+  subgraph cluster_7 {
+    label="arlab_speech_controller";
+    color="#B8C4D2";
+    style="rounded";
+    bgcolor="#F8FAFC";
+    "endpoint_7_0" [label="subscriber\\ntts_output\\n[topic]", shape=box, style="rounded,filled", fillcolor="#FFF2CC", tooltip="Package: arlab_speech_controller
+Role: subscriber
+Interface: tts_output
+Type: String
+Status: namespace_candidate
+Source: code/arlab_speech_controller/arlab_speech_controller/moshi_tts_node.py:174
+Candidate: arlab_decision_making
+Notes: Potential counterpart detected; namespace and remapping require verification"];
+  }
+  subgraph cluster_8 {
+    label="arlab_templates";
+    color="#B8C4D2";
+    style="rounded";
+    bgcolor="#F8FAFC";
+    "endpoint_8_0" [label="server\\n/add_three_ints\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_templates
+Role: server
+Interface: /add_three_ints
+Type: AddThreeInts
+Status: no_counterpart_detected
+Source: code/arlab_templates/arlab_templates/template_service.py:16
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_8_1" [label="client\\nadd_three_ints\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_templates
+Role: client
+Interface: add_three_ints
+Type: AddThreeInts
+Status: no_counterpart_detected
+Source: code/arlab_templates/arlab_templates/template_service_client.py:22
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_8_2" [label="subscriber\\n/local_module_heartbeat\\n[topic]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_templates
+Role: subscriber
+Interface: /local_module_heartbeat
+Type: Int32
+Status: no_counterpart_detected
+Source: code/arlab_templates/arlab_templates/template_local_safety.py:50
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+  }
+  subgraph cluster_9 {
+    label="arlab_ui";
+    color="#B8C4D2";
+    style="rounded";
+    bgcolor="#F8FAFC";
+    "endpoint_9_0" [label="subscriber\\n/camera_gripper/color/image_raw\\n[topic]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_ui
+Role: subscriber
+Interface: /camera_gripper/color/image_raw
+Type: Image
+Status: no_counterpart_detected
+Source: code/arlab_ui/arlab_ui/zirbi_display.py:243
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_9_1" [label="publisher\\n/ui_action\\n[topic]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_ui
+Role: publisher
+Interface: /ui_action
+Type: String
+Status: no_counterpart_detected
+Source: code/arlab_ui/arlab_ui/zirbi_display.py:236
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+  }
+  subgraph cluster_10 {
+    label="arlab_whisper";
+    color="#B8C4D2";
+    style="rounded";
+    bgcolor="#F8FAFC";
+    "endpoint_10_0" [label="subscriber\\n/whisper/enabled\\n[topic]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_whisper
+Role: subscriber
+Interface: /whisper/enabled
+Type: Bool
+Status: no_counterpart_detected
+Source: code/arlab_whisper/arlab_whisper/whisper_node.py:90
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_10_1" [label="publisher\\n/whisper/transcript\\n[topic]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: arlab_whisper
+Role: publisher
+Interface: /whisper/transcript
+Type: WhisperTranscript
+Status: no_counterpart_detected
+Source: code/arlab_whisper/arlab_whisper/whisper_node.py:96
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+  }
+  subgraph cluster_11 {
+    label="manipulator_robot_driver";
+    color="#B8C4D2";
+    style="rounded";
+    bgcolor="#F8FAFC";
+    "endpoint_11_0" [label="client\\ndashboard_client/play\\n[service]", shape=box, style="rounded,filled", fillcolor="#DCEEFF", tooltip="Package: manipulator_robot_driver
+Role: client
+Interface: dashboard_client/play
+Type: std_srvs::srv::Trigger
+Status: launch_configured_candidate
+Source: code/manipulator_robot_driver/src/robot_state_helper.cpp:88
+Candidate: manipulator_robot_driver
+Notes: Compatible counterpart identified using dashboard launch configuration; shared namespace and remapping assumptions require verification; runtime not verified"];
+    "endpoint_11_1" [label="client\\ndashboard_client/restart_safety\\n[service]", shape=box, style="rounded,filled", fillcolor="#DCEEFF", tooltip="Package: manipulator_robot_driver
+Role: client
+Interface: dashboard_client/restart_safety
+Type: std_srvs::srv::Trigger
+Status: launch_configured_candidate
+Source: code/manipulator_robot_driver/src/robot_state_helper.cpp:85
+Candidate: manipulator_robot_driver
+Notes: Compatible counterpart identified using dashboard launch configuration; shared namespace and remapping assumptions require verification; runtime not verified"];
+    "endpoint_11_2" [label="server\\n~/play\\n[service]", shape=box, style="rounded,filled", fillcolor="#DCEEFF", tooltip="Package: manipulator_robot_driver
+Role: server
+Interface: ~/play
+Type: std_srvs::srv::Trigger
+Status: launch_configured_candidate
+Source: code/manipulator_robot_driver/src/dashboard_client_ros.cpp:105
+Candidate: manipulator_robot_driver
+Notes: Compatible counterpart identified using dashboard launch configuration; shared namespace and remapping assumptions require verification; runtime not verified"];
+    "endpoint_11_3" [label="server\\n~/restart_safety\\n[service]", shape=box, style="rounded,filled", fillcolor="#DCEEFF", tooltip="Package: manipulator_robot_driver
+Role: server
+Interface: ~/restart_safety
+Type: std_srvs::srv::Trigger
+Status: launch_configured_candidate
+Source: code/manipulator_robot_driver/src/dashboard_client_ros.cpp:124
+Candidate: manipulator_robot_driver
+Notes: Compatible counterpart identified using dashboard launch configuration; shared namespace and remapping assumptions require verification; runtime not verified"];
+    "endpoint_11_4" [label="client\\n/tool_contact_controller/detect_tool_contact\\n[action]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: client
+Interface: /tool_contact_controller/detect_tool_contact
+Type: TCAction
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/trajectory_until_node.cpp:97
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_5" [label="client\\n/trajectory_until_node/execute\\n[action]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: client
+Interface: /trajectory_until_node/execute
+Type: FollowJointTrajectoryUntil
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/examples/move_until_example.py:56
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_6" [label="client\\nscaled_joint_trajectory_controller/follow_joint_trajectory\\n[action]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: client
+Interface: scaled_joint_trajectory_controller/follow_joint_trajectory
+Type: FollowJointTrajectory
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/scripts/example_move.py:99
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_7" [label="client\\nscaled_joint_trajectory_controller/follow_joint_trajectory\\n[action]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: client
+Interface: scaled_joint_trajectory_controller/follow_joint_trajectory
+Type: FollowJointTrajectory
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/trajectory_until_node.cpp:74
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_8" [label="server\\n~/execute\\n[action]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: server
+Interface: ~/execute
+Type: TrajectoryUntilAction
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/trajectory_until_node.cpp:80
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_9" [label="server\\n~/set_mode\\n[action]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: server
+Interface: ~/set_mode
+Type: ur_dashboard_msgs::action::SetMode
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/robot_state_helper.cpp:99
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_10" [label="client\\ncontroller_manager/list_controllers\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: client
+Interface: controller_manager/list_controllers
+Type: controller_manager_msgs::srv::ListControllers
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/controller_stopper.cpp:63
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_11" [label="client\\ncontroller_manager/switch_controller\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: client
+Interface: controller_manager/switch_controller
+Type: controller_manager_msgs::srv::SwitchController
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/controller_stopper.cpp:60
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_12" [label="client\\nio_and_status_controller/resend_robot_program\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: client
+Interface: io_and_status_controller/resend_robot_program
+Type: std_srvs::srv::Trigger
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/robot_state_helper.cpp:93
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_13" [label="server\\n~/add_to_log\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: server
+Interface: ~/add_to_log
+Type: ur_dashboard_msgs::srv::AddToLog
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/dashboard_client_ros.cpp:230
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_14" [label="server\\n~/brake_release\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: server
+Interface: ~/brake_release
+Type: std_srvs::srv::Trigger
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/dashboard_client_ros.cpp:82
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_15" [label="server\\n~/clear_operational_mode\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: server
+Interface: ~/clear_operational_mode
+Type: std_srvs::srv::Trigger
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/dashboard_client_ros.cpp:87
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_16" [label="server\\n~/close_popup\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: server
+Interface: ~/close_popup
+Type: std_srvs::srv::Trigger
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/dashboard_client_ros.cpp:92
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_17" [label="server\\n~/close_safety_popup\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: server
+Interface: ~/close_safety_popup
+Type: std_srvs::srv::Trigger
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/dashboard_client_ros.cpp:96
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_18" [label="server\\n~/connect\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: server
+Interface: ~/connect
+Type: std_srvs::srv::Trigger
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/dashboard_client_ros.cpp:251
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_19" [label="server\\n~/get_loaded_program\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: server
+Interface: ~/get_loaded_program
+Type: ur_dashboard_msgs::srv::GetLoadedProgram
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/dashboard_client_ros.cpp:147
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_20" [label="server\\n~/get_robot_mode\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: server
+Interface: ~/get_robot_mode
+Type: ur_dashboard_msgs::srv::GetRobotMode
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/dashboard_client_ros.cpp:225
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_21" [label="server\\n~/get_safety_mode\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: server
+Interface: ~/get_safety_mode
+Type: ur_dashboard_msgs::srv::GetSafetyMode
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/dashboard_client_ros.cpp:220
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_22" [label="server\\n~/is_in_remote_control\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: server
+Interface: ~/is_in_remote_control
+Type: ur_dashboard_msgs::srv::IsInRemoteControl
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/dashboard_client_ros.cpp:269
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_23" [label="server\\n~/load_installation\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: server
+Interface: ~/load_installation
+Type: ur_dashboard_msgs::srv::Load
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/dashboard_client_ros.cpp:163
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_24" [label="server\\n~/load_program\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: server
+Interface: ~/load_program
+Type: ur_dashboard_msgs::srv::Load
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/dashboard_client_ros.cpp:172
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_25" [label="server\\n~/pause\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: server
+Interface: ~/pause
+Type: std_srvs::srv::Trigger
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/dashboard_client_ros.cpp:101
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_26" [label="server\\n~/popup\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: server
+Interface: ~/popup
+Type: ur_dashboard_msgs::srv::Popup
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/dashboard_client_ros.cpp:189
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_27" [label="server\\n~/power_off\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: server
+Interface: ~/power_off
+Type: std_srvs::srv::Trigger
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/dashboard_client_ros.cpp:113
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_28" [label="server\\n~/power_on\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: server
+Interface: ~/power_on
+Type: std_srvs::srv::Trigger
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/dashboard_client_ros.cpp:118
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_29" [label="server\\n~/program_running\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: server
+Interface: ~/program_running
+Type: ur_dashboard_msgs::srv::IsProgramRunning
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/dashboard_client_ros.cpp:142
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_30" [label="server\\n~/program_saved\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: server
+Interface: ~/program_saved
+Type: ur_dashboard_msgs::srv::IsProgramSaved
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/dashboard_client_ros.cpp:184
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_31" [label="server\\n~/program_state\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: server
+Interface: ~/program_state
+Type: ur_dashboard_msgs::srv::GetProgramState
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/dashboard_client_ros.cpp:199
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_32" [label="server\\n~/quit\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: server
+Interface: ~/quit
+Type: std_srvs::srv::Trigger
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/dashboard_client_ros.cpp:266
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_33" [label="server\\n~/raw_request\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: server
+Interface: ~/raw_request
+Type: ur_dashboard_msgs::srv::RawRequest
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/dashboard_client_ros.cpp:238
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_34" [label="server\\n~/resume\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: server
+Interface: ~/resume
+Type: std_srvs::srv::Trigger
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/dashboard_client_ros.cpp:108
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_35" [label="server\\n~/shutdown\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: server
+Interface: ~/shutdown
+Type: std_srvs::srv::Trigger
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/dashboard_client_ros.cpp:128
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_36" [label="server\\n~/stop\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: server
+Interface: ~/stop
+Type: std_srvs::srv::Trigger
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/dashboard_client_ros.cpp:133
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_37" [label="server\\n~/unlock_protective_stop\\n[service]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: server
+Interface: ~/unlock_protective_stop
+Type: std_srvs::srv::Trigger
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/dashboard_client_ros.cpp:137
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_38" [label="publisher\\ndirection\\n[topic]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: publisher
+Interface: direction
+Type: Marker
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/examples/force_mode.py:72
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_39" [label="subscriber\\nio_and_status_controller/robot_mode\\n[topic]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: subscriber
+Interface: io_and_status_controller/robot_mode
+Type: ur_dashboard_msgs::msg::RobotMode
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/robot_state_helper.cpp:55
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_40" [label="subscriber\\nio_and_status_controller/robot_program_running\\n[topic]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: subscriber
+Interface: io_and_status_controller/robot_program_running
+Type: std_msgs::msg::Bool
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/controller_stopper.cpp:55
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_41" [label="subscriber\\nio_and_status_controller/robot_program_running\\n[topic]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: subscriber
+Interface: io_and_status_controller/robot_program_running
+Type: std_msgs::msg::Bool
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/robot_state_helper.cpp:62
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_42" [label="subscriber\\nio_and_status_controller/safety_mode\\n[topic]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: subscriber
+Interface: io_and_status_controller/safety_mode
+Type: ur_dashboard_msgs::msg::SafetyMode
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/robot_state_helper.cpp:59
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_43" [label="subscriber\\n~/script_command\\n[topic]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: manipulator_robot_driver
+Role: subscriber
+Interface: ~/script_command
+Type: std_msgs::msg::String
+Status: no_counterpart_detected
+Source: code/manipulator_robot_driver/src/urscript_interface.cpp:51
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_11_44" [label="client\\naction_name\\n[action]", shape=box, style="rounded,filled", fillcolor="#E2E3E5", tooltip="Package: manipulator_robot_driver
+Role: client
+Interface: action_name
+Type: action_type
+Status: unresolved
+Source: code/manipulator_robot_driver/examples/examples.py:66
+Notes: Interface name cannot be resolved statically"];
+    "endpoint_11_45" [label="client\\nsrv_name\\n[service]", shape=box, style="rounded,filled", fillcolor="#E2E3E5", tooltip="Package: manipulator_robot_driver
+Role: client
+Interface: srv_name
+Type: srv_type
+Status: unresolved
+Source: code/manipulator_robot_driver/examples/examples.py:57
+Notes: Interface name cannot be resolved statically"];
+  }
+  subgraph cluster_12 {
+    label="mia_hand_simulation_controller";
+    color="#B8C4D2";
+    style="rounded";
+    bgcolor="#F8FAFC";
+    "endpoint_12_0" [label="client\\n/move_action\\n[action]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: mia_hand_simulation_controller
+Role: client
+Interface: /move_action
+Type: MoveGroup
+Status: no_counterpart_detected
+Source: code/mia_hand_simulation_controller/mia_hand_simulation_controller/mia_hand_bridge.py:19
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+    "endpoint_12_1" [label="client\\n/move_action\\n[action]", shape=box, style="rounded,filled", fillcolor="#FCE8E6", tooltip="Package: mia_hand_simulation_controller
+Role: client
+Interface: /move_action
+Type: MoveGroup
+Status: no_counterpart_detected
+Source: code/mia_hand_simulation_controller/mia_hand_simulation_controller/ur5e_bridge.py:17
+Notes: No exact or namespace-compatible counterpart detected in analyzed Python/C++ declarations; external or dynamically configured endpoints are not excluded"];
+  }
+}

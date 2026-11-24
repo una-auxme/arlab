@@ -829,14 +829,12 @@ class NavigationOrchestrator(Node):
                 f"GetPose failed for entity {entityid} (result_type={resp.result.result_type}): {resp.result.error}"
             )
 
-        if not resp.pose_frame_id:
-            #return NavErr.DB_SERVICE_FAILED, f"GetPose returned no pose_frame_id for entity {entityid}"
-            publish_status(f"GetPose returned no pose_frame_id for entity {entityid}, using 'map' as default")
-            resp.pose_frame_id = "map"
+        if not resp.pose_reference_frame:
+            return NavErr.DB_SERVICE_FAILED, f"GetPose returned no pose_frame_id for entity {entityid}"
 
         goal = NavigateToPose.Goal()
         goal.pose = PoseStamped()
-        goal.pose.header.frame_id = resp.pose_frame_id
+        goal.pose.header.frame_id = resp.pose_reference_frame
         goal.pose.pose = resp.pose
 
         publish_status(f"Sending Nav2 goal.")

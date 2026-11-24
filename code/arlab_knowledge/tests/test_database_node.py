@@ -196,7 +196,7 @@ class DatabaseServiceTester(Node):
         req.entityid = self.entity_id
         res = await self.call_service(GetPose, f"{self.prefix}/get_pose", req)
         pos = res.pose.position
-        self.get_logger().info(f"[GetPose] ID: {req.entityid} → (x={pos.x}, y={pos.y}, z={pos.z})")
+        self.get_logger().info(f"[GetPose] ID: {req.entityid} → (x={pos.x}, y={pos.y}, z={pos.z}) in '{res.pose_reference_frame}'")
         self.log_result("GetPose", res.result)
 
     async def test_furniture_get_pickable(self):

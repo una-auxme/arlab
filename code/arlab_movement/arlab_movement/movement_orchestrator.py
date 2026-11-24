@@ -44,6 +44,7 @@ from arlab_common_interfaces.msg import SafetyNode, SafetyState
 from ament_index_python.packages import get_package_share_directory
 from geometry_msgs.msg import PoseStamped
 from nav2_msgs.action import NavigateToPose
+from action_msgs.msg import GoalStatus
 
 
 class NavErr:
@@ -65,6 +66,8 @@ class NavErr:
     ANNOTATE_SERVER_UNAVAILABLE = -40
     NAV2_SERVER_UNAVAILABLE = -50
     NAV2_GOAL_REJECTED = -51
+    NAV2_FAILED = -52
+    NAV2_CANCELLED = -53
 
 
 class NavigationOrchestrator(Node):
@@ -296,7 +299,7 @@ class NavigationOrchestrator(Node):
             elif cmd == "map_save":
                 err, msg = self.save_map(publish_status)
             elif cmd == "move_to_entity":
-                err, msg = self.move_to_entity(goal_handle.request.entityid, publish_status)
+                err, msg = self.move_to_entity(goal_handle.request.entityid, goal_handle, publish_status)
             elif cmd == "stop_all":
                 publish_status("Stopping all navigation processes")
                 self.stop_all()
@@ -808,7 +811,7 @@ class NavigationOrchestrator(Node):
         yaw_rate = abs(msg.twist.twist.angular.z)
         return p.x, p.y, yaw, speed, yaw_rate
 
-    def move_to_entity(self, entityid: int, publish_status) -> Tuple[int, str]:
+    def move_to_entity(self, entityid: int, goal_handle, publish_status) -> Tuple[int, str]:
         """
         TBD
         """
@@ -845,7 +848,12 @@ class NavigationOrchestrator(Node):
         if not send_future.result().accepted:
             return NavErr.NAV2_GOAL_REJECTED, "Nav2 goal rejected"
 
-        return NavErr.OK, f"Nav2 goal sent to entity {entityid}"
+        nav_handle = send_future.result()
+        if not nav_handle.accepted:
+            return NavErr.NAV2_GOAL_REJECTED, "Nav2 goal rejected"
+
+        publish_status(f"Moving to entity {entityid}")
+        return self._wait_for_nav_result(nav_handle, goal_handle)
 
     def _wait_for_future(self, future, timeout: float) -> bool:
         """
@@ -855,6 +863,30 @@ class NavigationOrchestrator(Node):
         future.add_done_callback(lambda _: done.set())
         return done.wait(timeout=timeout)
 
+    def _wait_for_nav_result(self, nav_handle, goal_handle) -> Tuple[int, str]:
+        """
+        TBD
+        """
+        result_future = nav_handle.get_result_async()
+        done = threading.Event()
+        result_future.add_done_callback(lambda _: done.set())
+
+        while not done.wait(timeout=0.5):
+            if goal_handle.is_cancel_requested:
+                nav_handle.cancel_goal_async()
+                return NavErr.NAV2_CANCELLED, "MovementAction goal cancelled"
+            if not self.nav_client.server_is_ready():
+                return NavErr.NAV2_SERVER_UNAVAILABLE, "Nav2 server not available during navigation"
+
+        response = result_future.result()
+        if response.status == GoalStatus.STATUS_SUCCEEDED:
+            return NavErr.OK, "Goal reached"
+        if response.status == GoalStatus.STATUS_CANCELLED:
+            return NavErr.NAV2_CANCELLED, "Nav2 goal cancelled"
+        return NavErr.NAV2_FAILED, (
+            f"Nav2 goal failed with status {response.status} "
+            f"(error_type={response.result.error_code}): {response.result.error_msg}"
+        )
 
     @staticmethod
     def _angle_diff(a: float, b: float) -> float:

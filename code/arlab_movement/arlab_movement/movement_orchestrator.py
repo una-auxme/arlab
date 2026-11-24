@@ -45,6 +45,7 @@ from ament_index_python.packages import get_package_share_directory
 from geometry_msgs.msg import PoseStamped
 from nav2_msgs.action import NavigateToPose
 from action_msgs.msg import GoalStatus
+import tf2_ros
 
 
 class NavErr:
@@ -68,6 +69,7 @@ class NavErr:
     NAV2_GOAL_REJECTED = -51
     NAV2_FAILED = -52
     NAV2_CANCELLED = -53
+    NO_APPROACH_POSE = -54
 
 
 class NavigationOrchestrator(Node):
@@ -117,6 +119,9 @@ class NavigationOrchestrator(Node):
         self.declare_parameter("nav_server_timeout", 10.0)
         self.declare_parameter("get_pose_service", "/arlab/knowledge/get_pose")
         self.declare_parameter("navigate_action", "/navigate_to_pose")
+        self.declare_parameter("robot_base_frame", "base_footprint")
+        self.declare_parameter("approach_distance", 0.0)  # m from entity center, 0 drives to the raw entity pose
+
 
         self.map_path = str(self.get_parameter("map_path").value)
         self.use_timestamp = bool(self.get_parameter("use_timestamp").value)
@@ -157,6 +162,11 @@ class NavigationOrchestrator(Node):
         self.nav_server_timeout = float(self.get_parameter("nav_server_timeout").value)
         self.get_pose_client = self.create_client(GetPose, self.get_pose_service, callback_group=self.service_group)
         self.nav_client = ActionClient(self, NavigateToPose, self.navigate_action, callback_group=self.action_group)
+        self.tf_buffer = tf2_ros.Buffer()
+        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
+        self.robot_base_frame = str(self.get_parameter("robot_base_frame").value)
+        self.approach_distance = float(self.get_parameter("approach_distance").value)
+
 
         # cache latest /map so map_save can send it to the knowledge base
         self.map_subscription = self.create_subscription(OccupancyGrid, self.map_topic, self.map_callback, 10)
@@ -811,6 +821,7 @@ class NavigationOrchestrator(Node):
         yaw_rate = abs(msg.twist.twist.angular.z)
         return p.x, p.y, yaw, speed, yaw_rate
 
+    # move to entity
     def move_to_entity(self, entityid: int, goal_handle, publish_status) -> Tuple[int, str]:
         """
         TBD
@@ -835,10 +846,19 @@ class NavigationOrchestrator(Node):
         if not resp.pose_reference_frame:
             return NavErr.DB_SERVICE_FAILED, f"GetPose returned no pose_reference_frame for entity {entityid}"
 
+
+        entity_pose = PoseStamped()
+        entity_pose.header.frame_id = resp.pose_reference_frame
+        entity_pose.pose = resp.pose
+
         goal = NavigateToPose.Goal()
-        goal.pose = PoseStamped()
-        goal.pose.header.frame_id = resp.pose_reference_frame
-        goal.pose.pose = resp.pose
+
+        if self.approach_distance > 0.0:
+            goal.pose = self._approach_pose(entity_pose)
+            if goal.pose is None:
+                return NavErr.NO_APPROACH_POSE, f"No approach pose for entity {entityid}"
+        else:
+            goal.pose = entity_pose
 
         publish_status("Sending Nav2 goal.")
         send_future = self.nav_client.send_goal_async(goal)
@@ -883,6 +903,35 @@ class NavigationOrchestrator(Node):
         return NavErr.NAV2_FAILED, (
             f"Nav2 goal failed with status {response.status} (error_code={response.result.error_code}): {response.result.error_msg}"
         )
+
+    def _approach_pose(self, entity_pose: PoseStamped) -> Optional[PoseStamped]:
+        """
+        TBD
+        """
+        try:
+            tf = self.tf_buffer.lookup_transform(
+                entity_pose.header.frame_id, self.robot_base_frame, rclpy.time.Time()
+            )
+        except Exception as e:
+            self.get_logger().error(f"Transform lookup failed: {e}")
+            return None
+
+        ex, ey = entity_pose.pose.position.x, entity_pose.pose.position.y
+        dx = tf.transform.translation.x - ex
+        dy = tf.transform.translation.y - ey
+        dist = math.hypot(dx, dy)
+        if dist < 1e-3:
+            self.get_logger().info("Already at entity pose, no approach needed.")
+            return None
+
+        approach = PoseStamped()
+        approach.header.frame_id = entity_pose.header.frame_id
+        approach.pose.position.x = ex + dx / dist * self.approach_distance
+        approach.pose.position.y = ey + dy / dist * self.approach_distance
+        yaw = math.atan2(-dy, -dx) # face entity
+        approach.pose.orientation.z = math.sin(yaw / 2.0)
+        approach.pose.orientation.w = math.cos(yaw / 2.0)
+        return approach
 
     @staticmethod
     def _angle_diff(a: float, b: float) -> float:

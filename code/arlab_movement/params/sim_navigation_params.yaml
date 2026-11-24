@@ -8,5 +8,8 @@ navigation_orchestrator:
     nav_launch_file: "ranger_nav2.launch.py"
     nav_params_file: "ranger_nav2_params.yaml"
 
+    robot_base_frame: "ranger_base_link"
+    approach_distance: 1.0
+
     save_to_database: false
     stack_grace_period: 30.0

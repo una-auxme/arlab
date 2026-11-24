@@ -453,13 +453,16 @@ class DatabaseNode(Node):
             response: Response object to populate with result/error data
         """
         async with self.Session(response) as session:
-            stmt = select(Entity.pose).where(Entity.id == request.entityid)
+            stmt = select(Entity.pose, Entity.pose_reference_frame, Entity.stamp).where(Entity.id == request.entityid)
             result = await session.execute(stmt)
-            pose = result.scalar_one_or_none()
-            if pose is None:
+            row = result.one_or_none()
+            if row is None:
                 response.result.result_type = Result.ERROR_ID_NOT_FOUND
             else:
+                pose, reference_frame, stamp = row
                 response.pose = pose.pose
+                response.pose_reference_frame = reference_frame
+                response.stamp = stamp.time
         return response
 
     async def get_description_callback(self, request: GetDescription.Request, response: GetDescription.Response):

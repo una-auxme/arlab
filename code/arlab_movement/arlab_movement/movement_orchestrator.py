@@ -823,7 +823,7 @@ class NavigationOrchestrator(Node):
 
         publish_status(f"Getting pose of entity {entityid}")
         future = self.get_pose_client.call_async(GetPose.Request(entityid=entityid))
-        if not self._wait_for_future(future, self.nav_server_timeout):
+        if not self._wait_for_future(future, self.database_timeout):
             return NavErr.DB_SERVICE_UNAVAILABLE, "Timeout waiting for GetPose service"
 
         resp = future.result()
@@ -833,20 +833,17 @@ class NavigationOrchestrator(Node):
             )
 
         if not resp.pose_reference_frame:
-            return NavErr.DB_SERVICE_FAILED, f"GetPose returned no pose_referece_frame for entity {entityid}"
+            return NavErr.DB_SERVICE_FAILED, f"GetPose returned no pose_reference_frame for entity {entityid}"
 
         goal = NavigateToPose.Goal()
         goal.pose = PoseStamped()
         goal.pose.header.frame_id = resp.pose_reference_frame
         goal.pose.pose = resp.pose
 
-        publish_status(f"Sending Nav2 goal.")
+        publish_status("Sending Nav2 goal.")
         send_future = self.nav_client.send_goal_async(goal)
         if not self._wait_for_future(send_future, self.nav_server_timeout):
             return NavErr.NAV2_GOAL_REJECTED, "Timeout sending goal to Nav2"
-
-        if not send_future.result().accepted:
-            return NavErr.NAV2_GOAL_REJECTED, "Nav2 goal rejected"
 
         nav_handle = send_future.result()
         if not nav_handle.accepted:
@@ -881,11 +878,10 @@ class NavigationOrchestrator(Node):
         response = result_future.result()
         if response.status == GoalStatus.STATUS_SUCCEEDED:
             return NavErr.OK, "Goal reached"
-        if response.status == GoalStatus.STATUS_CANCELLED:
+        if response.status == GoalStatus.STATUS_CANCELED:
             return NavErr.NAV2_CANCELLED, "Nav2 goal cancelled"
         return NavErr.NAV2_FAILED, (
-            f"Nav2 goal failed with status {response.status} "
-            f"(error_type={response.result.error_code}): {response.result.error_msg}"
+            f"Nav2 goal failed with status {response.status} (error_code={response.result.error_code}): {response.result.error_msg}"
         )
 
     @staticmethod

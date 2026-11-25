@@ -1,0 +1,28 @@
+source_component,target_component,interface_kind,interface_name,interface_type,integration_status,source_reference,notes
+Decision Making,Manipulation Orchestrator,action,/manipulation/action,ManipulationAction,implemented,arlab_decision_making/behaviours/manipulation/generic_manipulation.py,Action client through RosActionBehaviour
+Manipulation Orchestrator,Manipulation C++ Orchestrator,action,/orchestrator/action,OrchestratorAction,configured,arlab_manipulation/orchestrator.py,Python to C++ manipulation orchestration
+Manipulation Orchestrator,Knowledge Database,service,/arlab/knowledge/get_entity,GetEntity,implemented,arlab_manipulation/orchestrator.py,Retrieve entity metadata
+Manipulation Orchestrator,Knowledge Database,service,/arlab/knowledge/get_shape,GetShape,implemented,arlab_manipulation/orchestrator.py,Retrieve entity geometry
+Manipulation Orchestrator,Gripping Parameter Service,service,GetGrippingParameter,GrippingParameter,configured,arlab_manipulation/orchestrator.py,Relative service name
+Manipulation Orchestrator,Force Monitor,service,/object_dropped,GetObjectDropped,configured,arlab_manipulation/orchestrator.py,Query dropped object status
+Manipulation C++ Orchestrator,Force Monitor,service,/force_monitor/activate,ActivateForceMonitor,configured,arlab_manipulation_cpp/src/force_monitor_switch.cpp,Activate force monitoring
+Movement Orchestrator,Computer Vision,action,/vision/snapshot,VisionSnapshotAction,implemented,arlab_movement/movement_orchestrator.py,Used for automatic map annotation
+Movement Orchestrator,Knowledge Database,service,/arlab/knowledge/add_map,AddMap,conditional,arlab_movement/movement_orchestrator.py,Only when database saving is enabled
+Computer Vision,Knowledge Database,service,/arlab/knowledge/get_entities,GetEntities,configured,arlab_computer_vision/object_detection.py,Retrieve known entities
+Computer Vision,Knowledge Database,service,/arlab/knowledge/add_entity,AddEntity,configured,arlab_computer_vision/object_detection.py,Store detected entities
+Computer Vision,Knowledge Database,service,/arlab/knowledge/upd_shape,UpdShape,configured,arlab_computer_vision/object_detection.py,Store detected geometry
+Computer Vision,Knowledge Database,service,/arlab/knowledge/del_entities,DelEntities,configured,arlab_computer_vision/object_detection.py,Remove previous pickable entities
+Knowledge Visualization,Knowledge Database,service,/arlab/knowledge/get_entities,GetEntities,configured,arlab_knowledge/knowledge_visualization.py,Retrieve entities for RViz
+Knowledge Visualization,Knowledge Database,service,/arlab/knowledge/get_entity,GetEntity,configured,arlab_knowledge/knowledge_visualization.py,Retrieve individual entity
+Knowledge Visualization,Knowledge Database,service,/arlab/knowledge/get_shape,GetShape,configured,arlab_knowledge/knowledge_visualization.py,Retrieve geometry
+Decision Making,Knowledge Database,service,/arlab/knowledge/get_entities,GetEntities,implemented,arlab_decision_making/behaviours/tdi_demo/main_controller.py,TDI demo
+Decision Making,Knowledge Database,service,/arlab/knowledge/get_entity,GetEntity,implemented,arlab_decision_making/behaviours/tdi_demo/main_controller.py,TDI demo
+Decision Making,Computer Vision,action,/vision/snapshot,VisionSnapshotAction,implemented,arlab_decision_making/behaviours/common/vision_snapshot.py,Vision snapshot behaviour
+Decision Making,Text To Speech,topic,/tts_output,std_msgs/msg/String,implemented,arlab_decision_making/behaviours/common/speech.py,Moshi TTS subscribes to relative tts_output
+Decision Making,PyQt6 UI,topic,/tts_output,std_msgs/msg/String,implemented,arlab_ui/zirbi_display.py,UI displays speech output
+PyQt6 UI,Unconnected,topic,/ui_action,std_msgs/msg/String,unconnected,arlab_ui/zirbi_display.py,Prototype UI action feedback
+Whisper,Unconnected,topic,/whisper/transcript,WhisperTranscript,unconnected,arlab_whisper/whisper_node.py,No consumer identified
+Local Safety Template,Central Safety Node,topic,/global_heartbeat,std_msgs/msg/Int32MultiArray,template_only,arlab_templates/template_local_safety.py,No productive heartbeat publisher identified
+Perception LiDAR Relay,Unconfirmed,topic,/relay_scan,sensor_msgs/msg/LaserScan,unconfirmed,arlab_perception/lidar_data.py,No subscriber identified
+Knowledge Visualization,RViz,topic,/arlab/knowledge/visualization,visualization_msgs/msg/MarkerArray,implemented,arlab_knowledge/knowledge_visualization.py,Marker visualization
+Entity Placer,Knowledge Database,service,/arlab/knowledge/add_entity,AddEntity,implemented,code/arlab_movement/arlab_movement/entity_placer.py:125,Statically verified AddEntity client/server connection; default service names match; runtime communication not verified

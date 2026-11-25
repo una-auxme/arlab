@@ -1,0 +1,2 @@
+source_component,target_component,interface_kind,interface_name,interface_type,reason
+Template PubSub,Template PubSub,topic,/cool_topic,String,"Example component; no usage found in searched Python, XML or YAML configuration files; excluded from operational architecture"

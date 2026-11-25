@@ -1,8 +1,23 @@
+#!/usr/bin/env python3
+
 """
-This test script stores audio input to a wave file until interrupted.
+Audio Test
+
+Maintainer: tobias.neher@uni-a.de
+
+This module provides a simple audio recording script for testing microphone
+input using the sounddevice library.
+
+The script continuously captures audio from the microphone in configurable
+blocks and saves each block as a WAV file.
+
+Each new audio block overwrites the previously saved file, so only the most
+recent recording is retained.
+
+The recording continues until the script is interrupted (Ctrl+C).
+The output directory is created automatically if it does not already exist.
 """
 
-#!/usr/bin/env python3
 import os
 import wave
 
@@ -19,12 +34,12 @@ BLOCKSIZE = int(SAMPLE_RATE * RECORD_SECONDS)
 
 
 def save_wav(filename, audio):
-    """saves audio samples to a WAV file
+    """
+    Saves the provided audio samples to a WAV file.
 
-    Args:
-        filename (String): path to the stored file location
-        audio (numpy.ndarray): Audio samples as a array of the
-            dtype datatype
+    args:
+        filename (String): Path to the stored file location.
+        audio (numpy.ndarray): Audio samples as an array.
     """
     with wave.open(filename, "wb") as wf:
         wf.setnchannels(CHANNELS)
@@ -34,13 +49,14 @@ def save_wav(filename, audio):
 
 
 def main():
-    """continuously record audio and stores it to a wav file
+    """Continuously records audio and saves it as a WAV file.
 
-    creates the output subdirectory, opens an audio stream, records audio and saves
-    each block to the path, records until interrupted
+    Creates the output directory and opens an audio input stream.
+    Reads audio blocks of a configurable duration and saves each block
+    to the same WAV file, overwriting the previous recording.
+    Continues recording until interrupted.
     """
     os.makedirs(OUTPUT_FOLDER, exist_ok=True)
-    # print(sd.query_devices())
     try:
         with sd.InputStream(
             samplerate=SAMPLE_RATE,
